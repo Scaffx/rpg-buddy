@@ -142,13 +142,97 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_items: {
+        Row: {
+          completed: boolean
+          created_at: string
+          description: string
+          id: string
+          mission_id: string
+          xp_bonus: number
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          description: string
+          id?: string
+          mission_id: string
+          xp_bonus?: number
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          description?: string
+          id?: string
+          mission_id?: string
+          xp_bonus?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_items_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          column_index: number
+          column_label: string
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          level_max: number
+          level_min: number
+          name: string
+          parent_class_id: string | null
+        }
+        Insert: {
+          column_index?: number
+          column_label?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          level_max?: number
+          level_min?: number
+          name: string
+          parent_class_id?: string | null
+        }
+        Update: {
+          column_index?: number
+          column_label?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          level_max?: number
+          level_min?: number
+          name?: string
+          parent_class_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_parent_class_id_fkey"
+            columns: ["parent_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missions: {
         Row: {
           attribute_id: string
           completed: boolean
           completed_at: string | null
           created_at: string
+          days_of_week: Json | null
           due_date: string | null
+          horario_provavel: string | null
           id: string
           title: string
           updated_at: string
@@ -160,7 +244,9 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          days_of_week?: Json | null
           due_date?: string | null
+          horario_provavel?: string | null
           id?: string
           title: string
           updated_at?: string
@@ -172,7 +258,9 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          days_of_week?: Json | null
           due_date?: string | null
+          horario_provavel?: string | null
           id?: string
           title?: string
           updated_at?: string
@@ -193,6 +281,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          current_class_id: string | null
           display_name: string | null
           id: string
           level: number
@@ -205,6 +294,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          current_class_id?: string | null
           display_name?: string | null
           id?: string
           level?: number
@@ -217,6 +307,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          current_class_id?: string | null
           display_name?: string | null
           id?: string
           level?: number
@@ -226,7 +317,15 @@ export type Database = {
           user_id?: string
           xp_today?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_current_class_id_fkey"
+            columns: ["current_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

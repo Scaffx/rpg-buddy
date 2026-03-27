@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { useProfile, useAttributes, useActivityLog } from '@/hooks/useProfile';
-import { Trophy, Star, Zap, Target, TrendingUp, Loader2 } from 'lucide-react';
+import { useProfile, useAttributes, useActivityLog, useClasses } from '@/hooks/useProfile';
+import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 
 function getRank(level: number) {
@@ -12,18 +12,13 @@ function getRank(level: number) {
   return 'Novato';
 }
 
-const statCards = [
-  { key: 'level', label: 'Nível', icon: Star, getValue: (p: any) => p.level },
-  { key: 'rank', label: 'Rank', icon: Trophy, getValue: (p: any) => getRank(p.level) },
-  { key: 'total_xp', label: 'XP Total', icon: Zap, getValue: (p: any) => p.total_xp },
-  { key: 'xp_today', label: 'XP Hoje', icon: TrendingUp, getValue: (p: any) => p.xp_today },
-  { key: 'missions', label: 'Missões', icon: Target, getValue: (p: any) => p.missions_completed },
-];
-
 export default function Dashboard() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: attributes, isLoading: attrsLoading } = useAttributes();
   const { data: activity, isLoading: activityLoading } = useActivityLog();
+  const { data: classes } = useClasses();
+
+  const currentClass = classes?.find((c: any) => c.id === profile?.current_class_id);
 
   if (profileLoading || attrsLoading) {
     return (
@@ -35,10 +30,19 @@ export default function Dashboard() {
     );
   }
 
+  const statCards = [
+    { key: 'level', label: 'Nível', icon: Star, value: profile?.level || 1 },
+    { key: 'rank', label: 'Rank', icon: Trophy, value: getRank(profile?.level || 1) },
+    { key: 'class', label: 'Classe', icon: Swords, value: currentClass ? `${currentClass.icon} ${currentClass.name}` : '📖 Aprendiz' },
+    { key: 'total_xp', label: 'XP Total', icon: Zap, value: profile?.total_xp || 0 },
+    { key: 'missions_today', label: 'Missões Hoje', icon: Calendar, value: profile?.xp_today ? Math.floor(profile.xp_today / 25) : 0 },
+    { key: 'missions', label: 'Missões Total', icon: Target, value: profile?.missions_completed || 0 },
+    { key: 'xp_today', label: 'XP Hoje', icon: TrendingUp, value: profile?.xp_today || 0 },
+  ];
+
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
             Olá, {profile?.display_name || 'Aventureiro'}!
@@ -49,7 +53,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {statCards.map((stat, i) => (
             <motion.div
               key={stat.key}
@@ -59,9 +63,7 @@ export default function Dashboard() {
               className="rpg-card-glow text-center"
             >
               <stat.icon className="w-5 h-5 text-primary mx-auto mb-1" />
-              <div className="text-xl font-bold text-foreground">
-                {profile ? stat.getValue(profile) : '—'}
-              </div>
+              <div className="text-lg font-bold text-foreground">{stat.value}</div>
               <div className="text-xs text-muted-foreground">{stat.label}</div>
             </motion.div>
           ))}
@@ -69,12 +71,7 @@ export default function Dashboard() {
 
         {/* XP Progress */}
         {profile && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="rpg-card"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="rpg-card">
             <div className="flex justify-between text-sm mb-2">
               <span className="text-muted-foreground">Progresso para Nível {profile.level + 1}</span>
               <span className="text-primary font-semibold">{profile.total_xp % 200}/200 XP</span>
@@ -104,7 +101,7 @@ export default function Dashboard() {
                     <span className="rpg-badge">Nv.{attr.level}</span>
                   </div>
                   <div className="rpg-stat-bar mt-1.5">
-                    <div className="rpg-stat-fill" style={{ width: `${(attr.xp % 100)}%` }} />
+                    <div className="rpg-stat-fill" style={{ width: `${attr.xp % 100}%` }} />
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">{attr.xp % 100}/100 XP</div>
                 </div>
