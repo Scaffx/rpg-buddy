@@ -20,7 +20,7 @@ import {
 import {
   Plus, Check, Loader2, Target, ChevronDown, ChevronUp,
   Search, X, Pencil, Trash2, Pause, Play, Sun, Moon, Sunrise, RotateCcw,
-  Beer, Shield, Trident,
+  Beer, Shield, Flame,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
