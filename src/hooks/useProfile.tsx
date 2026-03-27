@@ -137,8 +137,9 @@ export function useCreateMission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ title, attributeId, dueDate, daysOfWeek, horarioProvavel }: {
+    mutationFn: async ({ title, attributeId, dueDate, daysOfWeek, horarioProvavel, priority, description, notes }: {
       title: string; attributeId: string; dueDate?: string; daysOfWeek?: string[]; horarioProvavel?: string;
+      priority?: string; description?: string; notes?: string;
     }) => {
       const { error } = await supabase.from('missions').insert({
         user_id: user!.id,
@@ -147,6 +148,9 @@ export function useCreateMission() {
         due_date: dueDate || null,
         days_of_week: daysOfWeek || [],
         horario_provavel: horarioProvavel || 'flex',
+        priority: priority || 'media',
+        description: description || null,
+        notes: notes || null,
       } as any);
       if (error) throw error;
     },
