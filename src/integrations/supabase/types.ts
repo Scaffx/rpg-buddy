@@ -231,9 +231,13 @@ export type Database = {
           completed_at: string | null
           created_at: string
           days_of_week: Json | null
+          description: string | null
           due_date: string | null
           horario_provavel: string | null
           id: string
+          notes: string | null
+          priority: string
+          status: string
           title: string
           updated_at: string
           user_id: string
@@ -245,9 +249,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           days_of_week?: Json | null
+          description?: string | null
           due_date?: string | null
           horario_provavel?: string | null
           id?: string
+          notes?: string | null
+          priority?: string
+          status?: string
           title: string
           updated_at?: string
           user_id: string
@@ -259,9 +267,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           days_of_week?: Json | null
+          description?: string | null
           due_date?: string | null
           horario_provavel?: string | null
           id?: string
+          notes?: string | null
+          priority?: string
+          status?: string
           title?: string
           updated_at?: string
           user_id?: string
