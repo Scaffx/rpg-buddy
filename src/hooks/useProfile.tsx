@@ -63,6 +63,18 @@ export function useCompleteMission() {
 
   return useMutation({
     mutationFn: async ({ missionId, attributeId, xpReward }: { missionId: string; attributeId: string; xpReward: number }) => {
+      // Get checklist bonus
+      const { data: checklistItems } = await supabase
+        .from('checklist_items')
+        .select('*')
+        .eq('mission_id', missionId);
+      
+      const checklistBonus = (checklistItems || [])
+        .filter((item: any) => item.completed)
+        .reduce((sum: number, item: any) => sum + (item.xp_bonus || 2), 0);
+      
+      const totalXpReward = xpReward + checklistBonus;
+
       const { error: mErr } = await supabase
         .from('missions')
         .update({ completed: true, completed_at: new Date().toISOString() })
@@ -75,7 +87,7 @@ export function useCompleteMission() {
         .eq('id', attributeId)
         .single();
       if (attr) {
-        const newXp = attr.xp + xpReward;
+        const newXp = attr.xp + totalXpReward;
         const newLevel = Math.floor(newXp / 100) + 1;
         await supabase.from('attributes').update({ xp: newXp, level: newLevel }).eq('id', attributeId);
       }
@@ -86,11 +98,11 @@ export function useCompleteMission() {
         .eq('user_id', user!.id)
         .single();
       if (profile) {
-        const newTotalXp = profile.total_xp + xpReward;
+        const newTotalXp = profile.total_xp + totalXpReward;
         const newLevel = Math.floor(newTotalXp / 200) + 1;
         await supabase.from('profiles').update({
           total_xp: newTotalXp,
-          xp_today: profile.xp_today + xpReward,
+          xp_today: profile.xp_today + totalXpReward,
           missions_completed: profile.missions_completed + 1,
           level: newLevel,
         }).eq('user_id', user!.id);
@@ -99,15 +111,23 @@ export function useCompleteMission() {
       await supabase.from('activity_log').insert({
         user_id: user!.id,
         action: 'mission_complete',
-        description: `Missão concluída! +${xpReward} XP`,
-        xp_gained: xpReward,
+        description: `Missão concluída! +${totalXpReward} XP`,
+        xp_gained: totalXpReward,
       });
+
+      // Record in xp_history
+      await supabase.from('xp_history' as any).insert({
+        user_id: user!.id,
+        xp_gained: totalXpReward,
+        type: 'mission',
+      } as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['missions'] });
       queryClient.invalidateQueries({ queryKey: ['attributes'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
+      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
     },
   });
 }
@@ -222,6 +242,12 @@ export function useFightBoss() {
           description: `Boss derrotado! +${xpReward} XP`,
           xp_gained: xpReward,
         });
+
+        await supabase.from('xp_history' as any).insert({
+          user_id: user!.id,
+          xp_gained: xpReward,
+          type: 'boss',
+        } as any);
       } else {
         await supabase.from('activity_log').insert({
           user_id: user!.id,
@@ -237,6 +263,7 @@ export function useFightBoss() {
       queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
+      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
     },
   });
 }
@@ -247,12 +274,12 @@ export function useClasses() {
     queryKey: ['classes'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('classes' as any)
+        .from('classes')
         .select('*')
         .order('column_index')
         .order('level_min');
       if (error) throw error;
-      return data as any[];
+      return data;
     },
   });
 }
@@ -281,12 +308,12 @@ export function useChecklistItems(missionId: string) {
     queryKey: ['checklist', missionId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('checklist_items' as any)
+        .from('checklist_items')
         .select('*')
         .eq('mission_id', missionId)
         .order('created_at');
       if (error) throw error;
-      return data as any[];
+      return data;
     },
     enabled: !!missionId,
   });
@@ -297,8 +324,8 @@ export function useAddChecklistItem() {
   return useMutation({
     mutationFn: async ({ missionId, description }: { missionId: string; description: string }) => {
       const { error } = await supabase
-        .from('checklist_items' as any)
-        .insert({ mission_id: missionId, description } as any);
+        .from('checklist_items')
+        .insert({ mission_id: missionId, description });
       if (error) throw error;
     },
     onSuccess: (_d, vars) => {
@@ -308,17 +335,67 @@ export function useAddChecklistItem() {
 }
 
 export function useToggleChecklistItem() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ itemId, completed }: { itemId: string; completed: boolean }) => {
+    mutationFn: async ({ itemId, completed, xpBonus }: { itemId: string; completed: boolean; xpBonus?: number }) => {
       const { error } = await supabase
-        .from('checklist_items' as any)
-        .update({ completed } as any)
+        .from('checklist_items')
+        .update({ completed })
         .eq('id', itemId);
       if (error) throw error;
+
+      // If completing a sub-mission, record XP
+      if (completed && user) {
+        const bonus = xpBonus || 2;
+        await supabase.from('xp_history' as any).insert({
+          user_id: user.id,
+          xp_gained: bonus,
+          type: 'sub_mission',
+        } as any);
+
+        // Update profile xp
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('total_xp, xp_today, level')
+          .eq('user_id', user.id)
+          .single();
+        if (profile) {
+          const newTotalXp = profile.total_xp + bonus;
+          const newLevel = Math.floor(newTotalXp / 200) + 1;
+          await supabase.from('profiles').update({
+            total_xp: newTotalXp,
+            xp_today: profile.xp_today + bonus,
+            level: newLevel,
+          }).eq('user_id', user.id);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checklist'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
     },
+  });
+}
+
+// XP History for charts
+export function useXpHistory(days: number = 7) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['xp_history', user?.id, days],
+    queryFn: async () => {
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - days);
+      const { data, error } = await supabase
+        .from('xp_history' as any)
+        .select('*')
+        .eq('user_id', user!.id)
+        .gte('date', fromDate.toISOString().split('T')[0])
+        .order('date');
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!user,
   });
 }
