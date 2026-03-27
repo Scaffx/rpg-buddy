@@ -35,7 +35,7 @@ const TIMES = [
 const PRIORITIES = [
   { value: 'baixa', label: 'Baixa', icon: Beer, color: 'text-success border-success/50 bg-success/10' },
   { value: 'media', label: 'Média', icon: Shield, color: 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10' },
-  { value: 'alta', label: 'Alta', icon: Trident, color: 'text-destructive border-destructive/50 bg-destructive/10' },
+  { value: 'alta', label: 'Alta', icon: Flame, color: 'text-destructive border-destructive/50 bg-destructive/10' },
 ];
 
 const TABS = [
