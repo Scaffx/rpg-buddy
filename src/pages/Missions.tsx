@@ -46,8 +46,17 @@ const TABS = [
 ];
 
 const ATTRIBUTE_CATEGORIES = [
-  'Todos', 'Força', 'Inteligência', 'Sabedoria', 'Carisma',
-  'Vitalidade', 'Agilidade', 'Disciplina', 'Criatividade', 'Resiliência',
+  { name: 'Todos', emoji: '🎯' },
+  { name: 'Corpo', emoji: '💪' },
+  { name: 'Saúde', emoji: '❤️' },
+  { name: 'Finanças', emoji: '💰' },
+  { name: 'Trabalho', emoji: '💼' },
+  { name: 'Estudos', emoji: '📚' },
+  { name: 'Rotina & Casa', emoji: '🏠' },
+  { name: 'Desenvolvimento', emoji: '🚀' },
+  { name: 'Relacionamento', emoji: '💜' },
+  { name: 'Autoaperfeiçoamento', emoji: '⭐' },
+  { name: 'Livre', emoji: '🎯' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
