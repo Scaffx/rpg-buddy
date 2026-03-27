@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Missions from "./pages/Missions";
 import CalendarPage from "./pages/CalendarPage";
 import BossPage from "./pages/BossPage";
+import ClassesPage from "./pages/ClassesPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
             <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
             <Route path="/boss" element={<ProtectedRoute><BossPage /></ProtectedRoute>} />
+            <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

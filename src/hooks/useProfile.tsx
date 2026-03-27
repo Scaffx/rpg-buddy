@@ -63,14 +63,12 @@ export function useCompleteMission() {
 
   return useMutation({
     mutationFn: async ({ missionId, attributeId, xpReward }: { missionId: string; attributeId: string; xpReward: number }) => {
-      // Mark mission complete
       const { error: mErr } = await supabase
         .from('missions')
         .update({ completed: true, completed_at: new Date().toISOString() })
         .eq('id', missionId);
       if (mErr) throw mErr;
 
-      // Get current attribute
       const { data: attr } = await supabase
         .from('attributes')
         .select('xp, level')
@@ -82,7 +80,6 @@ export function useCompleteMission() {
         await supabase.from('attributes').update({ xp: newXp, level: newLevel }).eq('id', attributeId);
       }
 
-      // Update profile
       const { data: profile } = await supabase
         .from('profiles')
         .select('total_xp, xp_today, missions_completed, level')
@@ -99,7 +96,6 @@ export function useCompleteMission() {
         }).eq('user_id', user!.id);
       }
 
-      // Log activity
       await supabase.from('activity_log').insert({
         user_id: user!.id,
         action: 'mission_complete',
@@ -121,13 +117,17 @@ export function useCreateMission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ title, attributeId, dueDate }: { title: string; attributeId: string; dueDate?: string }) => {
+    mutationFn: async ({ title, attributeId, dueDate, daysOfWeek, horarioProvavel }: {
+      title: string; attributeId: string; dueDate?: string; daysOfWeek?: string[]; horarioProvavel?: string;
+    }) => {
       const { error } = await supabase.from('missions').insert({
         user_id: user!.id,
         title,
         attribute_id: attributeId,
         due_date: dueDate || null,
-      });
+        days_of_week: daysOfWeek || [],
+        horario_provavel: horarioProvavel || 'flex',
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -237,6 +237,88 @@ export function useFightBoss() {
       queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
+    },
+  });
+}
+
+// Classes
+export function useClasses() {
+  return useQuery({
+    queryKey: ['classes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('classes' as any)
+        .select('*')
+        .order('column_index')
+        .order('level_min');
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+}
+
+export function useSelectClass() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (classId: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ current_class_id: classId } as any)
+        .eq('user_id', user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+// Checklist items
+export function useChecklistItems(missionId: string) {
+  return useQuery({
+    queryKey: ['checklist', missionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('checklist_items' as any)
+        .select('*')
+        .eq('mission_id', missionId)
+        .order('created_at');
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!missionId,
+  });
+}
+
+export function useAddChecklistItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ missionId, description }: { missionId: string; description: string }) => {
+      const { error } = await supabase
+        .from('checklist_items' as any)
+        .insert({ mission_id: missionId, description } as any);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['checklist', vars.missionId] });
+    },
+  });
+}
+
+export function useToggleChecklistItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ itemId, completed }: { itemId: string; completed: boolean }) => {
+      const { error } = await supabase
+        .from('checklist_items' as any)
+        .update({ completed } as any)
+        .eq('id', itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklist'] });
     },
   });
 }
