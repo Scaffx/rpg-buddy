@@ -352,7 +352,7 @@ export default function Missions() {
                   <Icon className="w-4 h-4" />
                   {label} ({missions.length})
                 </h3>
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {missions.map((m: any, i: number) => (
                     <MissionCard
                       key={m.id}
@@ -462,105 +462,78 @@ function MissionCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
-      className={`rounded-xl bg-card border border-border p-4 space-y-3 ${isCompleted ? 'opacity-60' : ''}`}
+      className={`rounded-xl bg-card border border-border p-3 flex flex-col justify-between aspect-square ${isCompleted ? 'opacity-60' : ''}`}
     >
-      {/* Row 1: Status dot + Title + Action icons */}
-      <div className="flex items-start gap-3">
-        <div className={`w-3 h-3 rounded-full mt-1 shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
-        <div className="flex-1 min-w-0">
-          <p className={`font-display font-bold text-foreground ${isCompleted ? 'line-through' : ''}`}>{mission.title}</p>
+      {/* Top: Status dot + icons */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
+          <div className="flex items-center gap-0">
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}><Pencil className="w-3 h-3" /></Button>
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}><Trash2 className="w-3 h-3" /></Button>
+            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}><Pause className="w-3 h-3" /></Button>
+          </div>
         </div>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" onClick={onEdit} title="Editar">
-            <Pencil className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete} title="Excluir">
-            <Trash2 className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive} title="Arquivar">
-            <Pause className="w-4 h-4" />
-          </Button>
-        </div>
+
+        {/* Title */}
+        <p className={`font-display font-bold text-sm text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>{mission.title}</p>
+
+        {/* Description */}
+        {description && (
+          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{description}</p>
+        )}
+
+        {/* Sub-missions */}
+        {totalCount > 0 && (
+          <div className="mt-2">
+            <p className="text-[10px] text-muted-foreground">Sub-missões: {completedCount}/{totalCount}</p>
+            <Progress value={progressPercent} className="h-1 mt-0.5" />
+          </div>
+        )}
       </div>
 
-      {/* Row 2: Description */}
-      {description && (
-        <div className="pl-6">
-          <p className={`text-sm text-muted-foreground ${!showFullDesc && hasLongDesc ? 'line-clamp-2' : ''}`}>
-            {description}
-          </p>
-          {hasLongDesc && (
-            <button onClick={() => setShowFullDesc(!showFullDesc)} className="text-xs text-primary hover:underline mt-0.5">
-              {showFullDesc ? 'Ver menos' : 'Ver mais'}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Row 3: Sub-missions today */}
-      {totalCount > 0 && (
-        <div className="pl-6">
-          <p className="text-xs text-muted-foreground">
-            Sub-missões: <span className="text-foreground font-medium">{completedCount}/{totalCount}</span> hoje
-          </p>
-          <Progress value={progressPercent} className="h-1.5 mt-1" />
-        </div>
-      )}
-
-      {/* Row 4: Tags + XP */}
-      <div className="pl-6 flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Bottom: Tags + actions */}
+      <div className="mt-auto pt-2 space-y-2">
+        {/* Tags */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           {days.length > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-primary/15 text-primary px-2 py-0.5 rounded">
-              📅 Diária
-            </span>
+            <span className="text-[9px] font-medium bg-primary/15 text-primary px-1.5 py-0.5 rounded">📅 Diária</span>
           )}
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded">
+          <span className="text-[9px] font-medium bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
             {(mission as any).attributes?.icon} {(mission as any).attributes?.name}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-primary font-bold flex items-center gap-1">
-            ✨ +{mission.xp_reward} XP
-          </span>
+
+        {/* XP + Date */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-primary font-bold">✨ +{mission.xp_reward} XP</span>
+          <span className="text-[9px] text-muted-foreground">{new Date(mission.created_at).toLocaleDateString('pt-BR')}</span>
         </div>
+
+        {/* Buttons */}
+        {!isCompleted && (
+          <div className="flex gap-1.5">
+            <Button
+              onClick={onComplete}
+              disabled={completing}
+              className="flex-1 h-8 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 text-xs font-semibold"
+            >
+              <Check className="w-3 h-3 mr-1" /> Completar
+            </Button>
+            <Button
+              onClick={onPlay}
+              className="h-8 w-9 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 p-0"
+            >
+              {status === 'em_progresso' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+            </Button>
+          </div>
+        )}
+
+        {/* Expand */}
+        <button onClick={onToggle} className="w-full flex justify-center text-muted-foreground hover:text-foreground">
+          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
       </div>
-
-      {/* Row 5: Date */}
-      <div className="pl-6">
-        <p className="text-[11px] text-muted-foreground text-right">
-          Criada em: {new Date(mission.created_at).toLocaleDateString('pt-BR')}
-        </p>
-      </div>
-
-      {/* Row 6: Action buttons */}
-      {!isCompleted && (
-        <div className="flex gap-2 pt-1">
-          <Button
-            onClick={onComplete}
-            disabled={completing}
-            className="flex-1 h-10 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 font-semibold"
-          >
-            <Check className="w-4 h-4 mr-2" />
-            Completar
-          </Button>
-          <Button
-            onClick={onPlay}
-            className="h-10 w-12 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 p-0"
-            title={status === 'em_progresso' ? 'Pausar' : 'Próximo'}
-          >
-            {status === 'em_progresso' ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-          </Button>
-        </div>
-      )}
-
-      {/* Expand toggle */}
-      <button
-        onClick={onToggle}
-        className="w-full flex justify-center pt-1 text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-      </button>
 
       {/* Expanded checklist */}
       <AnimatePresence>
