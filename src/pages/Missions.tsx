@@ -331,15 +331,16 @@ export default function Missions() {
         <div className="flex gap-1.5 flex-wrap">
           {ATTRIBUTE_CATEGORIES.map((cat) => (
             <button
-              key={cat}
-              onClick={() => toggleCategory(cat)}
-              className={`px-2 py-1 text-[10px] rounded-full border transition-colors ${
-                selectedCategories.includes(cat)
+              key={cat.name}
+              onClick={() => toggleCategory(cat.name)}
+              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors flex items-center gap-1.5 ${
+                selectedCategories.includes(cat.name)
                   ? 'bg-primary/20 border-primary/50 text-primary'
                   : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
               }`}
             >
-              {cat}
+              <span>{cat.emoji}</span>
+              <span>{cat.name}</span>
             </button>
           ))}
         </div>
