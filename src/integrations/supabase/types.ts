@@ -327,6 +327,33 @@ export type Database = {
           },
         ]
       }
+      xp_history: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          type: string
+          user_id: string
+          xp_gained: number
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          type?: string
+          user_id: string
+          xp_gained?: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          type?: string
+          user_id?: string
+          xp_gained?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
