@@ -14,13 +14,226 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          user_id: string
+          xp_gained: number | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          user_id: string
+          xp_gained?: number | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          user_id?: string
+          xp_gained?: number | null
+        }
+        Relationships: []
+      }
+      attributes: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          level: number
+          name: string
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          icon?: string
+          id?: string
+          level?: number
+          name: string
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          level?: number
+          name?: string
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
+      }
+      boss_battles: {
+        Row: {
+          boss_id: string
+          created_at: string
+          damage_dealt: number
+          id: string
+          user_id: string
+          won: boolean
+        }
+        Insert: {
+          boss_id: string
+          created_at?: string
+          damage_dealt?: number
+          id?: string
+          user_id: string
+          won?: boolean
+        }
+        Update: {
+          boss_id?: string
+          created_at?: string
+          damage_dealt?: number
+          id?: string
+          user_id?: string
+          won?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boss_battles_boss_id_fkey"
+            columns: ["boss_id"]
+            isOneToOne: false
+            referencedRelation: "bosses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bosses: {
+        Row: {
+          created_at: string
+          description: string | null
+          hp: number
+          icon: string
+          id: string
+          level: number
+          name: string
+          xp_reward: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          hp?: number
+          icon?: string
+          id?: string
+          level?: number
+          name: string
+          xp_reward?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          hp?: number
+          icon?: string
+          id?: string
+          level?: number
+          name?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
+      missions: {
+        Row: {
+          attribute_id: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+          xp_reward: number
+        }
+        Insert: {
+          attribute_id: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          xp_reward?: number
+        }
+        Update: {
+          attribute_id?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missions_attribute_id_fkey"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "attributes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          level: number
+          missions_completed: number
+          total_xp: number
+          updated_at: string
+          user_id: string
+          xp_today: number
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          level?: number
+          missions_completed?: number
+          total_xp?: number
+          updated_at?: string
+          user_id: string
+          xp_today?: number
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          level?: number
+          missions_completed?: number
+          total_xp?: number
+          updated_at?: string
+          user_id?: string
+          xp_today?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_rank: { Args: { user_level: number }; Returns: string }
     }
     Enums: {
       [_ in never]: never
