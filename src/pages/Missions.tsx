@@ -467,27 +467,27 @@ function MissionCard({
       {/* Top: Status dot + icons */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
-          <div className="flex items-center gap-0">
-            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}><Pencil className="w-3 h-3" /></Button>
-            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}><Trash2 className="w-3 h-3" /></Button>
-            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}><Pause className="w-3 h-3" /></Button>
+          <div className={`w-3 h-3 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
+          <div className="flex items-center gap-0.5">
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}><Pencil className="w-4 h-4" /></Button>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}><Pause className="w-4 h-4" /></Button>
           </div>
         </div>
 
         {/* Title */}
-        <p className={`font-display font-bold text-sm text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>{mission.title}</p>
+        <p className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>{mission.title}</p>
 
         {/* Description */}
         {description && (
-          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{description}</p>
+          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{description}</p>
         )}
 
         {/* Sub-missions */}
         {totalCount > 0 && (
           <div className="mt-2">
-            <p className="text-[10px] text-muted-foreground">Sub-missões: {completedCount}/{totalCount}</p>
-            <Progress value={progressPercent} className="h-1 mt-0.5" />
+            <p className="text-xs text-muted-foreground">Sub-missões: {completedCount}/{totalCount}</p>
+            <Progress value={progressPercent} className="h-1.5 mt-1" />
           </div>
         )}
       </div>
@@ -497,41 +497,41 @@ function MissionCard({
         {/* Tags */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {days.length > 0 && (
-            <span className="text-[9px] font-medium bg-primary/15 text-primary px-1.5 py-0.5 rounded">📅 Diária</span>
+            <span className="text-xs font-medium bg-primary/15 text-primary px-2 py-0.5 rounded">📅 Diária</span>
           )}
-          <span className="text-[9px] font-medium bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+          <span className="text-xs font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded">
             {(mission as any).attributes?.icon} {(mission as any).attributes?.name}
           </span>
         </div>
 
         {/* XP + Date */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-primary font-bold">✨ +{mission.xp_reward} XP</span>
-          <span className="text-[9px] text-muted-foreground">{new Date(mission.created_at).toLocaleDateString('pt-BR')}</span>
+          <span className="text-sm text-primary font-bold">✨ +{mission.xp_reward} XP</span>
+          <span className="text-xs text-muted-foreground">{new Date(mission.created_at).toLocaleDateString('pt-BR')}</span>
         </div>
 
         {/* Buttons */}
         {!isCompleted && (
-          <div className="flex gap-1.5">
+          <div className="flex gap-2">
             <Button
               onClick={onComplete}
               disabled={completing}
-              className="flex-1 h-8 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 text-xs font-semibold"
+              className="flex-1 h-9 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 text-sm font-semibold"
             >
-              <Check className="w-3 h-3 mr-1" /> Completar
+              <Check className="w-4 h-4 mr-1" /> Completar
             </Button>
             <Button
               onClick={onPlay}
-              className="h-8 w-9 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 p-0"
+              className="h-9 w-10 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 p-0"
             >
-              {status === 'em_progresso' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              {status === 'em_progresso' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </Button>
           </div>
         )}
 
         {/* Expand */}
         <button onClick={onToggle} className="w-full flex justify-center text-muted-foreground hover:text-foreground">
-          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
 
