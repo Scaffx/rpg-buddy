@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useMissions, useAttributes, useCreateMission, useCompleteMission,
@@ -7,9 +7,10 @@ import {
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Check, Loader2, Target, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Check, Loader2, Target, ChevronDown, ChevronUp, Swords } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -73,6 +74,9 @@ export default function Missions() {
       toast({ title: 'Erro', variant: 'destructive' });
     }
   };
+
+  // Separate missions with checklists as "main missions"
+  const mainMissions = useMemo(() => pending?.filter(() => true) || [], [pending]);
 
   return (
     <AppLayout>
@@ -180,17 +184,18 @@ export default function Missions() {
           )}
         </AnimatePresence>
 
-        {/* Pending */}
+        {/* Main Missions Section */}
         <div>
-          <h2 className="text-lg font-display font-semibold text-foreground mb-3">
-            Pendentes ({pending?.length || 0})
+          <h2 className="text-lg font-display font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Swords className="w-5 h-5 text-primary" />
+            Missões Principais ({mainMissions.length})
           </h2>
           {pLoading ? (
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          ) : pending && pending.length > 0 ? (
-            <div className="space-y-2">
-              {pending.map((m, i) => (
-                <MissionCard
+          ) : mainMissions.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {mainMissions.map((m, i) => (
+                <MainMissionCard
                   key={m.id}
                   mission={m}
                   index={i}
@@ -234,7 +239,7 @@ export default function Missions() {
   );
 }
 
-function MissionCard({
+function MainMissionCard({
   mission, index, expanded, onToggle, onComplete, completing,
   newChecklistText, onNewChecklistTextChange,
 }: {
@@ -255,6 +260,10 @@ function MissionCard({
   const days = (mission.days_of_week as string[]) || [];
   const timeLabel = TIMES.find((t) => t.value === mission.horario_provavel)?.label || '🔄 Flex';
 
+  const completedCount = (checklist || []).filter((c: any) => c.completed).length;
+  const totalCount = (checklist || []).length;
+  const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
   const handleAddChecklist = async () => {
     if (!newChecklistText.trim()) return;
     try {
@@ -267,42 +276,68 @@ function MissionCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="rpg-card space-y-2"
+      className="rpg-card-glow space-y-3"
     >
-      <div className="flex items-center justify-between gap-3">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">{mission.title}</p>
+          <p className="text-sm font-bold text-foreground">{mission.title}</p>
           <div className="flex items-center gap-2 flex-wrap mt-1">
-            <span className="text-xs text-muted-foreground">
+            <span className="rpg-badge text-[10px]">
               {(mission as any).attributes?.icon} {(mission as any).attributes?.name}
             </span>
             <span className="text-xs text-primary font-bold">+{mission.xp_reward} XP</span>
-            {days.length > 0 && (
-              <span className="text-[10px] text-muted-foreground">
-                {days.join(', ')}
-              </span>
-            )}
-            <span className="text-[10px] text-muted-foreground">{timeLabel}</span>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button size="sm" variant="ghost" onClick={onToggle} className="h-7 w-7 p-0">
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </Button>
-          <Button
-            size="sm"
-            onClick={onComplete}
-            disabled={completing}
-            className="bg-success text-success-foreground hover:bg-success/90"
-          >
-            <Check className="w-4 h-4" />
-          </Button>
-        </div>
+        <Button size="sm" variant="ghost" onClick={onToggle} className="h-7 w-7 p-0 shrink-0">
+          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </Button>
       </div>
 
+      {/* Schedule */}
+      {(days.length > 0 || mission.horario_provavel) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {days.length > 0 && (
+            <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+              📅 {days.join(', ')}
+            </span>
+          )}
+          <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+            {timeLabel}
+          </span>
+        </div>
+      )}
+
+      {/* Progress bar */}
+      {totalCount > 0 && (
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[10px] text-muted-foreground">
+              {completedCount}/{totalCount} sub-missões
+            </span>
+            <span className="text-[10px] text-primary font-semibold">{Math.round(progressPercent)}%</span>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          onClick={onComplete}
+          disabled={completing}
+          className="flex-1 bg-success text-success-foreground hover:bg-success/90"
+        >
+          <Check className="w-4 h-4 mr-1" />
+          Completar Missão
+        </Button>
+      </div>
+
+      {/* Expanded checklist */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -320,12 +355,14 @@ function MissionCard({
               >
                 <Checkbox
                   checked={item.completed}
-                  onCheckedChange={() => toggleItem.mutate({ itemId: item.id, completed: !item.completed })}
+                  onCheckedChange={() =>
+                    toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })
+                  }
                 />
-                <span className={`text-xs ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                   {item.description}
                 </span>
-                <span className="text-[10px] text-primary ml-auto">+{item.xp_bonus} XP</span>
+                <span className="text-[10px] text-primary">+{item.xp_bonus} XP</span>
               </label>
             ))}
             <div className="flex gap-2">
