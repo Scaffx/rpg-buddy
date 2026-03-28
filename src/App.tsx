@@ -11,6 +11,7 @@ import CalendarPage from "./pages/CalendarPage";
 import BossPage from "./pages/BossPage";
 import ClassesPage from "./pages/ClassesPage";
 import ProgressPage from "./pages/ProgressPage";
+import ShopPage from "./pages/ShopPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
