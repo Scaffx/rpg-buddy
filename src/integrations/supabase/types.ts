@@ -339,6 +339,101 @@ export type Database = {
           },
         ]
       }
+      shop_items: {
+        Row: {
+          cost_percent: number
+          created_at: string
+          description: string | null
+          duration: string | null
+          effect: string | null
+          icon: string
+          icon_color: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          cost_percent?: number
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          effect?: string | null
+          icon?: string
+          icon_color?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          cost_percent?: number
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          effect?: string | null
+          icon?: string
+          icon_color?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      user_balance: {
+        Row: {
+          balance_percent: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance_percent?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance_percent?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_buffs: {
+        Row: {
+          active: boolean
+          expires_at: string | null
+          id: string
+          item_id: string
+          purchased_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          expires_at?: string | null
+          id?: string
+          item_id: string
+          purchased_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          expires_at?: string | null
+          id?: string
+          item_id?: string
+          purchased_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_buffs_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       xp_history: {
         Row: {
           created_at: string
