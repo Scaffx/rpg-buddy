@@ -58,6 +58,7 @@ const App = () => (
             <Route path="/boss" element={<ProtectedRoute><BossPage /></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
+            <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
