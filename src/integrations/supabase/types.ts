@@ -224,6 +224,33 @@ export type Database = {
           },
         ]
       }
+      gold_history: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          reason: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          reason?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          reason?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       missions: {
         Row: {
           attribute_id: string
@@ -233,14 +260,17 @@ export type Database = {
           days_of_week: Json | null
           description: string | null
           due_date: string | null
+          failed_date: string | null
           horario_provavel: string | null
           id: string
+          is_failed: boolean
           notes: string | null
           priority: string
           status: string
           title: string
           updated_at: string
           user_id: string
+          xp_penalized: number
           xp_reward: number
         }
         Insert: {
@@ -251,14 +281,17 @@ export type Database = {
           days_of_week?: Json | null
           description?: string | null
           due_date?: string | null
+          failed_date?: string | null
           horario_provavel?: string | null
           id?: string
+          is_failed?: boolean
           notes?: string | null
           priority?: string
           status?: string
           title: string
           updated_at?: string
           user_id: string
+          xp_penalized?: number
           xp_reward?: number
         }
         Update: {
@@ -269,14 +302,17 @@ export type Database = {
           days_of_week?: Json | null
           description?: string | null
           due_date?: string | null
+          failed_date?: string | null
           horario_provavel?: string | null
           id?: string
+          is_failed?: boolean
           notes?: string | null
           priority?: string
           status?: string
           title?: string
           updated_at?: string
           user_id?: string
+          xp_penalized?: number
           xp_reward?: number
         }
         Relationships: [
@@ -379,6 +415,7 @@ export type Database = {
         Row: {
           balance_percent: number
           created_at: string
+          gold: number
           id: string
           updated_at: string
           user_id: string
@@ -386,6 +423,7 @@ export type Database = {
         Insert: {
           balance_percent?: number
           created_at?: string
+          gold?: number
           id?: string
           updated_at?: string
           user_id: string
@@ -393,6 +431,7 @@ export type Database = {
         Update: {
           balance_percent?: number
           created_at?: string
+          gold?: number
           id?: string
           updated_at?: string
           user_id?: string
