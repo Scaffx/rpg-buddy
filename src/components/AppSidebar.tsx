@@ -90,6 +90,10 @@ export function AppSidebar() {
                   {currentXp}/{xpForLevel} XP
                 </p>
               </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <Coins className="w-4 h-4 text-yellow-400" />
+                <span className="text-sm font-bold text-yellow-400">{currentGold} 🪙</span>
+              </div>
             </div>
           </div>
         )}
