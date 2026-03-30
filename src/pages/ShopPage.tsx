@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useGoldBalance, useBuyItem } from '@/hooks/useGold';
 import AppLayout from '@/components/AppLayout';
 import { toast } from 'sonner';
 import {
   ShoppingBag, Clock, History,
   Shield, Tv, BedDouble, Utensils, Gamepad2, UsersRound,
-  FlaskConical, Sparkles, Zap, HeartPulse, Skull,
+  FlaskConical, Sparkles, Zap, HeartPulse, Skull, Coins,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -32,9 +32,9 @@ const COLOR_GLOW: Record<string, string> = {
 };
 
 export default function ShopPage() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [buying, setBuying] = useState<string | null>(null);
+  const { data: balance } = useGoldBalance();
+  const buyMutation = useBuyItem();
 
   const { data: items = [] } = useQuery({
     queryKey: ['shop-items'],
@@ -45,80 +45,20 @@ export default function ShopPage() {
     },
   });
 
-  const { data: balance } = useQuery({
-    queryKey: ['user-balance'],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from('user_balance')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) {
-        const { data: newBalance, error: insertError } = await supabase
-          .from('user_balance')
-          .insert({ user_id: user.id, balance_percent: 100 })
-          .select()
-          .single();
-        if (insertError) throw insertError;
-        return newBalance;
-      }
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  const buyMutation = useMutation({
-    mutationFn: async (item: any) => {
-      if (!user || !balance) throw new Error('Não autenticado');
-      if (balance.balance_percent < item.cost_percent) {
-        throw new Error('Saldo insuficiente!');
-      }
-
-      const newBalance = balance.balance_percent - item.cost_percent;
-      const { error: balError } = await supabase
-        .from('user_balance')
-        .update({ balance_percent: newBalance, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id);
-      if (balError) throw balError;
-
-      let expiresAt: string | null = null;
-      const durMap: Record<string, number> = {
-        '50m': 50 * 60 * 1000,
-        '1h': 60 * 60 * 1000,
-        '1h30m': 90 * 60 * 1000,
-        '2h': 2 * 60 * 60 * 1000,
-        '3h': 3 * 60 * 60 * 1000,
-        '12h': 12 * 60 * 60 * 1000,
-        '24h': 24 * 60 * 60 * 1000,
-      };
-      if (item.duration && durMap[item.duration]) {
-        expiresAt = new Date(Date.now() + durMap[item.duration]).toISOString();
-      }
-
-      const { error: buffError } = await supabase.from('user_buffs').insert({
-        user_id: user.id,
-        item_id: item.id,
-        expires_at: expiresAt,
-      });
-      if (buffError) throw buffError;
-    },
-    onSuccess: (_, item) => {
-      queryClient.invalidateQueries({ queryKey: ['user-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['user-buffs'] });
-      toast.success(`${item.name} comprado com sucesso!`);
-      setBuying(null);
-    },
-    onError: (err: Error) => {
-      toast.error(err.message);
-      setBuying(null);
-    },
-  });
+  const currentGold = (balance as any)?.gold ?? 100;
 
   const handleBuy = (item: any) => {
     setBuying(item.id);
-    buyMutation.mutate(item);
+    buyMutation.mutate(item, {
+      onSuccess: () => {
+        toast.success(`${item.name} comprado com sucesso! 🪙`);
+        setBuying(null);
+      },
+      onError: (err: Error) => {
+        toast.error(err.message);
+        setBuying(null);
+      },
+    });
   };
 
   return (
@@ -138,8 +78,9 @@ export default function ShopPage() {
             </div>
             <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2">
               <span className="text-sm text-muted-foreground">SEU SALDO</span>
+              <Coins className="w-5 h-5 text-yellow-400" />
               <span className="text-xl font-bold text-emerald-400">
-                {balance?.balance_percent ?? 100}%
+                {currentGold} 🪙
               </span>
             </div>
           </div>
@@ -162,7 +103,7 @@ export default function ShopPage() {
             const IconComp = ICON_MAP[item.icon] || ShoppingBag;
             const colorClass = COLOR_MAP[item.icon_color] || 'text-cyan-400';
             const glowClass = COLOR_GLOW[item.icon_color] || '';
-            const canAfford = (balance?.balance_percent ?? 100) >= item.cost_percent;
+            const canAfford = currentGold >= item.cost_percent;
 
             return (
               <div
@@ -180,7 +121,7 @@ export default function ShopPage() {
 
                 <div className="flex items-center justify-between mt-auto">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl font-bold text-primary">{item.cost_percent}%</span>
+                    <span className="text-2xl font-bold text-yellow-400">{item.cost_percent} 🪙</span>
                     <span className="flex items-center gap-1 text-xs text-emerald-400">
                       <Clock className="w-3.5 h-3.5" />
                       {item.duration}
@@ -198,7 +139,7 @@ export default function ShopPage() {
                       : undefined,
                   }}
                 >
-                  {buying === item.id ? 'COMPRANDO...' : !canAfford ? 'SALDO INSUFICIENTE' : 'COMPRAR'}
+                  {buying === item.id ? 'COMPRANDO...' : !canAfford ? 'OURO INSUFICIENTE' : 'COMPRAR'}
                 </button>
               </div>
             );
