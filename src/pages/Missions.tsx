@@ -351,6 +351,38 @@ export default function Missions() {
           ))}
         </div>
 
+        {/* Failed Missions Section */}
+        {failedMissions.length > 0 && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 space-y-3">
+            <h3 className="text-sm font-bold text-destructive flex items-center gap-2">
+              <Flame className="w-5 h-5" />
+              🔥 MISSÕES FRACASSADAS HOJE ({failedMissions.length})
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {failedMissions.map((m: any) => (
+                <div key={m.id} className="bg-card border border-destructive/20 rounded-lg p-3 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
+                    <p className="text-xs text-destructive">XP Perdido: -{(m as any).xp_penalized || m.xp_reward}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      payPenalty.mutate(m, {
+                        onSuccess: () => toast({ title: '✅ Penalidade paga! XP restaurado.' }),
+                        onError: (err: Error) => toast({ title: err.message, variant: 'destructive' }),
+                      });
+                    }}
+                    disabled={payPenalty.isPending}
+                    className="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-yellow-400/20 text-yellow-400 font-bold hover:bg-yellow-400/30 transition-colors disabled:opacity-50"
+                  >
+                    Pagar 10 🪙
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Mission groups */}
         {isLoading ? (
           <div className="flex justify-center py-8">
