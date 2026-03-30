@@ -103,6 +103,11 @@ export default function Missions() {
   const archiveMission = useArchiveMission();
   const { toast } = useToast();
 
+  // Daily check for failed missions
+  useCheckFailedMissions();
+  const { data: failedMissions = [] } = useFailedMissions();
+  const payPenalty = usePayPenalty();
+
   const todayDay = useMemo(() => {
     const d = new Date().getDay();
     return DAYS[d === 0 ? 6 : d - 1];
