@@ -5,6 +5,7 @@ import {
   useChecklistItems, useAddChecklistItem, useToggleChecklistItem,
 } from '@/hooks/useProfile';
 import { useUpdateMission, useDeleteMission, useArchiveMission, useDeleteChecklistItem } from '@/hooks/useMissionActions';
+import { useCheckFailedMissions, useFailedMissions, usePayPenalty } from '@/hooks/useFailedMissions';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
