@@ -4,8 +4,9 @@ import { useProfile } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
-  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull,
+  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins,
 } from 'lucide-react';
+import { useGoldBalance } from '@/hooks/useGold';
 import {
   Sidebar,
   SidebarContent,
@@ -47,7 +48,9 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { signOut, user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: goldBalance } = useGoldBalance();
   const location = useLocation();
+  const currentGold = (goldBalance as any)?.gold ?? 100;
 
   const currentClass = profile?.current_class_id ? 'Aprendiz' : 'Aprendiz';
   const xpForLevel = 200;
@@ -86,6 +89,10 @@ export function AppSidebar() {
                 <p className="text-[10px] text-sidebar-foreground/50">
                   {currentXp}/{xpForLevel} XP
                 </p>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                <Coins className="w-4 h-4 text-yellow-400" />
+                <span className="text-sm font-bold text-yellow-400">{currentGold} 🪙</span>
               </div>
             </div>
           </div>

@@ -121,6 +121,32 @@ export function useCompleteMission() {
         xp_gained: totalXpReward,
         type: 'mission',
       } as any);
+
+      // Grant +2 gold
+      const { data: bal } = await supabase
+        .from('user_balance')
+        .select('gold')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      if (bal) {
+        const currentGold = (bal as any).gold ?? 100;
+        await supabase
+          .from('user_balance')
+          .update({ gold: currentGold + 2, updated_at: new Date().toISOString() } as any)
+          .eq('user_id', user!.id);
+      } else {
+        await supabase
+          .from('user_balance')
+          .insert({ user_id: user!.id, balance_percent: 100, gold: 102 } as any);
+      }
+
+      await supabase.from('gold_history' as any).insert({
+        user_id: user!.id,
+        type: 'ganho_missao',
+        amount: 2,
+        reason: 'Missão completa',
+      } as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['missions'] });
@@ -128,6 +154,8 @@ export function useCompleteMission() {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
       queryClient.invalidateQueries({ queryKey: ['xp_history'] });
+      queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['gold-history'] });
     },
   });
 }
