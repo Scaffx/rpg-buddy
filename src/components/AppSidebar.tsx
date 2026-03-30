@@ -4,8 +4,9 @@ import { useProfile } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
-  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull,
+  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins,
 } from 'lucide-react';
+import { useGoldBalance } from '@/hooks/useGold';
 import {
   Sidebar,
   SidebarContent,
