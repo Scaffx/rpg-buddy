@@ -48,7 +48,9 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { signOut, user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: goldBalance } = useGoldBalance();
   const location = useLocation();
+  const currentGold = (goldBalance as any)?.gold ?? 100;
 
   const currentClass = profile?.current_class_id ? 'Aprendiz' : 'Aprendiz';
   const xpForLevel = 200;
