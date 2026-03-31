@@ -59,6 +59,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUndoMission } from '@/hooks/useUndoMission'; 
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const DAYS_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
@@ -705,44 +706,21 @@ function AttributeChip({ name, icon }: { name: string; icon: string }) {
   );
 }
 
-/* ─── Mission Card ─── */
 function MissionCard({
-  mission,
-  attrs,
-  index,
-  expanded,
-  onToggle,
-  onComplete,
-  onEdit,
-  onDelete,
-  onArchive,
-  onPlay,
-  completing,
-  newChecklistText,
-  onNewChecklistTextChange,
-  isCompletedToday,
-  proximoDia,
+  mission, attrs, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
+  completing, newChecklistText, onNewChecklistTextChange, isCompletedToday, proximoDia,
 }: {
-  mission: any;
-  attrs: any[];
-  index: number;
-  expanded: boolean;
-  onToggle: () => void;
-  onComplete: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onArchive: () => void;
-  onPlay: () => void;
-  completing: boolean;
-  newChecklistText: string;
-  onNewChecklistTextChange: (v: string) => void;
-  isCompletedToday: boolean;
-  proximoDia?: string | null;
+  mission: any; attrs: any[]; index: number; expanded: boolean;
+  onToggle: () => void; onComplete: () => void; onEdit: () => void;
+  onDelete: () => void; onArchive: () => void; onPlay: () => void;
+  completing: boolean; newChecklistText: string; onNewChecklistTextChange: (v: string) => void;
+  isCompletedToday: boolean; proximoDia?: string | null;
 }) {
   const { data: checklist } = useChecklistItems(mission.id);
   const addItem = useAddChecklistItem();
   const toggleItem = useToggleChecklistItem();
   const deleteItem = useDeleteChecklistItem();
+  const undoMission = useUndoMission(); // ✅ Adicione isto
   const { toast } = useToast();
 
   const days = (mission.days_of_week as string[]) || [];
@@ -750,7 +728,7 @@ function MissionCard({
   const totalCount = (checklist || []).length;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
-  const status = mission.status || "pendente";
+  const status = mission.status || 'pendente';
   const isCompleted = mission.completed;
 
   // Get all attributes for this mission
@@ -768,9 +746,18 @@ function MissionCard({
 
     try {
       await addItem.mutateAsync({ missionId: mission.id, description: newChecklistText.trim() });
-      onNewChecklistTextChange("");
+      onNewChecklistTextChange('');
     } catch {
-      toast({ title: "Erro", variant: "destructive" });
+      toast({ title: 'Erro', variant: 'destructive' });
+    }
+  };
+
+  // ✅ FUNÇÃO PARA DESFAZER
+  const handleUndo = async () => {
+    try {
+      await undoMission.mutateAsync(mission.id);
+    } catch (error) {
+      console.error('Erro ao desfazer:', error);
     }
   };
 
@@ -780,45 +767,28 @@ function MissionCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
       className={`rounded-xl bg-card border border-border p-3 flex flex-col justify-between aspect-square ${
-        isCompleted ? "opacity-60" : isCompletedToday ? "opacity-75 border-yellow-400/50" : ""
+        isCompleted ? 'opacity-60' : isCompletedToday ? 'opacity-75 border-yellow-400/50' : ''
       }`}
     >
       {/* Top: Status dot + icons */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <div className={`w-3 h-3 rounded-full shrink-0 ${STATUS_COLORS[status] || "bg-cyan-400"}`} />
+          <div className={`w-3 h-3 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
           <div className="flex items-center gap-0.5">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
-              onClick={onEdit}
-            >
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}>
               <Pencil className="w-4 h-4" />
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-              onClick={onDelete}
-            >
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
               <Trash2 className="w-4 h-4" />
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-              onClick={onArchive}
-            >
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}>
               <Pause className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
         {/* Title */}
-        <p
-          className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? "line-through" : ""}`}
-        >
+        <p className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>
           {mission.title}
         </p>
 
@@ -827,23 +797,38 @@ function MissionCard({
           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{mission.description}</p>
         )}
 
-        {/* ✅ Status: Concluída Hoje */}
+        {/* ✅ Status: Concluída Hoje + Botão Desfazer */}
         {isCompletedToday && (
-          <div className="mt-2 p-2 bg-yellow-400/10 border border-yellow-400/30 rounded-md">
-            <p className="text-xs text-yellow-400 font-semibold flex items-center gap-1">
-              <Check className="w-3 h-3" />
-              Concluída hoje
-            </p>
-            {proximoDia && <p className="text-xs text-yellow-400/70 mt-1">Próxima: {proximoDia}</p>}
+          <div className="mt-2 p-2 bg-yellow-400/10 border border-yellow-400/30 rounded-md space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-yellow-400 font-semibold flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                Concluída hoje
+              </p>
+              {/* ✅ BOTÃO DESFAZER */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleUndo}
+                disabled={undoMission.isPending}
+                className="h-6 w-6 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
+                title="Desfazer conclusão"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </Button>
+            </div>
+            {proximoDia && (
+              <p className="text-xs text-yellow-400/70">
+                Próxima: {proximoDia}
+              </p>
+            )}
           </div>
         )}
 
         {/* Sub-missions */}
         {totalCount > 0 && (
           <div className="mt-2">
-            <p className="text-xs text-muted-foreground">
-              Sub-missões: {completedCount}/{totalCount}
-            </p>
+            <p className="text-xs text-muted-foreground">Sub-missões: {completedCount}/{totalCount}</p>
             <Progress value={progressPercent} className="h-1.5 mt-1" />
           </div>
         )}
@@ -864,9 +849,7 @@ function MissionCard({
         {/* XP + Date */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-primary font-bold">✨ +{mission.xp_reward} XP</span>
-          <span className="text-xs text-muted-foreground">
-            {new Date(mission.created_at).toLocaleDateString("pt-BR")}
-          </span>
+          <span className="text-xs text-muted-foreground">{new Date(mission.created_at).toLocaleDateString('pt-BR')}</span>
         </div>
 
         {/* Buttons */}
@@ -878,10 +861,10 @@ function MissionCard({
               disabled={completing || isCompletedToday}
               className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-all ${
                 isCompletedToday
-                  ? "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50"
-                  : "bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30"
+                  ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
+                  : 'bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30'
               }`}
-              title={isCompletedToday ? "Missão já concluída hoje" : "Completar missão"}
+              title={isCompletedToday ? 'Missão já concluída hoje' : 'Completar missão'}
             >
               {isCompletedToday ? (
                 <>
@@ -899,11 +882,11 @@ function MissionCard({
               disabled={isCompletedToday}
               className={`h-9 w-10 rounded-lg p-0 border transition-all ${
                 isCompletedToday
-                  ? "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50"
-                  : "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30"
+                  ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
+                  : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30'
               }`}
             >
-              {status === "em_progresso" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {status === 'em_progresso' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </Button>
           </div>
         )}
@@ -919,12 +902,14 @@ function MissionCard({
         {expanded && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden space-y-2 pt-2 border-t border-border"
           >
             {mission.notes && (
-              <p className="text-xs text-muted-foreground italic bg-secondary/50 p-2 rounded">📝 {mission.notes}</p>
+              <p className="text-xs text-muted-foreground italic bg-secondary/50 p-2 rounded">
+                📝 {mission.notes}
+              </p>
             )}
             <p className="text-xs text-muted-foreground font-medium">Sub-missões (+2 XP cada)</p>
             {checklist?.map((item: any) => (
@@ -935,16 +920,11 @@ function MissionCard({
                     toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })
                   }
                 />
-                <span
-                  className={`text-xs flex-1 ${item.completed ? "line-through text-muted-foreground" : "text-foreground"}`}
-                >
+                <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                   {item.description}
                 </span>
                 <span className="text-[10px] text-primary">+{item.xp_bonus} XP</span>
-                <button
-                  onClick={() => deleteItem.mutate(item.id)}
-                  className="text-destructive/60 hover:text-destructive"
-                >
+                <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -955,15 +935,9 @@ function MissionCard({
                 onChange={(e) => onNewChecklistTextChange(e.target.value)}
                 placeholder="Adicionar item..."
                 className="h-7 text-xs bg-secondary border-border"
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddChecklist())}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChecklist())}
               />
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs border-primary/30 text-primary"
-                onClick={handleAddChecklist}
-                disabled={addItem.isPending}
-              >
+              <Button size="sm" variant="outline" className="h-7 text-xs border-primary/30 text-primary" onClick={handleAddChecklist} disabled={addItem.isPending}>
                 <Plus className="w-3 h-3" />
               </Button>
             </div>
