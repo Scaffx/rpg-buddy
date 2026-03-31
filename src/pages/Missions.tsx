@@ -1,93 +1,154 @@
-import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  useMissions, useAttributes, useCreateMission, useCompleteMission,
-  useChecklistItems, useAddChecklistItem, useToggleChecklistItem,
-} from '@/hooks/useProfile';
-import { useUpdateMission, useDeleteMission, useArchiveMission, useDeleteChecklistItem } from '@/hooks/useMissionActions';
-import { useCheckFailedMissions, useFailedMissions, usePayPenalty } from '@/hooks/useFailedMissions';
-import AppLayout from '@/components/AppLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Plus, Check, Loader2, Target, ChevronDown, ChevronUp,
-  Search, X, Pencil, Trash2, Pause, Play, Sun, Moon, Sunrise, RotateCcw,
-  Beer, Shield, Flame,
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+// src/pages/Missions.tsx
 
-const DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  useMissions,
+  useAttributes,
+  useCreateMission,
+  useCompleteMission,
+  useChecklistItems,
+  useAddChecklistItem,
+  useToggleChecklistItem,
+} from "@/hooks/useProfile";
+import {
+  useUpdateMission,
+  useDeleteMission,
+  useArchiveMission,
+  useDeleteChecklistItem,
+} from "@/hooks/useMissionActions";
+import { useCheckFailedMissions, useFailedMissions, usePayPenalty } from "@/hooks/useFailedMissions";
+import AppLayout from "@/components/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Plus,
+  Check,
+  Loader2,
+  Target,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  X,
+  Pencil,
+  Trash2,
+  Pause,
+  Play,
+  Sun,
+  Moon,
+  Sunrise,
+  RotateCcw,
+  Beer,
+  Shield,
+  Flame,
+  Lock,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const DAYS_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
 const TIMES = [
-  { value: 'manha', label: '🌅 Manhã', icon: Sunrise },
-  { value: 'tarde', label: '☀️ Tarde', icon: Sun },
-  { value: 'noite', label: '🌙 Noite', icon: Moon },
-  { value: 'flex', label: '🔄 Flex', icon: RotateCcw },
+  { value: "manha", label: "🌅 Manhã", icon: Sunrise },
+  { value: "tarde", label: "☀️ Tarde", icon: Sun },
+  { value: "noite", label: "🌙 Noite", icon: Moon },
+  { value: "flex", label: "🔄 Flex", icon: RotateCcw },
 ];
 
 const PRIORITIES = [
-  { value: 'baixa', label: 'Baixa', icon: Beer, color: 'text-success border-success/50 bg-success/10' },
-  { value: 'media', label: 'Média', icon: Shield, color: 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10' },
-  { value: 'alta', label: 'Alta', icon: Flame, color: 'text-destructive border-destructive/50 bg-destructive/10' },
+  { value: "baixa", label: "Baixa", icon: Beer, color: "text-success border-success/50 bg-success/10" },
+  { value: "media", label: "Média", icon: Shield, color: "text-yellow-400 border-yellow-400/50 bg-yellow-400/10" },
+  { value: "alta", label: "Alta", icon: Flame, color: "text-destructive border-destructive/50 bg-destructive/10" },
 ];
 
 const TABS = [
-  { value: 'pendentes', label: 'Pendentes', color: 'bg-yellow-400/20 text-yellow-400' },
-  { value: 'todas', label: 'Todas', color: 'bg-muted text-muted-foreground' },
-  { value: 'foco', label: 'Foco do Dia', color: 'bg-primary/20 text-primary' },
-  { value: 'concluidas', label: 'Concluídas', color: 'bg-success/20 text-success' },
+  { value: "pendentes", label: "Pendentes", color: "bg-yellow-400/20 text-yellow-400" },
+  { value: "todas", label: "Todas", color: "bg-muted text-muted-foreground" },
+  { value: "foco", label: "Foco do Dia", color: "bg-primary/20 text-primary" },
+  { value: "concluidas", label: "Concluídas", color: "bg-success/20 text-success" },
 ];
 
 const ATTRIBUTE_COLORS: Record<string, string> = {
-  'Agilidade': 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30',
-  'Carisma': 'bg-purple-400/20 text-purple-400 border-purple-400/30',
-  'Criatividade': 'bg-pink-400/20 text-pink-400 border-pink-400/30',
-  'Disciplina': 'bg-pink-400/20 text-pink-400 border-pink-400/30',
-  'Força': 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30',
-  'Inteligência': 'bg-pink-400/20 text-pink-400 border-pink-400/30',
-  'Resiliência': 'bg-blue-400/20 text-blue-400 border-blue-400/30',
-  'Sabedoria': 'bg-teal-400/20 text-teal-400 border-teal-400/30',
-  'Vitalidade': 'bg-pink-400/20 text-pink-400 border-pink-400/30',
-  'Autoaperfeiçoamento': 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30',
-  'Relacionamento': 'bg-purple-400/20 text-purple-400 border-purple-400/30',
+  Agilidade: "bg-yellow-400/20 text-yellow-400 border-yellow-400/30",
+  Carisma: "bg-purple-400/20 text-purple-400 border-purple-400/30",
+  Criatividade: "bg-pink-400/20 text-pink-400 border-pink-400/30",
+  Disciplina: "bg-pink-400/20 text-pink-400 border-pink-400/30",
+  Força: "bg-yellow-400/20 text-yellow-400 border-yellow-400/30",
+  Inteligência: "bg-pink-400/20 text-pink-400 border-pink-400/30",
+  Resiliência: "bg-blue-400/20 text-blue-400 border-blue-400/30",
+  Sabedoria: "bg-teal-400/20 text-teal-400 border-teal-400/30",
+  Vitalidade: "bg-pink-400/20 text-pink-400 border-pink-400/30",
+  Autoaperfeiçoamento: "bg-yellow-400/20 text-yellow-400 border-yellow-400/30",
+  Relacionamento: "bg-purple-400/20 text-purple-400 border-purple-400/30",
 };
 
 const ATTRIBUTE_CATEGORIES = [
-  { name: 'Todos', emoji: '🎯' },
-  { name: 'Agilidade', emoji: '⚡' },
-  { name: 'Carisma', emoji: '👤' },
-  { name: 'Criatividade', emoji: '🎨' },
-  { name: 'Disciplina', emoji: '✨' },
-  { name: 'Força', emoji: '💪' },
-  { name: 'Inteligência', emoji: '🧠' },
-  { name: 'Resiliência', emoji: '🛡️' },
-  { name: 'Sabedoria', emoji: '📚' },
-  { name: 'Vitalidade', emoji: '❤️' },
-  { name: 'Autoaperfeiçoamento', emoji: '⭐' },
-  { name: 'Relacionamento', emoji: '💜' },
+  { name: "Todos", emoji: "🎯" },
+  { name: "Agilidade", emoji: "⚡" },
+  { name: "Carisma", emoji: "👤" },
+  { name: "Criatividade", emoji: "🎨" },
+  { name: "Disciplina", emoji: "✨" },
+  { name: "Força", emoji: "💪" },
+  { name: "Inteligência", emoji: "🧠" },
+  { name: "Resiliência", emoji: "🛡️" },
+  { name: "Sabedoria", emoji: "📚" },
+  { name: "Vitalidade", emoji: "❤️" },
+  { name: "Autoaperfeiçoamento", emoji: "⭐" },
+  { name: "Relacionamento", emoji: "💜" },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  pendente: 'bg-cyan-400',
-  em_progresso: 'bg-yellow-400',
-  completa: 'bg-success',
-  arquivada: 'bg-muted-foreground',
+  pendente: "bg-cyan-400",
+  em_progresso: "bg-yellow-400",
+  completa: "bg-success",
+  arquivada: "bg-muted-foreground",
 };
 
+// ✅ FUNÇÃO AUXILIAR: Verificar se missão foi concluída hoje
+function foiConcluidaHoje(mission: any): boolean {
+  const today = new Date().toISOString().split("T")[0];
+  const dailyStatus = mission.daily_status || {};
+  return dailyStatus[today] === "completed";
+}
+
+// ✅ FUNÇÃO AUXILIAR: Obter próximo dia agendado
+function obterProximoDiaAgendado(mission: any): string | null {
+  const days = (mission.days_of_week as string[]) || [];
+  if (days.length === 0) return null;
+
+  const hoje = new Date();
+  for (let i = 1; i <= 7; i++) {
+    const proxima = new Date(hoje);
+    proxima.setDate(proxima.getDate() + i);
+    const diaSemana = DAYS[proxima.getDay() === 0 ? 6 : proxima.getDay() - 1];
+    if (days.includes(diaSemana)) {
+      return DAYS_FULL[proxima.getDay() === 0 ? 6 : proxima.getDay() - 1];
+    }
+  }
+  return null;
+}
+
 export default function Missions() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('pendentes');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Todos']);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("pendentes");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(["Todos"]);
   const [expandedMission, setExpandedMission] = useState<string | null>(null);
-  const [newChecklistText, setNewChecklistText] = useState('');
+  const [newChecklistText, setNewChecklistText] = useState("");
 
   // Modal states
   const [showCreateEdit, setShowCreateEdit] = useState(false);
@@ -95,14 +156,14 @@ export default function Missions() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Form state
-  const [formTitle, setFormTitle] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formNotes, setFormNotes] = useState('');
-  const [formAttrId, setFormAttrId] = useState('');
+  const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formNotes, setFormNotes] = useState("");
+  const [formAttrId, setFormAttrId] = useState("");
   const [formSecondaryAttrIds, setFormSecondaryAttrIds] = useState<string[]>([]);
-  const [formPriority, setFormPriority] = useState('media');
+  const [formPriority, setFormPriority] = useState("media");
   const [formDays, setFormDays] = useState<string[]>([]);
-  const [formHorario, setFormHorario] = useState('flex');
+  const [formHorario, setFormHorario] = useState("flex");
 
   const { data: allMissions, isLoading } = useMissions();
   const { data: attrs } = useAttributes();
@@ -113,7 +174,6 @@ export default function Missions() {
   const archiveMission = useArchiveMission();
   const { toast } = useToast();
 
-  // Daily check for failed missions
   useCheckFailedMissions();
   const { data: failedMissions = [] } = useFailedMissions();
   const payPenalty = usePayPenalty();
@@ -123,68 +183,110 @@ export default function Missions() {
     return DAYS[d === 0 ? 6 : d - 1];
   }, []);
 
-  // Filter missions
-  const filteredMissions = useMemo(() => {
-    if (!allMissions) return [];
-    let result = [...allMissions];
+  // ✅ FILTRO ATUALIZADO: Separar "Hoje" de "Próximos Dias"
+  const { todayMissions, nextDaysMissions, completedMissions } = useMemo(() => {
+    if (!allMissions) return { todayMissions: [], nextDaysMissions: [], completedMissions: [] };
 
-    if (activeTab === 'pendentes') {
-      result = result.filter((m: any) => !m.completed && m.status !== 'arquivada');
-    } else if (activeTab === 'foco') {
-      result = result.filter((m: any) => {
-        const days = (m.days_of_week as string[]) || [];
-        return !m.completed && (days.length === 0 || days.includes(todayDay));
-      });
-    } else if (activeTab === 'concluidas') {
-      result = result.filter((m: any) => m.completed || m.status === 'arquivada');
-    }
+    let today: any[] = [];
+    let nextDays: any[] = [];
+    let completed: any[] = [];
 
-    if (!selectedCategories.includes('Todos')) {
-      result = result.filter((m: any) => {
-        const attrName = m.attributes?.name;
-        const secondaryIds: string[] = (m as any).secondary_attribute_ids || [];
-        const allAttrNames = [attrName];
-        if (attrs && secondaryIds.length > 0) {
-          secondaryIds.forEach((id: string) => {
-            const a = attrs.find((at: any) => at.id === id);
-            if (a) allAttrNames.push(a.name);
-          });
+    allMissions.forEach((m: any) => {
+      const days = (m.days_of_week as string[]) || [];
+      const isDaily = days.length > 0;
+      const completedToday = foiConcluidaHoje(m);
+      const isCompleted = m.completed || m.status === "arquivada";
+
+      // Filtro por aba
+      if (activeTab === "concluidas") {
+        if (isCompleted || completedToday) {
+          completed.push(m);
         }
-        return selectedCategories.some((c) => allAttrNames.includes(c));
-      });
-    }
+        return;
+      }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((m: any) => m.title.toLowerCase().includes(q));
-    }
+      if (activeTab === "todas") {
+        if (!isCompleted) {
+          if (isDaily && completedToday) {
+            nextDays.push(m);
+          } else if (isDaily && !completedToday && days.includes(todayDay)) {
+            today.push(m);
+          } else if (isDaily && !completedToday && !days.includes(todayDay)) {
+            nextDays.push(m);
+          } else if (!isDaily && !isCompleted) {
+            today.push(m);
+          }
+        }
+        return;
+      }
 
-    const priorityOrder: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
-    result.sort((a: any, b: any) => (priorityOrder[a.priority || 'media'] ?? 1) - (priorityOrder[b.priority || 'media'] ?? 1));
+      if (activeTab === "foco") {
+        if (isDaily && !completedToday && days.includes(todayDay)) {
+          today.push(m);
+        }
+        return;
+      }
 
-    return result;
+      // Pendentes (padrão)
+      if (isDaily && completedToday) {
+        nextDays.push(m);
+      } else if (isDaily && !completedToday && days.includes(todayDay)) {
+        today.push(m);
+      } else if (isDaily && !completedToday && !days.includes(todayDay)) {
+        nextDays.push(m);
+      } else if (!isDaily && !isCompleted) {
+        today.push(m);
+      }
+    });
+
+    // Aplicar filtros de categoria e busca
+    const filterMissions = (missions: any[]) => {
+      let result = [...missions];
+
+      if (!selectedCategories.includes("Todos")) {
+        result = result.filter((m: any) => {
+          const attrName = m.attributes?.name;
+          const secondaryIds: string[] = (m as any).secondary_attribute_ids || [];
+          const allAttrNames = [attrName];
+          if (attrs && secondaryIds.length > 0) {
+            secondaryIds.forEach((id: string) => {
+              const a = attrs.find((at: any) => at.id === id);
+              if (a) allAttrNames.push(a.name);
+            });
+          }
+          return selectedCategories.some((c) => allAttrNames.includes(c));
+        });
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        result = result.filter((m: any) => m.title.toLowerCase().includes(q));
+      }
+
+      const priorityOrder: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
+      result.sort(
+        (a: any, b: any) => (priorityOrder[a.priority || "media"] ?? 1) - (priorityOrder[b.priority || "media"] ?? 1),
+      );
+
+      return result;
+    };
+
+    return {
+      todayMissions: filterMissions(today),
+      nextDaysMissions: filterMissions(nextDays),
+      completedMissions: filterMissions(completed),
+    };
   }, [allMissions, activeTab, selectedCategories, searchQuery, todayDay, attrs]);
 
-  // Group by time period
-  const groupedMissions = useMemo(() => {
-    const groups: Record<string, any[]> = { manha: [], tarde: [], noite: [], flex: [] };
-    filteredMissions.forEach((m: any) => {
-      const h = m.horario_provavel || 'flex';
-      if (groups[h]) groups[h].push(m);
-      else groups.flex.push(m);
-    });
-    return groups;
-  }, [filteredMissions]);
-
   const toggleCategory = (cat: string) => {
-    if (cat === 'Todos') {
-      setSelectedCategories(['Todos']);
+    if (cat === "Todos") {
+      setSelectedCategories(["Todos"]);
     } else {
       setSelectedCategories((prev) => {
-        const without = prev.filter((c) => c !== 'Todos');
+        const without = prev.filter((c) => c !== "Todos");
         if (without.includes(cat)) {
           const next = without.filter((c) => c !== cat);
-          return next.length === 0 ? ['Todos'] : next;
+          return next.length === 0 ? ["Todos"] : next;
         }
         return [...without, cat];
       });
@@ -193,32 +295,33 @@ export default function Missions() {
 
   const openCreateModal = () => {
     setEditingMission(null);
-    setFormTitle('');
-    setFormDescription('');
-    setFormNotes('');
-    setFormAttrId('');
+    setFormTitle("");
+    setFormDescription("");
+    setFormNotes("");
+    setFormAttrId("");
     setFormSecondaryAttrIds([]);
-    setFormPriority('media');
+    setFormPriority("media");
     setFormDays([]);
-    setFormHorario('flex');
+    setFormHorario("flex");
     setShowCreateEdit(true);
   };
 
   const openEditModal = (m: any) => {
     setEditingMission(m);
     setFormTitle(m.title);
-    setFormDescription(m.description || '');
-    setFormNotes(m.notes || '');
+    setFormDescription(m.description || "");
+    setFormNotes(m.notes || "");
     setFormAttrId(m.attribute_id);
     setFormSecondaryAttrIds((m as any).secondary_attribute_ids || []);
-    setFormPriority(m.priority || 'media');
+    setFormPriority(m.priority || "media");
     setFormDays((m.days_of_week as string[]) || []);
-    setFormHorario(m.horario_provavel || 'flex');
+    setFormHorario(m.horario_provavel || "flex");
     setShowCreateEdit(true);
   };
 
   const handleSave = async () => {
     if (!formTitle.trim() || !formAttrId) return;
+
     try {
       if (editingMission) {
         await updateMission.mutateAsync({
@@ -234,7 +337,7 @@ export default function Missions() {
             secondary_attribute_ids: formSecondaryAttrIds,
           },
         });
-        toast({ title: '✏️ Missão atualizada!' });
+        toast({ title: "✏️ Missão atualizada!" });
       } else {
         await createMission.mutateAsync({
           title: formTitle.trim(),
@@ -246,11 +349,12 @@ export default function Missions() {
           notes: formNotes.trim() || undefined,
           secondaryAttributeIds: formSecondaryAttrIds,
         });
-        toast({ title: '📜 Missão criada!', description: 'Boa sorte, aventureiro!' });
+        toast({ title: "📜 Missão criada!", description: "Boa sorte, aventureiro!" });
       }
+
       setShowCreateEdit(false);
     } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
+      toast({ title: "Erro", variant: "destructive" });
     }
   };
 
@@ -262,9 +366,13 @@ export default function Missions() {
         xpReward: mission.xp_reward,
         secondaryAttributeIds: (mission as any).secondary_attribute_ids || [],
       });
-      toast({ title: '⚔️ Missão concluída!', description: `+${mission.xp_reward} XP ganhos!` });
+
+      toast({
+        title: "⚔️ Missão concluída!",
+        description: `+${mission.xp_reward} XP ganhos! Próxima: ${obterProximoDiaAgendado(mission) || "Nenhum"}`,
+      });
     } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
+      toast({ title: "Erro", variant: "destructive" });
     }
   };
 
@@ -272,38 +380,39 @@ export default function Missions() {
     try {
       await deleteMission.mutateAsync(id);
       setDeleteConfirm(null);
-      toast({ title: '🗑️ Missão deletada com sucesso' });
+      toast({ title: "🗑️ Missão deletada com sucesso" });
     } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
+      toast({ title: "Erro", variant: "destructive" });
     }
   };
 
   const handleArchive = async (id: string) => {
     try {
       await archiveMission.mutateAsync(id);
-      toast({ title: '⏸️ Missão arquivada' });
+      toast({ title: "⏸️ Missão arquivada" });
     } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
+      toast({ title: "Erro", variant: "destructive" });
     }
   };
 
   const handlePlay = async (mission: any) => {
-    const newStatus = mission.status === 'em_progresso' ? 'pendente' : 'em_progresso';
+    const newStatus = mission.status === "em_progresso" ? "pendente" : "em_progresso";
+
     try {
       await updateMission.mutateAsync({ missionId: mission.id, updates: { status: newStatus } });
       toast({
-        title: newStatus === 'em_progresso' ? '▶️ Missão iniciada!' : '⏸️ Missão pausada',
+        title: newStatus === "em_progresso" ? "▶️ Missão iniciada!" : "⏸️ Missão pausada",
       });
     } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
+      toast({ title: "Erro", variant: "destructive" });
     }
   };
 
   const TIME_GROUPS = [
-    { key: 'manha', label: 'Manhã', icon: Sunrise },
-    { key: 'tarde', label: 'Tarde', icon: Sun },
-    { key: 'noite', label: 'Noite', icon: Moon },
-    { key: 'flex', label: 'Flex', icon: RotateCcw },
+    { key: "manha", label: "Manhã", icon: Sunrise },
+    { key: "tarde", label: "Tarde", icon: Sun },
+    { key: "noite", label: "Noite", icon: Moon },
+    { key: "flex", label: "Flex", icon: RotateCcw },
   ];
 
   return (
@@ -315,7 +424,11 @@ export default function Missions() {
             <Target className="w-6 h-6 inline mr-2" />
             Missões
           </h1>
-          <Button onClick={openCreateModal} className="bg-primary text-primary-foreground hover:bg-primary/90" size="sm">
+          <Button
+            onClick={openCreateModal}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            size="sm"
+          >
             <Plus className="w-4 h-4 mr-1" /> Nova Missão
           </Button>
         </div>
@@ -330,7 +443,7 @@ export default function Missions() {
             className="pl-9 bg-secondary border-border"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
               <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
             </button>
           )}
@@ -345,10 +458,10 @@ export default function Missions() {
               className={`px-3 py-1.5 text-xs rounded-md font-medium transition-all ${
                 activeTab === tab.value
                   ? `${tab.color} ring-1 ring-current`
-                  : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab.value === 'concluidas' && <Check className="w-3 h-3 inline mr-1" />}
+              {tab.value === "concluidas" && <Check className="w-3 h-3 inline mr-1" />}
               {tab.label}
             </button>
           ))}
@@ -362,8 +475,8 @@ export default function Missions() {
               onClick={() => toggleCategory(cat.name)}
               className={`px-3 py-1.5 text-xs rounded-lg border transition-colors flex items-center gap-1.5 ${
                 selectedCategories.includes(cat.name)
-                  ? 'bg-primary/20 border-primary/50 text-primary'
-                  : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+                  ? "bg-primary/20 border-primary/50 text-primary"
+                  : "bg-secondary border-border text-muted-foreground hover:text-foreground"
               }`}
             >
               <span>{cat.emoji}</span>
@@ -379,9 +492,13 @@ export default function Missions() {
               <Flame className="w-5 h-5" />
               🔥 MISSÕES FRACASSADAS HOJE ({failedMissions.length})
             </h3>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {failedMissions.map((m: any) => (
-                <div key={m.id} className="bg-card border border-destructive/20 rounded-lg p-3 flex items-center justify-between gap-2">
+                <div
+                  key={m.id}
+                  className="bg-card border border-destructive/20 rounded-lg p-3 flex items-center justify-between gap-2"
+                >
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
                     <p className="text-xs text-destructive">XP Perdido: -{m.xp_penalized || m.xp_reward}</p>
@@ -389,8 +506,8 @@ export default function Missions() {
                   <button
                     onClick={() => {
                       payPenalty.mutate(m, {
-                        onSuccess: () => toast({ title: '✅ Penalidade paga! XP restaurado.' }),
-                        onError: (err: Error) => toast({ title: err.message, variant: 'destructive' }),
+                        onSuccess: () => toast({ title: "✅ Penalidade paga! XP restaurado." }),
+                        onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
                       });
                     }}
                     disabled={payPenalty.isPending}
@@ -404,25 +521,68 @@ export default function Missions() {
           </div>
         )}
 
-        {/* Mission groups */}
+        {/* ✅ SEÇÃO: MISSÕES DE HOJE */}
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : filteredMissions.length === 0 ? (
+        ) : todayMissions.length === 0 && nextDaysMissions.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhuma missão encontrada.</p>
         ) : (
-          TIME_GROUPS.map(({ key, label, icon: Icon }) => {
-            const missions = groupedMissions[key];
-            if (!missions || missions.length === 0) return null;
-            return (
-              <div key={key} className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                  <Icon className="w-4 h-4" />
-                  {label} ({missions.length})
-                </h3>
+          <>
+            {/* HOJE */}
+            {todayMissions.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-lg font-bold text-primary flex items-center gap-2">📅 Missões de Hoje</h2>
+
+                {TIME_GROUPS.map(({ key, label, icon: Icon }) => {
+                  const missions = todayMissions.filter((m: any) => (m.horario_provavel || "flex") === key);
+                  if (!missions || missions.length === 0) return null;
+
+                  return (
+                    <div key={key} className="space-y-2">
+                      <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                        <Icon className="w-4 h-4" />
+                        {label} ({missions.length})
+                      </h3>
+
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {missions.map((m: any, i: number) => (
+                          <MissionCard
+                            key={m.id}
+                            mission={m}
+                            attrs={attrs || []}
+                            index={i}
+                            expanded={expandedMission === m.id}
+                            onToggle={() => setExpandedMission(expandedMission === m.id ? null : m.id)}
+                            onComplete={() => handleComplete(m)}
+                            onEdit={() => openEditModal(m)}
+                            onDelete={() => setDeleteConfirm(m.id)}
+                            onArchive={() => handleArchive(m.id)}
+                            onPlay={() => handlePlay(m)}
+                            completing={completeMission.isPending}
+                            newChecklistText={expandedMission === m.id ? newChecklistText : ""}
+                            onNewChecklistTextChange={setNewChecklistText}
+                            isCompletedToday={false}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ✅ PRÓXIMOS DIAS */}
+            {nextDaysMissions.length > 0 && (
+              <div className="space-y-3 mt-8 pt-8 border-t border-border">
+                <h2 className="text-lg font-bold text-muted-foreground flex items-center gap-2">
+                  📆 Próximos Dias
+                  <span className="text-xs bg-muted px-2 py-1 rounded-full">{nextDaysMissions.length} missão(ões)</span>
+                </h2>
+
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {missions.map((m: any, i: number) => (
+                  {nextDaysMissions.map((m: any, i: number) => (
                     <MissionCard
                       key={m.id}
                       mission={m}
@@ -436,14 +596,50 @@ export default function Missions() {
                       onArchive={() => handleArchive(m.id)}
                       onPlay={() => handlePlay(m)}
                       completing={completeMission.isPending}
-                      newChecklistText={expandedMission === m.id ? newChecklistText : ''}
+                      newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                       onNewChecklistTextChange={setNewChecklistText}
+                      isCompletedToday={foiConcluidaHoje(m)}
+                      proximoDia={obterProximoDiaAgendado(m)}
                     />
                   ))}
                 </div>
               </div>
-            );
-          })
+            )}
+
+            {/* CONCLUÍDAS */}
+            {activeTab === "concluidas" && completedMissions.length > 0 && (
+              <div className="space-y-3 mt-8 pt-8 border-t border-border">
+                <h2 className="text-lg font-bold text-success flex items-center gap-2">
+                  ✅ Concluídas
+                  <span className="text-xs bg-success/20 text-success px-2 py-1 rounded-full">
+                    {completedMissions.length}
+                  </span>
+                </h2>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {completedMissions.map((m: any, i: number) => (
+                    <MissionCard
+                      key={m.id}
+                      mission={m}
+                      attrs={attrs || []}
+                      index={i}
+                      expanded={expandedMission === m.id}
+                      onToggle={() => setExpandedMission(expandedMission === m.id ? null : m.id)}
+                      onComplete={() => handleComplete(m)}
+                      onEdit={() => openEditModal(m)}
+                      onDelete={() => setDeleteConfirm(m.id)}
+                      onArchive={() => handleArchive(m.id)}
+                      onPlay={() => handlePlay(m)}
+                      completing={completeMission.isPending}
+                      newChecklistText={expandedMission === m.id ? newChecklistText : ""}
+                      onNewChecklistTextChange={setNewChecklistText}
+                      isCompletedToday={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -453,14 +649,22 @@ export default function Missions() {
         onOpenChange={setShowCreateEdit}
         isEditing={!!editingMission}
         attrs={attrs || []}
-        formTitle={formTitle} setFormTitle={setFormTitle}
-        formDescription={formDescription} setFormDescription={setFormDescription}
-        formNotes={formNotes} setFormNotes={setFormNotes}
-        formAttrId={formAttrId} setFormAttrId={setFormAttrId}
-        formSecondaryAttrIds={formSecondaryAttrIds} setFormSecondaryAttrIds={setFormSecondaryAttrIds}
-        formPriority={formPriority} setFormPriority={setFormPriority}
-        formDays={formDays} setFormDays={setFormDays}
-        formHorario={formHorario} setFormHorario={setFormHorario}
+        formTitle={formTitle}
+        setFormTitle={setFormTitle}
+        formDescription={formDescription}
+        setFormDescription={setFormDescription}
+        formNotes={formNotes}
+        setFormNotes={setFormNotes}
+        formAttrId={formAttrId}
+        setFormAttrId={setFormAttrId}
+        formSecondaryAttrIds={formSecondaryAttrIds}
+        setFormSecondaryAttrIds={setFormSecondaryAttrIds}
+        formPriority={formPriority}
+        setFormPriority={setFormPriority}
+        formDays={formDays}
+        setFormDays={setFormDays}
+        formHorario={formHorario}
+        setFormHorario={setFormHorario}
         onSave={handleSave}
         saving={createMission.isPending || updateMission.isPending}
         missionId={editingMission?.id}
@@ -490,24 +694,50 @@ export default function Missions() {
 
 /* ─── Attribute Chip ─── */
 function AttributeChip({ name, icon }: { name: string; icon: string }) {
-  const colorClass = ATTRIBUTE_COLORS[name] || 'bg-secondary text-secondary-foreground border-border';
+  const colorClass = ATTRIBUTE_COLORS[name] || "bg-secondary text-secondary-foreground border-border";
+
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${colorClass}`}>
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${colorClass}`}
+    >
       {icon} {name}
     </span>
   );
 }
 
 /* ─── Mission Card ─── */
-
 function MissionCard({
-  mission, attrs, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
-  completing, newChecklistText, onNewChecklistTextChange,
+  mission,
+  attrs,
+  index,
+  expanded,
+  onToggle,
+  onComplete,
+  onEdit,
+  onDelete,
+  onArchive,
+  onPlay,
+  completing,
+  newChecklistText,
+  onNewChecklistTextChange,
+  isCompletedToday,
+  proximoDia,
 }: {
-  mission: any; attrs: any[]; index: number; expanded: boolean;
-  onToggle: () => void; onComplete: () => void; onEdit: () => void;
-  onDelete: () => void; onArchive: () => void; onPlay: () => void;
-  completing: boolean; newChecklistText: string; onNewChecklistTextChange: (v: string) => void;
+  mission: any;
+  attrs: any[];
+  index: number;
+  expanded: boolean;
+  onToggle: () => void;
+  onComplete: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onArchive: () => void;
+  onPlay: () => void;
+  completing: boolean;
+  newChecklistText: string;
+  onNewChecklistTextChange: (v: string) => void;
+  isCompletedToday: boolean;
+  proximoDia?: string | null;
 }) {
   const { data: checklist } = useChecklistItems(mission.id);
   const addItem = useAddChecklistItem();
@@ -519,13 +749,15 @@ function MissionCard({
   const completedCount = (checklist || []).filter((c: any) => c.completed).length;
   const totalCount = (checklist || []).length;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-  const status = mission.status || 'pendente';
+
+  const status = mission.status || "pendente";
   const isCompleted = mission.completed;
 
   // Get all attributes for this mission
   const primaryAttr = mission.attributes;
   const secondaryIds: string[] = (mission as any).secondary_attribute_ids || [];
   const secondaryAttrs = attrs.filter((a) => secondaryIds.includes(a.id));
+
   const allMissionAttrs = [
     primaryAttr && { name: primaryAttr.name, icon: primaryAttr.icon },
     ...secondaryAttrs.map((a: any) => ({ name: a.name, icon: a.icon })),
@@ -533,11 +765,12 @@ function MissionCard({
 
   const handleAddChecklist = async () => {
     if (!newChecklistText.trim()) return;
+
     try {
       await addItem.mutateAsync({ missionId: mission.id, description: newChecklistText.trim() });
-      onNewChecklistTextChange('');
+      onNewChecklistTextChange("");
     } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
+      toast({ title: "Erro", variant: "destructive" });
     }
   };
 
@@ -546,31 +779,71 @@ function MissionCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
-      className={`rounded-xl bg-card border border-border p-3 flex flex-col justify-between aspect-square ${isCompleted ? 'opacity-60' : ''}`}
+      className={`rounded-xl bg-card border border-border p-3 flex flex-col justify-between aspect-square ${
+        isCompleted ? "opacity-60" : isCompletedToday ? "opacity-75 border-yellow-400/50" : ""
+      }`}
     >
       {/* Top: Status dot + icons */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <div className={`w-3 h-3 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
+          <div className={`w-3 h-3 rounded-full shrink-0 ${STATUS_COLORS[status] || "bg-cyan-400"}`} />
           <div className="flex items-center gap-0.5">
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}><Pencil className="w-4 h-4" /></Button>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}><Trash2 className="w-4 h-4" /></Button>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}><Pause className="w-4 h-4" /></Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+              onClick={onEdit}
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+              onClick={onArchive}
+            >
+              <Pause className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
         {/* Title */}
-        <p className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>{mission.title}</p>
+        <p
+          className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? "line-through" : ""}`}
+        >
+          {mission.title}
+        </p>
 
         {/* Description */}
         {mission.description && (
           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{mission.description}</p>
         )}
 
+        {/* ✅ Status: Concluída Hoje */}
+        {isCompletedToday && (
+          <div className="mt-2 p-2 bg-yellow-400/10 border border-yellow-400/30 rounded-md">
+            <p className="text-xs text-yellow-400 font-semibold flex items-center gap-1">
+              <Check className="w-3 h-3" />
+              Concluída hoje
+            </p>
+            {proximoDia && <p className="text-xs text-yellow-400/70 mt-1">Próxima: {proximoDia}</p>}
+          </div>
+        )}
+
         {/* Sub-missions */}
         {totalCount > 0 && (
           <div className="mt-2">
-            <p className="text-xs text-muted-foreground">Sub-missões: {completedCount}/{totalCount}</p>
+            <p className="text-xs text-muted-foreground">
+              Sub-missões: {completedCount}/{totalCount}
+            </p>
             <Progress value={progressPercent} className="h-1.5 mt-1" />
           </div>
         )}
@@ -591,24 +864,46 @@ function MissionCard({
         {/* XP + Date */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-primary font-bold">✨ +{mission.xp_reward} XP</span>
-          <span className="text-xs text-muted-foreground">{new Date(mission.created_at).toLocaleDateString('pt-BR')}</span>
+          <span className="text-xs text-muted-foreground">
+            {new Date(mission.created_at).toLocaleDateString("pt-BR")}
+          </span>
         </div>
 
         {/* Buttons */}
         {!isCompleted && (
           <div className="flex gap-2">
+            {/* ✅ BOTÃO DESABILITADO SE CONCLUÍDA HOJE */}
             <Button
               onClick={onComplete}
-              disabled={completing}
-              className="flex-1 h-9 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 text-sm font-semibold"
+              disabled={completing || isCompletedToday}
+              className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-all ${
+                isCompletedToday
+                  ? "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50"
+                  : "bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30"
+              }`}
+              title={isCompletedToday ? "Missão já concluída hoje" : "Completar missão"}
             >
-              <Check className="w-4 h-4 mr-1" /> Completar
+              {isCompletedToday ? (
+                <>
+                  <Lock className="w-4 h-4 mr-1" /> Bloqueada
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-1" /> Completar
+                </>
+              )}
             </Button>
+
             <Button
               onClick={onPlay}
-              className="h-9 w-10 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 p-0"
+              disabled={isCompletedToday}
+              className={`h-9 w-10 rounded-lg p-0 border transition-all ${
+                isCompletedToday
+                  ? "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50"
+                  : "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30"
+              }`}
             >
-              {status === 'em_progresso' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {status === "em_progresso" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </Button>
           </div>
         )}
@@ -624,14 +919,12 @@ function MissionCard({
         {expanded && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden space-y-2 pt-2 border-t border-border"
           >
             {mission.notes && (
-              <p className="text-xs text-muted-foreground italic bg-secondary/50 p-2 rounded">
-                📝 {mission.notes}
-              </p>
+              <p className="text-xs text-muted-foreground italic bg-secondary/50 p-2 rounded">📝 {mission.notes}</p>
             )}
             <p className="text-xs text-muted-foreground font-medium">Sub-missões (+2 XP cada)</p>
             {checklist?.map((item: any) => (
@@ -642,11 +935,16 @@ function MissionCard({
                     toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })
                   }
                 />
-                <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                <span
+                  className={`text-xs flex-1 ${item.completed ? "line-through text-muted-foreground" : "text-foreground"}`}
+                >
                   {item.description}
                 </span>
                 <span className="text-[10px] text-primary">+{item.xp_bonus} XP</span>
-                <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
+                <button
+                  onClick={() => deleteItem.mutate(item.id)}
+                  className="text-destructive/60 hover:text-destructive"
+                >
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -657,9 +955,15 @@ function MissionCard({
                 onChange={(e) => onNewChecklistTextChange(e.target.value)}
                 placeholder="Adicionar item..."
                 className="h-7 text-xs bg-secondary border-border"
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChecklist())}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddChecklist())}
               />
-              <Button size="sm" variant="outline" className="h-7 text-xs border-primary/30 text-primary" onClick={handleAddChecklist} disabled={addItem.isPending}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-primary/30 text-primary"
+                onClick={handleAddChecklist}
+                disabled={addItem.isPending}
+              >
                 <Plus className="w-3 h-3" />
               </Button>
             </div>
@@ -671,52 +975,82 @@ function MissionCard({
 }
 
 /* ─── Create/Edit Modal ─── */
-
 function MissionFormModal({
-  open, onOpenChange, isEditing, attrs,
-  formTitle, setFormTitle, formDescription, setFormDescription,
-  formNotes, setFormNotes, formAttrId, setFormAttrId,
-  formSecondaryAttrIds, setFormSecondaryAttrIds,
-  formPriority, setFormPriority, formDays, setFormDays,
-  formHorario, setFormHorario, onSave, saving, missionId,
+  open,
+  onOpenChange,
+  isEditing,
+  attrs,
+  formTitle,
+  setFormTitle,
+  formDescription,
+  setFormDescription,
+  formNotes,
+  setFormNotes,
+  formAttrId,
+  setFormAttrId,
+  formSecondaryAttrIds,
+  setFormSecondaryAttrIds,
+  formPriority,
+  setFormPriority,
+  formDays,
+  setFormDays,
+  formHorario,
+  setFormHorario,
+  onSave,
+  saving,
+  missionId,
 }: {
-  open: boolean; onOpenChange: (v: boolean) => void; isEditing: boolean; attrs: any[];
-  formTitle: string; setFormTitle: (v: string) => void;
-  formDescription: string; setFormDescription: (v: string) => void;
-  formNotes: string; setFormNotes: (v: string) => void;
-  formAttrId: string; setFormAttrId: (v: string) => void;
-  formSecondaryAttrIds: string[]; setFormSecondaryAttrIds: (v: string[]) => void;
-  formPriority: string; setFormPriority: (v: string) => void;
-  formDays: string[]; setFormDays: (v: string[]) => void;
-  formHorario: string; setFormHorario: (v: string) => void;
-  onSave: () => void; saving: boolean; missionId?: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  isEditing: boolean;
+  attrs: any[];
+  formTitle: string;
+  setFormTitle: (v: string) => void;
+  formDescription: string;
+  setFormDescription: (v: string) => void;
+  formNotes: string;
+  setFormNotes: (v: string) => void;
+  formAttrId: string;
+  setFormAttrId: (v: string) => void;
+  formSecondaryAttrIds: string[];
+  setFormSecondaryAttrIds: (v: string[]) => void;
+  formPriority: string;
+  setFormPriority: (v: string) => void;
+  formDays: string[];
+  setFormDays: (v: string[]) => void;
+  formHorario: string;
+  setFormHorario: (v: string) => void;
+  onSave: () => void;
+  saving: boolean;
+  missionId?: string;
 }) {
-  const { data: checklist } = useChecklistItems(missionId || '');
+  const { data: checklist } = useChecklistItems(missionId || "");
   const addItem = useAddChecklistItem();
   const toggleItem = useToggleChecklistItem();
   const deleteItem = useDeleteChecklistItem();
-  const [newItem, setNewItem] = useState('');
+  const [newItem, setNewItem] = useState("");
 
   const toggleDay = (d: string) => {
     setFormDays(formDays.includes(d) ? formDays.filter((x) => x !== d) : [...formDays, d]);
   };
 
   const toggleSecondaryAttr = (attrId: string) => {
-    if (attrId === formAttrId) return; // Can't add primary as secondary
+    if (attrId === formAttrId) return;
+
     if (formSecondaryAttrIds.includes(attrId)) {
       setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== attrId));
-    } else if (formSecondaryAttrIds.length < 2) { // Max 2 secondary (3 total)
+    } else if (formSecondaryAttrIds.length < 2) {
       setFormSecondaryAttrIds([...formSecondaryAttrIds, attrId]);
     }
   };
 
   const handleAddItem = async () => {
     if (!newItem.trim() || !missionId) return;
+
     await addItem.mutateAsync({ missionId, description: newItem.trim() });
-    setNewItem('');
+    setNewItem("");
   };
 
-  // All selected attribute IDs (primary + secondary)
   const allSelectedIds = [formAttrId, ...formSecondaryAttrIds].filter(Boolean);
 
   return (
@@ -724,7 +1058,7 @@ function MissionFormModal({
       <DialogContent className="bg-card border-border max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-primary font-display">
-            {isEditing ? '✏️ Editar Missão' : '📜 Nova Missão'}
+            {isEditing ? "✏️ Editar Missão" : "📜 Nova Missão"}
           </DialogTitle>
         </DialogHeader>
 
@@ -732,29 +1066,43 @@ function MissionFormModal({
           {/* Title */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Título *</label>
-            <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Título da missão..." className="bg-secondary border-border" />
+            <Input
+              value={formTitle}
+              onChange={(e) => setFormTitle(e.target.value)}
+              placeholder="Título da missão..."
+              className="bg-secondary border-border"
+            />
           </div>
 
           {/* Description */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
-            <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Descreva a missão..." className="bg-secondary border-border min-h-[60px]" />
+            <Textarea
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              placeholder="Descreva a missão..."
+              className="bg-secondary border-border min-h-[60px]"
+            />
           </div>
 
           {/* Primary Attribute */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Atributo Principal *</label>
-            <Select value={formAttrId} onValueChange={(v) => {
-              setFormAttrId(v);
-              // Remove from secondary if it was there
-              setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== v));
-            }}>
+            <Select
+              value={formAttrId}
+              onValueChange={(v) => {
+                setFormAttrId(v);
+                setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== v));
+              }}
+            >
               <SelectTrigger className="bg-secondary border-border">
                 <SelectValue placeholder="Escolha o atributo principal" />
               </SelectTrigger>
               <SelectContent>
                 {attrs.map((a: any) => (
-                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.icon} {a.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -762,14 +1110,13 @@ function MissionFormModal({
 
           {/* Secondary Attributes (up to 2 more) */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Atributos Secundários (até 2)
-            </label>
+            <label className="text-xs text-muted-foreground mb-1 block">Atributos Secundários (até 2)</label>
             <div className="flex gap-1.5 flex-wrap">
               {attrs.map((a: any) => {
                 const isPrimary = a.id === formAttrId;
                 const isSelected = formSecondaryAttrIds.includes(a.id);
-                const colorClass = ATTRIBUTE_COLORS[a.name] || 'bg-secondary text-secondary-foreground border-border';
+                const colorClass = ATTRIBUTE_COLORS[a.name] || "bg-secondary text-secondary-foreground border-border";
+
                 return (
                   <button
                     key={a.id}
@@ -778,10 +1125,10 @@ function MissionFormModal({
                     disabled={isPrimary}
                     className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
                       isPrimary
-                        ? 'opacity-30 cursor-not-allowed bg-secondary border-border text-muted-foreground'
+                        ? "opacity-30 cursor-not-allowed bg-secondary border-border text-muted-foreground"
                         : isSelected
                           ? `${colorClass} ring-1 ring-current`
-                          : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+                          : "bg-secondary border-border text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {a.icon} {a.name}
@@ -789,6 +1136,7 @@ function MissionFormModal({
                 );
               })}
             </div>
+
             {allSelectedIds.length > 0 && (
               <div className="flex gap-1 mt-2 flex-wrap">
                 {allSelectedIds.map((id) => {
@@ -803,7 +1151,12 @@ function MissionFormModal({
           {/* Notes */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
-            <Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Adicione observações sobre esta missão..." className="bg-secondary border-border min-h-[50px]" />
+            <Textarea
+              value={formNotes}
+              onChange={(e) => setFormNotes(e.target.value)}
+              placeholder="Adicione observações sobre esta missão..."
+              className="bg-secondary border-border min-h-[50px]"
+            />
           </div>
 
           {/* Priority */}
@@ -818,7 +1171,9 @@ function MissionFormModal({
                     type="button"
                     onClick={() => setFormPriority(p.value)}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border text-xs font-medium transition-all ${
-                      formPriority === p.value ? `${p.color} ring-1 ring-current` : 'bg-secondary border-border text-muted-foreground'
+                      formPriority === p.value
+                        ? `${p.color} ring-1 ring-current`
+                        : "bg-secondary border-border text-muted-foreground"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -840,8 +1195,8 @@ function MissionFormModal({
                   onClick={() => toggleDay(d)}
                   className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
                     formDays.includes(d)
-                      ? 'bg-primary/20 border-primary/50 text-primary'
-                      : 'bg-secondary border-border text-muted-foreground'
+                      ? "bg-primary/20 border-primary/50 text-primary"
+                      : "bg-secondary border-border text-muted-foreground"
                   }`}
                 >
                   {d}
@@ -861,8 +1216,8 @@ function MissionFormModal({
                   onClick={() => setFormHorario(t.value)}
                   className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
                     formHorario === t.value
-                      ? 'bg-primary/20 border-primary/50 text-primary'
-                      : 'bg-secondary border-border text-muted-foreground'
+                      ? "bg-primary/20 border-primary/50 text-primary"
+                      : "bg-secondary border-border text-muted-foreground"
                   }`}
                 >
                   {t.label}
@@ -880,11 +1235,18 @@ function MissionFormModal({
                   <div key={item.id} className="flex items-center gap-2">
                     <Checkbox
                       checked={item.completed}
-                      onCheckedChange={() => toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })}
+                      onCheckedChange={() =>
+                        toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })
+                      }
                     />
-                    <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : ''}`}>{item.description}</span>
+                    <span className={`text-xs flex-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}>
+                      {item.description}
+                    </span>
                     <span className="text-[10px] text-primary">+{item.xp_bonus} XP</span>
-                    <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
+                    <button
+                      onClick={() => deleteItem.mutate(item.id)}
+                      className="text-destructive/60 hover:text-destructive"
+                    >
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -895,9 +1257,15 @@ function MissionFormModal({
                     onChange={(e) => setNewItem(e.target.value)}
                     placeholder="Adicionar item..."
                     className="h-7 text-xs bg-secondary border-border"
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddItem())}
                   />
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleAddItem} disabled={addItem.isPending}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={handleAddItem}
+                    disabled={addItem.isPending}
+                  >
                     <Plus className="w-3 h-3" />
                   </Button>
                 </div>
@@ -913,10 +1281,16 @@ function MissionFormModal({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancelar</Button>
-          <Button onClick={onSave} disabled={saving || !formTitle.trim() || !formAttrId} className="bg-success text-success-foreground hover:bg-success/90">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">
+            Cancelar
+          </Button>
+          <Button
+            onClick={onSave}
+            disabled={saving || !formTitle.trim() || !formAttrId}
+            className="bg-success text-success-foreground hover:bg-success/90"
+          >
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-            {isEditing ? 'Salvar' : 'Criar Missão'}
+            {isEditing ? "Salvar" : "Criar Missão"}
           </Button>
         </DialogFooter>
       </DialogContent>
