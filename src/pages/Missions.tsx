@@ -164,7 +164,7 @@ export default function Missions() {
   const [formSecondaryAttrIds, setFormSecondaryAttrIds] = useState<string[]>([]);
   const [formPriority, setFormPriority] = useState("media");
   const [formDays, setFormDays] = useState<string[]>([]);
-  const [formHorario, setFormHorario] = useState("flex");
+  const [formHorario, setFormHorario] = useState<string | string[]>('flex');
 
   const { data: allMissions, isLoading } = useMissions();
   const { data: attrs } = useAttributes();
@@ -307,57 +307,69 @@ export default function Missions() {
     setShowCreateEdit(true);
   };
 
-  const openEditModal = (m: any) => {
-    setEditingMission(m);
-    setFormTitle(m.title);
-    setFormDescription(m.description || "");
-    setFormNotes(m.notes || "");
-    setFormAttrId(m.attribute_id);
-    setFormSecondaryAttrIds((m as any).secondary_attribute_ids || []);
-    setFormPriority(m.priority || "media");
-    setFormDays((m.days_of_week as string[]) || []);
-    setFormHorario(m.horario_provavel || "flex");
-    setShowCreateEdit(true);
-  };
+const openEditModal = (m: any) => {
+  setEditingMission(m);
+  setFormTitle(m.title);
+  setFormDescription(m.description || '');
+  setFormNotes(m.notes || '');
+  setFormAttrId(m.attribute_id);
+  setFormSecondaryAttrIds((m as any).secondary_attribute_ids || []);
+  setFormPriority(m.priority || 'media');
+  setFormDays((m.days_of_week as string[]) || []);
+  
+  const horario = m.horario_provavel;
+  if (Array.isArray(horario)) {
+    setFormHorario(horario);
+  } else {
+    setFormHorario(horario || 'flex');
+  }
+  
+  setShowCreateEdit(true);
+};
 
-  const handleSave = async () => {
-    if (!formTitle.trim() || !formAttrId) return;
+const handleSave = async () => {
+  if (!formTitle.trim() || !formAttrId) return;
 
-    try {
-      if (editingMission) {
-        await updateMission.mutateAsync({
-          missionId: editingMission.id,
-          updates: {
-            title: formTitle.trim(),
-            description: formDescription.trim() || undefined,
-            notes: formNotes.trim() || undefined,
-            attribute_id: formAttrId,
-            priority: formPriority,
-            days_of_week: formDays,
-            horario_provavel: formHorario,
-            secondary_attribute_ids: formSecondaryAttrIds,
-          },
-        });
-        toast({ title: "✏️ Missão atualizada!" });
-      } else {
-        await createMission.mutateAsync({
+  try {
+    // ✅ Converter formHorario para o formato correto
+    const horarioParaSalvar = Array.isArray(formHorario) 
+      ? formHorario 
+      : [formHorario].filter(Boolean);
+
+    if (editingMission) {
+      await updateMission.mutateAsync({
+        missionId: editingMission.id,
+        updates: {
           title: formTitle.trim(),
-          attributeId: formAttrId,
-          daysOfWeek: formDays,
-          horarioProvavel: formHorario,
-          priority: formPriority,
           description: formDescription.trim() || undefined,
           notes: formNotes.trim() || undefined,
-          secondaryAttributeIds: formSecondaryAttrIds,
-        });
-        toast({ title: "📜 Missão criada!", description: "Boa sorte, aventureiro!" });
-      }
-
-      setShowCreateEdit(false);
-    } catch {
-      toast({ title: "Erro", variant: "destructive" });
+          attribute_id: formAttrId,
+          priority: formPriority,
+          days_of_week: formDays,
+          horario_provavel: horarioParaSalvar, // ✅ Array ou string
+          secondary_attribute_ids: formSecondaryAttrIds,
+        },
+      });
+      toast({ title: '✏️ Missão atualizada!' });
+    } else {
+      await createMission.mutateAsync({
+        title: formTitle.trim(),
+        attributeId: formAttrId,
+        daysOfWeek: formDays,
+        horarioProvavel: horarioParaSalvar, // ✅ Array ou string
+        priority: formPriority,
+        description: formDescription.trim() || undefined,
+        notes: formNotes.trim() || undefined,
+        secondaryAttributeIds: formSecondaryAttrIds,
+      });
+      toast({ title: '📜 Missão criada!', description: 'Boa sorte, aventureiro!' });
     }
-  };
+
+    setShowCreateEdit(false);
+  } catch {
+    toast({ title: 'Erro', variant: 'destructive' });
+  }
+};
 
   const handleComplete = async (mission: any) => {
     try {
@@ -644,32 +656,32 @@ export default function Missions() {
         )}
       </div>
 
-      {/* Create/Edit Modal */}
-      <MissionFormModal
-        open={showCreateEdit}
-        onOpenChange={setShowCreateEdit}
-        isEditing={!!editingMission}
-        attrs={attrs || []}
-        formTitle={formTitle}
-        setFormTitle={setFormTitle}
-        formDescription={formDescription}
-        setFormDescription={setFormDescription}
-        formNotes={formNotes}
-        setFormNotes={setFormNotes}
-        formAttrId={formAttrId}
-        setFormAttrId={setFormAttrId}
-        formSecondaryAttrIds={formSecondaryAttrIds}
-        setFormSecondaryAttrIds={setFormSecondaryAttrIds}
-        formPriority={formPriority}
-        setFormPriority={setFormPriority}
-        formDays={formDays}
-        setFormDays={setFormDays}
-        formHorario={formHorario}
-        setFormHorario={setFormHorario}
-        onSave={handleSave}
-        saving={createMission.isPending || updateMission.isPending}
-        missionId={editingMission?.id}
-      />
+{/* Create/Edit Modal */}
+<MissionFormModal
+  open={showCreateEdit}
+  onOpenChange={setShowCreateEdit}
+  isEditing={!!editingMission}
+  attrs={attrs || []}
+  formTitle={formTitle}
+  setFormTitle={setFormTitle}
+  formDescription={formDescription}
+  setFormDescription={setFormDescription}
+  formNotes={formNotes}
+  setFormNotes={setFormNotes}
+  formAttrId={formAttrId}
+  setFormAttrId={setFormAttrId}
+  formSecondaryAttrIds={formSecondaryAttrIds}
+  setFormSecondaryAttrIds={setFormSecondaryAttrIds}
+  formPriority={formPriority}
+  setFormPriority={setFormPriority}  // ✅ CORRIGIDO: } em vez de )
+  formDays={formDays}
+  setFormDays={setFormDays}
+  formHorario={formHorario}
+  setFormHorario={setFormHorario}  // ✅ CORRIGIDO: } em vez de )
+  onSave={handleSave}
+  saving={createMission.isPending || updateMission.isPending}  // ✅ CORRIGIDO: = em vez de -
+  missionId={editingMission?.id}
+/>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
@@ -706,6 +718,7 @@ function AttributeChip({ name, icon }: { name: string; icon: string }) {
   );
 }
 
+/* ─── Mission Card ─── */
 function MissionCard({
   mission, attrs, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
   completing, newChecklistText, onNewChecklistTextChange, isCompletedToday, proximoDia,
@@ -720,7 +733,7 @@ function MissionCard({
   const addItem = useAddChecklistItem();
   const toggleItem = useToggleChecklistItem();
   const deleteItem = useDeleteChecklistItem();
-  const undoMission = useUndoMission(); // ✅ Adicione isto
+  const undoMission = useUndoMission();
   const { toast } = useToast();
 
   const days = (mission.days_of_week as string[]) || [];
@@ -741,6 +754,13 @@ function MissionCard({
     ...secondaryAttrs.map((a: any) => ({ name: a.name, icon: a.icon })),
   ].filter(Boolean);
 
+  // ✅ NOVO: Processar múltiplos horários
+  const horarios = (mission.horario_provavel as string[]) || [];
+  const horariosFormatados = horarios.map((h: string) => {
+    const horarioObj = TIMES.find((t) => t.value === h);
+    return horarioObj?.label || h;
+  });
+
   const handleAddChecklist = async () => {
     if (!newChecklistText.trim()) return;
 
@@ -752,7 +772,6 @@ function MissionCard({
     }
   };
 
-  // ✅ FUNÇÃO PARA DESFAZER
   const handleUndo = async () => {
     try {
       await undoMission.mutateAsync(mission.id);
@@ -797,7 +816,7 @@ function MissionCard({
           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{mission.description}</p>
         )}
 
-        {/* ✅ Status: Concluída Hoje + Botão Desfazer */}
+        {/* ✅ Status: Concluída Hoje */}
         {isCompletedToday && (
           <div className="mt-2 p-2 bg-yellow-400/10 border border-yellow-400/30 rounded-md space-y-2">
             <div className="flex items-center justify-between">
@@ -836,7 +855,7 @@ function MissionCard({
 
       {/* Bottom: Tags + actions */}
       <div className="mt-auto pt-2 space-y-2">
-        {/* Attribute chips */}
+        {/* Attribute chips - Padrão da página */}
         <div className="flex items-center gap-1 flex-wrap">
           {days.length > 0 && (
             <span className="text-xs font-medium bg-primary/15 text-primary px-2 py-0.5 rounded">📅 Diária</span>
@@ -845,6 +864,14 @@ function MissionCard({
             <AttributeChip key={idx} name={a.name} icon={a.icon} />
           ))}
         </div>
+
+        {/* ✅ NOVO: Horários Prováveis (até 2) */}
+        {horariosFormatados.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap text-xs">
+            <span className="text-muted-foreground">⏰</span>
+            <span className="text-muted-foreground">{horariosFormatados.join(' / ')}</span>
+          </div>
+        )}
 
         {/* XP + Date */}
         <div className="flex items-center justify-between">
@@ -897,7 +924,7 @@ function MissionCard({
         </button>
       </div>
 
-      {/* Expanded checklist */}
+      {/* Expanded checklist - SEM OBSERVAÇÕES */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -906,11 +933,8 @@ function MissionCard({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden space-y-2 pt-2 border-t border-border"
           >
-            {mission.notes && (
-              <p className="text-xs text-muted-foreground italic bg-secondary/50 p-2 rounded">
-                📝 {mission.notes}
-              </p>
-            )}
+            {/* ✅ REMOVIDO: mission.notes (Observações) */}
+            
             <p className="text-xs text-muted-foreground font-medium">Sub-missões (+2 XP cada)</p>
             {checklist?.map((item: any) => (
               <div key={item.id} className="flex items-center gap-2">
@@ -950,62 +974,44 @@ function MissionCard({
 
 /* ─── Create/Edit Modal ─── */
 function MissionFormModal({
-  open,
-  onOpenChange,
-  isEditing,
-  attrs,
-  formTitle,
-  setFormTitle,
-  formDescription,
-  setFormDescription,
-  formNotes,
-  setFormNotes,
-  formAttrId,
-  setFormAttrId,
-  formSecondaryAttrIds,
-  setFormSecondaryAttrIds,
-  formPriority,
-  setFormPriority,
-  formDays,
-  setFormDays,
-  formHorario,
-  setFormHorario,
-  onSave,
-  saving,
-  missionId,
+  open, onOpenChange, isEditing, attrs,
+  formTitle, setFormTitle, formDescription, setFormDescription,
+  formNotes, setFormNotes, formAttrId, setFormAttrId,
+  formSecondaryAttrIds, setFormSecondaryAttrIds,
+  formPriority, setFormPriority, formDays, setFormDays,
+  formHorario, setFormHorario, onSave, saving, missionId,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  isEditing: boolean;
-  attrs: any[];
-  formTitle: string;
-  setFormTitle: (v: string) => void;
-  formDescription: string;
-  setFormDescription: (v: string) => void;
-  formNotes: string;
-  setFormNotes: (v: string) => void;
-  formAttrId: string;
-  setFormAttrId: (v: string) => void;
-  formSecondaryAttrIds: string[];
-  setFormSecondaryAttrIds: (v: string[]) => void;
-  formPriority: string;
-  setFormPriority: (v: string) => void;
-  formDays: string[];
-  setFormDays: (v: string[]) => void;
-  formHorario: string;
-  setFormHorario: (v: string) => void;
-  onSave: () => void;
-  saving: boolean;
-  missionId?: string;
+  open: boolean; onOpenChange: (v: boolean) => void; isEditing: boolean; attrs: any[];
+  formTitle: string; setFormTitle: (v: string) => void;
+  formDescription: string; setFormDescription: (v: string) => void;
+  formNotes: string; setFormNotes: (v: string) => void;
+  formAttrId: string; setFormAttrId: (v: string) => void;
+  formSecondaryAttrIds: string[]; setFormSecondaryAttrIds: (v: string[]) => void;
+  formPriority: string; setFormPriority: (v: string) => void;
+  formDays: string[]; setFormDays: (v: string[]) => void;
+  formHorario: string | string[]; setFormHorario: (v: string | string[]) => void;
+  onSave: () => void; saving: boolean; missionId?: string;
 }) {
-  const { data: checklist } = useChecklistItems(missionId || "");
+  const { data: checklist } = useChecklistItems(missionId || '');
   const addItem = useAddChecklistItem();
   const toggleItem = useToggleChecklistItem();
   const deleteItem = useDeleteChecklistItem();
-  const [newItem, setNewItem] = useState("");
+  const [newItem, setNewItem] = useState('');
 
   const toggleDay = (d: string) => {
     setFormDays(formDays.includes(d) ? formDays.filter((x) => x !== d) : [...formDays, d]);
+  };
+
+  // ✅ NOVO: Alternar múltiplos horários (até 2)
+  const toggleHorario = (h: string) => {
+    const horarios = Array.isArray(formHorario) ? formHorario : [formHorario].filter(Boolean);
+    
+    if (horarios.includes(h)) {
+      const updated = horarios.filter((x) => x !== h);
+      setFormHorario(updated.length === 0 ? 'flex' : updated.length === 1 ? updated[0] : updated);
+    } else if (horarios.length < 2) {
+      setFormHorario([...horarios, h]);
+    }
   };
 
   const toggleSecondaryAttr = (attrId: string) => {
@@ -1022,17 +1028,18 @@ function MissionFormModal({
     if (!newItem.trim() || !missionId) return;
 
     await addItem.mutateAsync({ missionId, description: newItem.trim() });
-    setNewItem("");
+    setNewItem('');
   };
 
   const allSelectedIds = [formAttrId, ...formSecondaryAttrIds].filter(Boolean);
+  const horariosArray = Array.isArray(formHorario) ? formHorario : [formHorario].filter(Boolean);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-primary font-display">
-            {isEditing ? "✏️ Editar Missão" : "📜 Nova Missão"}
+            {isEditing ? '✏️ Editar Missão' : '📜 Nova Missão'}
           </DialogTitle>
         </DialogHeader>
 
@@ -1040,43 +1047,28 @@ function MissionFormModal({
           {/* Title */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Título *</label>
-            <Input
-              value={formTitle}
-              onChange={(e) => setFormTitle(e.target.value)}
-              placeholder="Título da missão..."
-              className="bg-secondary border-border"
-            />
+            <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Título da missão..." className="bg-secondary border-border" />
           </div>
 
           {/* Description */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
-            <Textarea
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              placeholder="Descreva a missão..."
-              className="bg-secondary border-border min-h-[60px]"
-            />
+            <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Descreva a missão..." className="bg-secondary border-border min-h-[60px]" />
           </div>
 
           {/* Primary Attribute */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Atributo Principal *</label>
-            <Select
-              value={formAttrId}
-              onValueChange={(v) => {
-                setFormAttrId(v);
-                setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== v));
-              }}
-            >
+            <Select value={formAttrId} onValueChange={(v) => {
+              setFormAttrId(v);
+              setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== v));
+            }}>
               <SelectTrigger className="bg-secondary border-border">
                 <SelectValue placeholder="Escolha o atributo principal" />
               </SelectTrigger>
               <SelectContent>
                 {attrs.map((a: any) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.icon} {a.name}
-                  </SelectItem>
+                  <SelectItem key={a.id} value={a.id}>{a.icon} {a.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1084,12 +1076,14 @@ function MissionFormModal({
 
           {/* Secondary Attributes (up to 2 more) */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Atributos Secundários (até 2)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              Atributos Secundários (até 2)
+            </label>
             <div className="flex gap-1.5 flex-wrap">
               {attrs.map((a: any) => {
                 const isPrimary = a.id === formAttrId;
                 const isSelected = formSecondaryAttrIds.includes(a.id);
-                const colorClass = ATTRIBUTE_COLORS[a.name] || "bg-secondary text-secondary-foreground border-border";
+                const colorClass = ATTRIBUTE_COLORS[a.name] || 'bg-secondary text-secondary-foreground border-border';
 
                 return (
                   <button
@@ -1099,10 +1093,10 @@ function MissionFormModal({
                     disabled={isPrimary}
                     className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
                       isPrimary
-                        ? "opacity-30 cursor-not-allowed bg-secondary border-border text-muted-foreground"
+                        ? 'opacity-30 cursor-not-allowed bg-secondary border-border text-muted-foreground'
                         : isSelected
                           ? `${colorClass} ring-1 ring-current`
-                          : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+                          : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     {a.icon} {a.name}
@@ -1122,17 +1116,6 @@ function MissionFormModal({
             )}
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
-            <Textarea
-              value={formNotes}
-              onChange={(e) => setFormNotes(e.target.value)}
-              placeholder="Adicione observações sobre esta missão..."
-              className="bg-secondary border-border min-h-[50px]"
-            />
-          </div>
-
           {/* Priority */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Prioridade</label>
@@ -1145,9 +1128,7 @@ function MissionFormModal({
                     type="button"
                     onClick={() => setFormPriority(p.value)}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border text-xs font-medium transition-all ${
-                      formPriority === p.value
-                        ? `${p.color} ring-1 ring-current`
-                        : "bg-secondary border-border text-muted-foreground"
+                      formPriority === p.value ? `${p.color} ring-1 ring-current` : 'bg-secondary border-border text-muted-foreground'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -1169,8 +1150,8 @@ function MissionFormModal({
                   onClick={() => toggleDay(d)}
                   className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
                     formDays.includes(d)
-                      ? "bg-primary/20 border-primary/50 text-primary"
-                      : "bg-secondary border-border text-muted-foreground"
+                      ? 'bg-primary/20 border-primary/50 text-primary'
+                      : 'bg-secondary border-border text-muted-foreground'
                   }`}
                 >
                   {d}
@@ -1179,25 +1160,33 @@ function MissionFormModal({
             </div>
           </div>
 
-          {/* Time */}
+          {/* ✅ NOVO: Time (até 2 horários) */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Horário Provável</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Horário Provável (até 2)</label>
             <div className="flex gap-1.5 flex-wrap">
               {TIMES.map((t) => (
                 <button
                   key={t.value}
                   type="button"
-                  onClick={() => setFormHorario(t.value)}
+                  onClick={() => toggleHorario(t.value)}
+                  disabled={horariosArray.length >= 2 && !horariosArray.includes(t.value)}
                   className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
-                    formHorario === t.value
-                      ? "bg-primary/20 border-primary/50 text-primary"
-                      : "bg-secondary border-border text-muted-foreground"
+                    horariosArray.includes(t.value)
+                      ? 'bg-primary/20 border-primary/50 text-primary'
+                      : horariosArray.length >= 2
+                        ? 'opacity-50 cursor-not-allowed bg-secondary border-border text-muted-foreground'
+                        : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {t.label}
                 </button>
               ))}
             </div>
+            {horariosArray.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Selecionados: {horariosArray.map((h) => TIMES.find((t) => t.value === h)?.label).join(' + ')}
+              </p>
+            )}
           </div>
 
           {/* Checklist (only in edit mode) */}
@@ -1209,18 +1198,11 @@ function MissionFormModal({
                   <div key={item.id} className="flex items-center gap-2">
                     <Checkbox
                       checked={item.completed}
-                      onCheckedChange={() =>
-                        toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })
-                      }
+                      onCheckedChange={() => toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })}
                     />
-                    <span className={`text-xs flex-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}>
-                      {item.description}
-                    </span>
+                    <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : ''}`}>{item.description}</span>
                     <span className="text-[10px] text-primary">+{item.xp_bonus} XP</span>
-                    <button
-                      onClick={() => deleteItem.mutate(item.id)}
-                      className="text-destructive/60 hover:text-destructive"
-                    >
+                    <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -1231,15 +1213,9 @@ function MissionFormModal({
                     onChange={(e) => setNewItem(e.target.value)}
                     placeholder="Adicionar item..."
                     className="h-7 text-xs bg-secondary border-border"
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddItem())}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
                   />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs"
-                    onClick={handleAddItem}
-                    disabled={addItem.isPending}
-                  >
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleAddItem} disabled={addItem.isPending}>
                     <Plus className="w-3 h-3" />
                   </Button>
                 </div>
@@ -1255,16 +1231,10 @@ function MissionFormModal({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">
-            Cancelar
-          </Button>
-          <Button
-            onClick={onSave}
-            disabled={saving || !formTitle.trim() || !formAttrId}
-            className="bg-success text-success-foreground hover:bg-success/90"
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancelar</Button>
+          <Button onClick={onSave} disabled={saving || !formTitle.trim() || !formAttrId} className="bg-success text-success-foreground hover:bg-success/90">
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-            {isEditing ? "Salvar" : "Criar Missão"}
+            {isEditing ? 'Salvar' : 'Criar Missão'}
           </Button>
         </DialogFooter>
       </DialogContent>
