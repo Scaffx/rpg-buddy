@@ -754,12 +754,19 @@ function MissionCard({
     ...secondaryAttrs.map((a: any) => ({ name: a.name, icon: a.icon })),
   ].filter(Boolean);
 
-  // ✅ NOVO: Processar múltiplos horários
-  const horarios = (mission.horario_provavel as string[]) || [];
-  const horariosFormatados = horarios.map((h: string) => {
-    const horarioObj = TIMES.find((t) => t.value === h);
-    return horarioObj?.label || h;
-  });
+  // ✅ CORRIGIDO: Processar múltiplos horários com verificação de tipo
+  const horarios = Array.isArray(mission.horario_provavel)
+    ? mission.horario_provavel
+    : mission.horario_provavel && typeof mission.horario_provavel === 'string'
+      ? [mission.horario_provavel]
+      : [];
+
+  const horariosFormatados = horarios.length > 0
+    ? horarios.map((h: string) => {
+        const horarioObj = TIMES.find((t) => t.value === h);
+        return horarioObj?.label || h;
+      })
+    : [];
 
   const handleAddChecklist = async () => {
     if (!newChecklistText.trim()) return;
@@ -824,7 +831,6 @@ function MissionCard({
                 <Check className="w-3 h-3" />
                 Concluída hoje
               </p>
-              {/* ✅ BOTÃO DESFAZER */}
               <Button
                 size="sm"
                 variant="ghost"
@@ -855,7 +861,7 @@ function MissionCard({
 
       {/* Bottom: Tags + actions */}
       <div className="mt-auto pt-2 space-y-2">
-        {/* Attribute chips - Padrão da página */}
+        {/* Attribute chips */}
         <div className="flex items-center gap-1 flex-wrap">
           {days.length > 0 && (
             <span className="text-xs font-medium bg-primary/15 text-primary px-2 py-0.5 rounded">📅 Diária</span>
@@ -865,7 +871,7 @@ function MissionCard({
           ))}
         </div>
 
-        {/* ✅ NOVO: Horários Prováveis (até 2) */}
+        {/* ✅ Horários Prováveis */}
         {horariosFormatados.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap text-xs">
             <span className="text-muted-foreground">⏰</span>
@@ -882,7 +888,6 @@ function MissionCard({
         {/* Buttons */}
         {!isCompleted && (
           <div className="flex gap-2">
-            {/* ✅ BOTÃO DESABILITADO SE CONCLUÍDA HOJE */}
             <Button
               onClick={onComplete}
               disabled={completing || isCompletedToday}
@@ -924,7 +929,7 @@ function MissionCard({
         </button>
       </div>
 
-      {/* Expanded checklist - SEM OBSERVAÇÕES */}
+      {/* Expanded checklist */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -933,8 +938,6 @@ function MissionCard({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden space-y-2 pt-2 border-t border-border"
           >
-            {/* ✅ REMOVIDO: mission.notes (Observações) */}
-            
             <p className="text-xs text-muted-foreground font-medium">Sub-missões (+2 XP cada)</p>
             {checklist?.map((item: any) => (
               <div key={item.id} className="flex items-center gap-2">
