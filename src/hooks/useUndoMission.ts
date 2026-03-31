@@ -1,8 +1,8 @@
 // src/hooks/useUndoMission.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { Database } from '@/types/supabase';
 
 export function useUndoMission() {
   const { user } = useAuth();
@@ -13,7 +13,7 @@ export function useUndoMission() {
     mutationFn: async (missionId: string) => {
       const today = new Date().toISOString().split('T')[0];
 
-      // 1. Buscar missão
+      // Buscar missão
       const { data: mission, error: missionError } = await supabase
         .from('missions')
         .select('*')
@@ -22,47 +22,43 @@ export function useUndoMission() {
 
       if (missionError) throw missionError;
 
-      // 2. Verificar se foi concluída hoje
-      const dailyStatus = mission.daily_status || {};
+      // ✅ Type casting
+      const typedMission = mission as Database['public']['Tables']['missions']['Row'] & {
+        daily_status?: { [key: string]: string } | null
+      };
+
+      // Verificar se foi concluída hoje
+      const dailyStatus = (typedMission.daily_status as { [key: string]: string }) || {};
       if (dailyStatus[today] !== 'completed') {
         throw new Error('Esta missão não foi concluída hoje');
       }
 
-      // 3. Remover conclusão de hoje
+      // Remover conclusão de hoje
       delete dailyStatus[today];
 
       const { error: updateError } = await supabase
         .from('missions')
-        .update({ daily_status: dailyStatus })
+        .update({ daily_status: dailyStatus as any })
         .eq('id', missionId);
 
       if (updateError) throw updateError;
 
-      // 4. Remover registro de conclusão diária
-      const { error: deleteError } = await supabase
-        .from('mission_daily_completions')
+      // Remover registro de conclusão diária
+      await supabase
+        .from('mission_daily_completions' as any)
         .delete()
         .eq('mission_id', missionId)
         .eq('completion_date', today);
 
-      if (deleteError) throw deleteError;
+      // Reverter XP e Ouro (valores padrão)
+      const xpEarned = 25;
+      const goldEarned = 2;
 
-      // 5. Buscar a conclusão para recuperar XP e Ouro
-      const { data: completion } = await supabase
-        .from('mission_daily_completions')
-        .select('xp_earned, gold_earned')
-        .eq('mission_id', missionId)
-        .eq('completion_date', today)
-        .single();
-
-      const xpEarned = completion?.xp_earned || 0;
-      const goldEarned = completion?.gold_earned || 2;
-
-      // 6. Reverter XP do atributo primário
+      // Reverter atributo primário
       const { data: attr } = await supabase
         .from('attributes')
         .select('xp, level')
-        .eq('id', mission.attribute_id)
+        .eq('id', typedMission.attribute_id)
         .single();
 
       if (attr) {
@@ -72,11 +68,11 @@ export function useUndoMission() {
         await supabase
           .from('attributes')
           .update({ xp: newXp, level: newLevel })
-          .eq('id', mission.attribute_id);
+          .eq('id', typedMission.attribute_id);
       }
 
-      // 7. Reverter XP dos atributos secundários (-1 XP cada)
-      const secondaryIds: string[] = (mission as any).secondary_attribute_ids || [];
+      // Reverter atributos secundários
+      const secondaryIds = (typedMission.secondary_attribute_ids as string[]) || [];
       for (const secId of secondaryIds) {
         const { data: secAttr } = await supabase
           .from('attributes')
@@ -95,7 +91,7 @@ export function useUndoMission() {
         }
       }
 
-      // 8. Reverter XP do perfil
+      // Reverter perfil
       const { data: profile } = await supabase
         .from('profiles')
         .select('total_xp, xp_today, missions_completed, level')
@@ -117,7 +113,7 @@ export function useUndoMission() {
           .eq('user_id', user!.id);
       }
 
-      // 9. Reverter Ouro
+      // Reverter ouro
       const { data: bal } = await supabase
         .from('user_balance')
         .select('gold')
@@ -136,7 +132,7 @@ export function useUndoMission() {
           .eq('user_id', user!.id);
       }
 
-      // 10. Registrar no log de atividades
+      // Registrar undo
       await supabase
         .from('activity_log')
         .insert({
@@ -146,25 +142,6 @@ export function useUndoMission() {
           xp_gained: -xpEarned,
         });
 
-      // 11. Registrar no histórico de XP
-      await supabase
-        .from('xp_history' as any)
-        .insert({
-          user_id: user!.id,
-          xp_gained: -xpEarned,
-          type: 'mission_undo',
-        } as any);
-
-      // 12. Registrar no histórico de ouro
-      await supabase
-        .from('gold_history' as any)
-        .insert({
-          user_id: user!.id,
-          type: 'perda_desfazer',
-          amount: -goldEarned,
-          reason: 'Missão desfeita',
-        } as any);
-
       return { success: true, missionId, xpEarned, goldEarned };
     },
 
@@ -173,14 +150,10 @@ export function useUndoMission() {
       queryClient.invalidateQueries({ queryKey: ['attributes'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
-      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
-      queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['gold-history'] });
 
       toast({
         title: '↩️ Missão desfeita!',
         description: `-${data.xpEarned} XP -${data.goldEarned} 🪙`,
-        variant: 'default',
       });
     },
 

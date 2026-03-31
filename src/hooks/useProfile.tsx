@@ -1,3 +1,4 @@
+import { Database } from '@/types/supabase';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
@@ -28,56 +29,109 @@ export function useAttributes() {
   });
 }
 
-export function useMissions(completed?: boolean) {
+export const useMissions = () => {
   const { user } = useAuth();
+
   return useQuery({
-    queryKey: ["missions", user?.id, completed],
+    queryKey: ['missions', user?.id],
     queryFn: async () => {
-      let query = supabase
-        .from("missions")
-        .select("*, attributes(name, icon)")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
-      if (completed !== undefined) {
-        query = query.eq("completed", completed);
-      }
-      const { data, error } = await query;
+      const { data, error } = await supabase
+        .from('missions')
+        .select('*')
+        .eq('user_id', user!.id);
+
       if (error) throw error;
-      return data;
+
+      // ✅ Type casting para o novo campo
+      return (data as (Database['public']['Tables']['missions']['Row'] & {
+        daily_status?: { [key: string]: string } | null
+      })[]) || [];
     },
     enabled: !!user,
   });
-}
+};
 
-export function useCompleteMission() {
+// Ao completar missão, use type casting:
+export const useCompleteMission = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      missionId,
-      attributeId,
-      xpReward,
-      secondaryAttributeIds = [],
+    mutationFn: async ({ 
+      missionId, 
+      attributeId, 
+      xpReward, 
+      secondaryAttributeIds = [] 
     }: {
-      missionId: string;
-      attributeId: string;
-      xpReward: number;
+      missionId: string; 
+      attributeId: string; 
+      xpReward: number; 
       secondaryAttributeIds?: string[];
     }) => {
-      const today = new Date().toISOString().split("T")[0]; // '2026-03-31'
+      const today = new Date().toISOString().split('T')[0];
 
-      // 1. Buscar missão para verificar tipo (diária ou única)
+      // Buscar missão
       const { data: mission, error: missionError } = await supabase
-        .from("missions")
-        .select("*")
-        .eq("id", missionId)
+        .from('missions')
+        .select('*')
+        .eq('id', missionId)
         .single();
 
       if (missionError) throw missionError;
 
-      // 2. Calcular bônus do checklist
-      const { data: checklistItems } = await supabase.from("checklist_items").select("*").eq("mission_id", missionId);
+      // ✅ Type casting para daily_status
+      const typedMission = mission as Database['public']['Tables']['missions']['Row'] & {
+        daily_status?: { [key: string]: string } | null
+      };
+
+      // Verificar se é diária
+      const daysOfWeek = (typedMission.days_of_week as string[]) || [];
+      
+      if (daysOfWeek && Array.isArray(daysOfWeek) && daysOfWeek.length > 0) {
+        // ✅ MISSÃO DIÁRIA
+        const dailyStatus = (typedMission.daily_status as { [key: string]: string }) || {};
+        dailyStatus[today] = 'completed';
+
+        const { error: updateError } = await supabase
+          .from('missions')
+          .update({ 
+            daily_status: dailyStatus as any
+          })
+          .eq('id', missionId);
+
+        if (updateError) throw updateError;
+
+        // Registrar conclusão diária
+        const { error: insertError } = await supabase
+          .from('mission_daily_completions' as any)
+          .insert({
+            mission_id: missionId,
+            completion_date: today,
+            xp_earned: xpReward,
+            gold_earned: 2,
+          } as any);
+
+        if (insertError) throw insertError;
+      } else {
+        // ✅ MISSÃO ÚNICA
+        const { error: updateError } = await supabase
+          .from('missions')
+          .update({ 
+            completed: true, 
+            completed_at: new Date().toISOString() 
+          })
+          .eq('id', missionId);
+
+        if (updateError) throw updateError;
+      }
+
+      // ... resto do código (XP, Ouro, etc.)
+      
+      // Calcular bônus do checklist
+      const { data: checklistItems } = await supabase
+        .from('checklist_items')
+        .select('*')
+        .eq('mission_id', missionId);
 
       const checklistBonus = (checklistItems || [])
         .filter((item: any) => item.completed)
@@ -85,72 +139,47 @@ export function useCompleteMission() {
 
       const totalXpReward = xpReward + checklistBonus;
 
-      // 3. ✅ LÓGICA CORRIGIDA: Diferenciar entre diária e única
-      if (mission.days_of_week && mission.days_of_week.length > 0) {
-        // ✅ MISSÃO DIÁRIA: Marcar apenas para HOJE, não permanentemente
-        const dailyStatus = mission.daily_status || {};
-        dailyStatus[today] = "completed";
-
-        const { error: updateError } = await supabase
-          .from("missions")
-          .update({
-            daily_status: dailyStatus,
-            // NÃO marcar como completed = true (mantém visível nos próximos dias)
-          })
-          .eq("id", missionId);
-
-        if (updateError) throw updateError;
-
-        // Registrar conclusão diária (para histórico)
-        await supabase
-          .from("mission_daily_completions")
-          .insert({
-            mission_id: missionId,
-            completion_date: today,
-            xp_earned: totalXpReward,
-            gold_earned: 2,
-          })
-          .throwOnError();
-      } else {
-        // ✅ MISSÃO ÚNICA: Marcar permanentemente como concluída
-        const { error: updateError } = await supabase
-          .from("missions")
-          .update({
-            completed: true,
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", missionId);
-
-        if (updateError) throw updateError;
-      }
-
-      // 4. Atualizar atributo primário
-      const { data: attr } = await supabase.from("attributes").select("xp, level").eq("id", attributeId).single();
+      // Atualizar atributo primário
+      const { data: attr } = await supabase
+        .from('attributes')
+        .select('xp, level')
+        .eq('id', attributeId)
+        .single();
 
       if (attr) {
         const newXp = attr.xp + totalXpReward;
         const newLevel = Math.floor(newXp / 100) + 1;
 
-        await supabase.from("attributes").update({ xp: newXp, level: newLevel }).eq("id", attributeId);
+        await supabase
+          .from('attributes')
+          .update({ xp: newXp, level: newLevel })
+          .eq('id', attributeId);
       }
 
-      // 5. Atualizar atributos secundários (+1 XP cada)
+      // Atualizar atributos secundários
       for (const secId of secondaryAttributeIds) {
-        const { data: secAttr } = await supabase.from("attributes").select("xp, level").eq("id", secId).single();
+        const { data: secAttr } = await supabase
+          .from('attributes')
+          .select('xp, level')
+          .eq('id', secId)
+          .single();
 
         if (secAttr) {
           const newXp = secAttr.xp + 1;
           const newLevel = Math.floor(newXp / 100) + 1;
 
-          await supabase.from("attributes").update({ xp: newXp, level: newLevel }).eq("id", secId);
+          await supabase
+            .from('attributes')
+            .update({ xp: newXp, level: newLevel })
+            .eq('id', secId);
         }
       }
 
-      // 6. Atualizar perfil do usuário
+      // Atualizar perfil
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("total_xp, xp_today, missions_completed, level")
-        .eq("user_id", user!.id)
+        .from('profiles')
+        .select('total_xp, xp_today, missions_completed, level')
+        .eq('user_id', user!.id)
         .single();
 
       if (profile) {
@@ -158,74 +187,64 @@ export function useCompleteMission() {
         const newLevel = Math.floor(newTotalXp / 200) + 1;
 
         await supabase
-          .from("profiles")
+          .from('profiles')
           .update({
             total_xp: newTotalXp,
             xp_today: profile.xp_today + totalXpReward,
             missions_completed: profile.missions_completed + 1,
             level: newLevel,
           })
-          .eq("user_id", user!.id);
+          .eq('user_id', user!.id);
       }
 
-      // 7. Registrar no log de atividades
-      await supabase.from("activity_log").insert({
-        user_id: user!.id,
-        action: "mission_complete",
-        description: `Missão concluída! +${totalXpReward} XP`,
-        xp_gained: totalXpReward,
-      });
+      // Registrar atividade
+      await supabase
+        .from('activity_log')
+        .insert({
+          user_id: user!.id,
+          action: 'mission_complete',
+          description: `Missão concluída! +${totalXpReward} XP`,
+          xp_gained: totalXpReward,
+        });
 
-      // 8. Registrar no histórico de XP
-      await supabase.from("xp_history" as any).insert({
-        user_id: user!.id,
-        xp_gained: totalXpReward,
-        type: "mission",
-      } as any);
-
-      // 9. Adicionar +2 ouro
-      const { data: bal } = await supabase.from("user_balance").select("gold").eq("user_id", user!.id).maybeSingle();
+      // Adicionar ouro
+      const { data: bal } = await supabase
+        .from('user_balance')
+        .select('gold')
+        .eq('user_id', user!.id)
+        .maybeSingle();
 
       if (bal) {
         const currentGold = (bal as any).gold ?? 100;
 
         await supabase
-          .from("user_balance")
-          .update({
-            gold: currentGold + 2,
-            updated_at: new Date().toISOString(),
+          .from('user_balance')
+          .update({ 
+            gold: currentGold + 2, 
+            updated_at: new Date().toISOString() 
           } as any)
-          .eq("user_id", user!.id);
+          .eq('user_id', user!.id);
       } else {
-        await supabase.from("user_balance").insert({
-          user_id: user!.id,
-          balance_percent: 100,
-          gold: 102,
-        } as any);
+        await supabase
+          .from('user_balance')
+          .insert({ 
+            user_id: user!.id, 
+            balance_percent: 100, 
+            gold: 102 
+          } as any);
       }
 
-      // 10. Registrar no histórico de ouro
-      await supabase.from("gold_history" as any).insert({
-        user_id: user!.id,
-        type: "ganho_missao",
-        amount: 2,
-        reason: "Missão completa",
-      } as any);
-
-      return { success: true, missionId, isMissionDaily: mission.days_of_week?.length > 0 };
+      return { success: true };
     },
 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["missions"] });
-      queryClient.invalidateQueries({ queryKey: ["attributes"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
-      queryClient.invalidateQueries({ queryKey: ["xp_history"] });
-      queryClient.invalidateQueries({ queryKey: ["gold-balance"] });
-      queryClient.invalidateQueries({ queryKey: ["gold-history"] });
+      queryClient.invalidateQueries({ queryKey: ['missions'] });
+      queryClient.invalidateQueries({ queryKey: ['attributes'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['activity'] });
     },
   });
-}
+};
 
 export function useCreateMission() {
   const { user } = useAuth();
