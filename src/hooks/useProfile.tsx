@@ -62,7 +62,9 @@ export function useCompleteMission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ missionId, attributeId, xpReward }: { missionId: string; attributeId: string; xpReward: number }) => {
+    mutationFn: async ({ missionId, attributeId, xpReward, secondaryAttributeIds = [] }: {
+      missionId: string; attributeId: string; xpReward: number; secondaryAttributeIds?: string[];
+    }) => {
       // Get checklist bonus
       const { data: checklistItems } = await supabase
         .from('checklist_items')
@@ -81,6 +83,7 @@ export function useCompleteMission() {
         .eq('id', missionId);
       if (mErr) throw mErr;
 
+      // Update primary attribute
       const { data: attr } = await supabase
         .from('attributes')
         .select('xp, level')
@@ -90,6 +93,20 @@ export function useCompleteMission() {
         const newXp = attr.xp + totalXpReward;
         const newLevel = Math.floor(newXp / 100) + 1;
         await supabase.from('attributes').update({ xp: newXp, level: newLevel }).eq('id', attributeId);
+      }
+
+      // Update secondary attributes (+1 XP each)
+      for (const secId of secondaryAttributeIds) {
+        const { data: secAttr } = await supabase
+          .from('attributes')
+          .select('xp, level')
+          .eq('id', secId)
+          .single();
+        if (secAttr) {
+          const newXp = secAttr.xp + 1;
+          const newLevel = Math.floor(newXp / 100) + 1;
+          await supabase.from('attributes').update({ xp: newXp, level: newLevel }).eq('id', secId);
+        }
       }
 
       const { data: profile } = await supabase
@@ -115,7 +132,6 @@ export function useCompleteMission() {
         xp_gained: totalXpReward,
       });
 
-      // Record in xp_history
       await supabase.from('xp_history' as any).insert({
         user_id: user!.id,
         xp_gained: totalXpReward,
@@ -165,9 +181,9 @@ export function useCreateMission() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ title, attributeId, dueDate, daysOfWeek, horarioProvavel, priority, description, notes }: {
+    mutationFn: async ({ title, attributeId, dueDate, daysOfWeek, horarioProvavel, priority, description, notes, secondaryAttributeIds }: {
       title: string; attributeId: string; dueDate?: string; daysOfWeek?: string[]; horarioProvavel?: string;
-      priority?: string; description?: string; notes?: string;
+      priority?: string; description?: string; notes?: string; secondaryAttributeIds?: string[];
     }) => {
       const { error } = await supabase.from('missions').insert({
         user_id: user!.id,
@@ -179,6 +195,7 @@ export function useCreateMission() {
         priority: priority || 'media',
         description: description || null,
         notes: notes || null,
+        secondary_attribute_ids: secondaryAttributeIds || [],
       } as any);
       if (error) throw error;
     },
@@ -300,7 +317,6 @@ export function useFightBoss() {
   });
 }
 
-// Classes
 export function useClasses() {
   return useQuery({
     queryKey: ['classes'],
@@ -334,7 +350,6 @@ export function useSelectClass() {
   });
 }
 
-// Checklist items
 export function useChecklistItems(missionId: string) {
   return useQuery({
     queryKey: ['checklist', missionId],
@@ -377,7 +392,6 @@ export function useToggleChecklistItem() {
         .eq('id', itemId);
       if (error) throw error;
 
-      // If completing a sub-mission, record XP
       if (completed && user) {
         const bonus = xpBonus || 2;
         await supabase.from('xp_history' as any).insert({
@@ -386,7 +400,6 @@ export function useToggleChecklistItem() {
           type: 'sub_mission',
         } as any);
 
-        // Update profile xp
         const { data: profile } = await supabase
           .from('profiles')
           .select('total_xp, xp_today, level')
@@ -411,7 +424,6 @@ export function useToggleChecklistItem() {
   });
 }
 
-// XP History for charts
 export function useXpHistory(days: number = 7) {
   const { user } = useAuth();
   return useQuery({
