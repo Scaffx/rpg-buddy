@@ -46,18 +46,33 @@ const TABS = [
   { value: 'concluidas', label: 'Concluídas', color: 'bg-success/20 text-success' },
 ];
 
+const ATTRIBUTE_COLORS: Record<string, string> = {
+  'Agilidade': 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30',
+  'Carisma': 'bg-purple-400/20 text-purple-400 border-purple-400/30',
+  'Criatividade': 'bg-pink-400/20 text-pink-400 border-pink-400/30',
+  'Disciplina': 'bg-pink-400/20 text-pink-400 border-pink-400/30',
+  'Força': 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30',
+  'Inteligência': 'bg-pink-400/20 text-pink-400 border-pink-400/30',
+  'Resiliência': 'bg-blue-400/20 text-blue-400 border-blue-400/30',
+  'Sabedoria': 'bg-teal-400/20 text-teal-400 border-teal-400/30',
+  'Vitalidade': 'bg-pink-400/20 text-pink-400 border-pink-400/30',
+  'Autoaperfeiçoamento': 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30',
+  'Relacionamento': 'bg-purple-400/20 text-purple-400 border-purple-400/30',
+};
+
 const ATTRIBUTE_CATEGORIES = [
   { name: 'Todos', emoji: '🎯' },
-  { name: 'Corpo', emoji: '💪' },
-  { name: 'Saúde', emoji: '❤️' },
-  { name: 'Finanças', emoji: '💰' },
-  { name: 'Trabalho', emoji: '💼' },
-  { name: 'Estudos', emoji: '📚' },
-  { name: 'Rotina & Casa', emoji: '🏠' },
-  { name: 'Desenvolvimento', emoji: '🚀' },
-  { name: 'Relacionamento', emoji: '💜' },
+  { name: 'Agilidade', emoji: '⚡' },
+  { name: 'Carisma', emoji: '👤' },
+  { name: 'Criatividade', emoji: '🎨' },
+  { name: 'Disciplina', emoji: '✨' },
+  { name: 'Força', emoji: '💪' },
+  { name: 'Inteligência', emoji: '🧠' },
+  { name: 'Resiliência', emoji: '🛡️' },
+  { name: 'Sabedoria', emoji: '📚' },
+  { name: 'Vitalidade', emoji: '❤️' },
   { name: 'Autoaperfeiçoamento', emoji: '⭐' },
-  { name: 'Livre', emoji: '🎯' },
+  { name: 'Relacionamento', emoji: '💜' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -65,12 +80,6 @@ const STATUS_COLORS: Record<string, string> = {
   em_progresso: 'bg-yellow-400',
   completa: 'bg-success',
   arquivada: 'bg-muted-foreground',
-};
-
-const PRIORITY_BORDER: Record<string, string> = {
-  alta: 'border-l-destructive',
-  media: 'border-l-yellow-400',
-  baixa: 'border-l-success',
 };
 
 export default function Missions() {
@@ -90,6 +99,7 @@ export default function Missions() {
   const [formDescription, setFormDescription] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [formAttrId, setFormAttrId] = useState('');
+  const [formSecondaryAttrIds, setFormSecondaryAttrIds] = useState<string[]>([]);
   const [formPriority, setFormPriority] = useState('media');
   const [formDays, setFormDays] = useState<string[]>([]);
   const [formHorario, setFormHorario] = useState('flex');
@@ -118,38 +128,42 @@ export default function Missions() {
     if (!allMissions) return [];
     let result = [...allMissions];
 
-    // Tab filter
     if (activeTab === 'pendentes') {
-      result = result.filter((m: any) => !m.completed && (m as any).status !== 'arquivada');
+      result = result.filter((m: any) => !m.completed && m.status !== 'arquivada');
     } else if (activeTab === 'foco') {
       result = result.filter((m: any) => {
         const days = (m.days_of_week as string[]) || [];
         return !m.completed && (days.length === 0 || days.includes(todayDay));
       });
     } else if (activeTab === 'concluidas') {
-      result = result.filter((m: any) => m.completed || (m as any).status === 'arquivada');
+      result = result.filter((m: any) => m.completed || m.status === 'arquivada');
     }
 
-    // Category filter
     if (!selectedCategories.includes('Todos')) {
       result = result.filter((m: any) => {
-        const attrName = (m as any).attributes?.name;
-        return selectedCategories.includes(attrName);
+        const attrName = m.attributes?.name;
+        const secondaryIds: string[] = (m as any).secondary_attribute_ids || [];
+        const allAttrNames = [attrName];
+        if (attrs && secondaryIds.length > 0) {
+          secondaryIds.forEach((id: string) => {
+            const a = attrs.find((at: any) => at.id === id);
+            if (a) allAttrNames.push(a.name);
+          });
+        }
+        return selectedCategories.some((c) => allAttrNames.includes(c));
       });
     }
 
-    // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((m: any) => m.title.toLowerCase().includes(q));
     }
 
-    // Sort by priority
     const priorityOrder: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
-    result.sort((a: any, b: any) => (priorityOrder[(a as any).priority || 'media'] ?? 1) - (priorityOrder[(b as any).priority || 'media'] ?? 1));
+    result.sort((a: any, b: any) => (priorityOrder[a.priority || 'media'] ?? 1) - (priorityOrder[b.priority || 'media'] ?? 1));
 
     return result;
-  }, [allMissions, activeTab, selectedCategories, searchQuery, todayDay]);
+  }, [allMissions, activeTab, selectedCategories, searchQuery, todayDay, attrs]);
 
   // Group by time period
   const groupedMissions = useMemo(() => {
@@ -183,6 +197,7 @@ export default function Missions() {
     setFormDescription('');
     setFormNotes('');
     setFormAttrId('');
+    setFormSecondaryAttrIds([]);
     setFormPriority('media');
     setFormDays([]);
     setFormHorario('flex');
@@ -192,10 +207,11 @@ export default function Missions() {
   const openEditModal = (m: any) => {
     setEditingMission(m);
     setFormTitle(m.title);
-    setFormDescription((m as any).description || '');
-    setFormNotes((m as any).notes || '');
+    setFormDescription(m.description || '');
+    setFormNotes(m.notes || '');
     setFormAttrId(m.attribute_id);
-    setFormPriority((m as any).priority || 'media');
+    setFormSecondaryAttrIds((m as any).secondary_attribute_ids || []);
+    setFormPriority(m.priority || 'media');
     setFormDays((m.days_of_week as string[]) || []);
     setFormHorario(m.horario_provavel || 'flex');
     setShowCreateEdit(true);
@@ -215,6 +231,7 @@ export default function Missions() {
             priority: formPriority,
             days_of_week: formDays,
             horario_provavel: formHorario,
+            secondary_attribute_ids: formSecondaryAttrIds,
           },
         });
         toast({ title: '✏️ Missão atualizada!' });
@@ -224,8 +241,11 @@ export default function Missions() {
           attributeId: formAttrId,
           daysOfWeek: formDays,
           horarioProvavel: formHorario,
+          priority: formPriority,
+          description: formDescription.trim() || undefined,
+          notes: formNotes.trim() || undefined,
+          secondaryAttributeIds: formSecondaryAttrIds,
         });
-        // Update the new mission with extra fields
         toast({ title: '📜 Missão criada!', description: 'Boa sorte, aventureiro!' });
       }
       setShowCreateEdit(false);
@@ -240,6 +260,7 @@ export default function Missions() {
         missionId: mission.id,
         attributeId: mission.attribute_id,
         xpReward: mission.xp_reward,
+        secondaryAttributeIds: (mission as any).secondary_attribute_ids || [],
       });
       toast({ title: '⚔️ Missão concluída!', description: `+${mission.xp_reward} XP ganhos!` });
     } catch {
@@ -267,7 +288,7 @@ export default function Missions() {
   };
 
   const handlePlay = async (mission: any) => {
-    const newStatus = (mission as any).status === 'em_progresso' ? 'pendente' : 'em_progresso';
+    const newStatus = mission.status === 'em_progresso' ? 'pendente' : 'em_progresso';
     try {
       await updateMission.mutateAsync({ missionId: mission.id, updates: { status: newStatus } });
       toast({
@@ -363,7 +384,7 @@ export default function Missions() {
                 <div key={m.id} className="bg-card border border-destructive/20 rounded-lg p-3 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
-                    <p className="text-xs text-destructive">XP Perdido: -{(m as any).xp_penalized || m.xp_reward}</p>
+                    <p className="text-xs text-destructive">XP Perdido: -{m.xp_penalized || m.xp_reward}</p>
                   </div>
                   <button
                     onClick={() => {
@@ -405,6 +426,7 @@ export default function Missions() {
                     <MissionCard
                       key={m.id}
                       mission={m}
+                      attrs={attrs || []}
                       index={i}
                       expanded={expandedMission === m.id}
                       onToggle={() => setExpandedMission(expandedMission === m.id ? null : m.id)}
@@ -435,6 +457,7 @@ export default function Missions() {
         formDescription={formDescription} setFormDescription={setFormDescription}
         formNotes={formNotes} setFormNotes={setFormNotes}
         formAttrId={formAttrId} setFormAttrId={setFormAttrId}
+        formSecondaryAttrIds={formSecondaryAttrIds} setFormSecondaryAttrIds={setFormSecondaryAttrIds}
         formPriority={formPriority} setFormPriority={setFormPriority}
         formDays={formDays} setFormDays={setFormDays}
         formHorario={formHorario} setFormHorario={setFormHorario}
@@ -465,13 +488,23 @@ export default function Missions() {
   );
 }
 
+/* ─── Attribute Chip ─── */
+function AttributeChip({ name, icon }: { name: string; icon: string }) {
+  const colorClass = ATTRIBUTE_COLORS[name] || 'bg-secondary text-secondary-foreground border-border';
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${colorClass}`}>
+      {icon} {name}
+    </span>
+  );
+}
+
 /* ─── Mission Card ─── */
 
 function MissionCard({
-  mission, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
+  mission, attrs, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
   completing, newChecklistText, onNewChecklistTextChange,
 }: {
-  mission: any; index: number; expanded: boolean;
+  mission: any; attrs: any[]; index: number; expanded: boolean;
   onToggle: () => void; onComplete: () => void; onEdit: () => void;
   onDelete: () => void; onArchive: () => void; onPlay: () => void;
   completing: boolean; newChecklistText: string; onNewChecklistTextChange: (v: string) => void;
@@ -483,13 +516,20 @@ function MissionCard({
   const { toast } = useToast();
 
   const days = (mission.days_of_week as string[]) || [];
-  const timeLabel = TIMES.find((t) => t.value === mission.horario_provavel)?.label || '🔄 Flex';
   const completedCount = (checklist || []).filter((c: any) => c.completed).length;
   const totalCount = (checklist || []).length;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-  const status = (mission as any).status || 'pendente';
-  const priority = (mission as any).priority || 'media';
+  const status = mission.status || 'pendente';
   const isCompleted = mission.completed;
+
+  // Get all attributes for this mission
+  const primaryAttr = mission.attributes;
+  const secondaryIds: string[] = (mission as any).secondary_attribute_ids || [];
+  const secondaryAttrs = attrs.filter((a) => secondaryIds.includes(a.id));
+  const allMissionAttrs = [
+    primaryAttr && { name: primaryAttr.name, icon: primaryAttr.icon },
+    ...secondaryAttrs.map((a: any) => ({ name: a.name, icon: a.icon })),
+  ].filter(Boolean);
 
   const handleAddChecklist = async () => {
     if (!newChecklistText.trim()) return;
@@ -500,10 +540,6 @@ function MissionCard({
       toast({ title: 'Erro', variant: 'destructive' });
     }
   };
-
-  const [showFullDesc, setShowFullDesc] = useState(false);
-  const description = (mission as any).description || '';
-  const hasLongDesc = description.length > 80;
 
   return (
     <motion.div
@@ -527,8 +563,8 @@ function MissionCard({
         <p className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>{mission.title}</p>
 
         {/* Description */}
-        {description && (
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{description}</p>
+        {mission.description && (
+          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{mission.description}</p>
         )}
 
         {/* Sub-missions */}
@@ -542,14 +578,14 @@ function MissionCard({
 
       {/* Bottom: Tags + actions */}
       <div className="mt-auto pt-2 space-y-2">
-        {/* Tags */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Attribute chips */}
+        <div className="flex items-center gap-1 flex-wrap">
           {days.length > 0 && (
             <span className="text-xs font-medium bg-primary/15 text-primary px-2 py-0.5 rounded">📅 Diária</span>
           )}
-          <span className="text-xs font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded">
-            {(mission as any).attributes?.icon} {(mission as any).attributes?.name}
-          </span>
+          {allMissionAttrs.map((a: any, idx: number) => (
+            <AttributeChip key={idx} name={a.name} icon={a.icon} />
+          ))}
         </div>
 
         {/* XP + Date */}
@@ -592,9 +628,9 @@ function MissionCard({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden space-y-2 pt-2 border-t border-border"
           >
-            {(mission as any).notes && (
+            {mission.notes && (
               <p className="text-xs text-muted-foreground italic bg-secondary/50 p-2 rounded">
-                📝 {(mission as any).notes}
+                📝 {mission.notes}
               </p>
             )}
             <p className="text-xs text-muted-foreground font-medium">Sub-missões (+2 XP cada)</p>
@@ -640,6 +676,7 @@ function MissionFormModal({
   open, onOpenChange, isEditing, attrs,
   formTitle, setFormTitle, formDescription, setFormDescription,
   formNotes, setFormNotes, formAttrId, setFormAttrId,
+  formSecondaryAttrIds, setFormSecondaryAttrIds,
   formPriority, setFormPriority, formDays, setFormDays,
   formHorario, setFormHorario, onSave, saving, missionId,
 }: {
@@ -648,6 +685,7 @@ function MissionFormModal({
   formDescription: string; setFormDescription: (v: string) => void;
   formNotes: string; setFormNotes: (v: string) => void;
   formAttrId: string; setFormAttrId: (v: string) => void;
+  formSecondaryAttrIds: string[]; setFormSecondaryAttrIds: (v: string[]) => void;
   formPriority: string; setFormPriority: (v: string) => void;
   formDays: string[]; setFormDays: (v: string[]) => void;
   formHorario: string; setFormHorario: (v: string) => void;
@@ -663,11 +701,23 @@ function MissionFormModal({
     setFormDays(formDays.includes(d) ? formDays.filter((x) => x !== d) : [...formDays, d]);
   };
 
+  const toggleSecondaryAttr = (attrId: string) => {
+    if (attrId === formAttrId) return; // Can't add primary as secondary
+    if (formSecondaryAttrIds.includes(attrId)) {
+      setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== attrId));
+    } else if (formSecondaryAttrIds.length < 2) { // Max 2 secondary (3 total)
+      setFormSecondaryAttrIds([...formSecondaryAttrIds, attrId]);
+    }
+  };
+
   const handleAddItem = async () => {
     if (!newItem.trim() || !missionId) return;
     await addItem.mutateAsync({ missionId, description: newItem.trim() });
     setNewItem('');
   };
+
+  // All selected attribute IDs (primary + secondary)
+  const allSelectedIds = [formAttrId, ...formSecondaryAttrIds].filter(Boolean);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -691,12 +741,16 @@ function MissionFormModal({
             <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Descreva a missão..." className="bg-secondary border-border min-h-[60px]" />
           </div>
 
-          {/* Attribute */}
+          {/* Primary Attribute */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Atributo *</label>
-            <Select value={formAttrId} onValueChange={setFormAttrId}>
+            <label className="text-xs text-muted-foreground mb-1 block">Atributo Principal *</label>
+            <Select value={formAttrId} onValueChange={(v) => {
+              setFormAttrId(v);
+              // Remove from secondary if it was there
+              setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== v));
+            }}>
               <SelectTrigger className="bg-secondary border-border">
-                <SelectValue placeholder="Escolha o atributo" />
+                <SelectValue placeholder="Escolha o atributo principal" />
               </SelectTrigger>
               <SelectContent>
                 {attrs.map((a: any) => (
@@ -704,6 +758,46 @@ function MissionFormModal({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Secondary Attributes (up to 2 more) */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              Atributos Secundários (até 2)
+            </label>
+            <div className="flex gap-1.5 flex-wrap">
+              {attrs.map((a: any) => {
+                const isPrimary = a.id === formAttrId;
+                const isSelected = formSecondaryAttrIds.includes(a.id);
+                const colorClass = ATTRIBUTE_COLORS[a.name] || 'bg-secondary text-secondary-foreground border-border';
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => toggleSecondaryAttr(a.id)}
+                    disabled={isPrimary}
+                    className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                      isPrimary
+                        ? 'opacity-30 cursor-not-allowed bg-secondary border-border text-muted-foreground'
+                        : isSelected
+                          ? `${colorClass} ring-1 ring-current`
+                          : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {a.icon} {a.name}
+                  </button>
+                );
+              })}
+            </div>
+            {allSelectedIds.length > 0 && (
+              <div className="flex gap-1 mt-2 flex-wrap">
+                {allSelectedIds.map((id) => {
+                  const a = attrs.find((at: any) => at.id === id);
+                  if (!a) return null;
+                  return <AttributeChip key={id} name={a.name} icon={a.icon} />;
+                })}
+              </div>
+            )}
           </div>
 
           {/* Notes */}

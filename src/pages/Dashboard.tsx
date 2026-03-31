@@ -1,7 +1,26 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useProfile, useAttributes, useActivityLog, useClasses } from '@/hooks/useProfile';
-import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar } from 'lucide-react';
+import { useProfile, useAttributes, useMissions, useClasses } from '@/hooks/useProfile';
+import { useCompleteMission } from '@/hooks/useProfile';
+import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import AppLayout from '@/components/AppLayout';
+
+const DAYS_MAP = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+const ATTRIBUTE_COLORS: Record<string, string> = {
+  'Agilidade': 'bg-yellow-400/20 text-yellow-400',
+  'Carisma': 'bg-purple-400/20 text-purple-400',
+  'Criatividade': 'bg-pink-400/20 text-pink-400',
+  'Disciplina': 'bg-pink-400/20 text-pink-400',
+  'Força': 'bg-yellow-400/20 text-yellow-400',
+  'Inteligência': 'bg-pink-400/20 text-pink-400',
+  'Resiliência': 'bg-blue-400/20 text-blue-400',
+  'Sabedoria': 'bg-teal-400/20 text-teal-400',
+  'Vitalidade': 'bg-pink-400/20 text-pink-400',
+  'Autoaperfeiçoamento': 'bg-yellow-400/20 text-yellow-400',
+  'Relacionamento': 'bg-purple-400/20 text-purple-400',
+};
 
 function getRank(level: number) {
   if (level >= 50) return 'Lendário';
@@ -15,10 +34,36 @@ function getRank(level: number) {
 export default function Dashboard() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: attributes, isLoading: attrsLoading } = useAttributes();
-  const { data: activity, isLoading: activityLoading } = useActivityLog();
+  const { data: allMissions, isLoading: missionsLoading } = useMissions();
   const { data: classes } = useClasses();
+  const completeMission = useCompleteMission();
 
   const currentClass = classes?.find((c: any) => c.id === profile?.current_class_id);
+
+  const todayDay = useMemo(() => {
+    const d = new Date().getDay();
+    return DAYS_MAP[d];
+  }, []);
+
+  const todayDayLabel = useMemo(() => {
+    const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return days[new Date().getDay()];
+  }, []);
+
+  // Filter today's daily missions
+  const todayMissions = useMemo(() => {
+    if (!allMissions) return [];
+    return allMissions
+      .filter((m: any) => {
+        if (m.completed) return false;
+        const days: string[] = m.days_of_week || [];
+        return days.length > 0 && days.includes(todayDay);
+      })
+      .sort((a: any, b: any) => {
+        const order: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
+        return (order[a.priority || 'media'] ?? 1) - (order[b.priority || 'media'] ?? 1);
+      });
+  }, [allMissions, todayDay]);
 
   if (profileLoading || attrsLoading) {
     return (
@@ -39,6 +84,15 @@ export default function Dashboard() {
     { key: 'missions', label: 'Missões Total', icon: Target, value: profile?.missions_completed || 0 },
     { key: 'xp_today', label: 'XP Hoje', icon: TrendingUp, value: profile?.xp_today || 0 },
   ];
+
+  const handleComplete = async (mission: any) => {
+    await completeMission.mutateAsync({
+      missionId: mission.id,
+      attributeId: mission.attribute_id,
+      xpReward: mission.xp_reward,
+      secondaryAttributeIds: mission.secondary_attribute_ids || [],
+    });
+  };
 
   return (
     <AppLayout>
@@ -110,29 +164,64 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Activity */}
+        {/* Today's Daily Missions */}
         <div>
-          <h2 className="text-lg font-display font-semibold text-foreground mb-3">Histórico Recente</h2>
-          {activityLoading ? (
+          <h2 className="text-lg font-display font-semibold text-foreground mb-1">
+            📅 Missões Diárias de Hoje
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">{todayDayLabel}</p>
+
+          {missionsLoading ? (
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          ) : activity && activity.length > 0 ? (
+          ) : todayMissions.length > 0 ? (
             <div className="space-y-2">
-              {activity.map((item) => (
-                <div key={item.id} className="rpg-card flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-foreground">{item.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(item.created_at).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                  {item.xp_gained ? (
-                    <span className="text-primary font-bold text-sm">+{item.xp_gained} XP</span>
-                  ) : null}
-                </div>
-              ))}
+              {todayMissions.map((m: any) => {
+                const allAttrs = [
+                  m.attributes && { name: m.attributes.name, icon: m.attributes.icon },
+                  ...(attributes || [])
+                    .filter((a) => ((m as any).secondary_attribute_ids || []).includes(a.id))
+                    .map((a) => ({ name: a.name, icon: a.icon })),
+                ].filter(Boolean);
+
+                return (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="rpg-card flex items-center justify-between gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {allAttrs.map((a: any, idx: number) => (
+                          <span
+                            key={idx}
+                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${ATTRIBUTE_COLORS[a.name] || 'bg-secondary text-muted-foreground'}`}
+                          >
+                            {a.icon} {a.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-primary font-bold">+{m.xp_reward} XP</span>
+                      <Button
+                        size="sm"
+                        onClick={() => handleComplete(m)}
+                        disabled={completeMission.isPending}
+                        className="h-8 px-3 bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 text-xs"
+                      >
+                        <Check className="w-3 h-3 mr-1" /> Completar
+                      </Button>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Nenhuma atividade ainda. Complete missões para começar!</p>
+            <p className="text-sm text-muted-foreground rpg-card text-center py-4">
+              Nenhuma missão para hoje. Crie uma! 🎯
+            </p>
           )}
         </div>
       </div>

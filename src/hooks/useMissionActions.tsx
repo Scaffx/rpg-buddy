@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
 
 export function useUpdateMission() {
   const queryClient = useQueryClient();
@@ -16,6 +15,7 @@ export function useUpdateMission() {
         days_of_week?: string[];
         horario_provavel?: string;
         status?: string;
+        secondary_attribute_ids?: string[];
       };
     }) => {
       const { error } = await supabase
