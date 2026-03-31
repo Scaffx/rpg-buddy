@@ -266,6 +266,7 @@ export type Database = {
           is_failed: boolean
           notes: string | null
           priority: string
+          secondary_attribute_ids: Json | null
           status: string
           title: string
           updated_at: string
@@ -287,6 +288,7 @@ export type Database = {
           is_failed?: boolean
           notes?: string | null
           priority?: string
+          secondary_attribute_ids?: Json | null
           status?: string
           title: string
           updated_at?: string
@@ -308,6 +310,7 @@ export type Database = {
           is_failed?: boolean
           notes?: string | null
           priority?: string
+          secondary_attribute_ids?: Json | null
           status?: string
           title?: string
           updated_at?: string
