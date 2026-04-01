@@ -1,34 +1,34 @@
-import { useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { useProfile, useAttributes, useMissions, useClasses } from '@/hooks/useProfile';
-import { useCompleteMission } from '@/hooks/useProfile';
-import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import AppLayout from '@/components/AppLayout';
+import { useMemo } from "react";
+import { motion } from "framer-motion";
+import { useProfile, useAttributes, useMissions, useClasses } from "@/hooks/useProfile";
+import { useCompleteMission } from "@/hooks/useProfile";
+import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import AppLayout from "@/components/AppLayout";
 
-const DAYS_MAP = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 const ATTRIBUTE_COLORS: Record<string, string> = {
-  'Agilidade': 'bg-yellow-400/20 text-yellow-400',
-  'Carisma': 'bg-purple-400/20 text-purple-400',
-  'Criatividade': 'bg-pink-400/20 text-pink-400',
-  'Disciplina': 'bg-pink-400/20 text-pink-400',
-  'Força': 'bg-yellow-400/20 text-yellow-400',
-  'Inteligência': 'bg-pink-400/20 text-pink-400',
-  'Resiliência': 'bg-blue-400/20 text-blue-400',
-  'Sabedoria': 'bg-teal-400/20 text-teal-400',
-  'Vitalidade': 'bg-pink-400/20 text-pink-400',
-  'Autoaperfeiçoamento': 'bg-yellow-400/20 text-yellow-400',
-  'Relacionamento': 'bg-purple-400/20 text-purple-400',
+  Agilidade: "bg-yellow-400/20 text-yellow-400",
+  Carisma: "bg-purple-400/20 text-purple-400",
+  Criatividade: "bg-pink-400/20 text-pink-400",
+  Disciplina: "bg-pink-400/20 text-pink-400",
+  Força: "bg-yellow-400/20 text-yellow-400",
+  Inteligência: "bg-pink-400/20 text-pink-400",
+  Resiliência: "bg-blue-400/20 text-blue-400",
+  Sabedoria: "bg-teal-400/20 text-teal-400",
+  Vitalidade: "bg-pink-400/20 text-pink-400",
+  Autoaperfeiçoamento: "bg-yellow-400/20 text-yellow-400",
+  Relacionamento: "bg-purple-400/20 text-purple-400",
 };
 
 function getRank(level: number) {
-  if (level >= 50) return 'Lendário';
-  if (level >= 30) return 'Mestre';
-  if (level >= 20) return 'Veterano';
-  if (level >= 10) return 'Guerreiro';
-  if (level >= 5) return 'Aprendiz';
-  return 'Novato';
+  if (level >= 50) return "Lendário";
+  if (level >= 30) return "Mestre";
+  if (level >= 20) return "Veterano";
+  if (level >= 10) return "Guerreiro";
+  if (level >= 5) return "Aprendiz";
+  return "Novato";
 }
 
 export default function Dashboard() {
@@ -46,7 +46,7 @@ export default function Dashboard() {
   }, []);
 
   const todayDayLabel = useMemo(() => {
-    const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const days = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
     return days[new Date().getDay()];
   }, []);
 
@@ -61,7 +61,7 @@ export default function Dashboard() {
       })
       .sort((a: any, b: any) => {
         const order: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
-        return (order[a.priority || 'media'] ?? 1) - (order[b.priority || 'media'] ?? 1);
+        return (order[a.priority || "media"] ?? 1) - (order[b.priority || "media"] ?? 1);
       });
   }, [allMissions, todayDay]);
 
@@ -76,13 +76,23 @@ export default function Dashboard() {
   }
 
   const statCards = [
-    { key: 'level', label: 'Nível', icon: Star, value: profile?.level || 1 },
-    { key: 'rank', label: 'Rank', icon: Trophy, value: getRank(profile?.level || 1) },
-    { key: 'class', label: 'Classe', icon: Swords, value: currentClass ? `${currentClass.icon} ${currentClass.name}` : '📖 Aprendiz' },
-    { key: 'total_xp', label: 'XP Total', icon: Zap, value: profile?.total_xp || 0 },
-    { key: 'missions_today', label: 'Missões Hoje', icon: Calendar, value: profile?.xp_today ? Math.floor(profile.xp_today / 25) : 0 },
-    { key: 'missions', label: 'Missões Total', icon: Target, value: profile?.missions_completed || 0 },
-    { key: 'xp_today', label: 'XP Hoje', icon: TrendingUp, value: profile?.xp_today || 0 },
+    { key: "level", label: "Nível", icon: Star, value: profile?.level || 1 },
+    { key: "rank", label: "Rank", icon: Trophy, value: getRank(profile?.level || 1) },
+    {
+      key: "class",
+      label: "Classe",
+      icon: Swords,
+      value: currentClass ? `${currentClass.icon} ${currentClass.name}` : "📖 Aprendiz",
+    },
+    { key: "total_xp", label: "XP Total", icon: Zap, value: profile?.total_xp || 0 },
+    {
+      key: "missions_today",
+      label: "Missões Hoje",
+      icon: Calendar,
+      value: profile?.xp_today ? Math.floor(profile.xp_today / 25) : 0,
+    },
+    { key: "missions", label: "Missões Total", icon: Target, value: profile?.missions_completed || 0 },
+    { key: "xp_today", label: "XP Hoje", icon: TrendingUp, value: profile?.xp_today || 0 },
   ];
 
   const handleComplete = async (mission: any) => {
@@ -99,11 +109,9 @@ export default function Dashboard() {
       <div className="space-y-6">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
-            Olá, {profile?.display_name || 'Aventureiro'}!
+            Olá, {profile?.display_name || "Aventureiro"}!
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Sua jornada continua. Continue evoluindo!
-          </p>
+          <p className="text-muted-foreground text-sm mt-1">Sua jornada continua. Continue evoluindo!</p>
         </motion.div>
 
         {/* Stat cards */}
@@ -125,7 +133,12 @@ export default function Dashboard() {
 
         {/* XP Progress */}
         {profile && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="rpg-card">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="rpg-card"
+          >
             <div className="flex justify-between text-sm mb-2">
               <span className="text-muted-foreground">Progresso para Nível {profile.level + 1}</span>
               <span className="text-primary font-semibold">{profile.total_xp % 200}/200 XP</span>
@@ -166,9 +179,7 @@ export default function Dashboard() {
 
         {/* Today's Daily Missions */}
         <div>
-          <h2 className="text-lg font-display font-semibold text-foreground mb-1">
-            📅 Missões Diárias de Hoje
-          </h2>
+          <h2 className="text-lg font-display font-semibold text-foreground mb-1">📅 Missões de Hoje</h2>
           <p className="text-xs text-muted-foreground mb-3">{todayDayLabel}</p>
 
           {missionsLoading ? (
@@ -196,7 +207,7 @@ export default function Dashboard() {
                         {allAttrs.map((a: any, idx: number) => (
                           <span
                             key={idx}
-                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${ATTRIBUTE_COLORS[a.name] || 'bg-secondary text-muted-foreground'}`}
+                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${ATTRIBUTE_COLORS[a.name] || "bg-secondary text-muted-foreground"}`}
                           >
                             {a.icon} {a.name}
                           </span>
