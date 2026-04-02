@@ -89,8 +89,8 @@ export const useCompleteMission = () => {
         const { error: updateError } = await supabase
           .from('missions')
           .update({ 
-            daily_status: dailyStatus as any
-          })
+            daily_status: dailyStatus
+          } as any)
           .eq('id', missionId);
 
         if (updateError) throw updateError;

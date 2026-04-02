@@ -356,7 +356,7 @@ const handleSave = async () => {
         title: formTitle.trim(),
         attributeId: formAttrId,
         daysOfWeek: formDays,
-        horarioProvavel: horarioParaSalvar, // ✅ Array ou string
+        horarioProvavel: Array.isArray(horarioParaSalvar) ? horarioParaSalvar.join(',') : horarioParaSalvar,
         priority: formPriority,
         description: formDescription.trim() || undefined,
         notes: formNotes.trim() || undefined,

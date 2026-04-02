@@ -35,7 +35,7 @@ export function useUndoMission() {
 
       const { error: updateError } = await supabase
         .from('missions')
-        .update({ daily_status: dailyStatus as any })
+        .update({ daily_status: dailyStatus } as any)
         .eq('id', missionId);
 
       if (updateError) throw updateError;
