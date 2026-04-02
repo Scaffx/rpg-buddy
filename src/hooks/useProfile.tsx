@@ -76,10 +76,7 @@ export const useCompleteMission = () => {
 
       if (missionError) throw missionError;
 
-      // ✅ Type casting para daily_status
-      const typedMission = mission as Database['public']['Tables']['missions']['Row'] & {
-        daily_status?: { [key: string]: string } | null
-      };
+      const typedMission = mission as any;
 
       // Verificar se é diária
       const daysOfWeek = (typedMission.days_of_week as string[]) || [];
