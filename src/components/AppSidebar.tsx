@@ -57,7 +57,7 @@ export function AppSidebar() {
   const currentXp = profile ? profile.total_xp % xpForLevel : 0;
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border [&_[data-sidebar=content]]:overflow-y-auto [&_[data-sidebar=content]]:scrollbar-none [&_[data-sidebar=content]]:[-ms-overflow-style:none] [&_[data-sidebar=content]]:[-webkit-overflow-scrolling:touch]">
       <SidebarContent>
         {/* Profile Section */}
         {!collapsed && (

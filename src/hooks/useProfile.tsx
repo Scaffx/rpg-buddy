@@ -42,10 +42,7 @@ export const useMissions = () => {
 
       if (error) throw error;
 
-      // ✅ Type casting para o novo campo
-      return (data as (Database['public']['Tables']['missions']['Row'] & {
-        daily_status?: { [key: string]: string } | null
-      })[]) || [];
+      return (data || []) as any[];
     },
     enabled: !!user,
   });
@@ -79,10 +76,7 @@ export const useCompleteMission = () => {
 
       if (missionError) throw missionError;
 
-      // ✅ Type casting para daily_status
-      const typedMission = mission as Database['public']['Tables']['missions']['Row'] & {
-        daily_status?: { [key: string]: string } | null
-      };
+      const typedMission = mission as any;
 
       // Verificar se é diária
       const daysOfWeek = (typedMission.days_of_week as string[]) || [];
@@ -95,8 +89,8 @@ export const useCompleteMission = () => {
         const { error: updateError } = await supabase
           .from('missions')
           .update({ 
-            daily_status: dailyStatus as any
-          })
+            daily_status: dailyStatus
+          } as any)
           .eq('id', missionId);
 
         if (updateError) throw updateError;

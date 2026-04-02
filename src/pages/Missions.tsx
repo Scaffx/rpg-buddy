@@ -346,7 +346,7 @@ const handleSave = async () => {
           attribute_id: formAttrId,
           priority: formPriority,
           days_of_week: formDays,
-          horario_provavel: horarioParaSalvar, // ✅ Array ou string
+          horario_provavel: Array.isArray(horarioParaSalvar) ? horarioParaSalvar.join(',') : horarioParaSalvar,
           secondary_attribute_ids: formSecondaryAttrIds,
         },
       });
@@ -356,7 +356,7 @@ const handleSave = async () => {
         title: formTitle.trim(),
         attributeId: formAttrId,
         daysOfWeek: formDays,
-        horarioProvavel: horarioParaSalvar, // ✅ Array ou string
+        horarioProvavel: Array.isArray(horarioParaSalvar) ? horarioParaSalvar.join(',') : horarioParaSalvar,
         priority: formPriority,
         description: formDescription.trim() || undefined,
         notes: formNotes.trim() || undefined,

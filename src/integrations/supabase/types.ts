@@ -251,12 +251,48 @@ export type Database = {
         }
         Relationships: []
       }
+      mission_daily_completions: {
+        Row: {
+          completion_date: string
+          created_at: string
+          gold_earned: number | null
+          id: string
+          mission_id: string
+          xp_earned: number
+        }
+        Insert: {
+          completion_date: string
+          created_at?: string
+          gold_earned?: number | null
+          id?: string
+          mission_id: string
+          xp_earned: number
+        }
+        Update: {
+          completion_date?: string
+          created_at?: string
+          gold_earned?: number | null
+          id?: string
+          mission_id?: string
+          xp_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_daily_completions_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missions: {
         Row: {
           attribute_id: string
           completed: boolean
           completed_at: string | null
           created_at: string
+          daily_status: Json | null
           days_of_week: Json | null
           description: string | null
           due_date: string | null
@@ -279,6 +315,7 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          daily_status?: Json | null
           days_of_week?: Json | null
           description?: string | null
           due_date?: string | null
@@ -301,6 +338,7 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          daily_status?: Json | null
           days_of_week?: Json | null
           description?: string | null
           due_date?: string | null

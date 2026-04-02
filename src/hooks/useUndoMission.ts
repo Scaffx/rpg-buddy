@@ -22,10 +22,7 @@ export function useUndoMission() {
 
       if (missionError) throw missionError;
 
-      // ✅ Type casting
-      const typedMission = mission as Database['public']['Tables']['missions']['Row'] & {
-        daily_status?: { [key: string]: string } | null
-      };
+      const typedMission = mission as any;
 
       // Verificar se foi concluída hoje
       const dailyStatus = (typedMission.daily_status as { [key: string]: string }) || {};
@@ -38,7 +35,7 @@ export function useUndoMission() {
 
       const { error: updateError } = await supabase
         .from('missions')
-        .update({ daily_status: dailyStatus as any })
+        .update({ daily_status: dailyStatus } as any)
         .eq('id', missionId);
 
       if (updateError) throw updateError;
