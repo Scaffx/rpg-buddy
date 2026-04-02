@@ -42,10 +42,7 @@ export const useMissions = () => {
 
       if (error) throw error;
 
-      // ✅ Type casting para o novo campo
-      return (data as (Database['public']['Tables']['missions']['Row'] & {
-        daily_status?: { [key: string]: string } | null
-      })[]) || [];
+      return (data || []) as any[];
     },
     enabled: !!user,
   });
