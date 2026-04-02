@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { motion } from "framer-motion";
 import { useProfile, useAttributes, useMissions, useClasses } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";

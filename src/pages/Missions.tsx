@@ -1,5 +1,5 @@
 // src/pages/Missions.tsx
-
+import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
