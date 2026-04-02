@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { motion } from "framer-motion";
 import { useProfile, useAttributes, useMissions, useClasses } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
@@ -8,19 +9,7 @@ import AppLayout from "@/components/AppLayout";
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-const ATTRIBUTE_COLORS: Record<string, string> = {
-  Agilidade: "bg-yellow-400/20 text-yellow-400",
-  Carisma: "bg-purple-400/20 text-purple-400",
-  Criatividade: "bg-pink-400/20 text-pink-400",
-  Disciplina: "bg-pink-400/20 text-pink-400",
-  Força: "bg-yellow-400/20 text-yellow-400",
-  Inteligência: "bg-pink-400/20 text-pink-400",
-  Resiliência: "bg-blue-400/20 text-blue-400",
-  Sabedoria: "bg-teal-400/20 text-teal-400",
-  Vitalidade: "bg-pink-400/20 text-pink-400",
-  Autoaperfeiçoamento: "bg-yellow-400/20 text-yellow-400",
-  Relacionamento: "bg-purple-400/20 text-purple-400",
-};
+// Importado de @/lib/attributes
 
 function getRank(level: number) {
   if (level >= 50) return "Lendário";
