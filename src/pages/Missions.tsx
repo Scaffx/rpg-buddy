@@ -346,7 +346,7 @@ const handleSave = async () => {
           attribute_id: formAttrId,
           priority: formPriority,
           days_of_week: formDays,
-          horario_provavel: horarioParaSalvar, // ✅ Array ou string
+          horario_provavel: Array.isArray(horarioParaSalvar) ? horarioParaSalvar.join(',') : horarioParaSalvar,
           secondary_attribute_ids: formSecondaryAttrIds,
         },
       });
