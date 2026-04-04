@@ -305,11 +305,14 @@ const openEditModal = (m: any) => {
   setFormPriority(m.priority || 'media');
   setFormDays((m.days_of_week as string[]) || []);
   
-  const horario = m.horario_provavel;
-  if (Array.isArray(horario)) {
+  const horario = m.horario_provavel || 'flex';
+  // Always parse comma-separated string into array
+  if (typeof horario === 'string' && horario.includes(',')) {
+    setFormHorario(horario.split(',').map((h: string) => h.trim()));
+  } else if (Array.isArray(horario)) {
     setFormHorario(horario);
   } else {
-    setFormHorario(horario || 'flex');
+    setFormHorario(horario);
   }
   
   setShowCreateEdit(true);
