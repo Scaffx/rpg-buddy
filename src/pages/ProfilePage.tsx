@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes } from "@/hooks/useProfile";
@@ -9,9 +9,12 @@ import {
   Heart, Shield, Zap, Flame, Droplets, UtensilsCrossed,
   Settings, Plus, Minus, Save, Dumbbell, Brain, Eye,
   Swords, Sparkles, BookOpen, Users, Star, Palette,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, Camera, Ruler, TrendingUp,
+  Calendar, Upload, Trash2, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const ATTRIBUTE_ICONS: Record<string, any> = {
   Agilidade: Zap, Carisma: Users, Criatividade: Palette,
@@ -73,6 +76,313 @@ function useTodayWater() {
   });
 }
 
+function useBodyMeasurements() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["body_measurements", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("body_measurements" as any)
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("measured_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!user,
+  });
+}
+
+const MEASUREMENT_FIELDS = [
+  { key: "weight_kg", label: "Peso", unit: "kg", icon: "⚖️" },
+  { key: "body_fat_percent", label: "Gordura", unit: "%", icon: "🔥" },
+  { key: "chest_cm", label: "Peito", unit: "cm", icon: "💪" },
+  { key: "waist_cm", label: "Cintura", unit: "cm", icon: "📏" },
+  { key: "hip_cm", label: "Quadril", unit: "cm", icon: "🦴" },
+  { key: "arm_cm", label: "Braço", unit: "cm", icon: "💪" },
+  { key: "thigh_cm", label: "Coxa", unit: "cm", icon: "🦵" },
+  { key: "calf_cm", label: "Panturrilha", unit: "cm", icon: "🦶" },
+];
+
+function BodyEvolutionSection() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: measurements } = useBodyMeasurements();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [showForm, setShowForm] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const saveMeasurement = useMutation({
+    mutationFn: async () => {
+      setUploading(true);
+      let photoUrl: string | null = null;
+
+      if (photoFile && user) {
+        const ext = photoFile.name.split(".").pop();
+        const path = `${user.id}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("body-photos")
+          .upload(path, photoFile);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("body-photos").getPublicUrl(path);
+        photoUrl = urlData.publicUrl;
+      }
+
+      const record: any = {
+        user_id: user!.id,
+        measured_at: new Date().toISOString().split("T")[0],
+        notes: notes || null,
+        photo_url: photoUrl,
+      };
+
+      for (const f of MEASUREMENT_FIELDS) {
+        const val = formData[f.key];
+        record[f.key] = val ? parseFloat(val) : null;
+      }
+
+      const { error } = await supabase.from("body_measurements" as any).insert(record as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["body_measurements"] });
+      toast.success("Medidas registradas! 📐");
+      setShowForm(false);
+      setFormData({});
+      setNotes("");
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setUploading(false);
+    },
+    onError: () => {
+      setUploading(false);
+      toast.error("Erro ao salvar medidas");
+    },
+  });
+
+  const photosWithUrl = (measurements || []).filter((m: any) => m.photo_url);
+  const latest = measurements?.[0];
+  const previous = measurements?.[1];
+
+  const getDiff = (key: string) => {
+    if (!latest || !previous) return null;
+    const curr = Number(latest[key]);
+    const prev = Number(previous[key]);
+    if (!curr || !prev) return null;
+    const diff = curr - prev;
+    return diff;
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Ruler className="w-5 h-5 text-emerald-400" />
+          <h3 className="text-sm font-bold text-foreground">🏋️ EVOLUÇÃO FÍSICA</h3>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"
+        >
+          <Plus className="w-3 h-3" /> Nova Medição
+        </button>
+      </div>
+
+      {/* Form */}
+      {showForm && (
+        <div className="bg-card border border-emerald-500/20 rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2">
+          <h4 className="text-xs font-bold text-emerald-400">📐 Registrar Medidas</h4>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {MEASUREMENT_FIELDS.map((f) => (
+              <div key={f.key}>
+                <label className="text-[10px] text-muted-foreground mb-0.5 block">
+                  {f.icon} {f.label} ({f.unit})
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData[f.key] || ""}
+                  onChange={(e) => setFormData({ ...formData, [f.key]: e.target.value })}
+                  className="w-full px-2 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-emerald-500/50 outline-none"
+                  placeholder="0"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <label className="text-[10px] text-muted-foreground mb-0.5 block">📝 Observações</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full px-2 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-emerald-500/50 outline-none resize-none h-16"
+              placeholder="Como você está se sentindo?"
+            />
+          </div>
+
+          {/* Photo Upload */}
+          <div>
+            <label className="text-[10px] text-muted-foreground mb-1 block">📷 Foto de Progresso</label>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1 px-3 py-2 bg-muted border border-border rounded-lg text-xs text-muted-foreground hover:border-emerald-500/50 transition-colors"
+              >
+                <Upload className="w-3 h-3" /> Escolher foto
+              </button>
+              {photoPreview && (
+                <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-emerald-500/30">
+                  <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                    className="absolute top-0.5 right-0.5 p-0.5 bg-background/80 rounded-full"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-400" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={() => saveMeasurement.mutate()}
+            disabled={uploading}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-foreground rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+          >
+            <Save className="w-4 h-4" /> {uploading ? "Salvando..." : "Salvar Medidas"}
+          </button>
+        </div>
+      )}
+
+      {/* Latest Measurements */}
+      {latest && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              📅 Última medição: {format(new Date(latest.measured_at), "dd MMM yyyy", { locale: ptBR })}
+            </span>
+            {measurements && measurements.length > 1 && (
+              <span className="text-[10px] text-emerald-400">{measurements.length} registros</span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {MEASUREMENT_FIELDS.map((f) => {
+              const value = latest[f.key];
+              if (!value) return null;
+              const diff = getDiff(f.key);
+              return (
+                <div key={f.key} className="bg-muted/30 border border-border rounded-lg p-2">
+                  <p className="text-[10px] text-muted-foreground">{f.icon} {f.label}</p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-lg font-bold text-foreground">{Number(value).toFixed(1)}</span>
+                    <span className="text-[10px] text-muted-foreground mb-0.5">{f.unit}</span>
+                  </div>
+                  {diff !== null && diff !== 0 && (
+                    <span className={`text-[10px] font-medium ${diff < 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {diff > 0 ? "+" : ""}{diff.toFixed(1)} {f.unit}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {latest.notes && (
+            <p className="text-xs text-muted-foreground italic">📝 {latest.notes}</p>
+          )}
+        </div>
+      )}
+
+      {/* Photo Gallery */}
+      {photosWithUrl.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Camera className="w-4 h-4 text-emerald-400" />
+              <h4 className="text-xs font-bold text-foreground">GALERIA DE PROGRESSO</h4>
+            </div>
+            <span className="text-[10px] text-muted-foreground">{photosWithUrl.length} fotos</span>
+          </div>
+
+          <div className="relative">
+            <div className="aspect-[4/3] rounded-lg overflow-hidden border border-border bg-muted">
+              <img
+                src={photosWithUrl[photoIndex]?.photo_url}
+                alt="Progresso"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center mt-1">
+              {format(new Date(photosWithUrl[photoIndex]?.measured_at), "dd MMM yyyy", { locale: ptBR })}
+            </p>
+            {photosWithUrl.length > 1 && (
+              <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-2 pointer-events-none">
+                <button
+                  onClick={() => setPhotoIndex(Math.max(0, photoIndex - 1))}
+                  disabled={photoIndex === 0}
+                  className="pointer-events-auto p-1 bg-background/80 rounded-full border border-border disabled:opacity-30"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPhotoIndex(Math.min(photosWithUrl.length - 1, photoIndex + 1))}
+                  disabled={photoIndex === photosWithUrl.length - 1}
+                  className="pointer-events-auto p-1 bg-background/80 rounded-full border border-border disabled:opacity-30"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Thumbnail strip */}
+          {photosWithUrl.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {photosWithUrl.map((m: any, i: number) => (
+                <button
+                  key={m.id}
+                  onClick={() => setPhotoIndex(i)}
+                  className={`w-12 h-12 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
+                    i === photoIndex ? "border-emerald-400" : "border-border opacity-60"
+                  }`}
+                >
+                  <img src={m.photo_url} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!latest && !showForm && (
+        <div className="text-center py-8 text-muted-foreground">
+          <Ruler className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">Nenhuma medição registrada ainda.</p>
+          <p className="text-xs">Clique em "Nova Medição" para começar a rastrear!</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
@@ -97,7 +407,6 @@ export default function ProfilePage() {
   const totalWaterToday = (todayWater || []).reduce((s: number, w: any) => s + (w.amount_ml || 0), 0);
   const mealsToday = (todayMeals || []).length;
 
-  // HP penalty: if meals < half target, lose 10 HP per missing meal below half
   const mealHalf = Math.ceil(mealsTarget / 2);
   const mealPenalty = mealsToday < mealHalf ? (mealHalf - mealsToday) * 10 : 0;
   const maxHp = healthStats?.max_hp ?? 100;
@@ -207,39 +516,28 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* HP / MP / Fatigue - RPG Style */}
+        {/* HP / MP / Fatigue */}
         <div className="bg-card/80 backdrop-blur border border-border rounded-xl p-5 space-y-4">
-          {/* HP Bar */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 w-14">
               <Heart className="w-5 h-5 text-red-400" />
               <span className="text-xs font-bold text-red-400">HP</span>
             </div>
             <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden border border-red-900/30">
-              <div
-                className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500 rounded-full"
-                style={{ width: `${hpPercent}%` }}
-              />
+              <div className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500 rounded-full" style={{ width: `${hpPercent}%` }} />
             </div>
             <span className="text-sm font-bold text-foreground w-20 text-right">{currentHp}/{maxHp}</span>
           </div>
-
-          {/* MP Bar */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 w-14">
               <Shield className="w-5 h-5 text-blue-400" />
               <span className="text-xs font-bold text-blue-400">MP</span>
             </div>
             <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden border border-blue-900/30">
-              <div
-                className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 rounded-full"
-                style={{ width: `${mpPercent}%` }}
-              />
+              <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 rounded-full" style={{ width: `${mpPercent}%` }} />
             </div>
             <span className="text-sm font-bold text-foreground w-20 text-right">{currentMp}/{maxMp}</span>
           </div>
-
-          {/* Fatigue */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 w-14">
               <Flame className="w-5 h-5 text-orange-400" />
@@ -247,17 +545,13 @@ export default function ProfilePage() {
             <span className="text-sm text-muted-foreground">FADIGA:</span>
             <span className="text-xl font-bold text-foreground">{fatigue}</span>
           </div>
-
           {mealPenalty > 0 && (
-            <p className="text-xs text-red-400 flex items-center gap-1">
-              ⚠️ Você perdeu {mealPenalty} HP por não comer o suficiente!
-            </p>
+            <p className="text-xs text-red-400 flex items-center gap-1">⚠️ Você perdeu {mealPenalty} HP por não comer o suficiente!</p>
           )}
         </div>
 
         {/* Hunger & Thirst */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Hunger/Food */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -266,39 +560,24 @@ export default function ProfilePage() {
               </div>
               <span className="text-xs text-muted-foreground">Meta: {mealsTarget}x/dia</span>
             </div>
-
             <div className="flex items-center gap-2">
               {Array.from({ length: mealsTarget }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`flex-1 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${
-                    i < mealsToday
-                      ? "bg-orange-500/20 border-orange-500/50 text-orange-400"
-                      : "bg-muted/30 border-border text-muted-foreground/40"
-                  }`}
-                >
+                <div key={i} className={`flex-1 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${i < mealsToday ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-muted/30 border-border text-muted-foreground/40"}`}>
                   {i < mealsToday ? "🍖" : `${i + 1}`}
                 </div>
               ))}
             </div>
-
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{mealsToday}/{mealsTarget} refeições</span>
-              <button
-                onClick={() => logMeal.mutate()}
-                disabled={mealsToday >= mealsTarget}
-                className="flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+              <button onClick={() => logMeal.mutate()} disabled={mealsToday >= mealsTarget} className="flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 <Plus className="w-3 h-3" /> Refeição
               </button>
             </div>
-
             {mealsToday < mealHalf && (
               <p className="text-[10px] text-red-400">⚠️ Coma pelo menos {mealHalf}x para não perder HP!</p>
             )}
           </div>
 
-          {/* Thirst/Water */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -307,33 +586,24 @@ export default function ProfilePage() {
               </div>
               <span className="text-xs text-muted-foreground">{waterTargetMl}ml/dia</span>
             </div>
-
             <div className="relative h-8 bg-muted rounded-full overflow-hidden border border-cyan-900/30">
-              <div
-                className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500 rounded-full"
-                style={{ width: `${waterPercent}%` }}
-              />
-              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-foreground">
-                {totalWaterToday}ml / {waterTargetMl}ml
-              </span>
+              <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500 rounded-full" style={{ width: `${waterPercent}%` }} />
+              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-foreground">{totalWaterToday}ml / {waterTargetMl}ml</span>
             </div>
-
             <div className="flex items-center gap-2 justify-center">
               {[150, 250, 500].map((ml) => (
-                <button
-                  key={ml}
-                  onClick={() => logWater.mutate(ml)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium hover:bg-cyan-500/30 transition-colors"
-                >
+                <button key={ml} onClick={() => logWater.mutate(ml)} className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium hover:bg-cyan-500/30 transition-colors">
                   <Droplets className="w-3 h-3" /> {ml}ml
                 </button>
               ))}
             </div>
-
-            <p className="text-[10px] text-muted-foreground text-center">
-              Base: {weight}kg × 35ml = {waterTargetMl}ml
-            </p>
+            <p className="text-[10px] text-muted-foreground text-center">Base: {weight}kg × 35ml = {waterTargetMl}ml</p>
           </div>
+        </div>
+
+        {/* Body Evolution */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <BodyEvolutionSection />
         </div>
 
         {/* Attributes Grid */}
@@ -344,10 +614,7 @@ export default function ProfilePage() {
               const Icon = ATTRIBUTE_ICONS[attr.name] || Star;
               const colorClass = getAttributeColorClass(attr.name);
               return (
-                <div
-                  key={attr.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border ${colorClass}`}
-                >
+                <div key={attr.id} className={`flex items-center gap-3 p-3 rounded-lg border ${colorClass}`}>
                   <Icon className="w-5 h-5 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs font-bold truncate">{attr.name.substring(0, 3).toUpperCase()}</p>
@@ -358,9 +625,7 @@ export default function ProfilePage() {
             })}
           </div>
           {attributes && attributes.length > 0 && (
-            <p className="text-[10px] text-muted-foreground text-center">
-              Pontos de Habilidade Disponíveis: 0
-            </p>
+            <p className="text-[10px] text-muted-foreground text-center">Pontos de Habilidade Disponíveis: 0</p>
           )}
         </div>
       </div>
