@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/sidebar';
 
 const navItems = [
+  { title: 'Meu Perfil', url: '/profile', icon: User },
   { title: 'Painel', url: '/', icon: LayoutGrid },
   { title: 'Calendário', url: '/calendar', icon: Calendar },
   { title: 'Missões Principais', url: '/missions', icon: Target },
