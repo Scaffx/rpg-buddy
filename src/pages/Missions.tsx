@@ -746,11 +746,13 @@ function MissionCard({
   ].filter(Boolean);
 
   // ✅ CORRIGIDO: Processar múltiplos horários com verificação de tipo
-  const horarios = Array.isArray(mission.horario_provavel)
-    ? mission.horario_provavel
-    : mission.horario_provavel && typeof mission.horario_provavel === 'string'
-      ? [mission.horario_provavel]
-      : [];
+  const horarios = (() => {
+    const h = mission.horario_provavel;
+    if (Array.isArray(h)) return h;
+    if (typeof h === 'string' && h.includes(',')) return h.split(',').map((x: string) => x.trim());
+    if (typeof h === 'string' && h) return [h];
+    return [];
+  })();
 
   const horariosFormatados = horarios.length > 0
     ? horarios.map((h: string) => {
