@@ -4,7 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
-  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins,
+  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/sidebar';
 
 const navItems = [
+  { title: 'Meu Perfil', url: '/profile', icon: User },
   { title: 'Painel', url: '/', icon: LayoutGrid },
   { title: 'Calendário', url: '/calendar', icon: Calendar },
   { title: 'Missões Principais', url: '/missions', icon: Target },

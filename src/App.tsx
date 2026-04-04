@@ -13,6 +13,7 @@ import ClassesPage from "./pages/ClassesPage";
 import ProgressPage from "./pages/ProgressPage";
 import ShopPage from "./pages/ShopPage";
 import NpcPage from "./pages/NpcPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
             <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
             <Route path="/npc" element={<ProtectedRoute><NpcPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

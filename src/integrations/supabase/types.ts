@@ -251,6 +251,30 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_log: {
+        Row: {
+          id: string
+          logged_at: string
+          meal_date: string
+          meal_number: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          logged_at?: string
+          meal_date?: string
+          meal_number: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          logged_at?: string
+          meal_date?: string
+          meal_number?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       mission_daily_completions: {
         Row: {
           completion_date: string
@@ -513,6 +537,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_health_stats: {
+        Row: {
+          created_at: string
+          current_hp: number | null
+          current_mp: number | null
+          fatigue: number | null
+          id: string
+          last_reset_date: string | null
+          max_hp: number | null
+          max_mp: number | null
+          meals_completed: number | null
+          meals_target: number | null
+          updated_at: string
+          user_id: string
+          water_completed_ml: number | null
+          water_target_ml: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          created_at?: string
+          current_hp?: number | null
+          current_mp?: number | null
+          fatigue?: number | null
+          id?: string
+          last_reset_date?: string | null
+          max_hp?: number | null
+          max_mp?: number | null
+          meals_completed?: number | null
+          meals_target?: number | null
+          updated_at?: string
+          user_id: string
+          water_completed_ml?: number | null
+          water_target_ml?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          created_at?: string
+          current_hp?: number | null
+          current_mp?: number | null
+          fatigue?: number | null
+          id?: string
+          last_reset_date?: string | null
+          max_hp?: number | null
+          max_mp?: number | null
+          meals_completed?: number | null
+          meals_target?: number | null
+          updated_at?: string
+          user_id?: string
+          water_completed_ml?: number | null
+          water_target_ml?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      water_log: {
+        Row: {
+          amount_ml: number
+          id: string
+          log_date: string
+          logged_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_ml?: number
+          id?: string
+          log_date?: string
+          logged_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_ml?: number
+          id?: string
+          log_date?: string
+          logged_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       xp_history: {
         Row: {
