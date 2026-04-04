@@ -540,7 +540,11 @@ const handleSave = async () => {
                 <h2 className="text-lg font-bold text-primary flex items-center gap-2">📅 Missões de Hoje</h2>
 
                 {TIME_GROUPS.map(({ key, label, icon: Icon }) => {
-                  const missions = todayMissions.filter((m: any) => (m.horario_provavel || "flex") === key);
+                  const missions = todayMissions.filter((m: any) => {
+                    const h = m.horario_provavel || 'flex';
+                    const horarios = typeof h === 'string' && h.includes(',') ? h.split(',') : Array.isArray(h) ? h : [h];
+                    return horarios.includes(key);
+                  });
                   if (!missions || missions.length === 0) return null;
 
                   return (
