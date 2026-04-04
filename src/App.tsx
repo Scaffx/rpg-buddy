@@ -13,6 +13,7 @@ import ClassesPage from "./pages/ClassesPage";
 import ProgressPage from "./pages/ProgressPage";
 import ShopPage from "./pages/ShopPage";
 import NpcPage from "./pages/NpcPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
