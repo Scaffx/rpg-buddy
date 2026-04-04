@@ -305,11 +305,14 @@ const openEditModal = (m: any) => {
   setFormPriority(m.priority || 'media');
   setFormDays((m.days_of_week as string[]) || []);
   
-  const horario = m.horario_provavel;
-  if (Array.isArray(horario)) {
+  const horario = m.horario_provavel || 'flex';
+  // Always parse comma-separated string into array
+  if (typeof horario === 'string' && horario.includes(',')) {
+    setFormHorario(horario.split(',').map((h: string) => h.trim()));
+  } else if (Array.isArray(horario)) {
     setFormHorario(horario);
   } else {
-    setFormHorario(horario || 'flex');
+    setFormHorario(horario);
   }
   
   setShowCreateEdit(true);
@@ -537,7 +540,11 @@ const handleSave = async () => {
                 <h2 className="text-lg font-bold text-primary flex items-center gap-2">📅 Missões de Hoje</h2>
 
                 {TIME_GROUPS.map(({ key, label, icon: Icon }) => {
-                  const missions = todayMissions.filter((m: any) => (m.horario_provavel || "flex") === key);
+                  const missions = todayMissions.filter((m: any) => {
+                    const h = m.horario_provavel || 'flex';
+                    const horarios = typeof h === 'string' && h.includes(',') ? h.split(',') : Array.isArray(h) ? h : [h];
+                    return horarios.includes(key);
+                  });
                   if (!missions || missions.length === 0) return null;
 
                   return (
@@ -743,11 +750,13 @@ function MissionCard({
   ].filter(Boolean);
 
   // ✅ CORRIGIDO: Processar múltiplos horários com verificação de tipo
-  const horarios = Array.isArray(mission.horario_provavel)
-    ? mission.horario_provavel
-    : mission.horario_provavel && typeof mission.horario_provavel === 'string'
-      ? [mission.horario_provavel]
-      : [];
+  const horarios = (() => {
+    const h = mission.horario_provavel;
+    if (Array.isArray(h)) return h;
+    if (typeof h === 'string' && h.includes(',')) return h.split(',').map((x: string) => x.trim());
+    if (typeof h === 'string' && h) return [h];
+    return [];
+  })();
 
   const horariosFormatados = horarios.length > 0
     ? horarios.map((h: string) => {
