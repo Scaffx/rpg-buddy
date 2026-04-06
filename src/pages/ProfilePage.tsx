@@ -388,6 +388,95 @@ function BodyEvolutionSection() {
   );
 }
 
+function EvolutionChart({ measurements }: { measurements: any[] }) {
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["weight_kg"]);
+
+  const CHART_METRICS = [
+    { key: "weight_kg", label: "Peso", color: "#10b981", unit: "kg" },
+    { key: "body_fat_percent", label: "Gordura", color: "#f59e0b", unit: "%" },
+    { key: "chest_cm", label: "Peito", color: "#3b82f6", unit: "cm" },
+    { key: "waist_cm", label: "Cintura", color: "#ef4444", unit: "cm" },
+    { key: "hip_cm", label: "Quadril", color: "#8b5cf6", unit: "cm" },
+    { key: "arm_cm", label: "Braço", color: "#06b6d4", unit: "cm" },
+    { key: "thigh_cm", label: "Coxa", color: "#f97316", unit: "cm" },
+    { key: "calf_cm", label: "Panturrilha", color: "#ec4899", unit: "cm" },
+  ];
+
+  const chartData = useMemo(() => {
+    return [...measurements]
+      .reverse()
+      .map((m: any) => ({
+        date: format(new Date(m.measured_at), "dd/MM", { locale: ptBR }),
+        ...Object.fromEntries(CHART_METRICS.map(cm => [cm.key, m[cm.key] ? Number(m[cm.key]) : null])),
+      }));
+  }, [measurements]);
+
+  const toggleMetric = (key: string) => {
+    setSelectedMetrics(prev =>
+      prev.includes(key) ? (prev.length > 1 ? prev.filter(k => k !== key) : prev) : [...prev, key]
+    );
+  };
+
+  const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = require("recharts");
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <TrendingUp className="w-4 h-4 text-emerald-400" />
+        <h4 className="text-xs font-bold text-foreground">📈 EVOLUÇÃO AO LONGO DO TEMPO</h4>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {CHART_METRICS.map(m => (
+          <button
+            key={m.key}
+            onClick={() => toggleMetric(m.key)}
+            className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-all ${
+              selectedMetrics.includes(m.key)
+                ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-border/80"
+            }`}
+            style={selectedMetrics.includes(m.key) ? { borderColor: m.color + "80", backgroundColor: m.color + "20", color: m.color } : {}}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="h-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "8px",
+                fontSize: "11px",
+              }}
+              labelStyle={{ color: "hsl(var(--foreground))" }}
+            />
+            {CHART_METRICS.filter(m => selectedMetrics.includes(m.key)).map(m => (
+              <Line
+                key={m.key}
+                type="monotone"
+                dataKey={m.key}
+                stroke={m.color}
+                strokeWidth={2}
+                dot={{ r: 3, fill: m.color }}
+                connectNulls
+                name={`${m.label} (${m.unit})`}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
