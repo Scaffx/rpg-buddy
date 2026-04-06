@@ -1,36 +1,72 @@
 import { useMemo } from 'react';
 import { useMissions } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
 import { Calendar } from '@/components/ui/calendar';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function CalendarPage() {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { data: allMissions, isLoading } = useMissions();
+  
+  // Fetch completions for today's missions
+  const { data: completions = [] } = useQuery({
+    queryKey: ['mission_completions', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('mission_daily_completions' as any)
+        .select('mission_id, completion_date')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
 
   const completedDates = useMemo(() => {
-    if (!allMissions) return [];
-    return allMissions
-      .filter((m) => m.completed && m.completed_at)
-      .map((m) => new Date(m.completed_at!));
-  }, [allMissions]);
+    if (!completions) return [];
+    return completions
+      .map((c: any) => new Date(c.completion_date))
+      .filter((d) => !isNaN(d.getTime()));
+  }, [completions]);
 
   const missionsForDate = useMemo(() => {
     if (!allMissions || !selectedDate) return [];
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    return allMissions.filter((m) => {
-      if (m.completed_at) {
-        return format(new Date(m.completed_at), 'yyyy-MM-dd') === dateStr;
+    
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    const dayIndex = selectedDate.getDay();
+    const dayName = DAYS_MAP[dayIndex];
+    
+    // Get all missions that apply to this day of week
+    const missionsOnThisDay = allMissions.filter((m: any) => {
+      const days: string[] = m.days_of_week || [];
+      // Diárias com dias específicos
+      if (days.length > 0 && days.includes(dayName)) {
+        return true;
       }
-      if (m.due_date) {
-        return m.due_date === dateStr;
-      }
-      return format(new Date(m.created_at), 'yyyy-MM-dd') === dateStr;
+      return false;
     });
-  }, [allMissions, selectedDate]);
+
+    // Add completion status from completions table
+    return missionsOnThisDay.map((m: any) => {
+      const isCompletedOnDate = completions.some((c: any) => 
+        c.mission_id === m.id && c.completion_date === selectedDateStr
+      );
+      return {
+        ...m,
+        completedOnDate: isCompletedOnDate,
+      };
+    });
+  }, [allMissions, selectedDate, completions]);
 
   const modifiers = {
     completed: completedDates,
@@ -74,20 +110,22 @@ export default function CalendarPage() {
                   : 'Selecione um dia'}
               </h2>
               {missionsForDate.length > 0 ? (
-                missionsForDate.map((m) => (
-                  <div key={m.id} className="rpg-card">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-foreground">{m.title}</span>
-                      {m.completed ? (
-                        <span className="rpg-badge">✅ Completa</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Pendente</span>
-                      )}
+                <div className="space-y-2">
+                  {missionsForDate.map((m: any) => (
+                    <div key={m.id} className="rpg-card">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-foreground flex-1">{m.title}</span>
+                        {m.completedOnDate ? (
+                          <span className="rpg-badge bg-green-500/20 text-green-400 border-green-500/30">✅ Feita</span>
+                        ) : (
+                          <span className="rpg-badge bg-yellow-500/20 text-yellow-400 border-yellow-500/30">⏳ Pendente</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Nenhuma atividade neste dia.</p>
+                <p className="text-sm text-muted-foreground rpg-card py-4 text-center">Nenhuma missão neste dia.</p>
               )}
             </div>
           </div>

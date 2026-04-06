@@ -518,3 +518,39 @@ export function useXpHistory(days: number = 7) {
     enabled: !!user,
   });
 }
+
+export function useTodayXp() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["xp_today", user?.id],
+    queryFn: async () => {
+      const today = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("xp_history" as any)
+        .select("xp_gained")
+        .eq("user_id", user!.id)
+        .eq("date", today);
+      if (error) throw error;
+      return (data || []).reduce((sum: number, item: any) => sum + (item.xp_gained || 0), 0);
+    },
+    enabled: !!user,
+  });
+}
+
+export function useTodayMissionsCount() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["missions_today_count", user?.id],
+    queryFn: async () => {
+      const today = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("mission_daily_completions" as any)
+        .select("id")
+        .eq("mission_id", user!.id)
+        .eq("completion_date", today);
+      if (error) throw error;
+      return (data || []).length;
+    },
+    enabled: !!user,
+  });
+}

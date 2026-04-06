@@ -44,6 +44,10 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     if (days.length === 0) continue;
     if (!days.includes(ydName)) continue;
 
+    // Check if mission was created on or after yesterday (if so, don't mark as failed for yesterday)
+    const createdAt = (m as any).created_at?.split('T')[0];
+    if (createdAt && createdAt >= yesterday) continue;
+
     // Check if already failed for today
     if ((m as any).failed_date === today) continue;
 
@@ -168,6 +172,35 @@ export function usePayPenalty() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['missions'] });
+    },
+  });
+}
+
+export function useAcceptPenalty() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mission: any) => {
+      if (!user) throw new Error('Não autenticado');
+
+      // Just clear failed status without restoring XP (accept the loss)
+      await supabase
+        .from('missions')
+        .update({ is_failed: false, failed_date: null } as any)
+        .eq('id', mission.id);
+
+      // Log acknowledgment
+      await supabase.from('activity_log').insert({
+        user_id: user.id,
+        action: 'mission_penalty_accepted',
+        description: `Aceitou penalidade de ${mission.xp_penalized || mission.xp_reward} XP: ${mission.title}`,
+        xp_gained: -(mission.xp_penalized || mission.xp_reward),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['missions'] });
     },

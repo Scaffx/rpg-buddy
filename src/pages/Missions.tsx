@@ -17,7 +17,7 @@ import {
   useArchiveMission,
   useDeleteChecklistItem,
 } from "@/hooks/useMissionActions";
-import { useCheckFailedMissions, useFailedMissions, usePayPenalty } from "@/hooks/useFailedMissions";
+import { useCheckFailedMissions, useFailedMissions, usePayPenalty, useAcceptPenalty } from "@/hooks/useFailedMissions";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,6 +166,7 @@ export default function Missions() {
   useCheckFailedMissions();
   const { data: failedMissions = [] } = useFailedMissions();
   const payPenalty = usePayPenalty();
+  const acceptPenalty = useAcceptPenalty();
 
   const todayDay = useMemo(() => {
     const d = new Date().getDay();
@@ -501,24 +502,40 @@ const handleSave = async () => {
               {failedMissions.map((m: any) => (
                 <div
                   key={m.id}
-                  className="bg-card border border-destructive/20 rounded-lg p-3 flex items-center justify-between gap-2"
+                  className="bg-card border border-destructive/20 rounded-lg p-3 flex flex-col gap-2"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
                     <p className="text-xs text-destructive">XP Perdido: -{m.xp_penalized || m.xp_reward}</p>
                   </div>
-                  <button
-                    onClick={() => {
-                      payPenalty.mutate(m, {
-                        onSuccess: () => toast({ title: "✅ Penalidade paga! XP restaurado." }),
-                        onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
-                      });
-                    }}
-                    disabled={payPenalty.isPending}
-                    className="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-yellow-400/20 text-yellow-400 font-bold hover:bg-yellow-400/30 transition-colors disabled:opacity-50"
-                  >
-                    Pagar 10 🪙
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        payPenalty.mutate(m, {
+                          onSuccess: () => toast({ title: "✅ Penalidade paga! XP restaurado." }),
+                          onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+                        });
+                      }}
+                      disabled={payPenalty.isPending || acceptPenalty.isPending}
+                      className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-yellow-400/20 text-yellow-400 font-bold hover:bg-yellow-400/30 transition-colors disabled:opacity-50"
+                    >
+                      {payPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "💰"}
+                      Pagar 10
+                    </button>
+                    <button
+                      onClick={() => {
+                        acceptPenalty.mutate(m, {
+                          onSuccess: () => toast({ title: "✅ Penalidade aceita." }),
+                          onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+                        });
+                      }}
+                      disabled={payPenalty.isPending || acceptPenalty.isPending}
+                      className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                    >
+                      {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "✓"}
+                      Aceitar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

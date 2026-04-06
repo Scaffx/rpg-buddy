@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { motion } from "framer-motion";
-import { useProfile, useAttributes, useMissions, useClasses } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
 import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ export default function Dashboard() {
   const { data: attributes, isLoading: attrsLoading } = useAttributes();
   const { data: allMissions, isLoading: missionsLoading } = useMissions();
   const { data: classes } = useClasses();
+  const { data: todayXp = 0 } = useTodayXp();
+  const { data: todayMissionsCount = 0 } = useTodayMissionsCount();
   const completeMission = useCompleteMission();
 
   const currentClass = classes?.find((c: any) => c.id === profile?.current_class_id);
@@ -42,11 +44,15 @@ export default function Dashboard() {
   // Filter today's daily missions
   const todayMissions = useMemo(() => {
     if (!allMissions) return [];
+    const today = new Date().toISOString().split('T')[0];
     return allMissions
       .filter((m: any) => {
         if (m.completed) return false;
         const days: string[] = m.days_of_week || [];
-        return days.length > 0 && days.includes(todayDay);
+        if (!(days.length > 0 && days.includes(todayDay))) return false;
+        // Verificar se já foi concluída hoje
+        const dailyStatus = (m.daily_status as { [key: string]: string }) || {};
+        return dailyStatus[today] !== 'completed';
       })
       .sort((a: any, b: any) => {
         const order: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
@@ -78,10 +84,10 @@ export default function Dashboard() {
       key: "missions_today",
       label: "Missões Hoje",
       icon: Calendar,
-      value: profile?.xp_today ? Math.floor(profile.xp_today / 25) : 0,
+      value: todayMissionsCount || 0,
     },
     { key: "missions", label: "Missões Total", icon: Target, value: profile?.missions_completed || 0 },
-    { key: "xp_today", label: "XP Hoje", icon: TrendingUp, value: profile?.xp_today || 0 },
+    { key: "xp_today", label: "XP Hoje", icon: TrendingUp, value: todayXp || 0 },
   ];
 
   const handleComplete = async (mission: any) => {
@@ -138,6 +144,72 @@ export default function Dashboard() {
           </motion.div>
         )}
 
+        {/* Today's Daily Missions */}
+        <div>
+          <h2 className="text-lg font-display font-semibold text-foreground mb-1">📅 Missões de Hoje</h2>
+          <p className="text-xs text-muted-foreground mb-3">{todayDayLabel}</p>
+
+          {missionsLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          ) : todayMissions.length > 0 ? (
+            <div className="space-y-2">
+              {todayMissions.map((m: any, idx: number) => {
+                const allAttrs = [
+                  m.attributes && { name: m.attributes.name, icon: m.attributes.icon },
+                  ...(attributes || [])
+                    .filter((a) => ((m as any).secondary_attribute_ids || []).includes(a.id))
+                    .map((a) => ({ name: a.name, icon: a.icon })),
+                ].filter(Boolean);
+
+                return (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="rpg-card flex items-center justify-between gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {allAttrs.map((a: any, attrIdx: number) => (
+                          <span
+                            key={attrIdx}
+                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${ATTRIBUTE_COLORS[a.name] || "bg-secondary text-muted-foreground"}`}
+                          >
+                            {a.icon} {a.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-primary font-bold">+{m.xp_reward} XP</span>
+                      <Button
+                        size="sm"
+                        onClick={() => handleComplete(m)}
+                        disabled={completeMission.isPending}
+                        className="h-7 px-2 bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/40 text-xs font-medium transition-all"
+                      >
+                        {completeMission.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Check className="w-3 h-3 mr-1" /> Ok
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground rpg-card text-center py-4">
+              Nenhuma missão para hoje. Crie uma! 🎯
+            </p>
+          )}
+        </div>
+
         {/* Attributes */}
         <div>
           <h2 className="text-lg font-display font-semibold text-foreground mb-3">Atributos</h2>
@@ -164,65 +236,6 @@ export default function Dashboard() {
               </motion.div>
             ))}
           </div>
-        </div>
-
-        {/* Today's Daily Missions */}
-        <div>
-          <h2 className="text-lg font-display font-semibold text-foreground mb-1">📅 Missões de Hoje</h2>
-          <p className="text-xs text-muted-foreground mb-3">{todayDayLabel}</p>
-
-          {missionsLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          ) : todayMissions.length > 0 ? (
-            <div className="space-y-2">
-              {todayMissions.map((m: any) => {
-                const allAttrs = [
-                  m.attributes && { name: m.attributes.name, icon: m.attributes.icon },
-                  ...(attributes || [])
-                    .filter((a) => ((m as any).secondary_attribute_ids || []).includes(a.id))
-                    .map((a) => ({ name: a.name, icon: a.icon })),
-                ].filter(Boolean);
-
-                return (
-                  <motion.div
-                    key={m.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="rpg-card flex items-center justify-between gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
-                      <div className="flex items-center gap-1 mt-1 flex-wrap">
-                        {allAttrs.map((a: any, idx: number) => (
-                          <span
-                            key={idx}
-                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${ATTRIBUTE_COLORS[a.name] || "bg-secondary text-muted-foreground"}`}
-                          >
-                            {a.icon} {a.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-primary font-bold">+{m.xp_reward} XP</span>
-                      <Button
-                        size="sm"
-                        onClick={() => handleComplete(m)}
-                        disabled={completeMission.isPending}
-                        className="h-8 px-3 bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 text-xs"
-                      >
-                        <Check className="w-3 h-3 mr-1" /> Completar
-                      </Button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground rpg-card text-center py-4">
-              Nenhuma missão para hoje. Crie uma! 🎯
-            </p>
-          )}
         </div>
       </div>
     </AppLayout>

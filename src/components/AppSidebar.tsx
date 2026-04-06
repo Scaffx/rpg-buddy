@@ -4,7 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
-  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User,
+  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import {
@@ -27,7 +27,7 @@ const navItems = [
   { title: 'Classes', url: '/classes', icon: Swords },
   { title: 'Loja', url: '/shop', icon: Store },
   { title: 'Missões de NPC', url: '/npc', icon: Users },
-  { title: 'Evolução Corporal', url: '/body', icon: Camera },
+  { title: 'Saúde', url: '/health', icon: Heart },
   { title: 'Prioridade', url: '/priority', icon: ListOrdered },
   { title: 'Progresso', url: '/progress', icon: TrendingUp },
   { title: 'Virtudes', url: '/virtues', icon: Circle },
