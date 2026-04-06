@@ -1,296 +1,288 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useDailyTracking } from '@/hooks/useDailyTracking';
-import { useUpdateTracking } from '@/hooks/useDailyTracking';
-import { useProfile, useAwardHealthXP } from '@/hooks/useProfile';
+import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Loader2, Droplets, Apple, Award } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2, Upload, FileText, BarChart3, Heart, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMutation } from '@tanstack/react-query';
 
 export default function HealthPage() {
-  const { data: tracking, isLoading } = useDailyTracking();
+  const { user } = useAuth();
   const { data: profile } = useProfile();
-  const updateTracking = useUpdateTracking();
-  const awardHealthXP = useAwardHealthXP();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [waterInput, setWaterInput] = useState('');
-  const [mealsInput, setMealsInput] = useState('');
-  const [xpAwarded, setXpAwarded] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
 
-  // Metas diárias
-  const WATER_GOAL = 2000; // ml
-  const MEALS_GOAL = 3; // refeições
+  // Upload do arquivo de exame médico
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
 
-  // Verificar se as metas foram completas
-  const waterCompleted = tracking && tracking.water_ml >= WATER_GOAL;
-  const mealsCompleted = tracking && tracking.meals_count >= MEALS_GOAL;
-  const bothCompleted = waterCompleted && mealsCompleted;
-
-  const addWater = async () => {
-    const amount = parseInt(waterInput) || 0;
-    if (amount <= 0) {
-      toast({ title: 'Erro', description: 'Digite um valor válido', variant: 'destructive' });
-      return;
-    }
-
+    setUploading(true);
     try {
-      const newWater = (tracking?.water_ml || 0) + amount;
-      const newMeals = tracking?.meals_count || 0;
-
-      await updateTracking.mutateAsync({
-        water_ml: newWater,
-        meals_count: newMeals,
-      });
-
-      setWaterInput('');
-      toast({ title: '💧 Água adicionada!', description: `+${amount} ml` });
-
-      // Verificar se completou ambas as metas
-      const newWaterCompleted = newWater >= WATER_GOAL;
-      const newMealsCompleted = newMeals >= MEALS_GOAL;
+      // 1. Upload do arquivo para Supabase Storage
+      const timestamp = Date.now();
+      const fileName = `${user.id}/${timestamp}_${file.name}`;
       
-      if (!xpAwarded && newWaterCompleted && newMealsCompleted) {
-        await checkAndAwardXP();
-      }
-    } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
-    }
-  };
+      const { error: uploadError } = await supabase.storage
+        .from('medical-records')
+        .upload(fileName, file);
 
-  const addMeal = async () => {
-    try {
-      const newWater = tracking?.water_ml || 0;
-      const newMeals = (tracking?.meals_count || 0) + 1;
+      if (uploadError) throw uploadError;
 
-      await updateTracking.mutateAsync({
-        water_ml: newWater,
-        meals_count: newMeals,
-      });
+      // 2. Obter URL pública do arquivo
+      const { data: urlData } = supabase.storage
+        .from('medical-records')
+        .getPublicUrl(fileName);
 
-      setMealsInput('');
-      toast({ title: '🍽️ Refeição registrada!' });
+      // 3. Salvar referência no banco de dados
+      const { error: dbError } = await supabase
+        .from('medical_records')
+        .insert({
+          user_id: user.id,
+          file_name: file.name,
+          file_url: urlData.publicUrl,
+          file_type: file.type,
+          uploaded_at: new Date().toISOString(),
+        });
 
-      // Verificar se completou ambas as metas
-      const newWaterCompleted = newWater >= WATER_GOAL;
-      const newMealsCompleted = newMeals >= MEALS_GOAL;
+      if (dbError) throw dbError;
+
+      toast.success('📄 Exame enviado com sucesso!');
       
-      if (!xpAwarded && newWaterCompleted && newMealsCompleted) {
-        await checkAndAwardXP();
-      }
-    } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
-    }
-  };
-
-  const checkAndAwardXP = async () => {
-    // ✅ Lógica para dar 50 XP ao completar ambas as metas
-    try {
-      await awardHealthXP.mutateAsync();
-      setXpAwarded(true);
-      toast({
-        title: '🎉 Desafio Completado!',
-        description: '+ 50 XP por manter a saúde em dia!',
-      });
+      // Recarregar lista de exames
+      await loadMedicalRecords();
+      
+      // Limpar input
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error: any) {
-      if (error.message.includes('já ganhou')) {
-        setXpAwarded(true);
-        toast({
-          title: '⚠️ Bônus já coletado',
-          description: 'Volte amanhã para ganhar mais XP!',
-        });
-      } else {
-        toast({
-          title: 'Erro ao conceder XP',
-          description: error.message,
-          variant: 'destructive',
-        });
-      }
+      toast.error('Erro ao enviar exame: ' + error.message);
+    } finally {
+      setUploading(false);
     }
   };
 
-  // Calcular porcentagem
-  const waterPercentage = tracking ? Math.min((tracking.water_ml / WATER_GOAL) * 100, 100) : 0;
-  const mealsPercentage = tracking ? Math.min((tracking.meals_count / MEALS_GOAL) * 100, 100) : 0;
+  // Carregar exames do usuário
+  const loadMedicalRecords = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('medical_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('uploaded_at', { ascending: false });
 
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
-    );
-  }
+      if (error) throw error;
+      setMedicalRecords(data || []);
+    } catch (error: any) {
+      console.error('Erro ao carregar exames:', error);
+    }
+  };
+
+  // Analisar exame com IA
+  const analyzeWithAI = useMutation({
+    mutationFn: async (recordId: string) => {
+      // Aqui você integraria com uma API de IA
+      // Por enquanto, simulamos uma análise
+      
+      // Simular delay de processamento
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Dados fictícios de análise
+      return {
+        bloodPressure: '120/80',
+        cholesterol: 'Normal',
+        glucose: '95 mg/dL',
+        healthScore: 85,
+        recommendations: [
+          'Mantenha a ingestão de água adequada',
+          'Pratique exercícios regularmente',
+          'Reduza o consumo de sal',
+        ],
+      };
+    },
+    onSuccess: (data) => {
+      setAnalysisResult(data);
+      toast.success('✨ Análise concluída!');
+    },
+    onError: () => {
+      toast.error('Erro ao analisar o documento');
+    },
+  });
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-2xl mx-auto">
+      <div className="space-y-6 max-w-3xl mx-auto">
         {/* Title */}
         <div className="flex items-center gap-2">
-          <Award className="w-6 h-6 text-primary" />
+          <Heart className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">Saúde</h1>
         </div>
 
-        {/* Progress Overview */}
-        {bothCompleted && xpAwarded && (
+        {/* Info */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rpg-card border-blue-500/30 flex items-start gap-3 p-4"
+        >
+          <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground mb-1">💡 Dica:</p>
+            <p>O acompanhamento regular de sua saúde é importante! Marque suas refeições e hidratação em <strong>"Meu Perfil"</strong> para ganhar XP.</p>
+          </div>
+        </motion.div>
+
+        {/* Upload Seção */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rpg-card-glow border-emerald-500/30 space-y-4"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="w-5 h-5 text-emerald-400" />
+            <h3 className="font-display font-bold text-foreground">📋 Exames Médicos</h3>
+          </div>
+
+          {/* Upload Button */}
+          <div 
+            className="border-2 border-dashed border-emerald-500/30 rounded-xl p-8 text-center space-y-3 hover:border-emerald-500/50 transition-colors cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+              onChange={handleFileUpload}
+              disabled={uploading}
+              className="hidden"
+            />
+            <div className="flex justify-center">
+              {uploading ? (
+                <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+              ) : (
+                <Upload className="w-8 h-8 text-emerald-400" />
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {uploading ? 'Enviando...' : 'Clique para carregar exame médico'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                PDF, Imagem ou Documento (máx. 10MB)
+              </p>
+            </div>
+          </div>
+
+          {/* Lista de Exames */}
+          {medicalRecords.length > 0 && (
+            <div className="space-y-2 pt-4 border-t border-border">
+              <p className="text-xs font-semibold text-muted-foreground">Exames Enviados:</p>
+              {medicalRecords.map((record) => (
+                <div
+                  key={record.id}
+                  className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/50"
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{record.file_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(record.uploaded_at).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => analyzeWithAI.mutate(record.id)}
+                    disabled={analyzeWithAI.isPending}
+                    size="sm"
+                    className="text-xs"
+                  >
+                    {analyzeWithAI.isPending ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Analisando...
+                      </>
+                    ) : (
+                      <>
+                        <BarChart3 className="w-3 h-3 mr-1" />
+                        Analisar
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Resultado da Análise */}
+        {analysisResult && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rpg-card-glow bg-gradient-to-r from-success/10 to-primary/10 border-success/30 text-center p-6 space-y-3"
+            className="rpg-card-glow bg-gradient-to-br from-primary/10 to-emerald-500/10 border-emerald-500/30 space-y-4"
           >
-            <span className="text-4xl inline-block">🏆</span>
-            <h2 className="font-display font-bold text-lg text-success">Todas as metas completadas!</h2>
-            <p className="text-sm text-muted-foreground">Você ganhou +50 XP por manter a saúde em dia!</p>
-            <div className="text-3xl font-bold text-xp pt-2">✨ +50 XP</div>
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-5 h-5 text-emerald-400" />
+              <h3 className="font-display font-bold text-foreground">📊 Resultado da Análise</h3>
+            </div>
+
+            {/* Health Score */}
+            <div className="text-center p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+              <p className="text-sm text-muted-foreground mb-2">Pontuação de Saúde</p>
+              <div className="text-4xl font-bold text-emerald-400 mb-2">{analysisResult.healthScore}%</div>
+              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                  style={{ width: `${analysisResult.healthScore}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Métricas */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground mb-1">Pressão Arterial</p>
+                <p className="text-lg font-bold text-blue-400">{analysisResult.bloodPressure}</p>
+              </div>
+              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground mb-1">Colesterol</p>
+                <p className="text-lg font-bold text-yellow-400">{analysisResult.cholesterol}</p>
+              </div>
+              <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
+                <p className="text-xs text-muted-foreground mb-1">Glicose</p>
+                <p className="text-lg font-bold text-orange-400">{analysisResult.glucose}</p>
+              </div>
+            </div>
+
+            {/* Recomendações */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <p className="text-xs font-semibold text-muted-foreground">💡 Recomendações:</p>
+              <ul className="space-y-1">
+                {analysisResult.recommendations.map((rec: string, idx: number) => (
+                  <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-emerald-400 mt-0.5">✓</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </motion.div>
         )}
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Água */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="rpg-card-glow border-blue-500/30 space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Droplets className="w-5 h-5 text-blue-400" />
-                <h3 className="font-display font-bold text-foreground">Hidratação</h3>
-              </div>
-              <span className={`text-sm font-bold ${waterCompleted ? 'text-success' : 'text-muted-foreground'}`}>
-                {tracking?.water_ml || 0} / {WATER_GOAL} ml
-              </span>
-            </div>
-
-            {/* Progress bar */}
-            <div className="space-y-2">
-              <div className="h-3 bg-secondary rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${waterPercentage}%` }}
-                  transition={{ duration: 0.5 }}
-                  className="h-full bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground text-right">{Math.round(waterPercentage)}%</p>
-            </div>
-
-            {/* Input */}
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">Adicionar água (ml)</label>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="250"
-                  value={waterInput}
-                  onChange={(e) => setWaterInput(e.target.value)}
-                  className="bg-secondary border-border"
-                  disabled={updateTracking.isPending}
-                />
-                <Button
-                  onClick={addWater}
-                  disabled={updateTracking.isPending}
-                  className="bg-blue-600 hover:bg-blue-700 w-20"
-                  size="sm"
-                >
-                  {updateTracking.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Adicionar'}
-                </Button>
-              </div>
-            </div>
-
-            {/* Quick actions */}
-            <div className="flex gap-2 pt-2">
-              {[250, 500, 750].map((amount) => (
-                <Button
-                  key={amount}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setWaterInput(amount.toString());
-                  }}
-                  className="text-xs"
-                >
-                  +{amount}ml
-                </Button>
-              ))}
-            </div>
-
-            {waterCompleted && (
-              <div className="p-2 bg-success/10 border border-success/30 rounded text-center">
-                <p className="text-xs text-success font-semibold">✅ Meta de hidratação completada!</p>
-              </div>
-            )}
-          </motion.div>
-
-          {/* Comida */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="rpg-card-glow border-orange-500/30 space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Apple className="w-5 h-5 text-orange-400" />
-                <h3 className="font-display font-bold text-foreground">Alimentação</h3>
-              </div>
-              <span className={`text-sm font-bold ${mealsCompleted ? 'text-success' : 'text-muted-foreground'}`}>
-                {tracking?.meals_count || 0} / {MEALS_GOAL} refeições
-              </span>
-            </div>
-
-            {/* Progress bar */}
-            <div className="space-y-2">
-              <div className="h-3 bg-secondary rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${mealsPercentage}%` }}
-                  transition={{ duration: 0.5 }}
-                  className="h-full bg-gradient-to-r from-orange-400 to-amber-400 rounded-full"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground text-right">{Math.round(mealsPercentage)}%</p>
-            </div>
-
-            {/* Button */}
-            <div>
-              <Button
-                onClick={addMeal}
-                disabled={updateTracking.isPending}
-                className="w-full bg-orange-600 hover:bg-orange-700"
-                size="sm"
-              >
-                {updateTracking.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '🍽️'}
-                Registrar Refeição
-              </Button>
-            </div>
-
-            {/* Quick description */}
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <p>Clique para registrar cada refeição:</p>
-              <p>☀️ Café da manhã</p>
-              <p>🌤️ Almoço</p>
-              <p>🌙 Jantar</p>
-            </div>
-
-            {mealsCompleted && (
-              <div className="p-2 bg-success/10 border border-success/30 rounded text-center">
-                <p className="text-xs text-success font-semibold">✅ Meta de alimentação completada!</p>
-              </div>
-            )}
-          </motion.div>
-        </div>
 
         {/* Tips */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.2 }}
           className="rpg-card space-y-2"
         >
           <h3 className="font-bold text-foreground">💡 Dicas de Saúde</h3>
@@ -298,7 +290,8 @@ export default function HealthPage() {
             <li>Beba cerca de 2 litros de água por dia</li>
             <li>Faça 3 refeições principais</li>
             <li>Mantenha uma rotina regular</li>
-            <li>Combine com exercícios para mais XP!</li>
+            <li>Consulte um médico regularmente</li>
+            <li>Carregar exames aqui para acompanhar sua saúde</li>
           </ul>
         </motion.div>
       </div>

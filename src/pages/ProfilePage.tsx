@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile, useAttributes } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useAwardHealthXP } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Heart, Shield, Zap, Flame, Droplets, UtensilsCrossed,
@@ -485,11 +486,14 @@ export default function ProfilePage() {
   const { data: healthStats } = useHealthStats();
   const { data: todayMeals } = useTodayMeals();
   const { data: todayWater } = useTodayWater();
+  const awardHealthXP = useAwardHealthXP();
   const queryClient = useQueryClient();
 
   const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<"perfil" | "habilidades" | "inventario">("perfil");
   const [weight, setWeight] = useState(70);
   const [mealsTarget, setMealsTarget] = useState(3);
+  const [xpAwarded, setXpAwarded] = useState(false);
 
   useEffect(() => {
     if (healthStats) {
@@ -497,6 +501,25 @@ export default function ProfilePage() {
       setMealsTarget(healthStats.meals_target || 3);
     }
   }, [healthStats]);
+
+  // Reset XP Award flag diariamente após 23:59
+  useEffect(() => {
+    const checkDayChange = () => {
+      const lastCheckDate = localStorage.getItem('lastXpCheckDate');
+      const today = new Date().toLocaleDateString('en-CA');
+      
+      if (lastCheckDate !== today) {
+        setXpAwarded(false);
+        localStorage.setItem('lastXpCheckDate', today);
+      }
+    };
+
+    checkDayChange();
+    
+    // Verificar a cada minuto se o dia mudou
+    const interval = setInterval(checkDayChange, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const waterTargetMl = Math.round(weight * 35);
   const totalWaterToday = (todayWater || []).reduce((s: number, w: any) => s + (w.amount_ml || 0), 0);
@@ -541,6 +564,12 @@ export default function ProfilePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["meal_log"] });
       toast.success("Refeição registrada! 🍖");
+      
+      // Verificar se ambas as metas foram completadas
+      const newMealsCount = mealsToday + 1;
+      if (!xpAwarded && newMealsCount >= mealsTarget && totalWaterToday >= waterTargetMl) {
+        checkAndAwardXP();
+      }
     },
   });
 
@@ -554,8 +583,39 @@ export default function ProfilePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["water_log"] });
       toast.success("Água registrada! 💧");
+      
+      // Verificar se ambas as metas foram completadas
+      const newWaterTotal = totalWaterToday + (parseInt(logWater.variables?.toString() || "0") || 0);
+      if (!xpAwarded && mealsToday >= mealsTarget && newWaterTotal >= waterTargetMl) {
+        checkAndAwardXP();
+      }
     },
   });
+
+  const checkAndAwardXP = async () => {
+    try {
+      await awardHealthXP.mutateAsync();
+      setXpAwarded(true);
+      toast({
+        title: '🎉 Desafio Completado!',
+        description: '+ 50 XP por manter a saúde em dia!',
+      });
+    } catch (error: any) {
+      if (error.message.includes('já ganhou')) {
+        setXpAwarded(true);
+        toast({
+          title: '⚠️ Bônus já coletado',
+          description: 'Volte amanhã para ganhar mais XP!',
+        });
+      } else {
+        toast({
+          title: 'Erro ao conceder XP',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
+    }
+  };
 
   const waterPercent = Math.min(100, Math.round((totalWaterToday / waterTargetMl) * 100));
   const hpPercent = Math.round((currentHp / maxHp) * 100);
@@ -576,6 +636,27 @@ export default function ProfilePage() {
           >
             <Settings className="w-5 h-5 text-muted-foreground" />
           </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-border">
+          {[
+            { id: "perfil", label: "📊 Perfil", icon: "👤" },
+            { id: "habilidades", label: "🌟 Habilidades", icon: "⭐" },
+            { id: "inventario", label: "🎒 Inventário", icon: "📦" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Settings Panel */}
@@ -611,118 +692,319 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* HP / MP / Fatigue */}
-        <div className="bg-card/80 backdrop-blur border border-border rounded-xl p-5 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 w-14">
-              <Heart className="w-5 h-5 text-red-400" />
-              <span className="text-xs font-bold text-red-400">HP</span>
-            </div>
-            <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden border border-red-900/30">
-              <div className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500 rounded-full" style={{ width: `${hpPercent}%` }} />
-            </div>
-            <span className="text-sm font-bold text-foreground w-20 text-right">{currentHp}/{maxHp}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 w-14">
-              <Shield className="w-5 h-5 text-blue-400" />
-              <span className="text-xs font-bold text-blue-400">MP</span>
-            </div>
-            <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden border border-blue-900/30">
-              <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 rounded-full" style={{ width: `${mpPercent}%` }} />
-            </div>
-            <span className="text-sm font-bold text-foreground w-20 text-right">{currentMp}/{maxMp}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 w-14">
-              <Flame className="w-5 h-5 text-orange-400" />
-            </div>
-            <span className="text-sm text-muted-foreground">FADIGA:</span>
-            <span className="text-xl font-bold text-foreground">{fatigue}</span>
-          </div>
-          {mealPenalty > 0 && (
-            <p className="text-xs text-red-400 flex items-center gap-1">⚠️ Você perdeu {mealPenalty} HP por não comer o suficiente!</p>
-          )}
-        </div>
-
-        {/* Hunger & Thirst */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UtensilsCrossed className="w-5 h-5 text-orange-400" />
-                <h3 className="text-sm font-bold text-foreground">FOME</h3>
-              </div>
-              <span className="text-xs text-muted-foreground">Meta: {mealsTarget}x/dia</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {Array.from({ length: mealsTarget }).map((_, i) => (
-                <div key={i} className={`flex-1 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${i < mealsToday ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-muted/30 border-border text-muted-foreground/40"}`}>
-                  {i < mealsToday ? "🍖" : `${i + 1}`}
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{mealsToday}/{mealsTarget} refeições</span>
-              <button onClick={() => logMeal.mutate()} disabled={mealsToday >= mealsTarget} className="flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                <Plus className="w-3 h-3" /> Refeição
-              </button>
-            </div>
-            {mealsToday < mealHalf && (
-              <p className="text-[10px] text-red-400">⚠️ Coma pelo menos {mealHalf}x para não perder HP!</p>
+        {/* ======== ABA: PERFIL ======== */}
+        {activeTab === "perfil" && (
+          <div className="space-y-6">
+            {/* XP Award Card */}
+            {mealsToday >= mealsTarget && totalWaterToday >= waterTargetMl && xpAwarded && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="rpg-card-glow bg-gradient-to-r from-success/10 to-primary/10 border-success/30 text-center p-6 space-y-3"
+              >
+                <span className="text-4xl inline-block">🏆</span>
+                <h2 className="font-display font-bold text-lg text-success">Todas as metas completadas!</h2>
+                <p className="text-sm text-muted-foreground">Você ganhou +50 XP por manter a saúde em dia!</p>
+                <div className="text-3xl font-bold text-xp pt-2">✨ +50 XP</div>
+              </motion.div>
             )}
-          </div>
-
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Droplets className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-sm font-bold text-foreground">SEDE</h3>
-              </div>
-              <span className="text-xs text-muted-foreground">{waterTargetMl}ml/dia</span>
-            </div>
-            <div className="relative h-8 bg-muted rounded-full overflow-hidden border border-cyan-900/30">
-              <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500 rounded-full" style={{ width: `${waterPercent}%` }} />
-              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-foreground">{totalWaterToday}ml / {waterTargetMl}ml</span>
-            </div>
-            <div className="flex items-center gap-2 justify-center">
-              {[150, 250, 500].map((ml) => (
-                <button key={ml} onClick={() => logWater.mutate(ml)} className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium hover:bg-cyan-500/30 transition-colors">
-                  <Droplets className="w-3 h-3" /> {ml}ml
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-muted-foreground text-center">Base: {weight}kg × 35ml = {waterTargetMl}ml</p>
-          </div>
-        </div>
-
-        {/* Body Evolution */}
-        <div className="bg-card border border-border rounded-xl p-4">
-          <BodyEvolutionSection />
-        </div>
-
-        {/* Attributes Grid */}
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground">📊 ATRIBUTOS</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {(attributes || []).map((attr: any) => {
-              const Icon = ATTRIBUTE_ICONS[attr.name] || Star;
-              const colorClass = getAttributeColorClass(attr.name);
-              return (
-                <div key={attr.id} className={`flex items-center gap-3 p-3 rounded-lg border ${colorClass}`}>
-                  <Icon className="w-5 h-5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold truncate">{attr.name.substring(0, 3).toUpperCase()}</p>
-                    <p className="text-lg font-bold">{attr.xp}</p>
-                  </div>
+            
+            {/* HP / MP / Fatigue */}
+            <div className="bg-card/80 backdrop-blur border border-border rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 w-14">
+                  <Heart className="w-5 h-5 text-red-400" />
+                  <span className="text-xs font-bold text-red-400">HP</span>
                 </div>
-              );
-            })}
+                <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden border border-red-900/30">
+                  <div className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500 rounded-full" style={{ width: `${hpPercent}%` }} />
+                </div>
+                <span className="text-sm font-bold text-foreground w-20 text-right">{currentHp}/{maxHp}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 w-14">
+                  <Shield className="w-5 h-5 text-blue-400" />
+                  <span className="text-xs font-bold text-blue-400">MP</span>
+                </div>
+                <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden border border-blue-900/30">
+                  <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 rounded-full" style={{ width: `${mpPercent}%` }} />
+                </div>
+                <span className="text-sm font-bold text-foreground w-20 text-right">{currentMp}/{maxMp}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 w-14">
+                  <Flame className="w-5 h-5 text-orange-400" />
+                </div>
+                <span className="text-sm text-muted-foreground">FADIGA:</span>
+                <span className="text-xl font-bold text-foreground">{fatigue}</span>
+              </div>
+              {mealPenalty > 0 && (
+                <p className="text-xs text-red-400 flex items-center gap-1">⚠️ Você perdeu {mealPenalty} HP por não comer o suficiente!</p>
+              )}
+            </div>
+
+            {/* Hunger & Thirst */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <UtensilsCrossed className="w-5 h-5 text-orange-400" />
+                    <h3 className="text-sm font-bold text-foreground">FOME</h3>
+                  </div>
+                  <span className="text-xs text-muted-foreground">Meta: {mealsTarget}x/dia</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {Array.from({ length: mealsTarget }).map((_, i) => (
+                    <div key={i} className={`flex-1 h-8 rounded-lg border flex items-center justify-center text-xs font-bold transition-all ${i < mealsToday ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-muted/30 border-border text-muted-foreground/40"}`}>
+                      {i < mealsToday ? "🍖" : `${i + 1}`}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{mealsToday}/{mealsTarget} refeições</span>
+                  <button onClick={() => logMeal.mutate()} disabled={mealsToday >= mealsTarget} className="flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <Plus className="w-3 h-3" /> Refeição
+                  </button>
+                </div>
+                {mealsToday < mealHalf && (
+                  <p className="text-[10px] text-red-400">⚠️ Coma pelo menos {mealHalf}x para não perder HP!</p>
+                )}
+              </div>
+
+              <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Droplets className="w-5 h-5 text-cyan-400" />
+                    <h3 className="text-sm font-bold text-foreground">SEDE</h3>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{waterTargetMl}ml/dia</span>
+                </div>
+                <div className="relative h-8 bg-muted rounded-full overflow-hidden border border-cyan-900/30">
+                  <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500 rounded-full" style={{ width: `${waterPercent}%` }} />
+                  <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-foreground">{totalWaterToday}ml / {waterTargetMl}ml</span>
+                </div>
+                <div className="flex items-center gap-2 justify-center">
+                  {[150, 250, 500].map((ml) => (
+                    <button key={ml} onClick={() => logWater.mutate(ml)} className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium hover:bg-cyan-500/30 transition-colors">
+                      <Droplets className="w-3 h-3" /> {ml}ml
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center">Base: {weight}kg × 35ml = {waterTargetMl}ml</p>
+              </div>
+            </div>
+
+            {/* Body Evolution */}
+            <div className="bg-card border border-border rounded-xl p-4">
+              <BodyEvolutionSection />
+            </div>
           </div>
-          {attributes && attributes.length > 0 && (
-            <p className="text-[10px] text-muted-foreground text-center">Pontos de Habilidade Disponíveis: 0</p>
-          )}
-        </div>
+        )}
+
+        {/* ======== ABA: HABILIDADES ======== */}
+        {activeTab === "habilidades" && (
+          <div className="space-y-6">
+            {/* Attributes Grid - Expandido */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-6 h-6 text-primary" />
+                <h3 className="text-lg font-bold text-foreground">🌟 SUAS HABILIDADES</h3>
+              </div>
+
+              {attributes && attributes.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(attributes || []).map((attr: any) => {
+                    const Icon = ATTRIBUTE_ICONS[attr.name] || Star;
+                    const colorClass = getAttributeColorClass(attr.name);
+                    const nextLevelXp = 100;
+                    const currentXp = attr.xp;
+                    const nextLevelProgress = (currentXp % nextLevelXp) / nextLevelXp;
+
+                    return (
+                      <div
+                        key={attr.id}
+                        className={`p-4 rounded-lg border ${colorClass} space-y-3`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-6 h-6" />
+                            <div>
+                              <p className="font-bold text-foreground">{attr.name}</p>
+                              <p className="text-xs text-muted-foreground">Nível {attr.level}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold">{attr.level}</p>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Progresso</span>
+                            <span>{currentXp % nextLevelXp}/{nextLevelXp} XP</span>
+                          </div>
+                          <div className="h-3 bg-secondary rounded-full overflow-hidden border border-border/50">
+                            <div
+                              className="h-full bg-gradient-to-r from-primary to-primary/50 rounded-full transition-all duration-300"
+                              style={{ width: `${nextLevelProgress * 100}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-muted/30 p-2 rounded">
+                            <p className="text-muted-foreground">Total XP</p>
+                            <p className="font-bold">{attr.xp}</p>
+                          </div>
+                          <div className="bg-muted/30 p-2 rounded">
+                            <p className="text-muted-foreground">Base Stat</p>
+                            <p className="font-bold">{(attr.level * 10).toFixed(0)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground">Nenhuma habilidade desbloqueada ainda.</p>
+              )}
+
+              {/* Skill Points */}
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-primary" />
+                    <span className="font-bold text-foreground">Pontos de Habilidade Disponíveis</span>
+                  </div>
+                  <span className="text-2xl font-bold text-primary">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======== ABA: INVENTÁRIO ======== */}
+        {activeTab === "inventario" && (
+          <div className="space-y-6">
+            <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Swords className="w-6 h-6 text-primary" />
+                <h3 className="text-lg font-bold text-foreground">🎒 INVENTÁRIO</h3>
+              </div>
+
+              {/* Equipamentos */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Dumbbell className="w-4 h-4" />
+                  Equipamentos
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { name: "Espada de Ferro", rarity: "comum", stat: "+5 ATK", icon: "⚔️" },
+                    { name: "Armadura de Aço", rarity: "comum", stat: "+8 DEF", icon: "🛡️" },
+                    { name: "Amuleto do Guerreiro", rarity: "raro", stat: "+3 todos", icon: "📿" },
+                    { name: "Bota de Velocidade", rarity: "épico", stat: "+10 AGI", icon: "👢" },
+                  ].map((item, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-lg border ${
+                        item.rarity === "comum"
+                          ? "bg-slate-500/10 border-slate-500/30"
+                          : item.rarity === "raro"
+                          ? "bg-blue-500/10 border-blue-500/30"
+                          : "bg-purple-500/10 border-purple-500/30"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-2xl">{item.icon}</span>
+                            <div>
+                              <p className="font-bold text-foreground text-sm">{item.name}</p>
+                              <p className={`text-xs font-semibold ${
+                                item.rarity === "comum"
+                                  ? "text-slate-400"
+                                  : item.rarity === "raro"
+                                  ? "text-blue-400"
+                                  : "text-purple-400"
+                              }`}>
+                                {item.rarity.toUpperCase()}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{item.stat}</p>
+                        </div>
+                        <button className="px-2 py-1 bg-primary/20 text-primary text-xs rounded hover:bg-primary/30 transition-colors">
+                          Equipar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Consumíveis */}
+              <div className="space-y-3 border-t border-border pt-4">
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Heart className="w-4 h-4" />
+                  Consumíveis
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { name: "Poção de Vida", effect: "Restaura 50 HP", icon: "🧪", quantity: 5 },
+                    { name: "Elixir de Mana", effect: "Restaura 20 MP", icon: "🔵", quantity: 3 },
+                    { name: "Fruta Mágica", effect: "+100 XP", icon: "🍎", quantity: 2 },
+                  ].map((item, idx) => (
+                    <div key={idx} className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{item.icon}</span>
+                          <div>
+                            <p className="font-bold text-foreground text-sm">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.effect}</p>
+                          </div>
+                        </div>
+                        <span className="text-lg font-bold text-primary">x{item.quantity}</span>
+                      </div>
+                      <button className="w-full px-2 py-1 bg-success/20 text-success text-xs rounded hover:bg-success/30 transition-colors font-medium">
+                        Usar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Materials */}
+              <div className="space-y-3 border-t border-border pt-4">
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  Materiais
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {[
+                    { name: "Minério de Ferro", icon: "⛏️", quantity: 12 },
+                    { name: "Tecido Fino", icon: "🧵", quantity: 8 },
+                    { name: "Cristal Azul", icon: "💎", quantity: 4 },
+                    { name: "Pó de Ouro", icon: "✨", quantity: 15 },
+                  ].map((item, idx) => (
+                    <div key={idx} className="p-2 rounded-lg border border-border/50 bg-muted/20 text-center text-xs">
+                      <p className="text-xl mb-1">{item.icon}</p>
+                      <p className="text-muted-foreground line-clamp-1">{item.name}</p>
+                      <p className="font-bold text-foreground">{item.quantity}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="bg-muted/30 border border-border/50 rounded-lg p-3 text-xs text-muted-foreground">
+                💡 Dica: Complete missões para ganhar itens raros e aumentar seu inventário!
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );
