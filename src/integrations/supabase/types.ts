@@ -275,6 +275,36 @@ export type Database = {
           },
         ]
       }
+      daily_tracking: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          meals_count: number
+          updated_at: string
+          user_id: string
+          water_ml: number
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          meals_count?: number
+          updated_at?: string
+          user_id: string
+          water_ml?: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          meals_count?: number
+          updated_at?: string
+          user_id?: string
+          water_ml?: number
+        }
+        Relationships: []
+      }
       gold_history: {
         Row: {
           amount: number
