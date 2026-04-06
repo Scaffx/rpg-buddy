@@ -418,7 +418,7 @@ function EvolutionChart({ measurements }: { measurements: any[] }) {
     );
   };
 
-  const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = require("recharts");
+  
 
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-3">
