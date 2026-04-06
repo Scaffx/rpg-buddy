@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -9,22 +9,35 @@ export function useDailyBonus() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  // Check if daily bonus was already claimed today
+  const { data: isClaimed = false, isLoading: isCheckingClaim } = useQuery({
+    queryKey: ['daily-bonus-claimed', user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data: claims } = await supabase
+        .from('activity_log')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('action', 'daily_bonus')
+        .gte('created_at', `${today}T00:00:00`)
+        .lt('created_at', `${today}T23:59:59`)
+        .maybeSingle();
+
+      return !!claims;
+    },
+    enabled: !!user,
+  });
+
+  const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
       const today = new Date().toISOString().split('T')[0];
 
       // Check if already claimed today
-      const { data: existingClaim } = await supabase
-        .from('activity_log')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('action', 'daily_bonus')
-        .eq('description', `like(${today})`)
-        .maybeSingle();
-
-      // Simplified check: use xp_gained field to check if bonus already claimed
       const { data: claims } = await supabase
         .from('activity_log')
         .select('created_at')
@@ -87,6 +100,14 @@ export function useDailyBonus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-bonus-claimed'] });
     },
   });
+
+  return {
+    mutate: mutation.mutate,
+    isPending: mutation.isPending,
+    isClaimed,
+    isCheckingClaim,
+  };
 }

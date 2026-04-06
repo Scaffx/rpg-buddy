@@ -147,44 +147,46 @@ export default function Dashboard() {
         )}
 
         {/* Daily Bonus */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="rpg-card bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Gift className="w-6 h-6 text-purple-400" />
-              <div>
-                <h3 className="font-bold text-foreground">Bônus Diário Disponível!</h3>
-                <p className="text-xs text-muted-foreground">+15 XP e +5 🪙</p>
+        {!dailyBonus.isClaimed && !dailyBonus.isCheckingClaim && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="rpg-card bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Gift className="w-6 h-6 text-purple-400" />
+                <div>
+                  <h3 className="font-bold text-foreground">Bônus Diário Disponível!</h3>
+                  <p className="text-xs text-muted-foreground">+15 XP e +5 🪙</p>
+                </div>
               </div>
+              <Button
+                onClick={() => {
+                  dailyBonus.mutate(undefined, {
+                    onSuccess: () => {
+                      // Toast will be shown by mutation
+                    },
+                    onError: (err: Error) => {
+                      // Error messages handled
+                    },
+                  });
+                }}
+                disabled={dailyBonus.isPending}
+                size="sm"
+                className="bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/50"
+              >
+                {dailyBonus.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Coins className="w-4 h-4 mr-1" />
+                )}
+                Coletar
+              </Button>
             </div>
-            <Button
-              onClick={() => {
-                dailyBonus.mutate(undefined, {
-                  onSuccess: () => {
-                    // Toast will be shown by mutation
-                  },
-                  onError: (err: Error) => {
-                    // Error messages handled
-                  },
-                });
-              }}
-              disabled={dailyBonus.isPending}
-              size="sm"
-              className="bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/50"
-            >
-              {dailyBonus.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-1" />
-              ) : (
-                <Coins className="w-4 h-4 mr-1" />
-              )}
-              Coletar
-            </Button>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Today's Daily Missions */}
         <div>
