@@ -311,6 +311,11 @@ function BodyEvolutionSection() {
         </div>
       )}
 
+      {/* Evolution Chart */}
+      {measurements && measurements.length >= 2 && (
+        <EvolutionChart measurements={measurements} />
+      )}
+
       {/* Photo Gallery */}
       {photosWithUrl.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
