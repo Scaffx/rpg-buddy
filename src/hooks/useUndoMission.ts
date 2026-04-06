@@ -60,7 +60,9 @@ export function useUndoMission() {
 
       if (attr) {
         const newXp = Math.max(0, attr.xp - xpEarned);
-        const newLevel = Math.floor(newXp / 100) + 1;
+        const calculatedLevel = Math.floor(newXp / 100) + 1;
+        // O nível nunca pode diminuir
+        const newLevel = Math.max(calculatedLevel, attr.level);
 
         await supabase
           .from('attributes')
@@ -79,7 +81,9 @@ export function useUndoMission() {
 
         if (secAttr) {
           const newXp = Math.max(0, secAttr.xp - 1);
-          const newLevel = Math.floor(newXp / 100) + 1;
+          const calculatedLevel = Math.floor(newXp / 100) + 1;
+          // O nível nunca pode diminuir
+          const newLevel = Math.max(calculatedLevel, secAttr.level);
 
           await supabase
             .from('attributes')
@@ -97,7 +101,9 @@ export function useUndoMission() {
 
       if (profile) {
         const newTotalXp = Math.max(0, profile.total_xp - xpEarned);
-        const newLevel = Math.floor(newTotalXp / 200) + 1;
+        const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
+        // O nível nunca pode diminuir
+        const newLevel = Math.max(calculatedLevel, profile.level);
 
         await supabase
           .from('profiles')

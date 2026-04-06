@@ -153,6 +153,8 @@ export default function Missions() {
   const [formPriority, setFormPriority] = useState("media");
   const [formDays, setFormDays] = useState<string[]>([]);
   const [formHorario, setFormHorario] = useState<string | string[]>('flex');
+  const [formMissionType, setFormMissionType] = useState<"recorrente" | "unica">("recorrente");
+  const [formDueDate, setFormDueDate] = useState("");
 
   const { data: allMissions, isLoading } = useMissions();
   const { data: attrs } = useAttributes();
@@ -173,17 +175,22 @@ export default function Missions() {
     return DAYS[d === 0 ? 6 : d - 1];
   }, []);
 
-  // ✅ FILTRO ATUALIZADO: Separar "Hoje" de "Próximos Dias"
-  const { todayMissions, nextDaysMissions, completedMissions } = useMemo(() => {
-    if (!allMissions) return { todayMissions: [], nextDaysMissions: [], completedMissions: [] };
+  // ✅ FILTRO ATUALIZADO: Separar "Hoje" de "Próximos Dias" + "Missões Únicas"
+  const { todayMissions, nextDaysMissions, todayUniqueMissions, nextUniqueMissions, completedMissions } = useMemo(() => {
+    if (!allMissions) return { todayMissions: [], nextDaysMissions: [], todayUniqueMissions: [], nextUniqueMissions: [], completedMissions: [] };
 
     let today: any[] = [];
     let nextDays: any[] = [];
+    let todayUnique: any[] = [];
+    let nextUnique: any[] = [];
     let completed: any[] = [];
+
+    const hoje = new Date().toISOString().split('T')[0];
 
     allMissions.forEach((m: any) => {
       const days = (m.days_of_week as string[]) || [];
       const isDaily = days.length > 0;
+      const isUnique = days.length === 0 && m.due_date; // Missão única tem due_date e não tem dias recorrentes
       const completedToday = foiConcluidaHoje(m);
       const isCompleted = m.completed || m.status === "arquivada";
 
@@ -197,7 +204,13 @@ export default function Missions() {
 
       if (activeTab === "todas") {
         if (!isCompleted) {
-          if (isDaily && completedToday) {
+          if (isUnique) {
+            if (m.due_date === hoje) {
+              todayUnique.push(m);
+            } else if (m.due_date > hoje) {
+              nextUnique.push(m);
+            }
+          } else if (isDaily && completedToday) {
             nextDays.push(m);
           } else if (isDaily && !completedToday && days.includes(todayDay)) {
             today.push(m);
@@ -211,14 +224,22 @@ export default function Missions() {
       }
 
       if (activeTab === "foco") {
-        if (isDaily && !completedToday && days.includes(todayDay)) {
+        if (isUnique && m.due_date === hoje) {
+          todayUnique.push(m);
+        } else if (isDaily && !completedToday && days.includes(todayDay)) {
           today.push(m);
         }
         return;
       }
 
       // Pendentes (padrão)
-      if (isDaily && completedToday) {
+      if (isUnique) {
+        if (m.due_date === hoje) {
+          todayUnique.push(m);
+        } else if (m.due_date > hoje) {
+          nextUnique.push(m);
+        }
+      } else if (isDaily && completedToday) {
         nextDays.push(m);
       } else if (isDaily && !completedToday && days.includes(todayDay)) {
         today.push(m);
@@ -264,6 +285,8 @@ export default function Missions() {
     return {
       todayMissions: filterMissions(today),
       nextDaysMissions: filterMissions(nextDays),
+      todayUniqueMissions: filterMissions(todayUnique),
+      nextUniqueMissions: filterMissions(nextUnique),
       completedMissions: filterMissions(completed),
     };
   }, [allMissions, activeTab, selectedCategories, searchQuery, todayDay, attrs]);
@@ -293,6 +316,8 @@ export default function Missions() {
     setFormPriority("media");
     setFormDays([]);
     setFormHorario("flex");
+    setFormMissionType("recorrente");
+    setFormDueDate("");
     setShowCreateEdit(true);
   };
 
@@ -316,17 +341,32 @@ const openEditModal = (m: any) => {
     setFormHorario(horario);
   }
   
+  // Determinar tipo de missão
+  const days = (m.days_of_week as string[]) || [];
+  const isMissionType = days.length === 0 && m.due_date ? "unica" : "recorrente";
+  setFormMissionType(isMissionType);
+  setFormDueDate(m.due_date || '');
+  
   setShowCreateEdit(true);
 };
 
 const handleSave = async () => {
   if (!formTitle.trim() || !formAttrId) return;
+  
+  // Validação para missões únicas
+  if (formMissionType === "unica" && !formDueDate) {
+    toast({ title: 'Erro', description: 'Selecione uma data para missões únicas', variant: 'destructive' });
+    return;
+  }
 
   try {
     // ✅ Converter formHorario para o formato correto
     const horarioParaSalvar = Array.isArray(formHorario) 
       ? formHorario 
       : [formHorario].filter(Boolean);
+
+    // Preparar dias de semana (vazio para missões únicas)
+    const daysToSave = formMissionType === "unica" ? [] : formDays;
 
     if (editingMission) {
       await updateMission.mutateAsync({
@@ -337,7 +377,8 @@ const handleSave = async () => {
           notes: formNotes.trim() || undefined,
           attribute_id: formAttrId,
           priority: formPriority,
-          days_of_week: formDays,
+          days_of_week: daysToSave,
+          due_date: formMissionType === "unica" ? formDueDate : null,
           horario_provavel: Array.isArray(horarioParaSalvar) ? horarioParaSalvar.join(',') : horarioParaSalvar,
           secondary_attribute_ids: formSecondaryAttrIds,
         },
@@ -347,7 +388,8 @@ const handleSave = async () => {
       await createMission.mutateAsync({
         title: formTitle.trim(),
         attributeId: formAttrId,
-        daysOfWeek: formDays,
+        daysOfWeek: daysToSave,
+        dueDate: formMissionType === "unica" ? formDueDate : undefined,
         horarioProvavel: Array.isArray(horarioParaSalvar) ? horarioParaSalvar.join(',') : horarioParaSalvar,
         priority: formPriority,
         description: formDescription.trim() || undefined,
@@ -598,6 +640,73 @@ const handleSave = async () => {
               </div>
             )}
 
+            {/* ✅ SEÇÃO: MISSÕES ÚNICAS */}
+            {(todayUniqueMissions.length > 0 || nextUniqueMissions.length > 0) && (
+              <div className="mt-8 pt-8 border-t border-border">
+                {/* Únicas de Hoje */}
+                {todayUniqueMissions.length > 0 && (
+                  <div className="space-y-3 mb-8">
+                    <h2 className="text-lg font-bold text-orange-400 flex items-center gap-2">
+                      🎯 Missões Únicas de Hoje
+                      <span className="text-xs bg-orange-400/20 text-orange-400 px-2 py-1 rounded-full">{todayUniqueMissions.length}</span>
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {todayUniqueMissions.map((m: any, i: number) => (
+                        <MissionCard
+                          key={m.id}
+                          mission={m}
+                          attrs={attrs || []}
+                          index={i}
+                          expanded={expandedMission === m.id}
+                          onToggle={() => setExpandedMission(expandedMission === m.id ? null : m.id)}
+                          onComplete={() => handleComplete(m)}
+                          onEdit={() => openEditModal(m)}
+                          onDelete={() => setDeleteConfirm(m.id)}
+                          onArchive={() => handleArchive(m.id)}
+                          onPlay={() => handlePlay(m)}
+                          completing={completeMission.isPending}
+                          newChecklistText={expandedMission === m.id ? newChecklistText : ""}
+                          onNewChecklistTextChange={setNewChecklistText}
+                          isCompletedToday={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Únicas dos Próximos Dias */}
+                {nextUniqueMissions.length > 0 && (
+                  <div className="space-y-3">
+                    <h2 className="text-lg font-bold text-orange-300 flex items-center gap-2">
+                      🗓️ Próximas Missões Únicas
+                      <span className="text-xs bg-orange-400/20 text-orange-300 px-2 py-1 rounded-full">{nextUniqueMissions.length}</span>
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {nextUniqueMissions.map((m: any, i: number) => (
+                        <MissionCard
+                          key={m.id}
+                          mission={m}
+                          attrs={attrs || []}
+                          index={i}
+                          expanded={expandedMission === m.id}
+                          onToggle={() => setExpandedMission(expandedMission === m.id ? null : m.id)}
+                          onComplete={() => handleComplete(m)}
+                          onEdit={() => openEditModal(m)}
+                          onDelete={() => setDeleteConfirm(m.id)}
+                          onArchive={() => handleArchive(m.id)}
+                          onPlay={() => handlePlay(m)}
+                          completing={completeMission.isPending}
+                          newChecklistText={expandedMission === m.id ? newChecklistText : ""}
+                          onNewChecklistTextChange={setNewChecklistText}
+                          isCompletedToday={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ✅ PRÓXIMOS DIAS */}
             {nextDaysMissions.length > 0 && (
               <div className="space-y-3 mt-8 pt-8 border-t border-border">
@@ -685,13 +794,17 @@ const handleSave = async () => {
   formSecondaryAttrIds={formSecondaryAttrIds}
   setFormSecondaryAttrIds={setFormSecondaryAttrIds}
   formPriority={formPriority}
-  setFormPriority={setFormPriority}  // ✅ CORRIGIDO: } em vez de )
+  setFormPriority={setFormPriority}
   formDays={formDays}
   setFormDays={setFormDays}
   formHorario={formHorario}
-  setFormHorario={setFormHorario}  // ✅ CORRIGIDO: } em vez de )
+  setFormHorario={setFormHorario}
+  formMissionType={formMissionType}
+  setFormMissionType={setFormMissionType}
+  formDueDate={formDueDate}
+  setFormDueDate={setFormDueDate}
   onSave={handleSave}
-  saving={createMission.isPending || updateMission.isPending}  // ✅ CORRIGIDO: = em vez de -
+  saving={createMission.isPending || updateMission.isPending}
   missionId={editingMission?.id}
 />
 
@@ -880,6 +993,9 @@ function MissionCard({
           {days.length > 0 && (
             <span className="text-xs font-medium bg-primary/15 text-primary px-2 py-0.5 rounded">📅 Diária</span>
           )}
+          {mission.due_date && days.length === 0 && (
+            <span className="text-xs font-medium bg-orange-400/15 text-orange-400 px-2 py-0.5 rounded">🎯 Única</span>
+          )}
           {allMissionAttrs.map((a: any, idx: number) => (
             <AttributeChip key={idx} name={a.name} icon={a.icon} />
           ))}
@@ -896,7 +1012,11 @@ function MissionCard({
         {/* XP + Date */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-primary font-bold">✨ +{mission.xp_reward} XP</span>
-          <span className="text-xs text-muted-foreground">{new Date(mission.created_at).toLocaleDateString('pt-BR')}</span>
+          <span className="text-xs text-muted-foreground">
+            {mission.due_date && days.length === 0
+              ? `🎯 ${new Date(mission.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}`
+              : new Date(mission.created_at).toLocaleDateString('pt-BR')}
+          </span>
         </div>
 
         {/* Buttons */}
@@ -996,7 +1116,8 @@ function MissionFormModal({
   formNotes, setFormNotes, formAttrId, setFormAttrId,
   formSecondaryAttrIds, setFormSecondaryAttrIds,
   formPriority, setFormPriority, formDays, setFormDays,
-  formHorario, setFormHorario, onSave, saving, missionId,
+  formHorario, setFormHorario, formMissionType, setFormMissionType,
+  formDueDate, setFormDueDate, onSave, saving, missionId,
 }: {
   open: boolean; onOpenChange: (v: boolean) => void; isEditing: boolean; attrs: any[];
   formTitle: string; setFormTitle: (v: string) => void;
@@ -1007,6 +1128,8 @@ function MissionFormModal({
   formPriority: string; setFormPriority: (v: string) => void;
   formDays: string[]; setFormDays: (v: string[]) => void;
   formHorario: string | string[]; setFormHorario: (v: string | string[]) => void;
+  formMissionType: "recorrente" | "unica"; setFormMissionType: (v: "recorrente" | "unica") => void;
+  formDueDate: string; setFormDueDate: (v: string) => void;
   onSave: () => void; saving: boolean; missionId?: string;
 }) {
   const { data: checklist } = useChecklistItems(missionId || '');
@@ -1156,26 +1279,70 @@ function MissionFormModal({
             </div>
           </div>
 
-          {/* Days */}
+          {/* ✅ NOVO: Tipo de Missão */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Dias da Semana</label>
-            <div className="flex gap-1.5 flex-wrap">
-              {DAYS.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => toggleDay(d)}
-                  className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
-                    formDays.includes(d)
-                      ? 'bg-primary/20 border-primary/50 text-primary'
-                      : 'bg-secondary border-border text-muted-foreground'
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
+            <label className="text-xs text-muted-foreground mb-1 block">Tipo de Missão</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setFormMissionType("recorrente")}
+                className={`flex-1 px-3 py-2 rounded-md border text-xs font-medium transition-all ${
+                  formMissionType === "recorrente"
+                    ? 'bg-cyan-400/20 border-cyan-400/50 text-cyan-400 ring-1 ring-cyan-400'
+                    : 'bg-secondary border-border text-muted-foreground'
+                }`}
+              >
+                📅 Recorrente
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormMissionType("unica")}
+                className={`flex-1 px-3 py-2 rounded-md border text-xs font-medium transition-all ${
+                  formMissionType === "unica"
+                    ? 'bg-orange-400/20 border-orange-400/50 text-orange-400 ring-1 ring-orange-400'
+                    : 'bg-secondary border-border text-muted-foreground'
+                }`}
+              >
+                🎯 Única
+              </button>
             </div>
           </div>
+
+          {/* Days (only for recorrente) */}
+          {formMissionType === "recorrente" && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Dias da Semana</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAYS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleDay(d)}
+                    className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                      formDays.includes(d)
+                        ? 'bg-primary/20 border-primary/50 text-primary'
+                        : 'bg-secondary border-border text-muted-foreground'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Due Date (only for unica) */}
+          {formMissionType === "unica" && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Data de Conclusão *</label>
+              <Input
+                type="date"
+                value={formDueDate}
+                onChange={(e) => setFormDueDate(e.target.value)}
+                className="bg-secondary border-border"
+              />
+            </div>
+          )}
 
           {/* ✅ NOVO: Time (até 2 horários) */}
           <div>

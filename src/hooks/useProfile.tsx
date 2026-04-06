@@ -554,3 +554,70 @@ export function useTodayMissionsCount() {
     enabled: !!user,
   });
 }
+
+// ✅ Hook para conceder XP quando água + comida estão completas
+export function useAwardHealthXP() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const XP_REWARD = 50;
+      const today = new Date().toISOString().split('T')[0];
+
+      // Verificar se já ganhou o bônus hoje
+      const { data: existingLog } = await supabase
+        .from('activity_log')
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('action', 'health_challenge_complete')
+        .gte('created_at', today)
+        .limit(1);
+
+      if (existingLog && existingLog.length > 0) {
+        throw new Error('Você já ganhou o bônus de saúde hoje!');
+      }
+
+      // Atualizar perfil
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('total_xp, xp_today, level')
+        .eq('user_id', user!.id)
+        .single();
+
+      if (profile) {
+        const newTotalXp = profile.total_xp + XP_REWARD;
+        const newLevel = Math.floor(newTotalXp / 200) + 1;
+
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            total_xp: newTotalXp,
+            xp_today: profile.xp_today + XP_REWARD,
+            level: newLevel,
+          })
+          .eq('user_id', user!.id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Registrar atividade
+      const { error: logError } = await supabase
+        .from('activity_log')
+        .insert({
+          user_id: user!.id,
+          action: 'health_challenge_complete',
+          description: '✨ Desafio de saúde completado! +50 XP',
+          xp_gained: XP_REWARD,
+        });
+
+      if (logError) throw logError;
+
+      return { success: true, xpAwarded: XP_REWARD };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['activity'] });
+    },
+  });
+}

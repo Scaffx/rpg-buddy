@@ -74,7 +74,9 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
 
     if (profile) {
       const newXp = Math.max(0, profile.total_xp - totalPenalty);
-      const newLevel = Math.floor(newXp / 200) + 1;
+      // O nível nunca pode diminuir - apenas mantém o nível atual se XP cair abaixo do threshold
+      const calculatedLevel = Math.floor(newXp / 200) + 1;
+      const newLevel = Math.max(calculatedLevel, profile.level);
       await supabase.from('profiles').update({
         total_xp: newXp,
         level: newLevel,

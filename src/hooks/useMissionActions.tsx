@@ -13,6 +13,7 @@ export function useUpdateMission() {
         attribute_id?: string;
         priority?: string;
         days_of_week?: string[];
+        due_date?: string | null;
         horario_provavel?: string;
         status?: string;
         secondary_attribute_ids?: string[];
