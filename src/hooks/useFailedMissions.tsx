@@ -50,9 +50,10 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       // Check if already has a failure record for this date
       if ((m as any).failed_date === pastDateStr) continue;
 
-      // Check daily_status for completion on that date
+      // Check daily_status for completion or already-accepted failure on that date
       const dailyStatus = (m as any).daily_status || {};
       if (dailyStatus[pastDateStr] === 'completed') continue;
+      if (dailyStatus[pastDateStr] === 'failed_accepted') continue;
 
       // Check mission_daily_completions
       const { data: completions } = await supabase
@@ -171,9 +172,20 @@ export function usePayPenalty() {
         }).eq('user_id', user.id);
       }
 
+      // Marca o dia do fracasso como aceito para evitar re-avaliação
+      const { data: missionData } = await supabase
+        .from('missions')
+        .select('daily_status')
+        .eq('id', mission.id)
+        .single();
+      const dailyStatus = (missionData as any)?.daily_status || {};
+      if ((mission as any).failed_date) {
+        dailyStatus[(mission as any).failed_date] = 'failed_accepted';
+      }
+
       await supabase
         .from('missions')
-        .update({ is_failed: false, xp_penalized: 0, failed_date: null } as any)
+        .update({ is_failed: false, xp_penalized: 0, failed_date: null, daily_status: dailyStatus } as any)
         .eq('id', mission.id);
 
       await supabase.from('gold_history').insert({
@@ -202,9 +214,20 @@ export function useAcceptPenalty() {
       const missionList = Array.isArray(missions) ? missions : [missions];
       
       for (const mission of missionList) {
+        // Marca o dia do fracasso como aceito para evitar re-avaliação
+        const { data: missionData } = await supabase
+          .from('missions')
+          .select('daily_status')
+          .eq('id', mission.id)
+          .single();
+        const dailyStatus = (missionData as any)?.daily_status || {};
+        if (mission.failed_date) {
+          dailyStatus[mission.failed_date] = 'failed_accepted';
+        }
+
         await supabase
           .from('missions')
-          .update({ is_failed: false, failed_date: null } as any)
+          .update({ is_failed: false, failed_date: null, daily_status: dailyStatus } as any)
           .eq('id', mission.id);
 
         await supabase.from('activity_log').insert({

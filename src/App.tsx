@@ -16,6 +16,7 @@ import NpcPage from "./pages/NpcPage";
 import ProfilePage from "./pages/ProfilePage";
 import HealthPage from "./pages/HealthPage";
 import NotFound from "./pages/NotFound";
+import Onboarding from "./pages/Onboarding";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/auth" replace />;
+  // Redireciona para onboarding se ainda não foi concluído
+  const onboardingDone = localStorage.getItem(`onboarding_v1_${user.id}`);
+  if (!onboardingDone) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
 
@@ -55,6 +59,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
             <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />

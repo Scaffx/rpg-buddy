@@ -15,27 +15,35 @@ export function useDailyBonus() {
     queryFn: async () => {
       if (!user) return false;
 
-      const today = new Date().toISOString().split('T')[0];
+      // Usa a data local do usuário (não UTC) para evitar problemas de fuso
+      const now = new Date();
+      const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const nextLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const nextDate = `${nextLocalDate.getFullYear()}-${String(nextLocalDate.getMonth() + 1).padStart(2, '0')}-${String(nextLocalDate.getDate()).padStart(2, '0')}`;
 
       const { data: claims } = await supabase
         .from('activity_log')
         .select('id')
         .eq('user_id', user.id)
         .eq('action', 'daily_bonus')
-        .gte('created_at', `${today}T00:00:00`)
-        .lt('created_at', `${today}T23:59:59`)
+        .gte('created_at', `${localDate}T00:00:00`)
+        .lt('created_at', `${nextDate}T00:00:00`)
         .maybeSingle();
 
       return !!claims;
     },
     enabled: !!user,
+    staleTime: 0,
   });
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const nextLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const nextDate = `${nextLocalDate.getFullYear()}-${String(nextLocalDate.getMonth() + 1).padStart(2, '0')}-${String(nextLocalDate.getDate()).padStart(2, '0')}`;
 
       // Check if already claimed today
       const { data: claims } = await supabase
@@ -43,8 +51,8 @@ export function useDailyBonus() {
         .select('created_at')
         .eq('user_id', user.id)
         .eq('action', 'daily_bonus')
-        .gte('created_at', `${today}T00:00:00`)
-        .lt('created_at', `${today}T23:59:59`);
+        .gte('created_at', `${localDate}T00:00:00`)
+        .lt('created_at', `${nextDate}T00:00:00`);
 
       if (claims && claims.length > 0) {
         throw new Error('Você já coletou seu bônus diário hoje!');
@@ -97,9 +105,18 @@ export function useDailyBonus() {
 
       return { xp: DAILY_BONUS_XP, gold: DAILY_BONUS_GOLD };
     },
+    onMutate: async () => {
+      // Cancela queries em andamento e marca como resgatado imediatamente
+      await queryClient.cancelQueries({ queryKey: ['daily-bonus-claimed', user?.id] });
+      queryClient.setQueryData(['daily-bonus-claimed', user?.id], true);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-bonus-claimed'] });
+    },
+    onError: () => {
+      // Reverte o otimismo em caso de erro
       queryClient.invalidateQueries({ queryKey: ['daily-bonus-claimed'] });
     },
   });
