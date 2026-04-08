@@ -169,6 +169,7 @@ export default function Missions() {
   const { data: failedMissions = [] } = useFailedMissions();
   const payPenalty = usePayPenalty();
   const acceptPenalty = useAcceptPenalty();
+  const { showWelcomeBack, setShowWelcomeBack, daysAway } = useWelcomeBackCheck();
 
   const todayDay = useMemo(() => {
     const d = new Date().getDay();
