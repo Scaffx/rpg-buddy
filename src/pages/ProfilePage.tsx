@@ -370,7 +370,7 @@ function BodyEvolutionSection() {
           <div className="relative">
             <div className="aspect-[4/3] rounded-lg overflow-hidden border border-border bg-muted">
               <img
-                src={photosWithUrl[photoIndex]?.photo_url}
+                src={getPhotoUrl(photosWithUrl[photoIndex]?.photo_url)}
                 alt="Progresso"
                 className="w-full h-full object-contain"
               />
