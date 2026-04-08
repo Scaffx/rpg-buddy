@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses } from "@/hooks/useProfile";
+import { useGoldBalance } from "@/hooks/useGold";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -11,11 +12,11 @@ import {
   Heart, Shield, Zap, Flame, Droplets, UtensilsCrossed,
   Settings, Plus, Minus, Save, Dumbbell, Brain, Eye,
   Swords, Sparkles, BookOpen, Users, Star, Palette,
-  ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull,
+  ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull, Coins,
   Calendar, Upload, Trash2, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
-import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout } from "@/lib/combat";
+import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -25,6 +26,17 @@ const ATTRIBUTE_ICONS: Record<string, any> = {
   Resiliência: Shield, Sabedoria: BookOpen, Vitalidade: Heart,
   Autoaperfeiçoamento: Star, Relacionamento: Users,
 };
+
+const RESPEC_COST = 120;
+
+const RESPEC_CLASSES = [
+  { id: "guerreiro", label: "Guerreiro" },
+  { id: "mago", label: "Mago" },
+  { id: "gatuno", label: "Gatuno" },
+  { id: "ferreiro", label: "Ferreiro" },
+  { id: "clerico", label: "Clerico" },
+  { id: "arqueiro", label: "Arqueiro" },
+] as const;
 
 function useHealthStats() {
   const { user } = useAuth();
@@ -484,6 +496,7 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
+  const { data: goldBalance } = useGoldBalance();
   const { data: bosses } = useBosses();
   const { data: healthStats } = useHealthStats();
   const { data: todayMeals } = useTodayMeals();
@@ -496,6 +509,13 @@ export default function ProfilePage() {
   const [weight, setWeight] = useState(70);
   const [mealsTarget, setMealsTarget] = useState(3);
   const [xpAwarded, setXpAwarded] = useState(false);
+  const [selectedRespecClass, setSelectedRespecClass] = useState<string>("guerreiro");
+
+  useEffect(() => {
+    if (!user) return;
+    const savedClass = localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
+    setSelectedRespecClass(savedClass);
+  }, [user]);
 
   useEffect(() => {
     if (healthStats) {
@@ -635,6 +655,55 @@ export default function ProfilePage() {
   const waterPercent = Math.min(100, Math.round((totalWaterToday / waterTargetMl) * 100));
   const hpPercent = Math.round((currentHp / maxHp) * 100);
   const mpPercent = Math.round((currentMp / maxMp) * 100);
+  const currentGold = (goldBalance as any)?.gold ?? 100;
+
+  const respecClass = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Não autenticado");
+      const currentClass = localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
+      if (selectedRespecClass === currentClass) {
+        throw new Error("Você já está nessa classe.");
+      }
+
+      const { data: bal, error: balError } = await supabase
+        .from("user_balance")
+        .select("gold")
+        .eq("user_id", user.id)
+        .single();
+      if (balError) throw balError;
+
+      const gold = (bal as any)?.gold ?? 0;
+      if (gold < RESPEC_COST) {
+        throw new Error(`Ouro insuficiente para respec. Necessário: ${RESPEC_COST} 🪙`);
+      }
+
+      const starterItem = getStarterItemForClass(selectedRespecClass as any);
+
+      await supabase
+        .from("user_balance")
+        .update({ gold: gold - RESPEC_COST, updated_at: new Date().toISOString() } as any)
+        .eq("user_id", user.id);
+
+      await supabase.from("gold_history" as any).insert({
+        user_id: user.id,
+        type: "respec_classe",
+        amount: -RESPEC_COST,
+        reason: `Respec para ${selectedRespecClass}`,
+      } as any);
+
+      localStorage.setItem(`starter_class_v1_${user.id}`, selectedRespecClass);
+      localStorage.setItem(`starter_item_v1_${user.id}`, starterItem);
+
+      return { starterItem };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["gold-balance"] });
+      toast.success(`Classe alterada! Novo item inicial: ${data.starterItem}`);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Falha ao fazer respec de classe");
+    },
+  });
 
   return (
     <AppLayout>
@@ -863,6 +932,40 @@ export default function ProfilePage() {
                 <p className="text-foreground font-semibold">Classe inicial: {starterClass}</p>
                 <p className="text-muted-foreground">Item inicial: {starterItem}</p>
                 <p className="text-muted-foreground mt-1">Magia nesta temporada esta mais fraca por design. Builds hibridas com atributos fisicos e taticos tendem a render melhor.</p>
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Respec de Classe</p>
+                    <p className="text-xs text-muted-foreground">Troque de classe, receba novo item inicial e altere seu kit Novato + skills únicas.</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Seu ouro</p>
+                    <p className="text-lg font-bold text-yellow-400">{currentGold} 🪙</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-2 md:items-center">
+                  <select
+                    value={selectedRespecClass}
+                    onChange={(e) => setSelectedRespecClass(e.target.value)}
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    {RESPEC_CLASSES.map((cls) => (
+                      <option key={cls.id} value={cls.id}>{cls.label}</option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => respecClass.mutate()}
+                    disabled={respecClass.isPending}
+                    className="h-10 px-4 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-semibold"
+                  >
+                    <Coins className="w-4 h-4" />
+                    {respecClass.isPending ? "Aplicando..." : `Respec (${RESPEC_COST} 🪙)`}
+                  </button>
+                </div>
               </div>
 
               <div>
