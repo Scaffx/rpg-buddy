@@ -209,6 +209,11 @@ function BodyEvolutionSection() {
     },
   });
 
+  const getPhotoUrl = (photoUrl: string) => {
+    if (photoUrl.startsWith('http')) return photoUrl; // legacy public URLs
+    return signedUrls[photoUrl] || '';
+  };
+
   const photosWithUrl = (measurements || []).filter((m: any) => m.photo_url);
   const latest = measurements?.[0];
   const previous = measurements?.[1];
