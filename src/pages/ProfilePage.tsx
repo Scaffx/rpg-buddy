@@ -154,8 +154,7 @@ function BodyEvolutionSection() {
           .from("body-photos")
           .upload(path, photoFile);
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("body-photos").getPublicUrl(path);
-        photoUrl = urlData.publicUrl;
+        photoUrl = path;
       }
 
       const record: any = {
