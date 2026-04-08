@@ -409,7 +409,7 @@ function BodyEvolutionSection() {
                     i === photoIndex ? "border-emerald-400" : "border-border opacity-60"
                   }`}
                 >
-                  <img src={m.photo_url} alt="" className="w-full h-full object-cover" />
+                  <img src={getPhotoUrl(m.photo_url)} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
