@@ -133,6 +133,27 @@ function BodyEvolutionSection() {
   const [uploading, setUploading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  // Generate signed URLs for photos stored as paths
+  useEffect(() => {
+    const photoPaths = (measurements || [])
+      .filter((m: any) => m.photo_url && !m.photo_url.startsWith('http'))
+      .map((m: any) => m.photo_url as string);
+    if (photoPaths.length === 0) return;
+
+    const fetchSignedUrls = async () => {
+      const urls: Record<string, string> = {};
+      for (const path of photoPaths) {
+        const { data } = await supabase.storage
+          .from('body-photos')
+          .createSignedUrl(path, 3600);
+        if (data?.signedUrl) urls[path] = data.signedUrl;
+      }
+      setSignedUrls(prev => ({ ...prev, ...urls }));
+    };
+    fetchSignedUrls();
+  }, [measurements]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -154,8 +175,7 @@ function BodyEvolutionSection() {
           .from("body-photos")
           .upload(path, photoFile);
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("body-photos").getPublicUrl(path);
-        photoUrl = urlData.publicUrl;
+        photoUrl = path;
       }
 
       const record: any = {
@@ -188,6 +208,11 @@ function BodyEvolutionSection() {
       toast.error("Erro ao salvar medidas");
     },
   });
+
+  const getPhotoUrl = (photoUrl: string) => {
+    if (photoUrl.startsWith('http')) return photoUrl; // legacy public URLs
+    return signedUrls[photoUrl] || '';
+  };
 
   const photosWithUrl = (measurements || []).filter((m: any) => m.photo_url);
   const latest = measurements?.[0];
@@ -345,7 +370,7 @@ function BodyEvolutionSection() {
           <div className="relative">
             <div className="aspect-[4/3] rounded-lg overflow-hidden border border-border bg-muted">
               <img
-                src={photosWithUrl[photoIndex]?.photo_url}
+                src={getPhotoUrl(photosWithUrl[photoIndex]?.photo_url)}
                 alt="Progresso"
                 className="w-full h-full object-contain"
               />
@@ -384,7 +409,7 @@ function BodyEvolutionSection() {
                     i === photoIndex ? "border-emerald-400" : "border-border opacity-60"
                   }`}
                 >
-                  <img src={m.photo_url} alt="" className="w-full h-full object-cover" />
+                  <img src={getPhotoUrl(m.photo_url)} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
