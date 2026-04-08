@@ -17,7 +17,7 @@ import {
   useArchiveMission,
   useDeleteChecklistItem,
 } from "@/hooks/useMissionActions";
-import { useCheckFailedMissions, useFailedMissions, usePayPenalty, useAcceptPenalty } from "@/hooks/useFailedMissions";
+import { useCheckFailedMissions, useFailedMissions, usePayPenalty, useAcceptPenalty, useWelcomeBackCheck } from "@/hooks/useFailedMissions";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
