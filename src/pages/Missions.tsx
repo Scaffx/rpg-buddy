@@ -533,54 +533,107 @@ const handleSave = async () => {
           ))}
         </div>
 
+        {/* Welcome Back Dialog */}
+        <Dialog open={showWelcomeBack} onOpenChange={setShowWelcomeBack}>
+          <DialogContent className="rpg-card border-primary/30 max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-center">
+                ⚔️ Sentimos sua falta, Herói!
+              </DialogTitle>
+            </DialogHeader>
+            <div className="text-center space-y-3 py-4">
+              <p className="text-6xl">🏰</p>
+              <p className="text-sm text-muted-foreground">
+                Você esteve ausente por <span className="font-bold text-primary">{daysAway} dias</span>.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Inimigos se fortaleceram e missões ficaram pendentes! Volte à ação e recupere seu progresso.
+              </p>
+              {failedMissions.length > 0 && (
+                <p className="text-xs text-destructive font-semibold">
+                  🔥 {failedMissions.length} missão(ões) fracassada(s) aguardam sua decisão.
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowWelcomeBack(false)} className="w-full">
+                ⚔️ Voltar à Batalha!
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Failed Missions Section */}
         {failedMissions.length > 0 && (
           <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 space-y-3">
-            <h3 className="text-sm font-bold text-destructive flex items-center gap-2">
-              <Flame className="w-5 h-5" />
-              🔥 MISSÕES FRACASSADAS HOJE ({failedMissions.length})
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-destructive flex items-center gap-2">
+                <Flame className="w-5 h-5" />
+                🔥 MISSÕES FRACASSADAS ({failedMissions.length})
+              </h3>
+              {failedMissions.length > 1 && (
+                <button
+                  onClick={() => {
+                    acceptPenalty.mutate(failedMissions, {
+                      onSuccess: () => toast({ title: "✅ Todas as penalidades aceitas." }),
+                      onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+                    });
+                  }}
+                  disabled={acceptPenalty.isPending}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                >
+                  {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : null}
+                  Aceitar Tudo (-{failedMissions.reduce((sum: number, m: any) => sum + (m.xp_penalized || m.xp_reward), 0)} XP)
+                </button>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {failedMissions.map((m: any) => (
-                <div
-                  key={m.id}
-                  className="bg-card border border-destructive/20 rounded-lg p-3 flex flex-col gap-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
-                    <p className="text-xs text-destructive">XP Perdido: -{m.xp_penalized || m.xp_reward}</p>
+              {failedMissions.map((m: any) => {
+                const failedDate = m.failed_date
+                  ? new Date(m.failed_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  : 'Hoje';
+                return (
+                  <div
+                    key={m.id}
+                    className="bg-card border border-destructive/20 rounded-lg p-3 flex flex-col gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
+                      <p className="text-xs text-destructive">XP Perdido: -{m.xp_penalized || m.xp_reward}</p>
+                      <p className="text-xs text-muted-foreground">📅 {failedDate}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          payPenalty.mutate(m, {
+                            onSuccess: () => toast({ title: "✅ Penalidade paga! XP restaurado." }),
+                            onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+                          });
+                        }}
+                        disabled={payPenalty.isPending || acceptPenalty.isPending}
+                        className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-yellow-400/20 text-yellow-400 font-bold hover:bg-yellow-400/30 transition-colors disabled:opacity-50"
+                      >
+                        {payPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "💰"}
+                        Pagar 10
+                      </button>
+                      <button
+                        onClick={() => {
+                          acceptPenalty.mutate(m, {
+                            onSuccess: () => toast({ title: "✅ Penalidade aceita." }),
+                            onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+                          });
+                        }}
+                        disabled={payPenalty.isPending || acceptPenalty.isPending}
+                        className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                      >
+                        {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "✓"}
+                        Aceitar
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        payPenalty.mutate(m, {
-                          onSuccess: () => toast({ title: "✅ Penalidade paga! XP restaurado." }),
-                          onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
-                        });
-                      }}
-                      disabled={payPenalty.isPending || acceptPenalty.isPending}
-                      className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-yellow-400/20 text-yellow-400 font-bold hover:bg-yellow-400/30 transition-colors disabled:opacity-50"
-                    >
-                      {payPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "💰"}
-                      Pagar 10
-                    </button>
-                    <button
-                      onClick={() => {
-                        acceptPenalty.mutate(m, {
-                          onSuccess: () => toast({ title: "✅ Penalidade aceita." }),
-                          onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
-                        });
-                      }}
-                      disabled={payPenalty.isPending || acceptPenalty.isPending}
-                      className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition-colors disabled:opacity-50"
-                    >
-                      {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "✓"}
-                      Aceitar
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
