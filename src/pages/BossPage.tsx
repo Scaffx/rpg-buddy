@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useBosses, useBossBattles, useFightBoss, useProfile } from '@/hooks/useProfile';
+import { useBosses, useBossBattles, useFightBoss, useProfile, useAttributes } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Loader2, Skull, Swords, Users, Flame } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 
 export default function BossPage() {
   const { data: bosses, isLoading } = useBosses();
   const { data: battles } = useBossBattles();
   const { data: profile } = useProfile();
+  const { data: attributes } = useAttributes();
   const fightBoss = useFightBoss();
   const { toast } = useToast();
   const [battleResult, setBattleResult] = useState<{ won: boolean; damage: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva">("solo");
+  const attrLevels = getAttributeLevels(attributes as any[]);
+  const playerStats = getPlayerCombatStats(profile?.level || 1, attrLevels);
 
   // ✅ Masmorras coletivas mock (dados fictícios por enquanto)
   const dungeons = [
@@ -120,6 +124,14 @@ export default function BossPage() {
                 <p className="text-sm text-muted-foreground">
                   Seu poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
                 </p>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-3 text-xs">
+                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">ATK</p><p className="font-bold">{playerStats.atk}</p></div>
+                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">MATK</p><p className="font-bold">{playerStats.matk}</p></div>
+                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">DEF</p><p className="font-bold">{playerStats.def}</p></div>
+                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">AGI</p><p className="font-bold">{playerStats.agi}</p></div>
+                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">CRIT</p><p className="font-bold">{playerStats.crit}%</p></div>
+                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">HP</p><p className="font-bold">{playerStats.hp}</p></div>
+                </div>
               </div>
             )}
 
@@ -127,7 +139,9 @@ export default function BossPage() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {bosses?.map((boss, i) => (
+                {bosses?.map((boss, i) => {
+                  const b = getBossCombatStats(boss);
+                  return (
                   <motion.div
                     key={boss.id}
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -145,6 +159,19 @@ export default function BossPage() {
                       <span className="text-primary font-bold">⭐ Nv.{boss.level}</span>
                       <span className="text-xp font-bold">🏆 {boss.xp_reward} XP</span>
                     </div>
+
+                    <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs">
+                      <div className="grid grid-cols-4 gap-2">
+                        <div><p className="text-muted-foreground">ATK</p><p className="font-bold text-foreground">{b.atk}</p></div>
+                        <div><p className="text-muted-foreground">MATK</p><p className="font-bold text-foreground">{b.matk}</p></div>
+                        <div><p className="text-muted-foreground">DEF</p><p className="font-bold text-foreground">{b.def}</p></div>
+                        <div><p className="text-muted-foreground">AGI</p><p className="font-bold text-foreground">{b.agi}</p></div>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-2">
+                        Fraqueza tática: <span className="font-semibold text-primary">{b.weakness}</span> • Ameaça: <span className="font-semibold text-destructive">{b.threat}</span>
+                      </p>
+                    </div>
+
                     <Button
                       onClick={() => handleFight(boss)}
                       disabled={fightBoss.isPending}
@@ -159,7 +186,8 @@ export default function BossPage() {
                       Enfrentar
                     </Button>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

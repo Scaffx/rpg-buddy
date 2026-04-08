@@ -2,6 +2,7 @@ import { Database } from '@/types/supabase';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 
 export function useProfile() {
   const { user } = useAuth();
@@ -344,9 +345,38 @@ export function useFightBoss() {
         .eq("user_id", user!.id)
         .single();
 
-      const playerPower = (profile?.level || 1) * 15 + Math.floor(Math.random() * 30);
-      const won = playerPower >= bossHp;
-      const damage = Math.min(playerPower, bossHp);
+      const { data: attrs } = await supabase
+        .from('attributes')
+        .select('name, level')
+        .eq('user_id', user!.id);
+
+      const { data: boss } = await supabase
+        .from('bosses')
+        .select('id, level, hp')
+        .eq('id', bossId)
+        .single();
+
+      const attrLevels = getAttributeLevels((attrs || []) as any[]);
+      const playerStats = getPlayerCombatStats(profile?.level || 1, attrLevels);
+      const bossStats = getBossCombatStats({ level: boss?.level || 1, hp: boss?.hp || bossHp });
+
+      // Sistema de dano com base em atributos (balanceado no estilo d20)
+      const attackRoll = Math.floor(Math.random() * 20) + 1;
+      const critMultiplier = attackRoll === 20 ? 1.5 : 1;
+      const physicalDamage = Math.max(0, playerStats.atk - Math.floor(bossStats.def * 0.65));
+      const magicalDamage = Math.max(0, playerStats.matk - Math.floor(bossStats.matk * 0.35));
+      const tacticalBonus = Math.floor((playerStats.agi + playerStats.crit) * 0.18);
+      const playerPower = Math.floor((physicalDamage + magicalDamage + tacticalBonus + attackRoll * 3) * critMultiplier);
+
+      const bossPower = Math.floor(
+        bossStats.atk * 0.75 +
+        bossStats.matk * 0.45 +
+        bossStats.agi * 0.2 +
+        (Math.random() * 30),
+      );
+
+      const damage = Math.min(Math.max(1, playerPower), bossHp);
+      const won = playerPower + Math.floor(playerStats.def * 0.4) >= bossPower;
 
       await supabase.from("boss_battles").insert({
         user_id: user!.id,

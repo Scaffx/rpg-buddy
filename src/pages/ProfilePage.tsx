@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile, useAttributes, useAwardHealthXP } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useAwardHealthXP, useBosses } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -11,10 +11,11 @@ import {
   Heart, Shield, Zap, Flame, Droplets, UtensilsCrossed,
   Settings, Plus, Minus, Save, Dumbbell, Brain, Eye,
   Swords, Sparkles, BookOpen, Users, Star, Palette,
-  ChevronUp, ChevronDown, Camera, Ruler, TrendingUp,
+  ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull,
   Calendar, Upload, Trash2, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
+import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillNodes } from "@/lib/combat";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -483,6 +484,7 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
+  const { data: bosses } = useBosses();
   const { data: healthStats } = useHealthStats();
   const { data: todayMeals } = useTodayMeals();
   const { data: todayWater } = useTodayWater();
@@ -524,6 +526,13 @@ export default function ProfilePage() {
   const waterTargetMl = Math.round(weight * 35);
   const totalWaterToday = (todayWater || []).reduce((s: number, w: any) => s + (w.amount_ml || 0), 0);
   const mealsToday = (todayMeals || []).length;
+  const attributeLevels = useMemo(() => getAttributeLevels(attributes as any[]), [attributes]);
+  const playerCombatStats = useMemo(
+    () => getPlayerCombatStats(profile?.level || 1, attributeLevels),
+    [profile?.level, attributeLevels],
+  );
+  const skillNodes = useMemo(() => getSkillNodes(attributeLevels), [attributeLevels]);
+  const unlockedSkills = useMemo(() => skillNodes.filter((s) => s.unlocked), [skillNodes]);
 
   const mealHalf = Math.ceil(mealsTarget / 2);
   const mealPenalty = mealsToday < mealHalf ? (mealHalf - mealsToday) * 10 : 0;
@@ -794,83 +803,130 @@ export default function ProfilePage() {
         {/* ======== ABA: HABILIDADES ======== */}
         {activeTab === "habilidades" && (
           <div className="space-y-6">
-            {/* Attributes Grid - Expandido */}
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-6 h-6 text-primary" />
-                <h3 className="text-lg font-bold text-foreground">🌟 SUAS HABILIDADES</h3>
+                <h3 className="text-lg font-bold text-foreground">🌟 Habilidades Táticas</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Inspiradas no estilo de progressão clássica, mas com design original e balanceamento próprio. O poder de cada habilidade usa seus atributos treinados em missões.
+              </p>
+
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
+                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
+                  <p className="text-muted-foreground">ATK</p>
+                  <p className="text-base font-bold text-foreground">{playerCombatStats.atk}</p>
+                </div>
+                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
+                  <p className="text-muted-foreground">MATK</p>
+                  <p className="text-base font-bold text-foreground">{playerCombatStats.matk}</p>
+                </div>
+                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
+                  <p className="text-muted-foreground">DEF</p>
+                  <p className="text-base font-bold text-foreground">{playerCombatStats.def}</p>
+                </div>
+                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
+                  <p className="text-muted-foreground">AGI</p>
+                  <p className="text-base font-bold text-foreground">{playerCombatStats.agi}</p>
+                </div>
+                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
+                  <p className="text-muted-foreground">CRIT</p>
+                  <p className="text-base font-bold text-foreground">{playerCombatStats.crit}%</p>
+                </div>
+                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
+                  <p className="text-muted-foreground">HP</p>
+                  <p className="text-base font-bold text-foreground">{playerCombatStats.hp}</p>
+                </div>
               </div>
 
-              {attributes && attributes.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(attributes || []).map((attr: any) => {
-                    const Icon = ATTRIBUTE_ICONS[attr.name] || Star;
-                    const colorClass = getAttributeColorClass(attr.name);
-                    const nextLevelXp = 100;
-                    const currentXp = attr.xp;
-                    const nextLevelProgress = (currentXp % nextLevelXp) / nextLevelXp;
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs text-primary">
+                Foco atual do herói: <span className="font-bold">{playerCombatStats.focus}</span>. Esse foco vem do atributo mais treinado nas suas missões.
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {skillNodes.map((skill) => (
+                  <div
+                    key={skill.id}
+                    className={`rounded-lg border p-4 space-y-2 ${
+                      skill.unlocked
+                        ? "bg-emerald-500/10 border-emerald-500/30"
+                        : "bg-muted/30 border-border"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-foreground leading-tight">{skill.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{skill.archetype}</p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-1 rounded-full border ${skill.unlocked ? "text-emerald-300 border-emerald-500/40" : "text-muted-foreground border-border"}`}>
+                        {skill.unlocked ? "Ativa" : `Req. ${skill.unlockLevel}`}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">{skill.description}</p>
+                    <p className="text-[11px] text-muted-foreground">{skill.fantasy}</p>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="bg-background/60 rounded p-2 border border-border/50">
+                        <p className="text-muted-foreground">Poder</p>
+                        <p className="font-bold text-foreground">{skill.power}</p>
+                      </div>
+                      <div className="bg-background/60 rounded p-2 border border-border/50">
+                        <p className="text-muted-foreground">CD</p>
+                        <p className="font-bold text-foreground">{skill.cooldown}t</p>
+                      </div>
+                      <div className="bg-background/60 rounded p-2 border border-border/50">
+                        <p className="text-muted-foreground">Base</p>
+                        <p className="font-bold text-foreground">{skill.basedOn.join(" + ")}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-secondary/40 border border-border rounded-lg p-3 flex items-center justify-between">
+                <span className="text-sm text-foreground font-semibold">Habilidades desbloqueadas</span>
+                <span className="text-2xl font-bold text-primary">{unlockedSkills.length}</span>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Skull className="w-5 h-5 text-destructive" />
+                <h3 className="text-base font-bold text-foreground">Status dos Bosses (leitura tática)</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Estes status são mostrados na área de habilidades para você decidir qual build de missão treinar antes da batalha.
+              </p>
+
+              {(bosses || []).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {(bosses || []).map((boss: any) => {
+                    const b = getBossCombatStats(boss);
                     return (
-                      <div
-                        key={attr.id}
-                        className={`p-4 rounded-lg border ${colorClass} space-y-3`}
-                      >
+                      <div key={boss.id} className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Icon className="w-6 h-6" />
-                            <div>
-                              <p className="font-bold text-foreground">{attr.name}</p>
-                              <p className="text-xs text-muted-foreground">Nível {attr.level}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-2xl font-bold">{attr.level}</p>
-                          </div>
+                          <p className="font-bold text-foreground">{boss.icon} {boss.name}</p>
+                          <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 border border-destructive/30 text-destructive">
+                            Ameaça {b.threat}
+                          </span>
                         </div>
-
-                        {/* Progress Bar */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Progresso</span>
-                            <span>{currentXp % nextLevelXp}/{nextLevelXp} XP</span>
-                          </div>
-                          <div className="h-3 bg-secondary rounded-full overflow-hidden border border-border/50">
-                            <div
-                              className="h-full bg-gradient-to-r from-primary to-primary/50 rounded-full transition-all duration-300"
-                              style={{ width: `${nextLevelProgress * 100}%` }}
-                            />
-                          </div>
+                        <div className="grid grid-cols-4 gap-2 text-xs">
+                          <div><p className="text-muted-foreground">ATK</p><p className="font-bold">{b.atk}</p></div>
+                          <div><p className="text-muted-foreground">MATK</p><p className="font-bold">{b.matk}</p></div>
+                          <div><p className="text-muted-foreground">DEF</p><p className="font-bold">{b.def}</p></div>
+                          <div><p className="text-muted-foreground">AGI</p><p className="font-bold">{b.agi}</p></div>
                         </div>
-
-                        {/* Stats */}
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="bg-muted/30 p-2 rounded">
-                            <p className="text-muted-foreground">Total XP</p>
-                            <p className="font-bold">{attr.xp}</p>
-                          </div>
-                          <div className="bg-muted/30 p-2 rounded">
-                            <p className="text-muted-foreground">Base Stat</p>
-                            <p className="font-bold">{(attr.level * 10).toFixed(0)}</p>
-                          </div>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Fraqueza tática: <span className="text-primary font-semibold">{b.weakness}</span>
+                        </p>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground">Nenhuma habilidade desbloqueada ainda.</p>
+                <p className="text-sm text-muted-foreground">Nenhum boss encontrado.</p>
               )}
-
-              {/* Skill Points */}
-              <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-5 h-5 text-primary" />
-                    <span className="font-bold text-foreground">Pontos de Habilidade Disponíveis</span>
-                  </div>
-                  <span className="text-2xl font-bold text-primary">0</span>
-                </div>
-              </div>
             </div>
           </div>
         )}
