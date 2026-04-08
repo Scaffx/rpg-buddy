@@ -133,6 +133,27 @@ function BodyEvolutionSection() {
   const [uploading, setUploading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  // Generate signed URLs for photos stored as paths
+  useEffect(() => {
+    const photoPaths = (measurements || [])
+      .filter((m: any) => m.photo_url && !m.photo_url.startsWith('http'))
+      .map((m: any) => m.photo_url as string);
+    if (photoPaths.length === 0) return;
+
+    const fetchSignedUrls = async () => {
+      const urls: Record<string, string> = {};
+      for (const path of photoPaths) {
+        const { data } = await supabase.storage
+          .from('body-photos')
+          .createSignedUrl(path, 3600);
+        if (data?.signedUrl) urls[path] = data.signedUrl;
+      }
+      setSignedUrls(prev => ({ ...prev, ...urls }));
+    };
+    fetchSignedUrls();
+  }, [measurements]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
