@@ -596,23 +596,13 @@ export default function ProfilePage() {
     try {
       await awardHealthXP.mutateAsync();
       setXpAwarded(true);
-      toast({
-        title: '🎉 Desafio Completado!',
-        description: '+ 50 XP por manter a saúde em dia!',
-      });
+      toast.success('🎉 Desafio Completado! + 50 XP por manter a saúde em dia!');
     } catch (error: any) {
       if (error.message.includes('já ganhou')) {
         setXpAwarded(true);
-        toast({
-          title: '⚠️ Bônus já coletado',
-          description: 'Volte amanhã para ganhar mais XP!',
-        });
+        toast.info('⚠️ Bônus já coletado. Volte amanhã para ganhar mais XP!');
       } else {
-        toast({
-          title: 'Erro ao conceder XP',
-          description: error.message,
-          variant: 'destructive',
-        });
+        toast.error('Erro ao conceder XP: ' + error.message);
       }
     }
   };

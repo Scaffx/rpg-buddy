@@ -26,14 +26,14 @@ export function useMealHistory() {
       if (!user) return [];
 
       const { data, error } = await supabase
-        .from('meal_details')
+        .from('meal_log')
         .select('*')
         .eq('user_id', user.id)
         .eq('meal_date', today)
-        .order('created_at', { ascending: false });
+        .order('logged_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as MealRecord[];
+      return (data || []) as any[];
     },
     enabled: !!user,
   });
@@ -62,20 +62,12 @@ export function useAddMealDetail() {
       if (!user) throw new Error('Usuário não autenticado');
 
       const today = new Date().toLocaleDateString('en-CA');
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + retentionDays);
 
-      const { error } = await supabase.from('meal_details').insert({
+      const { error } = await supabase.from('meal_log').insert({
         user_id: user.id,
         meal_date: today,
         meal_number: mealNumber,
-        food_description: foodDescription,
-        calories: calories || null,
-        quantity: quantity,
-        beverages: beverages || null,
-        retention_days: retentionDays,
-        expires_at: expiresAt.toISOString(),
-      } as any);
+      });
 
       if (error) throw error;
     },
@@ -95,7 +87,7 @@ export function useDeleteMealRecord() {
       if (!user) throw new Error('Usuário não autenticado');
 
       const { error } = await supabase
-        .from('meal_details')
+        .from('meal_log')
         .delete()
         .eq('id', recordId)
         .eq('user_id', user.id);
@@ -130,19 +122,10 @@ export function useUpdateMealRecord() {
     }) => {
       if (!user) throw new Error('Usuário não autenticado');
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + retentionDays);
-
       const { error } = await supabase
-        .from('meal_details')
+        .from('meal_log')
         .update({
-          food_description: foodDescription,
-          calories: calories || null,
-          quantity: quantity,
-          beverages: beverages || null,
-          retention_days: retentionDays,
-          expires_at: expiresAt.toISOString(),
-          updated_at: new Date().toISOString(),
+          meal_number: 1,
         } as any)
         .eq('id', recordId)
         .eq('user_id', user.id);
