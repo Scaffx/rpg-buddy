@@ -37,6 +37,7 @@ type MissionPreset = {
 type ClassDef = {
   id: string;
   name: string;
+  starterItem: string;
   modernTitle: string;
   icon: React.ReactNode;
   color: string;
@@ -50,6 +51,7 @@ const CLASSES: ClassDef[] = [
   {
     id: 'guerreiro',
     name: 'Guerreiro',
+    starterItem: 'Espada Curta',
     modernTitle: 'Atleta / Trabalhador Físico',
     icon: <Sword className="w-8 h-8" />,
     color: 'border-red-500/60 bg-red-950/30',
@@ -68,6 +70,7 @@ const CLASSES: ClassDef[] = [
   {
     id: 'mago',
     name: 'Mago',
+    starterItem: 'Grimorio Basico',
     modernTitle: 'Estudioso / Concurseiro / Desenvolvedor',
     icon: <BookOpen className="w-8 h-8" />,
     color: 'border-blue-500/60 bg-blue-950/30',
@@ -86,6 +89,7 @@ const CLASSES: ClassDef[] = [
   {
     id: 'gatuno',
     name: 'Gatuno',
+    starterItem: 'Adaga de Sombra',
     modernTitle: 'Trabalhador Noturno / Freelancer',
     icon: <Moon className="w-8 h-8" />,
     color: 'border-purple-500/60 bg-purple-950/30',
@@ -104,6 +108,7 @@ const CLASSES: ClassDef[] = [
   {
     id: 'ferreiro',
     name: 'Ferreiro',
+    starterItem: 'Martelo de Aco',
     modernTitle: 'Profissional Técnico / Artesão',
     icon: <Hammer className="w-8 h-8" />,
     color: 'border-amber-500/60 bg-amber-950/30',
@@ -122,6 +127,7 @@ const CLASSES: ClassDef[] = [
   {
     id: 'clerico',
     name: 'Clérigo',
+    starterItem: 'Cajado de Luz',
     modernTitle: 'Religioso / Voluntário / Cuidador',
     icon: <Cross className="w-8 h-8" />,
     color: 'border-yellow-400/60 bg-yellow-950/30',
@@ -140,6 +146,7 @@ const CLASSES: ClassDef[] = [
   {
     id: 'arqueiro',
     name: 'Arqueiro',
+    starterItem: 'Arco Curto',
     modernTitle: 'Profissional de Escritório / Vendas',
     icon: <Target className="w-8 h-8" />,
     color: 'border-green-500/60 bg-green-950/30',
@@ -237,6 +244,8 @@ export default function Onboarding() {
       }
 
       // Marca onboarding como concluído
+      localStorage.setItem(`starter_class_v1_${user.id}`, selectedClass.id);
+      localStorage.setItem(`starter_item_v1_${user.id}`, selectedClass.starterItem);
       localStorage.setItem(`onboarding_v1_${user.id}`, 'done');
 
       toast({ title: '🎉 Aventura iniciada!', description: 'Suas missões foram criadas. Boa sorte!' });
@@ -250,6 +259,8 @@ export default function Onboarding() {
 
   const handleSkip = () => {
     if (!user) return;
+    localStorage.setItem(`starter_class_v1_${user.id}`, 'novato');
+    localStorage.setItem(`starter_item_v1_${user.id}`, 'Adaga de Treino');
     localStorage.setItem(`onboarding_v1_${user.id}`, 'done');
     navigate('/');
   };
@@ -388,6 +399,7 @@ export default function Onboarding() {
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">{cls.modernDescription}</p>
+                    <p className="text-xs text-primary mt-2">Item inicial: {cls.starterItem}</p>
                   </motion.button>
                 ))}
               </div>
@@ -521,6 +533,10 @@ export default function Onboarding() {
               <p className="text-muted-foreground text-lg mb-6">
                 Sua jornada como <span className="text-primary font-bold">{selectedClass.name}</span> está prestes a começar.
               </p>
+
+              <div className="text-sm text-primary mb-4">
+                Equipamento inicial: <span className="font-bold">{selectedClass.starterItem}</span>
+              </div>
 
               <div className="text-left bg-muted/20 rounded-xl border border-border p-4 mb-6">
                 <p className="text-sm font-semibold text-foreground mb-3">

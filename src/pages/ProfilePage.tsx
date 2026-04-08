@@ -15,7 +15,7 @@ import {
   Calendar, Upload, Trash2, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
-import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillNodes } from "@/lib/combat";
+import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout } from "@/lib/combat";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -527,12 +527,28 @@ export default function ProfilePage() {
   const totalWaterToday = (todayWater || []).reduce((s: number, w: any) => s + (w.amount_ml || 0), 0);
   const mealsToday = (todayMeals || []).length;
   const attributeLevels = useMemo(() => getAttributeLevels(attributes as any[]), [attributes]);
+  const starterClass = useMemo(
+    () => (user ? localStorage.getItem(`starter_class_v1_${user.id}`) || "novato" : "novato"),
+    [user],
+  );
+  const starterItem = useMemo(
+    () => (user ? localStorage.getItem(`starter_item_v1_${user.id}`) || "Adaga de Treino" : "Adaga de Treino"),
+    [user],
+  );
   const playerCombatStats = useMemo(
     () => getPlayerCombatStats(profile?.level || 1, attributeLevels),
     [profile?.level, attributeLevels],
   );
-  const skillNodes = useMemo(() => getSkillNodes(attributeLevels), [attributeLevels]);
-  const unlockedSkills = useMemo(() => skillNodes.filter((s) => s.unlocked), [skillNodes]);
+  const skillLoadout = useMemo(
+    () => getSkillLoadout(profile?.level || 1, attributeLevels, starterClass, starterItem),
+    [profile?.level, attributeLevels, starterClass, starterItem],
+  );
+  const noviceSkills = skillLoadout.noviceSkills;
+  const classSkills = skillLoadout.classSkills;
+  const unlockedSkills = useMemo(
+    () => [...noviceSkills, ...classSkills].filter((s) => s.unlocked),
+    [noviceSkills, classSkills],
+  );
 
   const mealHalf = Math.ceil(mealsTarget / 2);
   const mealPenalty = mealsToday < mealHalf ? (mealHalf - mealsToday) * 10 : 0;
@@ -843,8 +859,60 @@ export default function ProfilePage() {
                 Foco atual do herói: <span className="font-bold">{playerCombatStats.focus}</span>. Esse foco vem do atributo mais treinado nas suas missões.
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {skillNodes.map((skill) => (
+              <div className="bg-muted/30 border border-border rounded-lg p-3 text-xs">
+                <p className="text-foreground font-semibold">Classe inicial: {starterClass}</p>
+                <p className="text-muted-foreground">Item inicial: {starterItem}</p>
+                <p className="text-muted-foreground mt-1">Magia nesta temporada esta mais fraca por design. Builds hibridas com atributos fisicos e taticos tendem a render melhor.</p>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-foreground mb-2">Kit Novato (Lv 1 ao 4)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {noviceSkills.map((skill) => (
+                    <div
+                      key={skill.id}
+                      className={`rounded-lg border p-4 space-y-2 ${
+                        skill.unlocked
+                          ? "bg-emerald-500/10 border-emerald-500/30"
+                          : "bg-muted/30 border-border"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-foreground leading-tight">{skill.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{skill.archetype}</p>
+                        </div>
+                        <span className={`text-[10px] px-2 py-1 rounded-full border ${skill.unlocked ? "text-emerald-300 border-emerald-500/40" : "text-muted-foreground border-border"}`}>
+                          {skill.unlocked ? "Ativa" : `Req. Lv ${skill.unlockLevel}`}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">{skill.description}</p>
+                      <p className="text-[11px] text-muted-foreground">Item exigido: {skill.requiredItem}</p>
+
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="bg-background/60 rounded p-2 border border-border/50">
+                          <p className="text-muted-foreground">Poder</p>
+                          <p className="font-bold text-foreground">{skill.power}</p>
+                        </div>
+                        <div className="bg-background/60 rounded p-2 border border-border/50">
+                          <p className="text-muted-foreground">CD</p>
+                          <p className="font-bold text-foreground">{skill.cooldown}t</p>
+                        </div>
+                        <div className="bg-background/60 rounded p-2 border border-border/50">
+                          <p className="text-muted-foreground">Base</p>
+                          <p className="font-bold text-foreground">{skill.basedOn.join(" + ")}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-foreground mb-2">Habilidades Unicas da Classe</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {classSkills.map((skill) => (
                   <div
                     key={skill.id}
                     className={`rounded-lg border p-4 space-y-2 ${
@@ -882,6 +950,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
 
               <div className="bg-secondary/40 border border-border rounded-lg p-3 flex items-center justify-between">
