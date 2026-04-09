@@ -8,9 +8,9 @@ export function useInventory() {
     queryKey: ['inventory', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('user_inventory')
+        .from('user_inventory' as any)
         .select('*, game_items(*)')
-        .eq('user_id', user!.id);
+        .eq('user_id' as any, user!.id);
       if (error) throw error;
       return data as any[];
     },
@@ -22,8 +22,8 @@ export function useGameItems(category?: string) {
   return useQuery({
     queryKey: ['game-items', category],
     queryFn: async () => {
-      let q = supabase.from('game_items').select('*');
-      if (category) q = q.eq('category', category);
+      let q = supabase.from('game_items' as any).select('*');
+      if (category) q = q.eq('category' as any, category);
       const { data, error } = await q;
       if (error) throw error;
       return data as any[];
@@ -36,7 +36,7 @@ export function useShopItems() {
     queryKey: ['shop-game-items'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('game_items')
+        .from('game_items' as any)
         .select('*')
         .not('shop_price', 'is', null)
         .order('category')
@@ -77,19 +77,19 @@ export function useBuyEquipment() {
       // Adiciona ao inventário (ou incrementa se stackable)
       if (item.stackable) {
         const { data: existing } = await supabase
-          .from('user_inventory')
+          .from('user_inventory' as any)
           .select('id, quantity')
-          .eq('user_id', user.id)
-          .eq('item_id', item.id)
+          .eq('user_id' as any, user.id)
+          .eq('item_id' as any, item.id)
           .maybeSingle();
 
         if (existing) {
           await supabase
-            .from('user_inventory')
+            .from('user_inventory' as any)
             .update({ quantity: (existing as any).quantity + 1 } as any)
             .eq('id', (existing as any).id);
         } else {
-          await supabase.from('user_inventory').insert({
+          await supabase.from('user_inventory' as any).insert({
             user_id: user.id,
             item_id: item.id,
             quantity: 1,
@@ -99,15 +99,15 @@ export function useBuyEquipment() {
       } else {
         // Não-stackable: verifica se já tem
         const { data: existing } = await supabase
-          .from('user_inventory')
+          .from('user_inventory' as any)
           .select('id')
-          .eq('user_id', user.id)
-          .eq('item_id', item.id)
+          .eq('user_id' as any, user.id)
+          .eq('item_id' as any, item.id)
           .maybeSingle();
 
         if (existing) throw new Error('Você já possui esse item!');
 
-        await supabase.from('user_inventory').insert({
+        await supabase.from('user_inventory' as any).insert({
           user_id: user.id,
           item_id: item.id,
           quantity: 1,
@@ -139,10 +139,10 @@ export function useToggleEquip() {
     mutationFn: async ({ inventoryId, equipped }: { inventoryId: string; equipped: boolean }) => {
       if (!user) throw new Error('Não autenticado');
       await supabase
-        .from('user_inventory')
+        .from('user_inventory' as any)
         .update({ equipped } as any)
-        .eq('id', inventoryId)
-        .eq('user_id', user.id);
+        .eq('id' as any, inventoryId)
+        .eq('user_id' as any, user.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
@@ -158,13 +158,13 @@ export function useConsumeItem() {
     mutationFn: async ({ inventoryId, quantity }: { inventoryId: string; quantity: number }) => {
       if (!user) throw new Error('Não autenticado');
       if (quantity <= 1) {
-        await supabase.from('user_inventory').delete().eq('id', inventoryId).eq('user_id', user.id);
+        await supabase.from('user_inventory' as any).delete().eq('id' as any, inventoryId).eq('user_id' as any, user.id);
       } else {
         await supabase
-          .from('user_inventory')
+          .from('user_inventory' as any)
           .update({ quantity: quantity - 1 } as any)
-          .eq('id', inventoryId)
-          .eq('user_id', user.id);
+          .eq('id' as any, inventoryId)
+          .eq('user_id' as any, user.id);
       }
     },
     onSuccess: () => {
