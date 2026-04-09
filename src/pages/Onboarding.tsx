@@ -185,22 +185,10 @@ export default function Onboarding() {
     if (!authLoading && !user) navigate('/auth', { replace: true });
   }, [authLoading, user, navigate]);
 
-  // Usuários existentes (conta criada há mais de 1h) pulam o onboarding automaticamente
+  // Se o onboarding já foi concluído (flag no banco), redireciona direto
   useEffect(() => {
     if (!user || !profile) return;
-    const key = `onboarding_v1_${user.id}`;
-    const starterClass = localStorage.getItem(`starter_class_v1_${user.id}`);
-    const starterItem = localStorage.getItem(`starter_item_v1_${user.id}`);
-
-    if (localStorage.getItem(key) && starterClass && starterItem) {
-      navigate('/', { replace: true });
-      return;
-    }
-
-    const createdAt = new Date((profile as any).created_at);
-    const diffHours = (Date.now() - createdAt.getTime()) / 3600000;
-    if (diffHours > 1 && starterClass && starterItem) {
-      localStorage.setItem(key, 'done');
+    if ((profile as any).onboarding_completed) {
       navigate('/', { replace: true });
     }
   }, [user, profile, navigate]);
@@ -247,7 +235,15 @@ export default function Onboarding() {
         } as any);
       }
 
-      // Marca onboarding como concluído
+      // Marca onboarding como concluído no banco de dados
+      const { error: updateErr } = await supabase.from('profiles').update({
+        onboarding_completed: true,
+        starter_class: selectedClass.id,
+        starter_item: selectedClass.starterItem,
+      } as any).eq('user_id', user.id);
+      if (updateErr) throw updateErr;
+
+      // Mantém localStorage como cache local
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedClass.id);
       localStorage.setItem(`starter_item_v1_${user.id}`, selectedClass.starterItem);
       localStorage.setItem(`onboarding_v1_${user.id}`, 'done');
@@ -261,8 +257,14 @@ export default function Onboarding() {
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (!user) return;
+    await supabase.from('profiles').update({
+      onboarding_completed: true,
+      starter_class: 'novato',
+      starter_item: 'Adaga de Treino',
+    } as any).eq('user_id', user.id);
+
     localStorage.setItem(`starter_class_v1_${user.id}`, 'novato');
     localStorage.setItem(`starter_item_v1_${user.id}`, 'Adaga de Treino');
     localStorage.setItem(`onboarding_v1_${user.id}`, 'done');

@@ -538,9 +538,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    const savedClass = localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
+    const savedClass = (profile as any)?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
     setSelectedRespecClass(savedClass);
-  }, [user]);
+  }, [user, profile]);
 
   useEffect(() => {
     if (healthStats) {
@@ -573,12 +573,12 @@ export default function ProfilePage() {
   const mealsToday = (todayMeals || []).length;
   const attributeLevels = useMemo(() => getAttributeLevels(attributes as any[]), [attributes]);
   const starterClass = useMemo(
-    () => (user ? localStorage.getItem(`starter_class_v1_${user.id}`) || "novato" : "novato"),
-    [user],
+    () => (profile as any)?.starter_class || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null) || "novato",
+    [user, profile],
   );
   const starterItem = useMemo(
-    () => (user ? localStorage.getItem(`starter_item_v1_${user.id}`) || "Adaga de Treino" : "Adaga de Treino"),
-    [user],
+    () => (profile as any)?.starter_item || (user ? localStorage.getItem(`starter_item_v1_${user.id}`) : null) || "Adaga de Treino",
+    [user, profile],
   );
   const playerCombatStats = useMemo(
     () => getPlayerCombatStats(profile?.level || 1, attributeLevels),
@@ -685,7 +685,7 @@ export default function ProfilePage() {
   const respecClass = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
-      const currentClass = localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
+      const currentClass = (profile as any)?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
       if (selectedRespecClass === currentClass) {
         throw new Error("Você já está nessa classe.");
       }
@@ -699,6 +699,12 @@ export default function ProfilePage() {
       const starterItem = (data as any)?.starter_item || getStarterItemForClass(selectedRespecClass as any);
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedRespecClass);
       localStorage.setItem(`starter_item_v1_${user.id}`, starterItem);
+
+      // Atualiza o banco de dados
+      await supabase.from('profiles').update({
+        starter_class: selectedRespecClass,
+        starter_item: starterItem,
+      } as any).eq('user_id', user.id);
 
       return { starterItem };
     },

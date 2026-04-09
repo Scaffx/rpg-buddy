@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Missions from "./pages/Missions";
@@ -24,7 +25,9 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) {
+  const { data: profile, isLoading: profileLoading } = useProfile();
+
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -32,11 +35,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/auth" replace />;
-  // Redireciona para onboarding se ainda não foi concluído ou se a conta antiga não possui kit inicial salvo
-  const onboardingDone = localStorage.getItem(`onboarding_v1_${user.id}`);
-  const starterClass = localStorage.getItem(`starter_class_v1_${user.id}`);
-  const starterItem = localStorage.getItem(`starter_item_v1_${user.id}`);
-  if (!onboardingDone || !starterClass || !starterItem) return <Navigate to="/onboarding" replace />;
+  // Redireciona para onboarding se o usuário ainda não completou o formulário inicial
+  if (!profile?.onboarding_completed) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
 
