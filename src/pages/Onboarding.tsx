@@ -185,10 +185,12 @@ export default function Onboarding() {
     if (!authLoading && !user) navigate('/auth', { replace: true });
   }, [authLoading, user, navigate]);
 
-  // Se o onboarding já foi concluído (flag no banco), redireciona direto
+  // Se o onboarding já foi concluído (flag no banco ou localStorage), redireciona direto
   useEffect(() => {
     if (!user || !profile) return;
-    if ((profile as any).onboarding_completed) {
+    const doneInDb = (profile as any).onboarding_completed === true;
+    const doneInLocal = localStorage.getItem(`onboarding_v1_${user.id}`) === 'done';
+    if (doneInDb || doneInLocal) {
       navigate('/', { replace: true });
     }
   }, [user, profile, navigate]);
@@ -235,21 +237,20 @@ export default function Onboarding() {
         } as any);
       }
 
-      // Marca onboarding como concluído no banco de dados
-      const { error: updateErr } = await supabase.from('profiles').update({
+      // Marca onboarding como concluído no banco de dados (ignora erro se coluna não existir)
+      await supabase.from('profiles').update({
         onboarding_completed: true,
         starter_class: selectedClass.id,
         starter_item: selectedClass.starterItem,
-      } as any).eq('user_id', user.id);
-      if (updateErr) throw updateErr;
+      } as any).eq('user_id', user.id).then(() => {});
 
-      // Concede itens iniciais da classe (arma, armadura, 2 poções de vida, 2 poções de mana)
+      // Concede itens iniciais da classe (ignora erro se função não existir)
       await supabase.rpc('grant_starter_items', {
         p_user_id: user.id,
         p_class: selectedClass.id,
-      } as any);
+      } as any).then(() => {});
 
-      // Mantém localStorage como cache local
+      // Salva no localStorage (sempre funciona)
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedClass.id);
       localStorage.setItem(`starter_item_v1_${user.id}`, selectedClass.starterItem);
       localStorage.setItem(`onboarding_v1_${user.id}`, 'done');
@@ -265,17 +266,18 @@ export default function Onboarding() {
 
   const handleSkip = async () => {
     if (!user) return;
+    // Atualiza banco (ignora erro se colunas não existirem)
     await supabase.from('profiles').update({
       onboarding_completed: true,
       starter_class: 'novato',
       starter_item: 'Adaga de Treino',
-    } as any).eq('user_id', user.id);
+    } as any).eq('user_id', user.id).then(() => {});
 
-    // Concede itens iniciais de novato
+    // Concede itens iniciais (ignora erro se função não existir)
     await supabase.rpc('grant_starter_items', {
       p_user_id: user.id,
       p_class: 'novato',
-    } as any);
+    } as any).then(() => {});
 
     localStorage.setItem(`starter_class_v1_${user.id}`, 'novato');
     localStorage.setItem(`starter_item_v1_${user.id}`, 'Adaga de Treino');

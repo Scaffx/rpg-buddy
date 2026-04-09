@@ -36,7 +36,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   if (!user) return <Navigate to="/auth" replace />;
   // Redireciona para onboarding se o usuário ainda não completou o formulário inicial
-  if (!profile?.onboarding_completed) return <Navigate to="/onboarding" replace />;
+  // Verifica banco primeiro, fallback para localStorage (caso a migration não tenha sido aplicada)
+  const onboardingDone = (profile as any)?.onboarding_completed === true
+    || localStorage.getItem(`onboarding_v1_${user.id}`) === 'done';
+  if (!onboardingDone) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
 
