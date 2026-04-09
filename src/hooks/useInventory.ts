@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+const db = supabase as any;
+
 export function useInventory() {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['inventory', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('user_inventory')
         .select('*, game_items(*)')
         .eq('user_id', user!.id);
@@ -22,7 +24,7 @@ export function useGameItems(category?: string) {
   return useQuery({
     queryKey: ['game-items', category],
     queryFn: async () => {
-      let q = supabase.from('game_items').select('*');
+      let q = db.from('game_items').select('*');
       if (category) q = q.eq('category', category);
       const { data, error } = await q;
       if (error) throw error;
@@ -35,7 +37,7 @@ export function useShopItems() {
   return useQuery({
     queryKey: ['shop-game-items'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('game_items')
         .select('*')
         .not('shop_price', 'is', null)
@@ -76,7 +78,7 @@ export function useBuyEquipment() {
 
       // Adiciona ao inventário (ou incrementa se stackable)
       if (item.stackable) {
-        const { data: existing } = await supabase
+        const { data: existing } = await db
           .from('user_inventory')
           .select('id, quantity')
           .eq('user_id', user.id)
@@ -84,12 +86,12 @@ export function useBuyEquipment() {
           .maybeSingle();
 
         if (existing) {
-          await supabase
+          await db
             .from('user_inventory')
-            .update({ quantity: (existing as any).quantity + 1 } as any)
-            .eq('id', (existing as any).id);
+            .update({ quantity: existing.quantity + 1 })
+            .eq('id', existing.id);
         } else {
-          await supabase.from('user_inventory').insert({
+          await db.from('user_inventory').insert({
             user_id: user.id,
             item_id: item.id,
             quantity: 1,
@@ -97,8 +99,7 @@ export function useBuyEquipment() {
           });
         }
       } else {
-        // Não-stackable: verifica se já tem
-        const { data: existing } = await supabase
+        const { data: existing } = await db
           .from('user_inventory')
           .select('id')
           .eq('user_id', user.id)
@@ -107,7 +108,7 @@ export function useBuyEquipment() {
 
         if (existing) throw new Error('Você já possui esse item!');
 
-        await supabase.from('user_inventory').insert({
+        await db.from('user_inventory').insert({
           user_id: user.id,
           item_id: item.id,
           quantity: 1,
@@ -116,12 +117,12 @@ export function useBuyEquipment() {
       }
 
       // Registra no histórico
-      await supabase.from('gold_history' as any).insert({
+      await supabase.from('gold_history').insert({
         user_id: user.id,
         type: 'compra_equipamento',
         amount: -item.shop_price,
         reason: `Comprou ${item.name}`,
-      } as any);
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
@@ -138,9 +139,9 @@ export function useToggleEquip() {
   return useMutation({
     mutationFn: async ({ inventoryId, equipped }: { inventoryId: string; equipped: boolean }) => {
       if (!user) throw new Error('Não autenticado');
-      await supabase
+      await db
         .from('user_inventory')
-        .update({ equipped } as any)
+        .update({ equipped })
         .eq('id', inventoryId)
         .eq('user_id', user.id);
     },
@@ -158,11 +159,11 @@ export function useConsumeItem() {
     mutationFn: async ({ inventoryId, quantity }: { inventoryId: string; quantity: number }) => {
       if (!user) throw new Error('Não autenticado');
       if (quantity <= 1) {
-        await supabase.from('user_inventory').delete().eq('id', inventoryId).eq('user_id', user.id);
+        await db.from('user_inventory').delete().eq('id', inventoryId).eq('user_id', user.id);
       } else {
-        await supabase
+        await db
           .from('user_inventory')
-          .update({ quantity: quantity - 1 } as any)
+          .update({ quantity: quantity - 1 })
           .eq('id', inventoryId)
           .eq('user_id', user.id);
       }

@@ -245,10 +245,10 @@ export default function Onboarding() {
       } as any).eq('user_id', user.id).then(() => {});
 
       // Concede itens iniciais da classe (ignora erro se função não existir)
-      await supabase.rpc('grant_starter_items', {
+      await (supabase.rpc as any)('grant_starter_items', {
         p_user_id: user.id,
         p_class: selectedClass.id,
-      } as any).then(() => {});
+      }).then(() => {});
 
       // Salva no localStorage (sempre funciona)
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedClass.id);
@@ -274,10 +274,10 @@ export default function Onboarding() {
     } as any).eq('user_id', user.id).then(() => {});
 
     // Concede itens iniciais (ignora erro se função não existir)
-    await supabase.rpc('grant_starter_items', {
+    await (supabase.rpc as any)('grant_starter_items', {
       p_user_id: user.id,
       p_class: 'novato',
-    } as any).then(() => {});
+    }).then(() => {});
 
     localStorage.setItem(`starter_class_v1_${user.id}`, 'novato');
     localStorage.setItem(`starter_item_v1_${user.id}`, 'Adaga de Treino');

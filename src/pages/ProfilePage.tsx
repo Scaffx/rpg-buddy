@@ -702,10 +702,10 @@ export default function ProfilePage() {
       const cost = isFirstRespec ? 0 : RESPEC_COST;
 
       // Tenta RPC, fallback para atualização direta
-      const { data, error } = await supabase.rpc("perform_class_respec", {
+      const { data, error } = await (supabase.rpc as any)("perform_class_respec", {
         target_class: selectedRespecClass,
         respec_cost: cost,
-      } as any);
+      });
 
       if (error) {
         // Fallback: verifica ouro e atualiza diretamente
@@ -1215,14 +1215,14 @@ export default function ProfilePage() {
                           || 'novato';
 
                         // Tenta RPC primeiro, fallback para inserts diretos
-                        const { error: rpcErr } = await supabase.rpc('grant_starter_items', {
+                        const { error: rpcErr } = await (supabase.rpc as any)('grant_starter_items', {
                           p_user_id: user.id,
                           p_class: cls,
-                        } as any);
+                        });
 
                         if (rpcErr) {
                           // Fallback: busca itens iniciais da classe e insere direto
-                          const { data: starterItems } = await supabase
+                          const { data: starterItems } = await (supabase as any)
                             .from('game_items')
                             .select('id, category, stackable')
                             .eq('is_starter', true)
@@ -1240,12 +1240,12 @@ export default function ProfilePage() {
                           for (const item of starterItems) {
                             const isConsumable = (item as any).category === 'consumable';
                             const isClassItem = !isConsumable;
-                            await supabase.from('user_inventory').upsert({
+                            await (supabase as any).from('user_inventory').upsert({
                               user_id: user.id,
                               item_id: (item as any).id,
                               quantity: isConsumable ? 2 : 1,
                               equipped: isClassItem,
-                            } as any, { onConflict: 'user_id,item_id' });
+                            }, { onConflict: 'user_id,item_id' });
                           }
                         }
 
