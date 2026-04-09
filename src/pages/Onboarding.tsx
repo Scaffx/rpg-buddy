@@ -516,7 +516,6 @@ export default function Onboarding() {
                 </Button>
                 <Button
                   className="flex-1 gap-2"
-                  disabled={selectedMissions.size === 0}
                   onClick={() => setStep(3)}
                 >
                   Continuar <ChevronRight className="w-4 h-4" />
