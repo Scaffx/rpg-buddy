@@ -58,7 +58,7 @@ function useHealthStats() {
 
 function useTodayMeals() {
   const { user } = useAuth();
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString('en-CA');
   return useQuery({
     queryKey: ["meal_log", user?.id, today],
     queryFn: async () => {
@@ -76,7 +76,7 @@ function useTodayMeals() {
 
 function useTodayWater() {
   const { user } = useAuth();
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString('en-CA');
   return useQuery({
     queryKey: ["water_log", user?.id, today],
     queryFn: async () => {

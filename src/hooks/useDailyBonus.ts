@@ -9,53 +9,61 @@ export function useDailyBonus() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Check if daily bonus was already claimed today
-  const { data: isClaimed = false, isLoading: isCheckingClaim } = useQuery({
+  // Check if 24h have passed since last bonus claim
+  const { data: bonusStatus = { isClaimed: false, nextClaimAt: null as string | null }, isLoading: isCheckingClaim } = useQuery({
     queryKey: ['daily-bonus-claimed', user?.id],
     queryFn: async () => {
-      if (!user) return false;
+      if (!user) return { isClaimed: false, nextClaimAt: null as string | null };
 
-      // Usa a data local do usuário (não UTC) para evitar problemas de fuso
-      const now = new Date();
-      const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const nextLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      const nextDate = `${nextLocalDate.getFullYear()}-${String(nextLocalDate.getMonth() + 1).padStart(2, '0')}-${String(nextLocalDate.getDate()).padStart(2, '0')}`;
-
-      const { data: claims } = await supabase
+      // Busca o último bônus coletado (independente da data)
+      const { data: lastClaim } = await supabase
         .from('activity_log')
-        .select('id')
+        .select('created_at')
         .eq('user_id', user.id)
         .eq('action', 'daily_bonus')
-        .gte('created_at', `${localDate}T00:00:00`)
-        .lt('created_at', `${nextDate}T00:00:00`)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      return !!claims;
+      if (!lastClaim) return { isClaimed: false, nextClaimAt: null };
+
+      const lastClaimTime = new Date(lastClaim.created_at).getTime();
+      const now = Date.now();
+      const hoursSinceClaim = (now - lastClaimTime) / (1000 * 60 * 60);
+
+      if (hoursSinceClaim < 24) {
+        const nextClaimAt = new Date(lastClaimTime + 24 * 60 * 60 * 1000).toISOString();
+        return { isClaimed: true, nextClaimAt };
+      }
+
+      return { isClaimed: false, nextClaimAt: null };
     },
     enabled: !!user,
     staleTime: 0,
   });
 
+  const isClaimed = bonusStatus.isClaimed;
+  const nextClaimAt = bonusStatus.nextClaimAt;
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
-      const now = new Date();
-      const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const nextLocalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      const nextDate = `${nextLocalDate.getFullYear()}-${String(nextLocalDate.getMonth() + 1).padStart(2, '0')}-${String(nextLocalDate.getDate()).padStart(2, '0')}`;
-
-      // Check if already claimed today
-      const { data: claims } = await supabase
+      // Verifica se já passou 24h desde o último bônus
+      const { data: lastClaim } = await supabase
         .from('activity_log')
         .select('created_at')
         .eq('user_id', user.id)
         .eq('action', 'daily_bonus')
-        .gte('created_at', `${localDate}T00:00:00`)
-        .lt('created_at', `${nextDate}T00:00:00`);
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (claims && claims.length > 0) {
-        throw new Error('Você já coletou seu bônus diário hoje!');
+      if (lastClaim) {
+        const hoursSince = (Date.now() - new Date(lastClaim.created_at).getTime()) / (1000 * 60 * 60);
+        if (hoursSince < 24) {
+          throw new Error('Aguarde 24h desde a última coleta para coletar novamente!');
+        }
       }
 
       // Add XP to profile
@@ -108,7 +116,8 @@ export function useDailyBonus() {
     onMutate: async () => {
       // Cancela queries em andamento e marca como resgatado imediatamente
       await queryClient.cancelQueries({ queryKey: ['daily-bonus-claimed', user?.id] });
-      queryClient.setQueryData(['daily-bonus-claimed', user?.id], true);
+      const nextClaimTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      queryClient.setQueryData(['daily-bonus-claimed', user?.id], { isClaimed: true, nextClaimAt: nextClaimTime });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
@@ -126,5 +135,6 @@ export function useDailyBonus() {
     isPending: mutation.isPending,
     isClaimed,
     isCheckingClaim,
+    nextClaimAt,
   };
 }

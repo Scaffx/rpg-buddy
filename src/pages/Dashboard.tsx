@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { motion } from "framer-motion";
 import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
 import { useDailyBonus } from "@/hooks/useDailyBonus";
-import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins } from "lucide-react";
+import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
 
@@ -19,6 +19,30 @@ function getRank(level: number) {
   if (level >= 10) return "Guerreiro";
   if (level >= 5) return "Aprendiz";
   return "Novato";
+}
+
+function BonusCountdown({ nextClaimAt }: { nextClaimAt: string | null }) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    if (!nextClaimAt) return;
+    const update = () => {
+      const diff = new Date(nextClaimAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('Disponível!');
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [nextClaimAt]);
+
+  return <p className="text-xs text-muted-foreground">Próximo em: {timeLeft}</p>;
 }
 
 export default function Dashboard() {
@@ -147,43 +171,58 @@ export default function Dashboard() {
         )}
 
         {/* Daily Bonus */}
-        {!dailyBonus.isClaimed && !dailyBonus.isCheckingClaim && (
+        {!dailyBonus.isCheckingClaim && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
-            className="rpg-card bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30"
+            className={`rpg-card bg-gradient-to-r ${dailyBonus.isClaimed ? 'from-gray-500/10 to-gray-500/10 border-gray-500/30' : 'from-purple-500/10 to-pink-500/10 border-purple-500/30'}`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Gift className="w-6 h-6 text-purple-400" />
+                {dailyBonus.isClaimed ? (
+                  <Clock className="w-6 h-6 text-muted-foreground" />
+                ) : (
+                  <Gift className="w-6 h-6 text-purple-400" />
+                )}
                 <div>
-                  <h3 className="font-bold text-foreground">Bônus Diário Disponível!</h3>
-                  <p className="text-xs text-muted-foreground">+15 XP e +5 🪙</p>
+                  {dailyBonus.isClaimed ? (
+                    <>
+                      <h3 className="font-bold text-muted-foreground">Bônus Diário Coletado</h3>
+                      <BonusCountdown nextClaimAt={dailyBonus.nextClaimAt} />
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="font-bold text-foreground">Bônus Diário Disponível!</h3>
+                      <p className="text-xs text-muted-foreground">+15 XP e +5 🪙</p>
+                    </>
+                  )}
                 </div>
               </div>
-              <Button
-                onClick={() => {
-                  dailyBonus.mutate(undefined, {
-                    onSuccess: () => {
-                      // Toast will be shown by mutation
-                    },
-                    onError: (err: Error) => {
-                      // Error messages handled
-                    },
-                  });
-                }}
-                disabled={dailyBonus.isPending}
-                size="sm"
-                className="bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/50"
-              >
-                {dailyBonus.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                ) : (
-                  <Coins className="w-4 h-4 mr-1" />
-                )}
-                Coletar
-              </Button>
+              {!dailyBonus.isClaimed && (
+                <Button
+                  onClick={() => {
+                    dailyBonus.mutate(undefined, {
+                      onSuccess: () => {
+                        // Toast will be shown by mutation
+                      },
+                      onError: (err: Error) => {
+                        // Error messages handled
+                      },
+                    });
+                  }}
+                  disabled={dailyBonus.isPending}
+                  size="sm"
+                  className="bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/50"
+                >
+                  {dailyBonus.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                  ) : (
+                    <Coins className="w-4 h-4 mr-1" />
+                  )}
+                  Coletar
+                </Button>
+              )}
             </div>
           </motion.div>
         )}
