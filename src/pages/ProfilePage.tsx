@@ -1129,9 +1129,36 @@ export default function ProfilePage() {
               </div>
 
               {inventory.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p className="text-lg mb-2">Inventário vazio</p>
-                  <p className="text-sm">Complete o onboarding ou visite a loja para obter itens!</p>
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-lg text-muted-foreground mb-2">Inventário vazio</p>
+                  <p className="text-sm text-muted-foreground">Você ainda não possui itens. Clique abaixo para receber seu kit inicial!</p>
+                  {localStorage.getItem(`starter_kit_claimed_${user?.id}`) ? (
+                    <p className="text-xs text-muted-foreground/60 italic">Kit inicial já resgatado. Visite a loja para adquirir novos itens.</p>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        if (!user) return;
+                        const cls = (profile as any)?.starter_class
+                          || localStorage.getItem(`starter_class_v1_${user.id}`)
+                          || 'novato';
+                        const { error } = await supabase.rpc('grant_starter_items', {
+                          p_user_id: user.id,
+                          p_class: cls,
+                        } as any);
+                        if (error) {
+                          toast.error('Não foi possível resgatar o kit. Tente novamente mais tarde.');
+                          return;
+                        }
+                        localStorage.setItem(`starter_kit_claimed_${user.id}`, 'true');
+                        queryClient.invalidateQueries({ queryKey: ['inventory'] });
+                        toast.success('Kit inicial resgatado! Confira seu inventário.');
+                      }}
+                      className="px-6 py-3 rounded-xl font-bold text-sm text-foreground transition-all hover:scale-105"
+                      style={{ background: 'linear-gradient(135deg, hsl(25 95% 53%), hsl(270 60% 55%))' }}
+                    >
+                      🎁 Resgatar Kit Inicial
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
