@@ -694,27 +694,47 @@ export default function ProfilePage() {
         throw new Error("Você já está nessa classe.");
       }
 
+      // Primeiro respec é gratuito
+      const isFirstRespec = !localStorage.getItem(`respec_used_${user.id}`);
+      const cost = isFirstRespec ? 0 : RESPEC_COST;
+
+      // Tenta RPC, fallback para atualização direta
       const { data, error } = await supabase.rpc("perform_class_respec", {
         target_class: selectedRespecClass,
-        respec_cost: RESPEC_COST,
+        respec_cost: cost,
       } as any);
-      if (error) throw error;
+
+      if (error) {
+        // Fallback: verifica ouro e atualiza diretamente
+        if (!isFirstRespec) {
+          const { data: bal } = await supabase.from('user_balance').select('gold').eq('user_id', user.id).single();
+          const gold = (bal as any)?.gold ?? 0;
+          if (gold < RESPEC_COST) throw new Error(`Ouro insuficiente! Você tem ${gold}, precisa de ${RESPEC_COST}.`);
+          await supabase.from('user_balance').update({ gold: gold - RESPEC_COST } as any).eq('user_id', user.id);
+        }
+      }
 
       const starterItem = (data as any)?.starter_item || getStarterItemForClass(selectedRespecClass as any);
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedRespecClass);
       localStorage.setItem(`starter_item_v1_${user.id}`, starterItem);
+      localStorage.setItem(`respec_used_${user.id}`, 'true');
 
       // Atualiza o banco de dados
       await supabase.from('profiles').update({
         starter_class: selectedRespecClass,
         starter_item: starterItem,
-      } as any).eq('user_id', user.id);
+      } as any).eq('user_id', user.id).then(() => {});
 
-      return { starterItem };
+      return { starterItem, isFirstRespec };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["gold-balance"] });
-      toast.success(`Classe alterada! Novo item inicial: ${data.starterItem}`);
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      if (data.isFirstRespec) {
+        toast.success(`Classe alterada gratuitamente! Novo item: ${data.starterItem}`);
+      } else {
+        toast.success(`Classe alterada! Novo item inicial: ${data.starterItem}`);
+      }
     },
     onError: (err: any) => {
       toast.error(err.message || "Falha ao fazer respec de classe");
@@ -979,7 +999,11 @@ export default function ProfilePage() {
                     className="h-10 px-4 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-semibold"
                   >
                     <Coins className="w-4 h-4" />
-                    {respecClass.isPending ? "Aplicando..." : `Respec (${RESPEC_COST} 🪙)`}
+                    {respecClass.isPending
+                      ? "Aplicando..."
+                      : !localStorage.getItem(`respec_used_${user?.id}`)
+                        ? "Respec (Grátis 1ª vez)"
+                        : `Respec (${RESPEC_COST} 🪙)`}
                   </button>
                 </div>
               </div>
@@ -1141,14 +1165,38 @@ export default function ProfilePage() {
                         const cls = (profile as any)?.starter_class
                           || localStorage.getItem(`starter_class_v1_${user.id}`)
                           || 'novato';
-                        const { error } = await supabase.rpc('grant_starter_items', {
+
+                        // Tenta RPC primeiro, fallback para inserts diretos
+                        const { error: rpcErr } = await supabase.rpc('grant_starter_items', {
                           p_user_id: user.id,
                           p_class: cls,
                         } as any);
-                        if (error) {
-                          toast.error('Não foi possível resgatar o kit. Tente novamente mais tarde.');
-                          return;
+
+                        if (rpcErr) {
+                          // Fallback: busca itens iniciais da classe e insere direto
+                          const { data: starterItems } = await supabase
+                            .from('game_items')
+                            .select('id, category, stackable')
+                            .eq('is_starter', true)
+                            .or(`starter_class.eq.${cls},category.eq.consumable`);
+
+                          if (!starterItems || starterItems.length === 0) {
+                            toast.error('Itens iniciais não encontrados. Verifique se as migrations foram aplicadas.');
+                            return;
+                          }
+
+                          for (const item of starterItems) {
+                            const isConsumable = (item as any).category === 'consumable';
+                            const isClassItem = !isConsumable;
+                            await supabase.from('user_inventory').upsert({
+                              user_id: user.id,
+                              item_id: (item as any).id,
+                              quantity: isConsumable ? 2 : 1,
+                              equipped: isClassItem,
+                            } as any, { onConflict: 'user_id,item_id' });
+                          }
                         }
+
                         localStorage.setItem(`starter_kit_claimed_${user.id}`, 'true');
                         queryClient.invalidateQueries({ queryKey: ['inventory'] });
                         toast.success('Kit inicial resgatado! Confira seu inventário.');
