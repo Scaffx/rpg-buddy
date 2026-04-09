@@ -7,10 +7,10 @@ export function useInventory() {
   return useQuery({
     queryKey: ['inventory', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_inventory' as any)
+      const { data, error } = await (supabase as any)
+        .from('user_inventory')
         .select('*, game_items(*)')
-        .eq('user_id' as any, user!.id);
+        .eq('user_id', user!.id);
       if (error) throw error;
       return data as any[];
     },
