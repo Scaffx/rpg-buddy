@@ -302,6 +302,54 @@ export type Database = {
         }
         Relationships: []
       }
+      game_items: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          category: string
+          rarity: string
+          icon: string
+          stat_label: string | null
+          effect: string | null
+          is_starter: boolean
+          starter_class: string | null
+          shop_price: number | null
+          stackable: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          category: string
+          rarity?: string
+          icon?: string
+          stat_label?: string | null
+          effect?: string | null
+          is_starter?: boolean
+          starter_class?: string | null
+          shop_price?: number | null
+          stackable?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          category?: string
+          rarity?: string
+          icon?: string
+          stat_label?: string | null
+          effect?: string | null
+          is_starter?: boolean
+          starter_class?: string | null
+          shop_price?: number | null
+          stackable?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       gold_history: {
         Row: {
           amount: number
@@ -592,6 +640,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_inventory: {
+        Row: {
+          id: string
+          user_id: string
+          item_id: string
+          quantity: number
+          equipped: boolean
+          acquired_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          item_id: string
+          quantity?: number
+          equipped?: boolean
+          acquired_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          item_id?: string
+          quantity?: number
+          equipped?: boolean
+          acquired_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_inventory_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "game_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_buffs: {
         Row: {

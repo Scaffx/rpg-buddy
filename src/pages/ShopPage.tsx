@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoldBalance, useBuyItem } from '@/hooks/useGold';
+import { useShopItems, useBuyEquipment } from '@/hooks/useInventory';
 import AppLayout from '@/components/AppLayout';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -39,6 +40,8 @@ export default function ShopPage() {
   const [activeTab, setActiveTab] = useState('tempo');
   const { data: balance } = useGoldBalance();
   const buyMutation = useBuyItem();
+  const buyEquipMutation = useBuyEquipment();
+  const { data: shopEquipItems = [] } = useShopItems();
 
   const { data: items = [] } = useQuery({
     queryKey: ['shop-items'],
@@ -51,27 +54,28 @@ export default function ShopPage() {
 
   const currentGold = (balance as any)?.gold ?? 100;
 
-  // Placeholder para equipamentos - em um caso real, viria do banco
-  const equipmentItems = [
-    {
-      id: 'eq-1',
-      name: 'Espada de Ferro',
-      description: 'Uma espada comum, mas confiável',
-      icon: 'Sword',
-      icon_color: 'cyan',
-      cost_percent: 50,
-      duration: 'Permanente',
-    },
-    {
-      id: 'eq-2',
-      name: 'Armadura de Aço',
-      description: 'Proteção lendária contra falhas',
-      icon: 'Shield',
-      icon_color: 'purple',
-      cost_percent: 75,
-      duration: 'Permanente',
-    },
-  ];
+  const RARITY_COLORS: Record<string, string> = {
+    comum: 'text-slate-400',
+    incomum: 'text-green-400',
+    raro: 'text-blue-400',
+    epico: 'text-purple-400',
+    lendario: 'text-yellow-400',
+  };
+
+  const RARITY_GLOW: Record<string, string> = {
+    comum: '',
+    incomum: 'shadow-green-500/20',
+    raro: 'shadow-blue-500/20',
+    epico: 'shadow-purple-500/20',
+    lendario: 'shadow-yellow-500/20',
+  };
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    weapon: '⚔️ Arma',
+    armor: '🛡️ Armadura',
+    accessory: '📿 Acessório',
+    consumable: '🧪 Consumível',
+  };
 
   const handleBuy = (item: any) => {
     setBuying(item.id);
@@ -200,10 +204,74 @@ export default function ShopPage() {
             <div className="space-y-2">
               <h2 className="text-lg font-display font-bold text-purple-400">Loja de Equipamentos</h2>
               <p className="text-sm text-muted-foreground italic">
-                "Equipamentos permanentes que melhoram suas habilidades para sempre."
+                "Armas, armaduras e acessórios permanentes para fortalecer seu personagem."
               </p>
             </div>
-            {renderItems(equipmentItems)}
+
+            {(['weapon', 'armor', 'accessory', 'consumable'] as const).map((cat) => {
+              const catItems = shopEquipItems.filter((i: any) => i.category === cat);
+              if (catItems.length === 0) return null;
+              return (
+                <div key={cat} className="space-y-3">
+                  <h3 className="text-md font-semibold text-foreground">{CATEGORY_LABELS[cat]}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {catItems.map((item: any) => {
+                      const canAfford = currentGold >= item.shop_price;
+                      const rarityColor = RARITY_COLORS[item.rarity] || 'text-slate-400';
+                      const glowClass = RARITY_GLOW[item.rarity] || '';
+                      return (
+                        <div
+                          key={item.id}
+                          className={`bg-card border border-border rounded-2xl p-5 flex flex-col gap-3 hover:border-primary/30 transition-all shadow-lg ${glowClass}`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <span className="text-3xl">{item.icon}</span>
+                            <span className={`text-xs font-bold ${rarityColor}`}>{item.rarity.toUpperCase()}</span>
+                          </div>
+
+                          <div>
+                            <h3 className="text-lg font-bold text-foreground">{item.name}</h3>
+                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                            {item.stat_label && (
+                              <p className="text-xs text-primary mt-1 font-semibold">{item.stat_label}</p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center mt-auto">
+                            <span className="text-2xl font-bold text-yellow-400">{item.shop_price} 🪙</span>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setBuying(item.id);
+                              buyEquipMutation.mutate(item, {
+                                onSuccess: () => {
+                                  toast.success(`${item.name} comprado! Verifique seu inventário.`);
+                                  setBuying(null);
+                                },
+                                onError: (err: Error) => {
+                                  toast.error(err.message);
+                                  setBuying(null);
+                                },
+                              });
+                            }}
+                            disabled={!canAfford || buying === item.id}
+                            className="w-full py-2.5 rounded-xl font-bold text-sm text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{
+                              background: canAfford
+                                ? 'linear-gradient(135deg, hsl(25 95% 53%), hsl(270 60% 55%))'
+                                : undefined,
+                            }}
+                          >
+                            {buying === item.id ? 'COMPRANDO...' : !canAfford ? 'OURO INSUFICIENTE' : 'COMPRAR'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </TabsContent>
         </Tabs>
       </div>

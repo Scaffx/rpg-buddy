@@ -3,6 +3,7 @@ import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses } from "@/hooks/useProfile";
 import { useGoldBalance } from "@/hooks/useGold";
+import { useInventory, useToggleEquip, useConsumeItem } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -526,6 +527,9 @@ export default function ProfilePage() {
   const { data: healthStats } = useHealthStats();
   const { data: todayMeals } = useTodayMeals();
   const { data: todayWater } = useTodayWater();
+  const { data: inventory = [] } = useInventory();
+  const toggleEquip = useToggleEquip();
+  const consumeItem = useConsumeItem();
   const awardHealthXP = useAwardHealthXP();
   const queryClient = useQueryClient();
 
@@ -1124,113 +1128,126 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-bold text-foreground">🎒 INVENTÁRIO</h3>
               </div>
 
-              {/* Equipamentos */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Dumbbell className="w-4 h-4" />
-                  Equipamentos
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    { name: "Espada de Ferro", rarity: "comum", stat: "+5 ATK", icon: "⚔️" },
-                    { name: "Armadura de Aço", rarity: "comum", stat: "+8 DEF", icon: "🛡️" },
-                    { name: "Amuleto do Guerreiro", rarity: "raro", stat: "+3 todos", icon: "📿" },
-                    { name: "Bota de Velocidade", rarity: "épico", stat: "+10 AGI", icon: "👢" },
-                  ].map((item, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-lg border ${
-                        item.rarity === "comum"
-                          ? "bg-slate-500/10 border-slate-500/30"
-                          : item.rarity === "raro"
-                          ? "bg-blue-500/10 border-blue-500/30"
-                          : "bg-purple-500/10 border-purple-500/30"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-2xl">{item.icon}</span>
-                            <div>
-                              <p className="font-bold text-foreground text-sm">{item.name}</p>
-                              <p className={`text-xs font-semibold ${
-                                item.rarity === "comum"
-                                  ? "text-slate-400"
-                                  : item.rarity === "raro"
-                                  ? "text-blue-400"
-                                  : "text-purple-400"
-                              }`}>
-                                {item.rarity.toUpperCase()}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{item.stat}</p>
+              {inventory.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-lg mb-2">Inventário vazio</p>
+                  <p className="text-sm">Complete o onboarding ou visite a loja para obter itens!</p>
+                </div>
+              ) : (
+                <>
+                  {/* Equipamentos (armas, armaduras, acessórios) */}
+                  {(() => {
+                    const equipItems = inventory.filter((inv: any) =>
+                      ['weapon', 'armor', 'accessory'].includes(inv.game_items?.category)
+                    );
+                    if (equipItems.length === 0) return null;
+                    return (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <Dumbbell className="w-4 h-4" />
+                          Equipamentos
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {equipItems.map((inv: any) => {
+                            const item = inv.game_items;
+                            const rarityColors: Record<string, string> = {
+                              comum: "bg-slate-500/10 border-slate-500/30",
+                              incomum: "bg-green-500/10 border-green-500/30",
+                              raro: "bg-blue-500/10 border-blue-500/30",
+                              epico: "bg-purple-500/10 border-purple-500/30",
+                              lendario: "bg-yellow-500/10 border-yellow-500/30",
+                            };
+                            const rarityTextColors: Record<string, string> = {
+                              comum: "text-slate-400",
+                              incomum: "text-green-400",
+                              raro: "text-blue-400",
+                              epico: "text-purple-400",
+                              lendario: "text-yellow-400",
+                            };
+                            return (
+                              <div
+                                key={inv.id}
+                                className={`p-3 rounded-lg border ${rarityColors[item.rarity] || rarityColors.comum} ${inv.equipped ? 'ring-2 ring-primary/50' : ''}`}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-2xl">{item.icon}</span>
+                                      <div>
+                                        <p className="font-bold text-foreground text-sm">{item.name}</p>
+                                        <p className={`text-xs font-semibold ${rarityTextColors[item.rarity] || rarityTextColors.comum}`}>
+                                          {item.rarity.toUpperCase()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{item.stat_label}</p>
+                                    {item.description && (
+                                      <p className="text-xs text-muted-foreground/70 mt-1 italic">{item.description}</p>
+                                    )}
+                                  </div>
+                                  <button
+                                    onClick={() => toggleEquip.mutate({ inventoryId: inv.id, equipped: !inv.equipped })}
+                                    className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
+                                      inv.equipped
+                                        ? 'bg-primary/30 text-primary border border-primary/40'
+                                        : 'bg-muted/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                                    }`}
+                                  >
+                                    {inv.equipped ? '✓ Equipado' : 'Equipar'}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <button className="px-2 py-1 bg-primary/20 text-primary text-xs rounded hover:bg-primary/30 transition-colors">
-                          Equipar
-                        </button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    );
+                  })()}
 
-              {/* Consumíveis */}
-              <div className="space-y-3 border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Heart className="w-4 h-4" />
-                  Consumíveis
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    { name: "Poção de Vida", effect: "Restaura 50 HP", icon: "🧪", quantity: 5 },
-                    { name: "Elixir de Mana", effect: "Restaura 20 MP", icon: "🔵", quantity: 3 },
-                    { name: "Fruta Mágica", effect: "+100 XP", icon: "🍎", quantity: 2 },
-                  ].map((item, idx) => (
-                    <div key={idx} className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">{item.icon}</span>
-                          <div>
-                            <p className="font-bold text-foreground text-sm">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">{item.effect}</p>
-                          </div>
+                  {/* Consumíveis */}
+                  {(() => {
+                    const consumables = inventory.filter((inv: any) => inv.game_items?.category === 'consumable');
+                    if (consumables.length === 0) return null;
+                    return (
+                      <div className="space-y-3 border-t border-border pt-4">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <Heart className="w-4 h-4" />
+                          Consumíveis
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {consumables.map((inv: any) => {
+                            const item = inv.game_items;
+                            return (
+                              <div key={inv.id} className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-2xl">{item.icon}</span>
+                                    <div>
+                                      <p className="font-bold text-foreground text-sm">{item.name}</p>
+                                      <p className="text-xs text-muted-foreground">{item.stat_label}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-lg font-bold text-primary">x{inv.quantity}</span>
+                                </div>
+                                <button
+                                  onClick={() => consumeItem.mutate({ inventoryId: inv.id, quantity: inv.quantity })}
+                                  className="w-full px-2 py-1 bg-success/20 text-success text-xs rounded hover:bg-success/30 transition-colors font-medium"
+                                >
+                                  Usar
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <span className="text-lg font-bold text-primary">x{item.quantity}</span>
                       </div>
-                      <button className="w-full px-2 py-1 bg-success/20 text-success text-xs rounded hover:bg-success/30 transition-colors font-medium">
-                        Usar
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Materials */}
-              <div className="space-y-3 border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <BookOpen className="w-4 h-4" />
-                  Materiais
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {[
-                    { name: "Minério de Ferro", icon: "⛏️", quantity: 12 },
-                    { name: "Tecido Fino", icon: "🧵", quantity: 8 },
-                    { name: "Cristal Azul", icon: "💎", quantity: 4 },
-                    { name: "Pó de Ouro", icon: "✨", quantity: 15 },
-                  ].map((item, idx) => (
-                    <div key={idx} className="p-2 rounded-lg border border-border/50 bg-muted/20 text-center text-xs">
-                      <p className="text-xl mb-1">{item.icon}</p>
-                      <p className="text-muted-foreground line-clamp-1">{item.name}</p>
-                      <p className="font-bold text-foreground">{item.quantity}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    );
+                  })()}
+                </>
+              )}
 
               {/* Info */}
               <div className="bg-muted/30 border border-border/50 rounded-lg p-3 text-xs text-muted-foreground">
-                💡 Dica: Complete missões para ganhar itens raros e aumentar seu inventário!
+                💡 Dica: Complete missões para ganhar ouro e comprar itens na loja!
               </div>
             </div>
           </div>

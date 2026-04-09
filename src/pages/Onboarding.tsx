@@ -243,6 +243,12 @@ export default function Onboarding() {
       } as any).eq('user_id', user.id);
       if (updateErr) throw updateErr;
 
+      // Concede itens iniciais da classe (arma, armadura, 2 poções de vida, 2 poções de mana)
+      await supabase.rpc('grant_starter_items', {
+        p_user_id: user.id,
+        p_class: selectedClass.id,
+      } as any);
+
       // Mantém localStorage como cache local
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedClass.id);
       localStorage.setItem(`starter_item_v1_${user.id}`, selectedClass.starterItem);
@@ -264,6 +270,12 @@ export default function Onboarding() {
       starter_class: 'novato',
       starter_item: 'Adaga de Treino',
     } as any).eq('user_id', user.id);
+
+    // Concede itens iniciais de novato
+    await supabase.rpc('grant_starter_items', {
+      p_user_id: user.id,
+      p_class: 'novato',
+    } as any);
 
     localStorage.setItem(`starter_class_v1_${user.id}`, 'novato');
     localStorage.setItem(`starter_item_v1_${user.id}`, 'Adaga de Treino');
