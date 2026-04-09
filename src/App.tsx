@@ -17,6 +17,7 @@ import ProfilePage from "./pages/ProfilePage";
 import HealthPage from "./pages/HealthPage";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
+import SystemInfoPage from "./pages/SystemInfoPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -31,9 +32,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/auth" replace />;
-  // Redireciona para onboarding se ainda não foi concluído
+  // Redireciona para onboarding se ainda não foi concluído ou se a conta antiga não possui kit inicial salvo
   const onboardingDone = localStorage.getItem(`onboarding_v1_${user.id}`);
-  if (!onboardingDone) return <Navigate to="/onboarding" replace />;
+  const starterClass = localStorage.getItem(`starter_class_v1_${user.id}`);
+  const starterItem = localStorage.getItem(`starter_item_v1_${user.id}`);
+  if (!onboardingDone || !starterClass || !starterItem) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
 
@@ -70,6 +73,7 @@ const App = () => (
             <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
             <Route path="/npc" element={<ProtectedRoute><NpcPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

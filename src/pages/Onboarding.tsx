@@ -189,13 +189,17 @@ export default function Onboarding() {
   useEffect(() => {
     if (!user || !profile) return;
     const key = `onboarding_v1_${user.id}`;
-    if (localStorage.getItem(key)) {
+    const starterClass = localStorage.getItem(`starter_class_v1_${user.id}`);
+    const starterItem = localStorage.getItem(`starter_item_v1_${user.id}`);
+
+    if (localStorage.getItem(key) && starterClass && starterItem) {
       navigate('/', { replace: true });
       return;
     }
+
     const createdAt = new Date((profile as any).created_at);
     const diffHours = (Date.now() - createdAt.getTime()) / 3600000;
-    if (diffHours > 1) {
+    if (diffHours > 1 && starterClass && starterItem) {
       localStorage.setItem(key, 'done');
       navigate('/', { replace: true });
     }

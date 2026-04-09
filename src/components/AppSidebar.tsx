@@ -4,7 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
-  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart,
+  ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import {
@@ -32,6 +32,7 @@ const navItems = [
   { title: 'Progresso', url: '/progress', icon: TrendingUp },
   { title: 'Virtudes', url: '/virtues', icon: Circle },
   { title: 'Boss Arena', url: '/boss', icon: Skull },
+  { title: 'Informações do Sistema', url: '/system-info', icon: ScrollText },
   { title: 'Chat IA', url: '/ai-chat', icon: Brain },
 ];
 
