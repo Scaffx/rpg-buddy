@@ -104,6 +104,7 @@ export const useCompleteMission = () => {
             completion_date: today,
             xp_earned: xpReward,
             gold_earned: 2,
+            user_id: user!.id,
           } as any);
 
         if (insertError) throw insertError;

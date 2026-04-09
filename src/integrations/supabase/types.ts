@@ -360,6 +360,7 @@ export type Database = {
           gold_earned: number | null
           id: string
           mission_id: string
+          user_id: string
           xp_earned: number
         }
         Insert: {
@@ -368,6 +369,7 @@ export type Database = {
           gold_earned?: number | null
           id?: string
           mission_id: string
+          user_id: string
           xp_earned: number
         }
         Update: {
@@ -376,6 +378,7 @@ export type Database = {
           gold_earned?: number | null
           id?: string
           mission_id?: string
+          user_id?: string
           xp_earned?: number
         }
         Relationships: [
