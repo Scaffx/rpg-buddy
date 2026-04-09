@@ -690,32 +690,13 @@ export default function ProfilePage() {
         throw new Error("Você já está nessa classe.");
       }
 
-      const { data: bal, error: balError } = await supabase
-        .from("user_balance")
-        .select("gold")
-        .eq("user_id", user.id)
-        .single();
-      if (balError) throw balError;
-
-      const gold = (bal as any)?.gold ?? 0;
-      if (gold < RESPEC_COST) {
-        throw new Error(`Ouro insuficiente para respec. Necessário: ${RESPEC_COST} 🪙`);
-      }
-
-      const starterItem = getStarterItemForClass(selectedRespecClass as any);
-
-      await supabase
-        .from("user_balance")
-        .update({ gold: gold - RESPEC_COST, updated_at: new Date().toISOString() } as any)
-        .eq("user_id", user.id);
-
-      await supabase.from("gold_history" as any).insert({
-        user_id: user.id,
-        type: "respec_classe",
-        amount: -RESPEC_COST,
-        reason: `Respec para ${selectedRespecClass}`,
+      const { data, error } = await supabase.rpc("perform_class_respec", {
+        target_class: selectedRespecClass,
+        respec_cost: RESPEC_COST,
       } as any);
+      if (error) throw error;
 
+      const starterItem = (data as any)?.starter_item || getStarterItemForClass(selectedRespecClass as any);
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedRespecClass);
       localStorage.setItem(`starter_item_v1_${user.id}`, starterItem);
 

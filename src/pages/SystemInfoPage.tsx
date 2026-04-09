@@ -40,14 +40,30 @@ function useMyFeedback() {
   });
 }
 
+function useAdminFeedback() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['system-feedback-admin', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('list_system_feedback_admin');
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!user,
+    retry: false,
+  });
+}
+
 export default function SystemInfoPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: logs, isLoading: loadingLogs } = useSystemUpdateLogs();
   const { data: feedbackList, isLoading: loadingFeedback } = useMyFeedback();
+  const { data: adminFeedback, isLoading: loadingAdminFeedback, isError: adminFeedbackDenied } = useAdminFeedback();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [updatingFeedbackId, setUpdatingFeedbackId] = useState<string | null>(null);
 
   const createFeedback = useMutation({
     mutationFn: async () => {
@@ -71,6 +87,26 @@ export default function SystemInfoPage() {
     },
     onError: (error: any) => {
       toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const updateFeedbackStatus = useMutation({
+    mutationFn: async ({ feedbackId, status }: { feedbackId: string; status: string }) => {
+      setUpdatingFeedbackId(feedbackId);
+      const { error } = await supabase.rpc('update_system_feedback_status', {
+        feedback_id: feedbackId,
+        next_status: status,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['system-feedback-admin'] });
+      toast({ title: 'Status atualizado', description: 'Feedback atualizado com sucesso.' });
+      setUpdatingFeedbackId(null);
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
+      setUpdatingFeedbackId(null);
     },
   });
 
@@ -176,6 +212,51 @@ export default function SystemInfoPage() {
                 <p className="text-sm text-muted-foreground">Você ainda não enviou nenhuma sugestão.</p>
               )}
             </div>
+
+            {!adminFeedbackDenied && (
+              <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+                <h2 className="text-base font-bold text-foreground">Painel administrativo de sugestões</h2>
+                <p className="text-xs text-muted-foreground">
+                  Visível para contas com `app_metadata.role = admin` no Supabase Auth.
+                </p>
+                {loadingAdminFeedback ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                ) : (adminFeedback || []).length > 0 ? (
+                  <div className="space-y-3">
+                    {(adminFeedback || []).map((item: any) => (
+                      <div key={item.id} className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-foreground">{item.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Usuário: {item.user_id}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString('pt-BR')}</p>
+                          </div>
+                          <span className="text-[10px] px-2 py-1 rounded-full border border-border text-muted-foreground uppercase">
+                            {item.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{item.message}</p>
+                        <div className="flex gap-2">
+                          {['novo', 'avaliando', 'planejado', 'feito'].map((status) => (
+                            <Button
+                              key={status}
+                              size="sm"
+                              variant="outline"
+                              disabled={updatingFeedbackId === item.id || item.status === status}
+                              onClick={() => updateFeedbackStatus.mutate({ feedbackId: item.id, status })}
+                            >
+                              {status}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nenhuma sugestão recebida ainda.</p>
+                )}
+              </div>
+            )}
           </section>
         </div>
       </div>
