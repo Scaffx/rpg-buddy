@@ -22,8 +22,8 @@ export function useGameItems(category?: string) {
   return useQuery({
     queryKey: ['game-items', category],
     queryFn: async () => {
-      let q = supabase.from('game_items' as any).select('*');
-      if (category) q = q.eq('category' as any, category);
+      let q = (supabase as any).from('game_items').select('*');
+      if (category) q = q.eq('category', category);
       const { data, error } = await q;
       if (error) throw error;
       return data as any[];
