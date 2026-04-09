@@ -1,8 +1,10 @@
 import { useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile, useClasses, useSelectClass } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
+import { useAddGold } from '@/hooks/useGold';
 import AppLayout from '@/components/AppLayout';
-import { Loader2, Lock, Check, Swords, ChevronDown, ChevronRight, ArrowDown } from 'lucide-react';
+import { Loader2, Lock, Check, Swords, ChevronDown, ChevronRight, ArrowDown, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -37,14 +39,41 @@ const tierGlows: Record<number, string> = {
   6: '0 0 12px hsl(0 72% 51% / 0.2)',
 };
 
+// Maps onboarding starter_class id to the class name in the progression tree
+const STARTER_TO_CLASS_NAME: Record<string, string> = {
+  guerreiro: 'Espadachim',
+  mago: 'Mago',
+  gatuno: 'Gatuno',
+  clerico: 'Noviço',
+  arqueiro: 'Arqueiro',
+  ferreiro: 'Mercador',
+};
+
 export default function ClassesPage() {
   const { data: profile, isLoading: pLoading } = useProfile();
   const { data: classes, isLoading: cLoading } = useClasses();
   const selectClass = useSelectClass();
+  const { user } = useAuth();
+  const addGold = useAddGold();
   const { toast } = useToast();
   const [selecting, setSelecting] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<ClassNode | null>(null);
   const [expandedBranches, setExpandedBranches] = useState<Set<string>>(new Set());
+  const [claimingReward, setClaimingReward] = useState(false);
+
+  // Get starter_class from profile or localStorage
+  const starterClass = useMemo(() => {
+    if (!user) return null;
+    const fromProfile = (profile as any)?.starter_class;
+    if (fromProfile) return fromProfile as string;
+    return localStorage.getItem(`starter_class_v1_${user.id}`);
+  }, [profile, user]);
+
+  // Check if class reward was already claimed
+  const rewardClaimed = useMemo(() => {
+    if (!user) return false;
+    return localStorage.getItem(`class_reward_claimed_${user.id}`) === 'true';
+  }, [user]);
 
   // Build tree from flat list
   const tree = useMemo(() => {
@@ -75,6 +104,31 @@ export default function ClassesPage() {
     return path;
   }, [profile, classes]);
 
+  // Compute the golden path from root to the starter class node
+  const { goldenPath, goldenTargetId } = useMemo(() => {
+    if (!starterClass || !classes) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
+    const targetName = STARTER_TO_CLASS_NAME[starterClass];
+    if (!targetName) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
+
+    const map = new Map<string, any>();
+    classes.forEach((c: any) => map.set(c.id, c));
+
+    // Find the target class node by name
+    let targetNode: any = null;
+    for (const c of classes) {
+      if ((c as any).name === targetName) { targetNode = c; break; }
+    }
+    if (!targetNode) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
+
+    const path = new Set<string>();
+    let current = targetNode;
+    while (current) {
+      path.add(current.id);
+      current = current.parent_class_id ? map.get(current.parent_class_id) : null;
+    }
+    return { goldenPath: path, goldenTargetId: targetNode.id as string };
+  }, [starterClass, classes]);
+
   const userLevel = profile?.level || 1;
 
   const toggleBranch = useCallback((id: string) => {
@@ -99,6 +153,21 @@ export default function ClassesPage() {
     }
   };
 
+  const handleClaimReward = async () => {
+    if (!user || rewardClaimed || claimingReward) return;
+    setClaimingReward(true);
+    try {
+      await addGold.mutateAsync({ amount: 50, reason: 'Recompensa de classe inicial', type: 'class_reward' });
+      localStorage.setItem(`class_reward_claimed_${user.id}`, 'true');
+      toast({ title: '🎉 Recompensa coletada!', description: '+50 moedas de ouro!' });
+      setSelectedDetail(null);
+    } catch {
+      toast({ title: 'Erro ao coletar recompensa', variant: 'destructive' });
+    } finally {
+      setClaimingReward(false);
+    }
+  };
+
   if (pLoading || cLoading) {
     return (
       <AppLayout>
@@ -113,24 +182,46 @@ export default function ClassesPage() {
     const unlocked = userLevel >= node.level_min;
     const isSelected = profile?.current_class_id === node.id;
     const isInPath = currentClassPath.has(node.id);
+    const isInGoldenPath = goldenPath.has(node.id);
+    const isGoldenTarget = node.id === goldenTargetId;
     const hasChildren = node.children.length > 0;
-    const isExpanded = expandedBranches.has(node.id) || isInPath;
+    const isExpanded = expandedBranches.has(node.id) || isInPath || isInGoldenPath;
     const tier = tierColors[node.column_index] || tierColors[1];
+    const canClaimReward = isGoldenTarget && unlocked && !rewardClaimed;
 
     return (
       <div key={node.id} className="flex flex-col items-center">
         {/* Node card */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: depth * 0.05 }}
+          animate={isGoldenTarget ? {
+            opacity: 1,
+            scale: [1, 1.05, 1],
+            borderColor: ['hsl(45, 100%, 50%)', 'hsl(45, 100%, 70%)', 'hsl(45, 100%, 50%)'],
+          } : { opacity: 1, scale: 1 }}
+          transition={isGoldenTarget ? {
+            delay: depth * 0.05,
+            scale: { repeat: Infinity, duration: 2, ease: 'easeInOut' },
+            borderColor: { repeat: Infinity, duration: 2, ease: 'easeInOut' },
+          } : { delay: depth * 0.05 }}
           className={`
             relative rounded-xl border-2 p-3 w-36 cursor-pointer transition-all duration-200
-            ${tier.bg} ${tier.border}
+            ${tier.bg} ${isGoldenTarget ? 'border-yellow-400' : tier.border}
             ${!unlocked ? 'opacity-35 grayscale' : 'hover:scale-105'}
             ${isSelected ? 'border-primary ring-2 ring-primary/30' : ''}
+            ${isInGoldenPath && !isGoldenTarget ? 'border-yellow-500/60' : ''}
           `}
-          style={isSelected ? { boxShadow: 'var(--glow-gold)' } : unlocked && tierGlows[node.column_index] ? { boxShadow: tierGlows[node.column_index] } : {}}
+          style={
+            isGoldenTarget
+              ? { boxShadow: '0 0 20px hsl(45 100% 50% / 0.5), 0 0 40px hsl(45 100% 50% / 0.2)' }
+              : isSelected
+                ? { boxShadow: 'var(--glow-gold)' }
+                : isInGoldenPath
+                  ? { boxShadow: '0 0 10px hsl(45 100% 50% / 0.25)' }
+                  : unlocked && tierGlows[node.column_index]
+                    ? { boxShadow: tierGlows[node.column_index] }
+                    : {}
+          }
           onClick={() => unlocked && setSelectedDetail(node)}
         >
           <div className="text-center space-y-1">
@@ -142,6 +233,16 @@ export default function ClassesPage() {
             {isSelected && (
               <span className="inline-flex items-center gap-0.5 text-[9px] text-primary font-bold">
                 <Check className="w-2.5 h-2.5" /> Atual
+              </span>
+            )}
+            {isGoldenTarget && !isSelected && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] text-yellow-400 font-bold">
+                ⭐ Sua classe
+              </span>
+            )}
+            {canClaimReward && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] text-yellow-300 font-bold animate-pulse">
+                <Gift className="w-2.5 h-2.5" /> Recompensa!
               </span>
             )}
             {!unlocked && (
@@ -172,7 +273,7 @@ export default function ClassesPage() {
               className="flex flex-col items-center mt-1"
             >
               {/* Connector line */}
-              <div className="w-px h-6 bg-border" />
+              <div className={`w-px h-6 ${isInGoldenPath ? 'bg-yellow-400' : 'bg-border'}`} />
 
               {/* Branch lines + children */}
               <div className="relative flex gap-2">
@@ -188,7 +289,7 @@ export default function ClassesPage() {
                 )}
                 {node.children.map((child) => (
                   <div key={child.id} className="flex flex-col items-center">
-                    <div className="w-px h-4 bg-border" />
+                    <div className={`w-px h-4 ${goldenPath.has(child.id) ? 'bg-yellow-400' : 'bg-border'}`} />
                     {renderNode(child, depth + 1)}
                   </div>
                 ))}
@@ -269,7 +370,20 @@ export default function ClassesPage() {
                 )}
 
                 {/* Action button */}
-                {profile?.current_class_id === selectedDetail.id ? (
+                {selectedDetail.id === goldenTargetId && userLevel >= selectedDetail.level_min && !rewardClaimed ? (
+                  <Button
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
+                    onClick={handleClaimReward}
+                    disabled={claimingReward}
+                  >
+                    {claimingReward ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Gift className="w-4 h-4 mr-2" />
+                    )}
+                    Recolher Recompensa (50 🪙)
+                  </Button>
+                ) : profile?.current_class_id === selectedDetail.id ? (
                   <div className="flex items-center justify-center gap-1 text-sm text-primary font-bold py-2">
                     <Check className="w-4 h-4" /> Classe Atual
                   </div>
