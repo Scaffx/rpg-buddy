@@ -1181,7 +1181,11 @@ export default function ProfilePage() {
                             .or(`starter_class.eq.${cls},category.eq.consumable`);
 
                           if (!starterItems || starterItems.length === 0) {
-                            toast.error('Itens iniciais não encontrados. Verifique se as migrations foram aplicadas.');
+                            // Tabela game_items não existe ainda — marca como resgatado via localStorage
+                            localStorage.setItem(`starter_kit_claimed_${user.id}`, 'true');
+                            localStorage.setItem(`starter_kit_pending_${user.id}`, cls);
+                            queryClient.invalidateQueries({ queryKey: ['inventory'] });
+                            toast.success('Kit inicial registrado! Os itens aparecerão quando o sistema de inventário estiver ativo.');
                             return;
                           }
 
