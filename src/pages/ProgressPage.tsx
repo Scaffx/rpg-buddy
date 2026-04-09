@@ -66,7 +66,7 @@ export default function ProgressPage() {
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="w-full h-[280px]">
+            <div className="w-full h-[220px] sm:h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(230 15% 20%)" />
@@ -125,7 +125,7 @@ export default function ProgressPage() {
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="w-full h-[350px]">
+            <div className="w-full h-[280px] sm:h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
                   <PolarGrid stroke="hsl(230 15% 25%)" />

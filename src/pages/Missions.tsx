@@ -491,8 +491,8 @@ const handleSave = async () => {
             className="pl-9 bg-secondary border-border"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
-              <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1">
+              <X className="w-5 h-5 text-muted-foreground hover:text-foreground" />
             </button>
           )}
         </div>

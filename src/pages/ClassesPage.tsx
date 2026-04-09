@@ -326,7 +326,7 @@ export default function ClassesPage() {
 
         {/* Tree */}
         <div className="overflow-x-auto pb-8">
-          <div className="flex justify-center min-w-[600px] py-4">
+          <div className="flex justify-center min-w-[400px] sm:min-w-[600px] py-4">
             {tree && renderNode(tree)}
           </div>
         </div>

@@ -124,7 +124,7 @@ export default function BossPage() {
                 <p className="text-sm text-muted-foreground">
                   Seu poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
                 </p>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-3 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mt-3 text-xs">
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">ATK</p><p className="font-bold">{playerStats.atk}</p></div>
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">MATK</p><p className="font-bold">{playerStats.matk}</p></div>
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">DEF</p><p className="font-bold">{playerStats.def}</p></div>
@@ -161,7 +161,7 @@ export default function BossPage() {
                     </div>
 
                     <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs">
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div><p className="text-muted-foreground">ATK</p><p className="font-bold text-foreground">{b.atk}</p></div>
                         <div><p className="text-muted-foreground">MATK</p><p className="font-bold text-foreground">{b.matk}</p></div>
                         <div><p className="text-muted-foreground">DEF</p><p className="font-bold text-foreground">{b.def}</p></div>

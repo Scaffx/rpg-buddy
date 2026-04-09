@@ -526,6 +526,7 @@ export type Database = {
           current_class_id: string | null
           display_name: string | null
           id: string
+          last_name_change: string | null
           level: number
           missions_completed: number
           onboarding_completed: boolean
@@ -541,6 +542,7 @@ export type Database = {
           created_at?: string
           current_class_id?: string | null
           display_name?: string | null
+          last_name_change?: string | null
           id?: string
           level?: number
           missions_completed?: number
@@ -558,6 +560,7 @@ export type Database = {
           current_class_id?: string | null
           display_name?: string | null
           id?: string
+          last_name_change?: string | null
           level?: number
           missions_completed?: number
           onboarding_completed?: boolean

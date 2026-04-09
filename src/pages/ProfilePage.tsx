@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile, useAttributes, useAwardHealthXP, useBosses } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName } from "@/hooks/useProfile";
 import { useGoldBalance } from "@/hooks/useGold";
 import { useInventory, useToggleEquip, useConsumeItem } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,7 @@ import {
   Settings, Plus, Minus, Save, Dumbbell, Brain, Eye,
   Swords, Sparkles, BookOpen, Users, Star, Palette,
   ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull, Coins,
-  Calendar, Upload, Trash2, ChevronLeft, ChevronRight,
+  Calendar, Upload, Trash2, ChevronLeft, ChevronRight, Pencil, Check, X as XIcon,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
@@ -401,12 +401,12 @@ function BodyEvolutionSection() {
 
           {/* Thumbnail strip */}
           {photosWithUrl.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
               {photosWithUrl.map((m: any, i: number) => (
                 <button
                   key={m.id}
                   onClick={() => setPhotoIndex(i)}
-                  className={`w-12 h-12 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
+                  className={`w-12 h-12 rounded-lg overflow-hidden border-2 shrink-0 snap-start transition-all ${
                     i === photoIndex ? "border-emerald-400" : "border-border opacity-60"
                   }`}
                 >
@@ -531,6 +531,7 @@ export default function ProfilePage() {
   const toggleEquip = useToggleEquip();
   const consumeItem = useConsumeItem();
   const awardHealthXP = useAwardHealthXP();
+  const updateDisplayName = useUpdateDisplayName();
   const queryClient = useQueryClient();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -538,6 +539,8 @@ export default function ProfilePage() {
   const [weight, setWeight] = useState(70);
   const [mealsTarget, setMealsTarget] = useState(3);
   const [xpAwarded, setXpAwarded] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
   const [selectedRespecClass, setSelectedRespecClass] = useState<string>("guerreiro");
 
   useEffect(() => {
@@ -748,7 +751,52 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-primary font-display">⚔️ Meu Perfil</h1>
-            <p className="text-sm text-muted-foreground">Status do Herói</p>
+            {editingName ? (
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  maxLength={30}
+                  className="bg-secondary border border-border rounded px-2 py-1 text-sm text-foreground w-40 sm:w-52 focus:outline-none focus:border-primary"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      updateDisplayName.mutate(newName, {
+                        onSuccess: () => { toast.success("Nome atualizado! ✨"); setEditingName(false); },
+                        onError: (err: any) => toast.error(err.message),
+                      });
+                    }
+                    if (e.key === "Escape") setEditingName(false);
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    updateDisplayName.mutate(newName, {
+                      onSuccess: () => { toast.success("Nome atualizado! ✨"); setEditingName(false); },
+                      onError: (err: any) => toast.error(err.message),
+                    });
+                  }}
+                  disabled={updateDisplayName.isPending}
+                  className="p-1 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+                <button onClick={() => setEditingName(false)} className="p-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground">
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-muted-foreground">{profile?.display_name || "Aventureiro"}</p>
+                <button
+                  onClick={() => { setNewName(profile?.display_name || ""); setEditingName(true); }}
+                  className="p-1 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+                  title="Editar nome (1x por semana)"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
           <button
             onClick={() => setShowSettings(!showSettings)}
@@ -759,7 +807,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-border">
+        <div className="flex gap-1 sm:gap-2 border-b border-border overflow-x-auto">
           {[
             { id: "perfil", label: "📊 Perfil", icon: "👤" },
             { id: "habilidades", label: "🌟 Habilidades", icon: "⭐" },
@@ -768,7 +816,7 @@ export default function ProfilePage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+              className={`px-3 sm:px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"

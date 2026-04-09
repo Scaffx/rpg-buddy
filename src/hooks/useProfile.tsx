@@ -17,6 +17,51 @@ export function useProfile() {
   });
 }
 
+export function useUpdateDisplayName() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newName: string) => {
+      if (!user) throw new Error("Não autenticado");
+      const trimmed = newName.trim();
+      if (!trimmed || trimmed.length < 2 || trimmed.length > 30) {
+        throw new Error("O nome deve ter entre 2 e 30 caracteres.");
+      }
+
+      // Check last name change
+      const { data: profile, error: fetchErr } = await supabase
+        .from("profiles")
+        .select("last_name_change")
+        .eq("user_id", user.id)
+        .single();
+      if (fetchErr) throw fetchErr;
+
+      const lastChange = (profile as any)?.last_name_change;
+      if (lastChange) {
+        const diff = Date.now() - new Date(lastChange).getTime();
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+        if (diff < sevenDays) {
+          const nextDate = new Date(new Date(lastChange).getTime() + sevenDays);
+          throw new Error(`Você só pode trocar de nome 1x por semana. Próximo: ${nextDate.toLocaleDateString('pt-BR')}`);
+        }
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: trimmed,
+          last_name_change: new Date().toISOString(),
+        } as any)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
 export function useAttributes() {
   const { user } = useAuth();
   return useQuery({
