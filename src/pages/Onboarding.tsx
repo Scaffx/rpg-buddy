@@ -166,7 +166,15 @@ const CLASSES: ClassDef[] = [
 
 // ─── Componente principal ───────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 4; // tutorial, classe, missões, conclusão
+const REGIONS = [
+  { id: 'south_america', name: 'América do Sul', icon: '🌎' },
+  { id: 'north_america', name: 'América do Norte', icon: '🌎' },
+  { id: 'europe', name: 'Europa', icon: '🌍' },
+  { id: 'africa', name: 'África', icon: '🌍' },
+  { id: 'asia', name: 'Ásia', icon: '🌏' },
+];
+
+const TOTAL_STEPS = 5; // tutorial, região, classe, missões, conclusão
 
 export default function Onboarding() {
   const { user, loading: authLoading } = useAuth();
