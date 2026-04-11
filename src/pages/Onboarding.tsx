@@ -469,8 +469,8 @@ export default function Onboarding() {
           </motion.div>
         )}
 
-        {/* ── STEP 2: Selecionar Missões ── */}
-        {step === 2 && selectedClass && (
+        {/* ── STEP 3: Selecionar Missões ── */}
+        {step === 3 && selectedClass && (
           <motion.div
             key="step2"
             initial={{ opacity: 0, y: 24 }}
