@@ -3,9 +3,33 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useBosses, useBossBattles, useFightBoss, useProfile, useAttributes } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Loader2, Skull, Swords, Users, Flame } from 'lucide-react';
+import { Loader2, Skull, Swords, Users, Flame, Trophy, Globe, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+
+const RANKING_REGIONS = [
+  { id: null, name: 'Ranking Mundial', icon: '🌐' },
+  { id: 'south_america', name: 'América do Sul', icon: '🌎' },
+  { id: 'north_america', name: 'América do Norte', icon: '🌎' },
+  { id: 'europe', name: 'Europa', icon: '🌍' },
+  { id: 'africa', name: 'África', icon: '🌍' },
+  { id: 'asia', name: 'Ásia', icon: '🌏' },
+];
+
+function useRankings(region: string | null) {
+  return useQuery({
+    queryKey: ['rankings', region],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)('get_rankings', {
+        p_region: region,
+      });
+      if (error) throw error;
+      return data as { user_id: string; display_name: string; level: number; total_xp: number; region: string; avatar_url: string }[];
+    },
+  });
+}
 
 export default function BossPage() {
   const { data: bosses, isLoading } = useBosses();
@@ -15,11 +39,12 @@ export default function BossPage() {
   const fightBoss = useFightBoss();
   const { toast } = useToast();
   const [battleResult, setBattleResult] = useState<{ won: boolean; damage: number } | null>(null);
-  const [activeTab, setActiveTab] = useState<"solo" | "coletiva">("solo");
+  const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
+  const [rankingRegion, setRankingRegion] = useState<string | null>(null);
+  const { data: rankings, isLoading: rankingsLoading } = useRankings(rankingRegion);
   const attrLevels = getAttributeLevels(attributes as any[]);
   const playerStats = getPlayerCombatStats(profile?.level || 1, attrLevels);
 
-  // ✅ Masmorras coletivas mock (dados fictícios por enquanto)
   const dungeons = [
     {
       id: '1',
@@ -82,6 +107,17 @@ export default function BossPage() {
     toast({ title: `✨ Você se juntou a ${dungeonName}!`, description: 'Aguardando outros jogadores...' });
   };
 
+  const getRankMedal = (position: number) => {
+    if (position === 0) return '🥇';
+    if (position === 1) return '🥈';
+    if (position === 2) return '🥉';
+    return `#${position + 1}`;
+  };
+
+  const getPowerLevel = (level: number, totalXp: number) => {
+    return level * 100 + Math.floor(totalXp / 10);
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -92,8 +128,8 @@ export default function BossPage() {
           </h1>
         </div>
 
-        {/* ✅ Abas: Aventura Solo vs Masmorra Coletiva */}
-        <div className="flex gap-2">
+        {/* Abas */}
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setActiveTab("solo")}
             className={`px-4 py-2 rounded-lg border font-semibold transition-all ${
@@ -113,6 +149,16 @@ export default function BossPage() {
             }`}
           >
             👥 Masmorra Coletiva
+          </button>
+          <button
+            onClick={() => setActiveTab("ranking")}
+            className={`px-4 py-2 rounded-lg border font-semibold transition-all ${
+              activeTab === "ranking"
+                ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-400"
+                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🏆 Ranking
           </button>
         </div>
 
@@ -298,7 +344,6 @@ export default function BossPage() {
                       </div>
                     </div>
 
-                    {/* Progress bar de jogadores */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -318,7 +363,6 @@ export default function BossPage() {
                       </div>
                     </div>
 
-                    {/* Botão */}
                     <Button
                       onClick={() => handleJoinDungeon(dungeon.name)}
                       disabled={!canJoin || isFull}
@@ -345,6 +389,99 @@ export default function BossPage() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* ========== ABA: RANKING ========== */}
+        {activeTab === "ranking" && (
+          <div className="space-y-6">
+            {/* Region selector */}
+            <div className="flex gap-2 flex-wrap">
+              {RANKING_REGIONS.map((r) => (
+                <button
+                  key={r.id ?? 'mundial'}
+                  onClick={() => setRankingRegion(r.id)}
+                  className={`px-3 py-1.5 rounded-lg border text-sm font-semibold transition-all ${
+                    rankingRegion === r.id
+                      ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                      : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {r.icon} {r.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Your position */}
+            {profile && rankings && (
+              <div className="rpg-card bg-primary/5 border-primary/30">
+                <div className="flex items-center gap-3">
+                  <Crown className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Sua posição</p>
+                    <p className="text-xs text-muted-foreground">
+                      Nível {profile.level} • Poder: {getPowerLevel(profile.level, profile.total_xp)}
+                      {(() => {
+                        const pos = rankings.findIndex((r: any) => r.user_id === profile.user_id);
+                        return pos >= 0 ? ` • Posição: #${pos + 1}` : '';
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Rankings list */}
+            {rankingsLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : rankings && rankings.length > 0 ? (
+              <div className="space-y-2">
+                {rankings.map((player: any, idx: number) => {
+                  const isCurrentUser = player.user_id === profile?.user_id;
+                  const power = getPowerLevel(player.level, player.total_xp);
+                  return (
+                    <motion.div
+                      key={player.user_id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className={`rpg-card flex items-center gap-4 ${
+                        isCurrentUser ? 'border-primary/50 bg-primary/5' : ''
+                      } ${idx < 3 ? 'border-yellow-500/30' : ''}`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${
+                        idx === 0 ? 'bg-yellow-500/20 text-yellow-400' :
+                        idx === 1 ? 'bg-gray-400/20 text-gray-300' :
+                        idx === 2 ? 'bg-amber-700/20 text-amber-600' :
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        {getRankMedal(idx)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
+                          {player.display_name}
+                          {isCurrentUser && <span className="text-xs text-primary ml-2">(Você)</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Nível {player.level} • {player.total_xp} XP
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-primary">{power}</p>
+                        <p className="text-[10px] text-muted-foreground">Poder</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rpg-card text-center py-8">
+                <Trophy className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground">Nenhum jogador encontrado nesta região.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

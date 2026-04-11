@@ -166,7 +166,15 @@ const CLASSES: ClassDef[] = [
 
 // ─── Componente principal ───────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 4; // tutorial, classe, missões, conclusão
+const REGIONS = [
+  { id: 'south_america', name: 'América do Sul', icon: '🌎' },
+  { id: 'north_america', name: 'América do Norte', icon: '🌎' },
+  { id: 'europe', name: 'Europa', icon: '🌍' },
+  { id: 'africa', name: 'África', icon: '🌍' },
+  { id: 'asia', name: 'Ásia', icon: '🌏' },
+];
+
+const TOTAL_STEPS = 5; // tutorial, região, classe, missões, conclusão
 
 export default function Onboarding() {
   const { user, loading: authLoading } = useAuth();
@@ -178,6 +186,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [selectedClass, setSelectedClass] = useState<ClassDef | null>(null);
   const [selectedMissions, setSelectedMissions] = useState<Set<number>>(new Set([0, 1, 2]));
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Redireciona usuários não autenticados
@@ -209,8 +218,8 @@ export default function Onboarding() {
 
   const handleSelectClass = (cls: ClassDef) => {
     setSelectedClass(cls);
-    setSelectedMissions(new Set([0, 1, 2])); // Seleciona as 3 primeiras por padrão
-    setStep(2);
+    setSelectedMissions(new Set([0, 1, 2]));
+    setStep(3);
   };
 
   const handleFinish = async () => {
@@ -240,8 +249,7 @@ export default function Onboarding() {
       // Marca onboarding como concluído no banco de dados (ignora erro se coluna não existir)
       await supabase.from('profiles').update({
         onboarding_completed: true,
-        starter_class: selectedClass.id,
-        starter_item: selectedClass.starterItem,
+        region: selectedRegion,
       } as any).eq('user_id', user.id).then(() => {});
 
       // Concede itens iniciais da classe (ignora erro se função não existir)
@@ -264,26 +272,6 @@ export default function Onboarding() {
     }
   };
 
-  const handleSkip = async () => {
-    if (!user) return;
-    // Atualiza banco (ignora erro se colunas não existirem)
-    await supabase.from('profiles').update({
-      onboarding_completed: true,
-      starter_class: 'novato',
-      starter_item: 'Adaga de Treino',
-    } as any).eq('user_id', user.id).then(() => {});
-
-    // Concede itens iniciais (ignora erro se função não existir)
-    await (supabase.rpc as any)('grant_starter_items', {
-      p_user_id: user.id,
-      p_class: 'novato',
-    }).then(() => {});
-
-    localStorage.setItem(`starter_class_v1_${user.id}`, 'novato');
-    localStorage.setItem(`starter_item_v1_${user.id}`, 'Adaga de Treino');
-    localStorage.setItem(`onboarding_v1_${user.id}`, 'done');
-    navigate('/');
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
@@ -370,22 +358,70 @@ export default function Onboarding() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button variant="ghost" className="flex-1" onClick={handleSkip}>
-                  Pular introdução
-                </Button>
-                <Button className="flex-1 gap-2" onClick={() => setStep(1)}>
-                  Começar <ChevronRight className="w-4 h-4" />
+              <Button className="w-full gap-2" onClick={() => setStep(1)}>
+                Começar <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── STEP 1: Seleção de Região ── */}
+        {step === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -24 }}
+            transition={{ duration: 0.4 }}
+            className="w-full max-w-2xl"
+          >
+            <div className="rpg-card-glow p-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-display font-bold text-primary text-glow">
+                  De qual região você é?
+                </h2>
+                <p className="text-muted-foreground mt-2">
+                  Isso define seu ranking regional no sistema.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {REGIONS.map((region) => (
+                  <motion.button
+                    key={region.id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setSelectedRegion(region.id);
+                      setStep(2);
+                    }}
+                    className={`text-left p-4 rounded-xl border-2 transition-all duration-200 ${
+                      selectedRegion === region.id
+                        ? 'border-primary/60 bg-primary/10'
+                        : 'border-border bg-muted/20 hover:border-primary/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">{region.icon}</span>
+                      <span className="font-bold text-foreground text-lg">{region.name}</span>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+
+              <div className="mt-4">
+                <Button variant="ghost" onClick={() => setStep(0)}>
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* ── STEP 1: Seleção de Classe ── */}
-        {step === 1 && (
+        {/* ── STEP 2: Seleção de Classe ── */}
+        {step === 2 && (
           <motion.div
-            key="step1"
+            key="step2"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -24 }}
@@ -424,20 +460,17 @@ export default function Onboarding() {
                 ))}
               </div>
 
-              <div className="mt-4 flex gap-3">
-                <Button variant="ghost" className="flex-1" onClick={() => setStep(0)}>
+              <div className="mt-4">
+                <Button variant="ghost" onClick={() => setStep(1)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
-                </Button>
-                <Button variant="outline" className="flex-1" onClick={handleSkip}>
-                  Pular e configurar depois
                 </Button>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* ── STEP 2: Selecionar Missões ── */}
-        {step === 2 && selectedClass && (
+        {/* ── STEP 3: Selecionar Missões ── */}
+        {step === 3 && selectedClass && (
           <motion.div
             key="step2"
             initial={{ opacity: 0, y: 24 }}
@@ -513,12 +546,12 @@ export default function Onboarding() {
               </p>
 
               <div className="flex gap-3">
-                <Button variant="ghost" onClick={() => setStep(1)}>
+                <Button variant="ghost" onClick={() => setStep(2)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
                 <Button
                   className="flex-1 gap-2"
-                  onClick={() => setStep(3)}
+                  onClick={() => setStep(4)}
                 >
                   Continuar <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -527,8 +560,8 @@ export default function Onboarding() {
           </motion.div>
         )}
 
-        {/* ── STEP 3: Confirmação / Conclusão ── */}
-        {step === 3 && selectedClass && (
+        {/* ── STEP 4: Confirmação / Conclusão ── */}
+        {step === 4 && selectedClass && (
           <motion.div
             key="step3"
             initial={{ opacity: 0, scale: 0.95 }}
