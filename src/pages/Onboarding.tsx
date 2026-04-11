@@ -218,8 +218,8 @@ export default function Onboarding() {
 
   const handleSelectClass = (cls: ClassDef) => {
     setSelectedClass(cls);
-    setSelectedMissions(new Set([0, 1, 2])); // Seleciona as 3 primeiras por padrão
-    setStep(2);
+    setSelectedMissions(new Set([0, 1, 2]));
+    setStep(3);
   };
 
   const handleFinish = async () => {
