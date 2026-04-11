@@ -480,6 +480,8 @@ export type Database = {
           id: string
           level: number
           missions_completed: number
+          onboarding_completed: boolean
+          region: string | null
           total_xp: number
           updated_at: string
           user_id: string
@@ -493,6 +495,8 @@ export type Database = {
           id?: string
           level?: number
           missions_completed?: number
+          onboarding_completed?: boolean
+          region?: string | null
           total_xp?: number
           updated_at?: string
           user_id: string
@@ -506,6 +510,8 @@ export type Database = {
           id?: string
           level?: number
           missions_completed?: number
+          onboarding_completed?: boolean
+          region?: string | null
           total_xp?: number
           updated_at?: string
           user_id?: string
