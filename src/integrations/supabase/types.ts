@@ -736,6 +736,17 @@ export type Database = {
     }
     Functions: {
       get_rank: { Args: { user_level: number }; Returns: string }
+      get_rankings: {
+        Args: { p_region?: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          level: number
+          region: string
+          total_xp: number
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
