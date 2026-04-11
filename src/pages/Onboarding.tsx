@@ -546,12 +546,12 @@ export default function Onboarding() {
               </p>
 
               <div className="flex gap-3">
-                <Button variant="ghost" onClick={() => setStep(1)}>
+                <Button variant="ghost" onClick={() => setStep(2)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
                 <Button
                   className="flex-1 gap-2"
-                  onClick={() => setStep(3)}
+                  onClick={() => setStep(4)}
                 >
                   Continuar <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -560,8 +560,8 @@ export default function Onboarding() {
           </motion.div>
         )}
 
-        {/* ── STEP 3: Confirmação / Conclusão ── */}
-        {step === 3 && selectedClass && (
+        {/* ── STEP 4: Confirmação / Conclusão ── */}
+        {step === 4 && selectedClass && (
           <motion.div
             key="step3"
             initial={{ opacity: 0, scale: 0.95 }}
