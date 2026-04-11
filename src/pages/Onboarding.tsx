@@ -188,7 +188,6 @@ export default function Onboarding() {
   const [selectedMissions, setSelectedMissions] = useState<Set<number>>(new Set([0, 1, 2]));
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   // Redireciona usuários não autenticados
   useEffect(() => {
