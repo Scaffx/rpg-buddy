@@ -634,41 +634,61 @@ export default function ProfilePage() {
   const logMeal = useMutation({
     mutationFn: async () => {
       const today = new Date().toISOString().split("T")[0];
-      await supabase
+      if (!user) {
+        console.error("[logMeal] Usuário não autenticado");
+        throw new Error("Usuário não autenticado");
+      }
+      const payload = { user_id: user.id, meal_date: today, meal_number: mealsToday + 1 };
+      console.debug("[logMeal] Inserindo refeição:", payload);
+      const { error, data } = await supabase
         .from("meal_log" as any)
-        .insert({ user_id: user!.id, meal_date: today, meal_number: mealsToday + 1 } as any);
+        .insert(payload);
+      if (error) {
+        console.error("[logMeal] Erro ao inserir refeição:", error);
+        throw error;
+      }
+      console.debug("[logMeal] Refeição inserida:", data);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["meal_log"] });
-      toast.success("Refeição registrada! 🍖");
-      // Aguarda atualização do cache
       setTimeout(() => {
-        const newMealsCount = (queryClient.getQueryData(["meal_log", user?.id, new Date().toLocaleDateString('en-CA')]) as any)?.length || mealsToday + 1;
-        if (!xpAwarded && newMealsCount >= mealsTarget && totalWaterToday >= waterTargetMl) {
-          checkAndAwardXP();
-        }
-      }, 200);
+        queryClient.refetchQueries({ queryKey: ["meal_log"] });
+      }, 0);
+      toast.success("Refeição registrada! 🍖");
     },
+    onError: (err) => {
+      toast.error("Erro ao registrar refeição: " + (err?.message || err));
+    }
   });
 
   const logWater = useMutation({
     mutationFn: async (amount: number) => {
       const today = new Date().toISOString().split("T")[0];
-      await supabase
+      if (!user) {
+        console.error("[logWater] Usuário não autenticado");
+        throw new Error("Usuário não autenticado");
+      }
+      const payload = { user_id: user.id, log_date: today, amount_ml: amount };
+      console.debug("[logWater] Inserindo água:", payload);
+      const { error, data } = await supabase
         .from("water_log" as any)
-        .insert({ user_id: user!.id, log_date: today, amount_ml: amount } as any);
+        .insert(payload);
+      if (error) {
+        console.error("[logWater] Erro ao inserir água:", error);
+        throw error;
+      }
+      console.debug("[logWater] Água inserida:", data);
     },
-    onSuccess: async (_, amount) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["water_log"] });
-      toast.success("Água registrada! 💧");
       setTimeout(() => {
-        const waterData = queryClient.getQueryData(["water_log", user?.id, new Date().toLocaleDateString('en-CA')]) as any[];
-        const newWaterTotal = (waterData || []).reduce((s, w) => s + (w.amount_ml || 0), 0);
-        if (!xpAwarded && mealsToday >= mealsTarget && newWaterTotal >= waterTargetMl) {
-          checkAndAwardXP();
-        }
-      }, 200);
+        queryClient.refetchQueries({ queryKey: ["water_log"] });
+      }, 0);
+      toast.success("Água registrada! 💧");
     },
+    onError: (err) => {
+      toast.error("Erro ao registrar água: " + (err?.message || err));
+    }
   });
 
   const checkAndAwardXP = async () => {
