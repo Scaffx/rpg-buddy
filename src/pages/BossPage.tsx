@@ -436,7 +436,7 @@ export default function BossPage() {
               <div className="flex justify-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ) : rankings && rankings.length > 0 ? (
+            ) : Array.isArray(rankings) && rankings.length > 0 ? (
               <div className="space-y-2">
                 {rankings.map((player: any, idx: number) => {
                   const isCurrentUser = player.user_id === profile?.user_id;
@@ -461,7 +461,7 @@ export default function BossPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`font-semibold truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
-                          {player.display_name}
+                          {player.display_name && player.display_name.trim() !== '' ? player.display_name : 'Aventureiro'}
                           {isCurrentUser && <span className="text-xs text-primary ml-2">(Você)</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">

@@ -638,15 +638,16 @@ export default function ProfilePage() {
         .from("meal_log" as any)
         .insert({ user_id: user!.id, meal_date: today, meal_number: mealsToday + 1 } as any);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["meal_log"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["meal_log"] });
       toast.success("Refeição registrada! 🍖");
-      
-      // Verificar se ambas as metas foram completadas
-      const newMealsCount = mealsToday + 1;
-      if (!xpAwarded && newMealsCount >= mealsTarget && totalWaterToday >= waterTargetMl) {
-        checkAndAwardXP();
-      }
+      // Aguarda atualização do cache
+      setTimeout(() => {
+        const newMealsCount = (queryClient.getQueryData(["meal_log", user?.id, new Date().toLocaleDateString('en-CA')]) as any)?.length || mealsToday + 1;
+        if (!xpAwarded && newMealsCount >= mealsTarget && totalWaterToday >= waterTargetMl) {
+          checkAndAwardXP();
+        }
+      }, 200);
     },
   });
 
@@ -657,15 +658,16 @@ export default function ProfilePage() {
         .from("water_log" as any)
         .insert({ user_id: user!.id, log_date: today, amount_ml: amount } as any);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["water_log"] });
+    onSuccess: async (_, amount) => {
+      await queryClient.invalidateQueries({ queryKey: ["water_log"] });
       toast.success("Água registrada! 💧");
-      
-      // Verificar se ambas as metas foram completadas
-      const newWaterTotal = totalWaterToday + (parseInt(logWater.variables?.toString() || "0") || 0);
-      if (!xpAwarded && mealsToday >= mealsTarget && newWaterTotal >= waterTargetMl) {
-        checkAndAwardXP();
-      }
+      setTimeout(() => {
+        const waterData = queryClient.getQueryData(["water_log", user?.id, new Date().toLocaleDateString('en-CA')]) as any[];
+        const newWaterTotal = (waterData || []).reduce((s, w) => s + (w.amount_ml || 0), 0);
+        if (!xpAwarded && mealsToday >= mealsTarget && newWaterTotal >= waterTargetMl) {
+          checkAndAwardXP();
+        }
+      }, 200);
     },
   });
 
@@ -930,8 +932,14 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{mealsToday}/{mealsTarget} refeições</span>
-                  <button onClick={() => logMeal.mutate()} disabled={mealsToday >= mealsTarget} className="flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                    <Plus className="w-3 h-3" /> Refeição
+                  <button
+                    onClick={() => logMeal.mutate()}
+                    disabled={mealsToday >= mealsTarget || logMeal.isPending}
+                    className={`flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/30 transition-colors ${mealsToday >= mealsTarget || logMeal.isPending ? "opacity-40 cursor-not-allowed" : ""}`}
+                  >
+                    {logMeal.isPending ? (
+                      <span className="animate-spin mr-1 w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full"></span>
+                    ) : <Plus className="w-3 h-3" />} Refeição
                   </button>
                 </div>
                 {mealsToday < mealHalf && (
@@ -953,8 +961,15 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-2 justify-center">
                   {[150, 250, 500].map((ml) => (
-                    <button key={ml} onClick={() => logWater.mutate(ml)} className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium hover:bg-cyan-500/30 transition-colors">
-                      <Droplets className="w-3 h-3" /> {ml}ml
+                    <button
+                      key={ml}
+                      onClick={() => logWater.mutate(ml)}
+                      disabled={logWater.isPending}
+                      className={`flex items-center gap-1 px-3 py-1.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium hover:bg-cyan-500/30 transition-colors ${logWater.isPending ? "opacity-40 cursor-not-allowed" : ""}`}
+                    >
+                      {logWater.isPending ? (
+                        <span className="animate-spin mr-1 w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full"></span>
+                      ) : <Droplets className="w-3 h-3" />} {ml}ml
                     </button>
                   ))}
                 </div>
