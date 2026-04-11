@@ -358,22 +358,70 @@ export default function Onboarding() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button variant="ghost" className="flex-1" onClick={handleSkip}>
-                  Pular introdução
-                </Button>
-                <Button className="flex-1 gap-2" onClick={() => setStep(1)}>
-                  Começar <ChevronRight className="w-4 h-4" />
+              <Button className="w-full gap-2" onClick={() => setStep(1)}>
+                Começar <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── STEP 1: Seleção de Região ── */}
+        {step === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -24 }}
+            transition={{ duration: 0.4 }}
+            className="w-full max-w-2xl"
+          >
+            <div className="rpg-card-glow p-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-display font-bold text-primary text-glow">
+                  De qual região você é?
+                </h2>
+                <p className="text-muted-foreground mt-2">
+                  Isso define seu ranking regional no sistema.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {REGIONS.map((region) => (
+                  <motion.button
+                    key={region.id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setSelectedRegion(region.id);
+                      setStep(2);
+                    }}
+                    className={`text-left p-4 rounded-xl border-2 transition-all duration-200 ${
+                      selectedRegion === region.id
+                        ? 'border-primary/60 bg-primary/10'
+                        : 'border-border bg-muted/20 hover:border-primary/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">{region.icon}</span>
+                      <span className="font-bold text-foreground text-lg">{region.name}</span>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+
+              <div className="mt-4">
+                <Button variant="ghost" onClick={() => setStep(0)}>
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* ── STEP 1: Seleção de Classe ── */}
-        {step === 1 && (
+        {/* ── STEP 2: Seleção de Classe ── */}
+        {step === 2 && (
           <motion.div
-            key="step1"
+            key="step2"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -24 }}
@@ -412,12 +460,9 @@ export default function Onboarding() {
                 ))}
               </div>
 
-              <div className="mt-4 flex gap-3">
-                <Button variant="ghost" className="flex-1" onClick={() => setStep(0)}>
+              <div className="mt-4">
+                <Button variant="ghost" onClick={() => setStep(1)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
-                </Button>
-                <Button variant="outline" className="flex-1" onClick={handleSkip}>
-                  Pular e configurar depois
                 </Button>
               </div>
             </div>
