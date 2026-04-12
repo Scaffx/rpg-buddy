@@ -28,6 +28,7 @@ function useRankings(region: string | null) {
       if (error) throw error;
       return data as { user_id: string; display_name: string; level: number; total_xp: number; region: string; avatar_url: string }[];
     },
+    refetchInterval: 60000,
   });
 }
 
