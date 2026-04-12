@@ -481,12 +481,12 @@ export default function BossPage() {
                           {isCurrentUser && <span className="text-xs text-primary ml-2">(Você)</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Nível {player.level} • {player.total_xp} XP
+                          Nível {player.level} • {player.total_xp} XP • ⚡ Poder: {power}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-primary">{power}</p>
-                        <p className="text-[10px] text-muted-foreground">Poder</p>
+                        <p className="text-lg font-bold text-primary">{power}</p>
+                        <p className="text-[10px] text-muted-foreground">⚡ Poder</p>
                       </div>
                     </motion.div>
                   );
