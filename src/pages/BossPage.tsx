@@ -413,20 +413,35 @@ export default function BossPage() {
               ))}
             </div>
 
+            {/* Power Level Formula */}
+            <div className="rpg-card bg-secondary/50 border-border/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="w-4 h-4 text-yellow-400" />
+                <p className="text-sm font-bold text-foreground">Nível de Poder — Como é calculado?</p>
+              </div>
+              <div className="bg-muted/60 rounded-lg p-3 border border-border/40 font-mono text-center">
+                <p className="text-sm text-primary font-bold">Poder = (Nível × 100) + (XP Total ÷ 10)</p>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Quanto maior seu nível e XP acumulado, mais alto será seu Nível de Poder no ranking.
+              </p>
+            </div>
+
             {/* Your position */}
             {profile && rankings && (
               <div className="rpg-card bg-primary/5 border-primary/30">
                 <div className="flex items-center gap-3">
                   <Crown className="w-5 h-5 text-primary" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-semibold text-foreground">Sua posição</p>
-                    <p className="text-xs text-muted-foreground">
-                      Nível {profile.level} • Poder: {getPowerLevel(profile.level, profile.total_xp)}
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Nível {profile.level}</span>
+                      <span className="text-xs font-bold text-primary">⚡ Poder: {getPowerLevel(profile.level, profile.total_xp)}</span>
                       {(() => {
                         const pos = rankings.findIndex((r: any) => r.user_id === profile.user_id);
-                        return pos >= 0 ? ` • Posição: #${pos + 1}` : '';
+                        return pos >= 0 ? <span className="text-xs text-yellow-400 font-semibold">🏅 #{pos + 1}</span> : null;
                       })()}
-                    </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -466,12 +481,12 @@ export default function BossPage() {
                           {isCurrentUser && <span className="text-xs text-primary ml-2">(Você)</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Nível {player.level} • {player.total_xp} XP
+                          Nível {player.level} • {player.total_xp} XP • ⚡ Poder: {power}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-primary">{power}</p>
-                        <p className="text-[10px] text-muted-foreground">Poder</p>
+                        <p className="text-lg font-bold text-primary">{power}</p>
+                        <p className="text-[10px] text-muted-foreground">⚡ Poder</p>
                       </div>
                     </motion.div>
                   );
