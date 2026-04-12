@@ -225,7 +225,8 @@ export const useCompleteMission = () => {
 
       if (profile) {
         const newTotalXp = profile.total_xp + totalXpReward;
-        const newLevel = Math.floor(newTotalXp / 200) + 1;
+        const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
+        const newLevel = Math.max(calculatedLevel, profile.level);
 
         await supabase
           .from('profiles')
@@ -433,7 +434,8 @@ export function useFightBoss() {
 
       if (won && profile) {
         const newTotalXp = profile.total_xp + xpReward;
-        const newLevel = Math.floor(newTotalXp / 200) + 1;
+        const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
+        const newLevel = Math.max(calculatedLevel, profile.level);
         await supabase
           .from("profiles")
           .update({
@@ -555,7 +557,8 @@ export function useToggleChecklistItem() {
           .single();
         if (profile) {
           const newTotalXp = profile.total_xp + bonus;
-          const newLevel = Math.floor(newTotalXp / 200) + 1;
+          const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
+          const newLevel = Math.max(calculatedLevel, profile.level);
           await supabase
             .from("profiles")
             .update({
@@ -663,7 +666,8 @@ export function useAwardHealthXP() {
 
       if (profile) {
         const newTotalXp = profile.total_xp + XP_REWARD;
-        const newLevel = Math.floor(newTotalXp / 200) + 1;
+        const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
+        const newLevel = Math.max(calculatedLevel, profile.level);
 
         const { error: updateError } = await supabase
           .from('profiles')
