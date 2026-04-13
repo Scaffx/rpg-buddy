@@ -58,6 +58,9 @@ export default function BossPage() {
       boss: { name: 'Guardião das Sombras', hp: 150, icon: '👹' },
       xpReward: 200,
       description: 'Uma masmorra antiga repleta de mistérios',
+      uniqueItem: 'Capa das Sombras',
+      specialCoin: 'Moeda Sombria',
+      titleReward: 'O Guardião das Sombras',
     },
     {
       id: '2',
@@ -70,6 +73,9 @@ export default function BossPage() {
       boss: { name: 'Feiticeiro Arcano', hp: 200, icon: '🧙' },
       xpReward: 300,
       description: 'Um desafio épico para os bravos aventureiros',
+      uniqueItem: 'Cajado do Destino',
+      specialCoin: 'Moeda Arcana',
+      titleReward: 'O Conjurador da Perdição',
     },
     {
       id: '3',
@@ -82,6 +88,9 @@ export default function BossPage() {
       boss: { name: 'Besta Selvagem', hp: 100, icon: '🐺' },
       xpReward: 150,
       description: 'Uma masmorra para iniciantes',
+      uniqueItem: 'Garra da Fera',
+      specialCoin: 'Moeda da Natureza',
+      titleReward: 'O Domador da Floresta',
     },
   ];
 
@@ -406,8 +415,11 @@ export default function BossPage() {
                         <p className="text-muted-foreground">❤️ {dungeon.boss.hp} HP</p>
                       </div>
                       <div className="rpg-card bg-secondary/50">
-                        <p className="text-muted-foreground">Recompensa</p>
+                        <p className="text-muted-foreground">Recompensas</p>
                         <p className="font-bold text-xp mt-1">✨ {dungeon.xpReward} XP</p>
+                        <p className="text-muted-foreground">🪙 {dungeon.specialCoin}</p>
+                        <p className="text-muted-foreground">🎁 {dungeon.uniqueItem}</p>
+                        <p className="text-muted-foreground">🏅 {dungeon.titleReward}</p>
                         <p className="text-muted-foreground">👥 {dungeon.currentPlayers}/{dungeon.requiredPlayers}</p>
                       </div>
                     </div>

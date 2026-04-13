@@ -189,7 +189,14 @@ export const useCompleteMission = () => {
 
       if (attr) {
         const newXp = attr.xp + totalXpReward;
-        const newLevel = Math.floor(newXp / 100) + 1;
+        const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
+        let newLevel = 1;
+        for (let i = xpTable.length - 1; i > 0; i--) {
+          if (newXp >= xpTable[i]) {
+            newLevel = i + 1;
+            break;
+          }
+        }
 
         await supabase
           .from('attributes')
@@ -207,7 +214,13 @@ export const useCompleteMission = () => {
 
         if (secAttr) {
           const newXp = secAttr.xp + 1;
-          const newLevel = Math.floor(newXp / 100) + 1;
+          let newLevel = 1;
+          for (let i = xpTable.length - 1; i > 0; i--) {
+            if (newXp >= xpTable[i]) {
+              newLevel = i + 1;
+              break;
+            }
+          }
 
           await supabase
             .from('attributes')
@@ -225,8 +238,14 @@ export const useCompleteMission = () => {
 
       if (profile) {
         const newTotalXp = profile.total_xp + totalXpReward;
-        const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
-        const newLevel = Math.max(calculatedLevel, profile.level);
+        let newLevel = 1;
+        for (let i = xpTable.length - 1; i > 0; i--) {
+          if (newTotalXp >= xpTable[i]) {
+            newLevel = i + 1;
+            break;
+          }
+        }
+        newLevel = Math.max(newLevel, profile.level);
 
         await supabase
           .from('profiles')
@@ -237,6 +256,29 @@ export const useCompleteMission = () => {
             level: newLevel,
           })
           .eq('user_id', user!.id);
+      }
+
+      // Atualizar progresso dos planos vinculados
+      const { data: planLinks } = await supabase
+        .from('plan_missions')
+        .select('id, plan_id, value_per_completion')
+        .eq('mission_id', missionId);
+
+      if (planLinks && planLinks.length > 0) {
+        for (const link of planLinks) {
+          // Buscar valor atual do plano
+          const { data: plan } = await supabase
+            .from('plans')
+            .select('current_value')
+            .eq('id', link.plan_id)
+            .single();
+          if (plan) {
+            await supabase
+              .from('plans')
+              .update({ current_value: Number(plan.current_value) + Number(link.value_per_completion) })
+              .eq('id', link.plan_id);
+          }
+        }
       }
 
       // Registrar atividade
