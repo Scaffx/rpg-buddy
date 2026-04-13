@@ -1,8 +1,13 @@
+
 import { useState } from "react";
 import { usePlans, useCreatePlan, useDeletePlan } from "@/hooks/usePlans";
 import { useMissions } from "@/hooks/useProfile";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 function ProgressBar({ value, max }: { value: number; max: number }) {
   const percent = Math.min(100, Math.round((value / max) * 100));
@@ -66,44 +71,52 @@ export default function PrioridadePage() {
       </div>
 
       {/* Modal de criação */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <form
-            className="bg-background p-6 rounded-lg shadow-lg w-full max-w-md space-y-4"
-            onSubmit={handleCreate}
-          >
-            <h2 className="text-xl font-bold mb-2">Novo Plano/Meta</h2>
-            <input
-              className="input w-full"
-              placeholder="Título"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              required
-            />
-            <textarea
-              className="input w-full"
-              placeholder="Descrição"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-            <input
-              className="input w-full"
-              type="number"
-              min={1}
-              placeholder="Valor Meta (ex: 1200)"
-              value={form.target_value}
-              onChange={(e) => setForm((f) => ({ ...f, target_value: Number(e.target.value) }))}
-              required
-            />
-            <div>
-              <p className="font-semibold mb-1">Missões que contribuem:</p>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <form className="space-y-4" onSubmit={handleCreate}>
+            <DialogHeader>
+              <DialogTitle>Novo Plano/Meta</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="plan-title">Título</Label>
+              <Input
+                id="plan-title"
+                placeholder="Ex: Viajar para a praia"
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-desc">Descrição</Label>
+              <Textarea
+                id="plan-desc"
+                placeholder="Descreva sua meta ou plano de longo prazo..."
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-target">Valor Meta</Label>
+              <Input
+                id="plan-target"
+                type="number"
+                min={1}
+                placeholder="Ex: 1200 (reais, pontos, horas...)"
+                value={form.target_value}
+                onChange={(e) => setForm((f) => ({ ...f, target_value: Number(e.target.value) }))}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Missões que contribuem</Label>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {missions?.map((m: any) => (
                   <div key={m.id} className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="number"
                       min={0}
-                      className="input w-20"
+                      className="w-20"
                       placeholder="Valor"
                       value={
                         form.missions.find((x) => x.mission_id === m.id)?.value_per_completion || ""
@@ -117,17 +130,17 @@ export default function PrioridadePage() {
                 ))}
               </div>
             </div>
-            <div className="flex gap-2 justify-end">
+            <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={createPlan.isPending}>
                 Salvar
               </Button>
-            </div>
+            </DialogFooter>
           </form>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Cards dos planos/metas */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
