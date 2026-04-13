@@ -40,16 +40,24 @@ export function useUndoMission() {
 
       if (updateError) throw updateError;
 
+
+      // Buscar registro de conclusão diária para saber o XP/gold real
+      const { data: completion } = await supabase
+        .from('mission_daily_completions' as any)
+        .select('xp_earned, gold_earned')
+        .eq('mission_id', missionId)
+        .eq('completion_date', today)
+        .single();
+
+      const xpEarned = completion?.xp_earned ?? 25;
+      const goldEarned = completion?.gold_earned ?? 2;
+
       // Remover registro de conclusão diária
       await supabase
         .from('mission_daily_completions' as any)
         .delete()
         .eq('mission_id', missionId)
         .eq('completion_date', today);
-
-      // Reverter XP e Ouro (valores padrão)
-      const xpEarned = 25;
-      const goldEarned = 2;
 
       // Reverter atributo primário
       const { data: attr } = await supabase
@@ -60,9 +68,17 @@ export function useUndoMission() {
 
       if (attr) {
         const newXp = Math.max(0, attr.xp - xpEarned);
-        const calculatedLevel = Math.floor(newXp / 100) + 1;
+        // Usar xpTable para calcular o level
+        const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
+        let newLevel = 1;
+        for (let i = xpTable.length - 1; i > 0; i--) {
+          if (newXp >= xpTable[i]) {
+            newLevel = i + 1;
+            break;
+          }
+        }
         // O nível nunca pode diminuir
-        const newLevel = Math.max(calculatedLevel, attr.level);
+        newLevel = Math.max(newLevel, attr.level);
 
         await supabase
           .from('attributes')
@@ -81,9 +97,15 @@ export function useUndoMission() {
 
         if (secAttr) {
           const newXp = Math.max(0, secAttr.xp - 1);
-          const calculatedLevel = Math.floor(newXp / 100) + 1;
-          // O nível nunca pode diminuir
-          const newLevel = Math.max(calculatedLevel, secAttr.level);
+          const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
+          let newLevel = 1;
+          for (let i = xpTable.length - 1; i > 0; i--) {
+            if (newXp >= xpTable[i]) {
+              newLevel = i + 1;
+              break;
+            }
+          }
+          newLevel = Math.max(newLevel, secAttr.level);
 
           await supabase
             .from('attributes')
@@ -101,9 +123,15 @@ export function useUndoMission() {
 
       if (profile) {
         const newTotalXp = Math.max(0, profile.total_xp - xpEarned);
-        const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
-        // O nível nunca pode diminuir
-        const newLevel = Math.max(calculatedLevel, profile.level);
+        const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
+        let newLevel = 1;
+        for (let i = xpTable.length - 1; i > 0; i--) {
+          if (newTotalXp >= xpTable[i]) {
+            newLevel = i + 1;
+            break;
+          }
+        }
+        newLevel = Math.max(newLevel, profile.level);
 
         await supabase
           .from('profiles')
