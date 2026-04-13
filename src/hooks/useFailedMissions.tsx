@@ -30,6 +30,8 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   if (!missions || missions.length === 0) return;
 
   let totalPenalty = 0;
+  let totalHpPenalty = 0;
+  let totalMpPenalty = 0;
   const failedList: any[] = [];
 
   for (let daysBack = 1; daysBack <= 30; daysBack++) {
@@ -65,8 +67,36 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
 
       if (completions && completions.length > 0) continue;
 
-      // This mission failed on this date - mark it
+      // Esta missão falhou nesta data - aplicar penalidade dinâmica
       const xpPenalty = m.xp_reward;
+      let hpPenalty = 0;
+      let mpPenalty = 0;
+      // Buscar perfil e atributos para penalidade dinâmica
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('level')
+        .eq('user_id', userId)
+        .single();
+      let maxHp = 100;
+      let maxMp = 40;
+      if (profile && profile.level > 15) {
+        // Buscar atributos
+        const { data: attrs } = await supabase
+          .from('attributes')
+          .select('name, level')
+          .eq('user_id', userId);
+        if (attrs) {
+          const attrLevels = require('@/lib/combat').getAttributeLevels(attrs);
+          const stats = require('@/lib/combat').getPlayerCombatStats(profile.level, attrLevels);
+          maxHp = stats.hp;
+          maxMp = stats.mp;
+        }
+        // Penalidade: 5% do HP máximo e 10% do MP máximo por missão fracassada
+        hpPenalty = Math.round(0.05 * maxHp);
+        mpPenalty = Math.round(0.10 * maxMp);
+        totalHpPenalty += hpPenalty;
+        totalMpPenalty += mpPenalty;
+      }
       totalPenalty += xpPenalty;
 
       await supabase
@@ -86,28 +116,41 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   if (totalPenalty > 0) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('total_xp, level')
+      .select('total_xp, level, hp_penalty, mp_penalty')
       .eq('user_id', userId)
       .single();
 
+    let updates: any = {};
     if (profile) {
       const newXp = Math.max(0, profile.total_xp - totalPenalty);
       const calculatedLevel = Math.floor(newXp / 200) + 1;
       const newLevel = Math.max(calculatedLevel, profile.level);
-      await supabase.from('profiles').update({
-        total_xp: newXp,
-        level: newLevel,
-      }).eq('user_id', userId);
+      updates.total_xp = newXp;
+      updates.level = newLevel;
+      // Acumular penalidade de HP/MP se houver
+      if (totalHpPenalty > 0) {
+        updates.hp_penalty = (profile.hp_penalty || 0) + totalHpPenalty;
+      }
+      if (totalMpPenalty > 0) {
+        updates.mp_penalty = (profile.mp_penalty || 0) + totalMpPenalty;
+      }
+      await supabase.from('profiles').update(updates).eq('user_id', userId);
     }
 
+    let desc = `Missões fracassadas! -${totalPenalty} XP`;
+    if (totalHpPenalty > 0) desc += `, -${totalHpPenalty} HP`;
+    if (totalMpPenalty > 0) desc += `, -${totalMpPenalty} MP`;
     await supabase.from('activity_log').insert({
       user_id: userId,
       action: 'mission_failed',
-      description: `Missões fracassadas! -${totalPenalty} XP`,
+      description: desc,
       xp_gained: -totalPenalty,
     });
 
-    toast.error(`Missões fracassadas! Você perdeu ${totalPenalty} XP.`);
+    let toastMsg = `Missões fracassadas! Você perdeu ${totalPenalty} XP.`;
+    if (totalHpPenalty > 0) toastMsg += ` -${totalHpPenalty} HP`;
+    if (totalMpPenalty > 0) toastMsg += ` -${totalMpPenalty} MP`;
+    toast.error(toastMsg);
     queryClient.invalidateQueries({ queryKey: ['missions'] });
     queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['failed-missions'] });

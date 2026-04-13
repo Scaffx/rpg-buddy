@@ -138,14 +138,17 @@ function getFocusAttributeName(levels: AttrLevels): string {
   return map[0][0];
 }
 
-export function getPlayerCombatStats(profileLevel: number, levels: AttrLevels): PlayerCombatStats {
+export function getPlayerCombatStats(profileLevel: number, levels: AttrLevels): PlayerCombatStats & { mp: number } {
   const atk = profileLevel * 4 + levels.Forca * 6 + levels.Disciplina * 2;
   // Magia propositalmente mais fraca para incentivar criatividade em build hibrida.
   const matk = profileLevel * 3 + levels.Inteligencia * 4 + levels.Sabedoria * 2;
   const def = profileLevel * 3 + levels.Resiliencia * 5 + levels.Vitalidade * 3;
   const agi = profileLevel * 2 + levels.Agilidade * 6 + levels.Criatividade * 2;
   const crit = Math.min(65, 5 + Math.floor((levels.Agilidade + levels.Criatividade + levels.Carisma) * 0.9));
-  const hp = 120 + profileLevel * 18 + levels.Vitalidade * 14;
+  // Novo cálculo de HP: base + level * 12 + Força * 8 + Vitalidade * 14 (mais balanceado)
+  const hp = 100 + profileLevel * 12 + levels.Forca * 8 + levels.Vitalidade * 14;
+  // Novo cálculo de MP: base + level * 8 + Inteligência * 10 + Sabedoria * 6
+  const mp = 40 + profileLevel * 8 + levels.Inteligencia * 10 + levels.Sabedoria * 6;
   return {
     atk,
     matk,
@@ -153,6 +156,7 @@ export function getPlayerCombatStats(profileLevel: number, levels: AttrLevels): 
     agi,
     crit,
     hp,
+    mp,
     focus: getFocusAttributeName(levels),
   };
 }

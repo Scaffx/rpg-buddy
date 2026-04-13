@@ -603,11 +603,32 @@ export default function ProfilePage() {
   );
 
   const mealHalf = Math.ceil(mealsTarget / 2);
-  const mealPenalty = mealsToday < mealHalf ? (mealHalf - mealsToday) * 10 : 0;
-  const maxHp = healthStats?.max_hp ?? 100;
+  const maxHp = playerCombatStats.hp;
+  const maxMp = playerCombatStats.mp;
+  // Penalidades dinâmicas após LV 15
+  let mealPenalty = 0;
+  let waterPenalty = 0;
+  let penaltyMessages: string[] = [];
+  if ((profile?.level || 1) > 15) {
+    // Refeições: 5% do HP máximo por refeição faltante
+    if (mealsToday < mealHalf) {
+      mealPenalty = Math.round((mealHalf - mealsToday) * 0.05 * maxHp);
+      penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+    }
+    // Água: 10% do MP máximo se não atingiu meta
+    if (totalWaterToday < waterTargetMl) {
+      waterPenalty = Math.round(0.10 * maxMp);
+      penaltyMessages.push(`⚠️ Você perdeu ${waterPenalty} MP por não beber água suficiente!`);
+    }
+  } else {
+    // Penalidade antiga para refeições (antes do LV 16)
+    if (mealsToday < mealHalf) {
+      mealPenalty = (mealHalf - mealsToday) * 10;
+      penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+    }
+  }
   const currentHp = Math.max(0, maxHp - mealPenalty);
-  const maxMp = healthStats?.max_mp ?? 10;
-  const currentMp = healthStats?.current_mp ?? 10;
+  const currentMp = Math.max(0, maxMp - waterPenalty);
   const fatigue = healthStats?.fatigue ?? 0;
 
   const saveSettings = useMutation({
@@ -928,9 +949,9 @@ export default function ProfilePage() {
                 <span className="text-sm text-muted-foreground">FADIGA:</span>
                 <span className="text-xl font-bold text-foreground">{fatigue}</span>
               </div>
-              {mealPenalty > 0 && (
-                <p className="text-xs text-red-400 flex items-center gap-1">⚠️ Você perdeu {mealPenalty} HP por não comer o suficiente!</p>
-              )}
+              {penaltyMessages.map((msg, i) => (
+                <p key={i} className="text-xs text-red-400 flex items-center gap-1">{msg}</p>
+              ))}
             </div>
 
             {/* Hunger & Thirst */}
