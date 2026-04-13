@@ -17,6 +17,7 @@ import NpcPage from "./pages/NpcPage";
 import ProfilePage from "./pages/ProfilePage";
 import HealthPage from "./pages/HealthPage";
 import NotFound from "./pages/NotFound";
+import PrioridadePage from "./pages/PrioridadePage";
 import Onboarding from "./pages/Onboarding";
 import SystemInfoPage from "./pages/SystemInfoPage";
 import { Loader2 } from "lucide-react";
@@ -76,6 +77,7 @@ const App = () => (
             <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
             <Route path="/npc" element={<ProtectedRoute><NpcPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/prioridade" element={<ProtectedRoute><PrioridadePage /></ProtectedRoute>} />
             <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

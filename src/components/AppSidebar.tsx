@@ -28,7 +28,7 @@ const navItems = [
   { title: 'Loja', url: '/shop', icon: Store },
   { title: 'Missões de NPC', url: '/npc', icon: Users },
   { title: 'Saúde', url: '/health', icon: Heart },
-  { title: 'Prioridade', url: '/priority', icon: ListOrdered },
+  { title: 'Prioridade', url: '/prioridade', icon: ListOrdered },
   { title: 'Progresso', url: '/progress', icon: TrendingUp },
   { title: 'Virtudes', url: '/virtues', icon: Circle },
   { title: 'Boss Arena', url: '/boss', icon: Skull },
