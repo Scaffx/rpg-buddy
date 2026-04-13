@@ -85,6 +85,11 @@ export default function BossPage() {
     },
   ];
 
+  // Set of boss IDs already defeated
+  const defeatedBossIds = new Set(
+    battles?.filter((b) => b.won).map((b) => b.boss_id) || []
+  );
+
   const handleFight = async (boss: any) => {
     setBattleResult(null);
     try {
@@ -99,8 +104,12 @@ export default function BossPage() {
       } else {
         toast({ title: '💀 Derrota!', description: `Dano causado: ${result.damage}. Fique mais forte!`, variant: 'destructive' });
       }
-    } catch {
-      toast({ title: 'Erro na batalha', variant: 'destructive' });
+    } catch (err: any) {
+      if (err?.message === 'BOSS_ALREADY_DEFEATED') {
+        toast({ title: '⚔️ Boss já derrotado!', description: 'Você já venceu este boss.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Erro na batalha', variant: 'destructive' });
+      }
     }
   };
 

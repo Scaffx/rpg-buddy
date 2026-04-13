@@ -386,6 +386,19 @@ export function useFightBoss() {
 
   return useMutation({
     mutationFn: async ({ bossId, bossHp, xpReward }: { bossId: string; bossHp: number; xpReward: number }) => {
+      // Check if boss was already defeated
+      const { data: previousWin } = await supabase
+        .from("boss_battles")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("boss_id", bossId)
+        .eq("won", true)
+        .limit(1);
+
+      if (previousWin && previousWin.length > 0) {
+        throw new Error("BOSS_ALREADY_DEFEATED");
+      }
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("level, total_xp")
