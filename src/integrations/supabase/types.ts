@@ -162,33 +162,54 @@ export type Database = {
       }
       bosses: {
         Row: {
+          arena: string | null
           created_at: string
+          damage_base: number | null
+          defense: number | null
           description: string | null
+          difficulty: string | null
+          element: string | null
           hp: number
           icon: string
           id: string
           level: number
+          mechanic: string | null
           name: string
+          skills: Json | null
           xp_reward: number
         }
         Insert: {
+          arena?: string | null
           created_at?: string
+          damage_base?: number | null
+          defense?: number | null
           description?: string | null
+          difficulty?: string | null
+          element?: string | null
           hp?: number
           icon?: string
           id?: string
           level?: number
+          mechanic?: string | null
           name: string
+          skills?: Json | null
           xp_reward?: number
         }
         Update: {
+          arena?: string | null
           created_at?: string
+          damage_base?: number | null
+          defense?: number | null
           description?: string | null
+          difficulty?: string | null
+          element?: string | null
           hp?: number
           icon?: string
           id?: string
           level?: number
+          mechanic?: string | null
           name?: string
+          skills?: Json | null
           xp_reward?: number
         }
         Relationships: []

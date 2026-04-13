@@ -195,27 +195,75 @@ export default function BossPage() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {bosses?.map((boss, i) => {
+                {bosses?.map((boss: any, i: number) => {
                   const b = getBossCombatStats(boss);
+                  const skills = (boss.skills || []) as { name: string; desc: string }[];
+                  const elementColors: Record<string, string> = {
+                    'Fogo': 'text-orange-400', 'Terra': 'text-amber-600', 'Gelo': 'text-cyan-400',
+                    'Escuridão': 'text-purple-400', 'Morto-Vivo': 'text-gray-400', 'Sagrado': 'text-yellow-300',
+                    'Natureza': 'text-green-400', 'Veneno': 'text-lime-400', 'Demônio': 'text-red-500',
+                    'Água': 'text-blue-400', 'Neutro': 'text-muted-foreground',
+                  };
+                  const difficultyStars = (boss.difficulty || '+P').split('+P').length - 1;
+                  const isDefeated = defeatedBossIds.has(boss.id);
+                  const isLocked = profile && profile.level < boss.level;
+
                   return (
                   <motion.div
                     key={boss.id}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="rpg-card-glow flex flex-col items-center text-center gap-3"
+                    transition={{ delay: Math.min(i * 0.05, 0.5) }}
+                    className={`rpg-card-glow flex flex-col items-center text-center gap-3 ${isLocked ? 'opacity-50' : ''}`}
                   >
                     <span className="text-5xl animate-float">{boss.icon}</span>
                     <div>
                       <h3 className="font-display font-bold text-foreground">{boss.name}</h3>
+                      <p className={`text-xs font-semibold mt-1 ${elementColors[boss.element] || 'text-muted-foreground'}`}>
+                        🔮 {boss.element || 'Neutro'}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">{boss.description}</p>
                     </div>
-                    <div className="flex gap-4 text-xs">
+
+                    {/* Stats row */}
+                    <div className="flex gap-3 text-xs flex-wrap justify-center">
                       <span className="text-health font-bold">❤️ {boss.hp} HP</span>
                       <span className="text-primary font-bold">⭐ Nv.{boss.level}</span>
                       <span className="text-xp font-bold">🏆 {boss.xp_reward} XP</span>
+                      <span className="text-muted-foreground">⚔️ ATK {boss.damage_base || b.atk}</span>
+                      <span className="text-muted-foreground">🛡️ DEF {boss.defense || b.def}</span>
                     </div>
 
+                    {/* Difficulty */}
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="text-muted-foreground">Dificuldade:</span>
+                      {Array.from({ length: difficultyStars }).map((_, idx) => (
+                        <span key={idx} className="text-yellow-400">⭐</span>
+                      ))}
+                    </div>
+
+                    {/* Skills */}
+                    {skills.length > 0 && (
+                      <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs text-left space-y-1">
+                        <p className="font-semibold text-foreground mb-1">⚡ Habilidades:</p>
+                        {skills.map((skill, idx) => (
+                          <div key={idx}>
+                            <span className="font-semibold text-primary">{skill.name}</span>
+                            <span className="text-muted-foreground"> — {skill.desc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Mechanic */}
+                    {boss.mechanic && (
+                      <div className="w-full text-xs text-left bg-primary/10 rounded-lg p-2 border border-primary/20">
+                        <span className="font-semibold text-primary">🎯 Mecânica:</span>{' '}
+                        <span className="text-foreground">{boss.mechanic}</span>
+                      </div>
+                    )}
+
+                    {/* Combat stats */}
                     <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div><p className="text-muted-foreground">ATK</p><p className="font-bold text-foreground">{b.atk}</p></div>
@@ -228,13 +276,13 @@ export default function BossPage() {
                       </p>
                     </div>
 
-                    {defeatedBossIds.has(boss.id) ? (
-                      <Button
-                        disabled
-                        className="w-full bg-muted text-muted-foreground cursor-not-allowed"
-                        size="sm"
-                      >
+                    {isDefeated ? (
+                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
                         ✅ Boss Derrotado
+                      </Button>
+                    ) : isLocked ? (
+                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
+                        🔒 Requer Nível {boss.level}
                       </Button>
                     ) : (
                       <Button
