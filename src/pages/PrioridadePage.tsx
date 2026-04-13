@@ -81,28 +81,30 @@ export default function PrioridadePage() {
 
       {/* Modal de criação */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent>
+        <DialogContent className="bg-gradient-to-br from-background via-secondary/60 to-background border border-border/60 shadow-2xl">
           <form className="space-y-4" onSubmit={handleCreate}>
             <DialogHeader>
-              <DialogTitle>Novo Plano/Meta</DialogTitle>
+              <DialogTitle className="text-2xl font-extrabold text-primary drop-shadow">Novo Plano/Meta</DialogTitle>
             </DialogHeader>
             <div className="space-y-2">
               <Label htmlFor="plan-title">Título</Label>
               <Input
                 id="plan-title"
-                placeholder="Ex: Viajar para a praia"
+                placeholder="Ex: Viagem dos Sonhos, Novo PC Gamer, Curso de Inglês..."
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 required
+                className="bg-muted/60 border-border/60 placeholder:text-muted-foreground/80"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="plan-desc">Descrição</Label>
               <Textarea
                 id="plan-desc"
-                placeholder="Descreva sua meta ou plano de longo prazo..."
+                placeholder="Ex: Juntar dinheiro para viajar, comprar um item caro, conquistar uma certificação, etc."
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                className="bg-muted/60 border-border/60 placeholder:text-muted-foreground/80"
               />
             </div>
             <div className="space-y-2">
@@ -115,24 +117,24 @@ export default function PrioridadePage() {
                 value={form.target_value}
                 onChange={(e) => setForm((f) => ({ ...f, target_value: Number(e.target.value) }))}
                 required
+                className="bg-muted/60 border-border/60 placeholder:text-muted-foreground/80"
               />
             </div>
             <div className="space-y-2">
               <Label>Missões contribuintes</Label>
               <div className="space-y-2">
-                {/* Lista de missões já adicionadas */}
                 {form.missions.length === 0 && (
-                  <div className="text-xs text-muted-foreground">Nenhuma missão adicionada.</div>
+                  <div className="text-xs text-muted-foreground bg-muted/40 rounded p-2 border border-dashed border-border/40 text-center">Nenhuma missão adicionada. Adicione missões que vão contribuir para o progresso deste plano!</div>
                 )}
                 {form.missions.map((m) => {
                   const mission = missions?.find((ms: any) => ms.id === m.mission_id);
                   return (
-                    <div key={m.mission_id} className="flex items-center gap-2">
-                      <span className="text-sm flex-1">{mission?.title || m.mission_id}</span>
+                    <div key={m.mission_id} className="flex items-center gap-2 bg-muted/40 rounded p-2 border border-border/40">
+                      <span className="text-sm flex-1 font-semibold text-primary">{mission?.title || m.mission_id}</span>
                       <Input
                         type="number"
                         min={0}
-                        className="w-20"
+                        className="w-20 bg-background/80 border-border/60"
                         value={m.value_per_completion}
                         onChange={(e) => handleMissionValueChange(m.mission_id, Number(e.target.value))}
                       />
@@ -142,10 +144,9 @@ export default function PrioridadePage() {
                     </div>
                   );
                 })}
-                {/* Adicionar nova missão */}
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 bg-muted/30 rounded p-2 border border-dashed border-border/40">
                   <select
-                    className="input w-full"
+                    className="input w-full bg-background/80 border-border/60"
                     value={missionToAdd}
                     onChange={(e) => setMissionToAdd(e.target.value)}
                   >
@@ -157,7 +158,7 @@ export default function PrioridadePage() {
                   <Input
                     type="number"
                     min={1}
-                    className="w-20"
+                    className="w-20 bg-background/80 border-border/60"
                     placeholder="Valor"
                     value={missionValue || ""}
                     onChange={(e) => setMissionValue(Number(e.target.value))}
