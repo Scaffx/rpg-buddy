@@ -34,24 +34,33 @@ export default function PrioridadePage() {
     missions: [] as { mission_id: string; value_per_completion: number }[],
   });
 
-  function handleMissionChange(mission_id: string, value: number) {
-    setForm((f) => {
-      const exists = f.missions.find((m) => m.mission_id === mission_id);
-      if (exists) {
-        return {
-          ...f,
-          missions: f.missions.map((m) =>
-            m.mission_id === mission_id ? { ...m, value_per_completion: value } : m
-          ),
-        };
-      } else {
-        return {
-          ...f,
-          missions: [...f.missions, { mission_id, value_per_completion: value }],
-        };
-      }
-    });
+  function handleMissionValueChange(mission_id: string, value: number) {
+    setForm((f) => ({
+      ...f,
+      missions: f.missions.map((m) =>
+        m.mission_id === mission_id ? { ...m, value_per_completion: value } : m
+      ),
+    }));
   }
+
+  function handleAddMission(mission_id: string, value: number) {
+    setForm((f) => ({
+      ...f,
+      missions: [...f.missions, { mission_id, value_per_completion: value }],
+    }));
+    setMissionToAdd("");
+    setMissionValue(0);
+  }
+
+  function handleRemoveMission(mission_id: string) {
+    setForm((f) => ({
+      ...f,
+      missions: f.missions.filter((m) => m.mission_id !== mission_id),
+    }));
+  }
+
+  const [missionToAdd, setMissionToAdd] = useState("");
+  const [missionValue, setMissionValue] = useState(0);
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -109,25 +118,60 @@ export default function PrioridadePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Missões que contribuem</Label>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {missions?.map((m: any) => (
-                  <div key={m.id} className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      className="w-20"
-                      placeholder="Valor"
-                      value={
-                        form.missions.find((x) => x.mission_id === m.id)?.value_per_completion || ""
-                      }
-                      onChange={(e) =>
-                        handleMissionChange(m.id, Number(e.target.value))
-                      }
-                    />
-                    <span className="text-sm">{m.title}</span>
-                  </div>
-                ))}
+              <Label>Missões contribuintes</Label>
+              <div className="space-y-2">
+                {/* Lista de missões já adicionadas */}
+                {form.missions.length === 0 && (
+                  <div className="text-xs text-muted-foreground">Nenhuma missão adicionada.</div>
+                )}
+                {form.missions.map((m) => {
+                  const mission = missions?.find((ms: any) => ms.id === m.mission_id);
+                  return (
+                    <div key={m.mission_id} className="flex items-center gap-2">
+                      <span className="text-sm flex-1">{mission?.title || m.mission_id}</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-20"
+                        value={m.value_per_completion}
+                        onChange={(e) => handleMissionValueChange(m.mission_id, Number(e.target.value))}
+                      />
+                      <Button type="button" size="sm" variant="destructive" onClick={() => handleRemoveMission(m.mission_id)}>
+                        Remover
+                      </Button>
+                    </div>
+                  );
+                })}
+                {/* Adicionar nova missão */}
+                <div className="flex items-center gap-2 mt-2">
+                  <select
+                    className="input w-full"
+                    value={missionToAdd}
+                    onChange={(e) => setMissionToAdd(e.target.value)}
+                  >
+                    <option value="">Selecionar missão...</option>
+                    {missions?.filter((m: any) => !form.missions.some((fm) => fm.mission_id === m.id)).map((m: any) => (
+                      <option key={m.id} value={m.id}>{m.title}</option>
+                    ))}
+                  </select>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-20"
+                    placeholder="Valor"
+                    value={missionValue || ""}
+                    onChange={(e) => setMissionValue(Number(e.target.value))}
+                    disabled={!missionToAdd}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => missionToAdd && missionValue > 0 && handleAddMission(missionToAdd, missionValue)}
+                    disabled={!missionToAdd || missionValue <= 0}
+                  >
+                    Adicionar missão contribuinte
+                  </Button>
+                </div>
               </div>
             </div>
             <DialogFooter>
