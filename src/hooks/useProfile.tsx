@@ -113,6 +113,18 @@ export const useCompleteMission = () => {
     }) => {
       const today = new Date().toISOString().split('T')[0];
 
+      // Buscar perfil para XP scaling baseado no nível
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('level')
+        .eq('user_id', user!.id)
+        .single();
+      
+      const playerLevel = currentProfile?.level || 1;
+      // XP Dinâmico: escala com o nível do jogador
+      const xpMultiplier = 1 + Math.floor((playerLevel - 1) / 5) * 0.5; // +50% a cada 5 níveis
+      const scaledXpReward = Math.round(xpReward * xpMultiplier);
+
       // Buscar missão
       const { data: mission, error: missionError } = await supabase
         .from('missions')
@@ -143,16 +155,34 @@ export const useCompleteMission = () => {
 
         // Registrar conclusão diária
         const { error: insertError } = await supabase
-          .from('mission_daily_completions' as any)
+          .from('mission_daily_completions')
           .insert({
             mission_id: missionId,
             completion_date: today,
-            xp_earned: xpReward,
+            xp_earned: scaledXpReward,
             gold_earned: 2,
             user_id: user!.id,
-          } as any);
+          });
 
         if (insertError) throw insertError;
+      } else {
+        // ✅ MISSÃO ÚNICA
+        const { error: updateError } = await supabase
+          .from('missions')
+          .update({ 
+            completed: true, 
+            completed_at: new Date().toISOString() 
+          })
+          .eq('id', missionId);
+
+        if (updateError) throw updateError;
+      }
+
+      // 🔑 Gerar Chave de Boss (1 chave por missão concluída)
+      await supabase
+        .from('profiles')
+        .update({ boss_keys: (currentProfile as any)?.boss_keys ? (currentProfile as any).boss_keys + 1 : 1 } as any)
+        .eq('user_id', user!.id);
       } else {
         // ✅ MISSÃO ÚNICA
         const { error: updateError } = await supabase
