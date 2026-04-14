@@ -261,22 +261,21 @@ export const useCompleteMission = () => {
 
       // Atualizar progresso dos planos vinculados
       const { data: planLinks } = await supabase
-        .from('plan_missions')
+        .from('plan_missions' as any)
         .select('id, plan_id, value_per_completion')
         .eq('mission_id', missionId);
 
-      if (planLinks && planLinks.length > 0) {
-        for (const link of planLinks) {
-          // Buscar valor atual do plano
+      if (planLinks && (planLinks as any[]).length > 0) {
+        for (const link of (planLinks as any[])) {
           const { data: plan } = await supabase
-            .from('plans')
+            .from('plans' as any)
             .select('current_value')
             .eq('id', link.plan_id)
             .single();
           if (plan) {
             await supabase
-              .from('plans')
-              .update({ current_value: Number(plan.current_value) + Number(link.value_per_completion) })
+              .from('plans' as any)
+              .update({ current_value: Number((plan as any).current_value) + Number(link.value_per_completion) } as any)
               .eq('id', link.plan_id);
           }
         }
