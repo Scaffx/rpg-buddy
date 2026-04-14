@@ -22,11 +22,13 @@ type CombatRow = {
     id: string;
     ataque_base: number;
     defesa_base: number;
+    nivel: number;
   } | null;
   bosses: {
     id: string;
     ataque_base: number;
     defesa_base: number;
+    level: number;
   } | null;
 };
 
@@ -99,8 +101,8 @@ Deno.serve(async (req) => {
           hp_atual_personagem,
           turno_atual,
           status,
-          personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base),
-          bosses!combates_ativos_boss_id_fkey(id, ataque_base, defesa_base)
+          personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel),
+          bosses!combates_ativos_boss_id_fkey(id, ataque_base, defesa_base, level)
         `,
       )
       .eq('id', combateId)
@@ -184,6 +186,30 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       throw updateError;
+    }
+
+    const { data: currentHealth } = await (supabase as any)
+      .from('user_health_stats')
+      .select('id, max_hp')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (currentHealth) {
+      const maxHp = Number((currentHealth as any).max_hp ?? hpPlayerRestante);
+      await (supabase as any)
+        .from('user_health_stats')
+        .update({
+          current_hp: Math.max(0, Math.min(maxHp, hpPlayerRestante)),
+        })
+        .eq('user_id', user.id);
+    } else {
+      await (supabase as any)
+        .from('user_health_stats')
+        .insert({
+          user_id: user.id,
+          max_hp: Math.max(1, hpPlayerRestante),
+          current_hp: Math.max(0, hpPlayerRestante),
+        });
     }
 
     return new Response(

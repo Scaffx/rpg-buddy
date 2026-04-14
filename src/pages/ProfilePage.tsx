@@ -44,13 +44,37 @@ function useHealthStats() {
   return useQuery({
     queryKey: ["health_stats", user?.id],
     queryFn: async () => {
+      const today = new Date().toLocaleDateString('en-CA');
       const { data, error } = await supabase
         .from("user_health_stats" as any)
         .select("*")
         .eq("user_id", user!.id)
         .maybeSingle();
       if (error) throw error;
-      return data as any;
+
+      if (!data) return null;
+
+      const shouldReset = data.last_reset_date !== today;
+      if (!shouldReset) {
+        return data as any;
+      }
+
+      const resetPayload = {
+        current_hp: Number(data.max_hp ?? 100),
+        current_mp: Number(data.max_mp ?? 10),
+        fatigue: 0,
+        last_reset_date: today,
+      };
+
+      const { data: resetData, error: resetError } = await supabase
+        .from("user_health_stats" as any)
+        .update(resetPayload as any)
+        .eq("user_id", user!.id)
+        .select('*')
+        .single();
+
+      if (resetError) throw resetError;
+      return resetData as any;
     },
     enabled: !!user,
   });
@@ -627,9 +651,19 @@ export default function ProfilePage() {
       penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
     }
   }
-  const currentHp = Math.max(0, maxHp - mealPenalty);
-  const currentMp = Math.max(0, maxMp - waterPenalty);
+  const persistedHp = Number(healthStats?.current_hp ?? maxHp);
+  const persistedMp = Number(healthStats?.current_mp ?? maxMp);
+  const currentHp = Math.max(0, Math.min(maxHp, persistedHp) - mealPenalty);
+  const currentMp = Math.max(0, Math.min(maxMp, persistedMp) - waterPenalty);
   const fatigue = healthStats?.fatigue ?? 0;
+  const fatigueStatus =
+    fatigue >= 75
+      ? { label: 'Exausto', className: 'text-red-400' }
+      : fatigue >= 45
+        ? { label: 'Alta', className: 'text-orange-400' }
+        : fatigue >= 15
+          ? { label: 'Media', className: 'text-yellow-400' }
+          : { label: 'Baixa', className: 'text-emerald-400' };
 
   const saveSettings = useMutation({
     mutationFn: async () => {
@@ -948,6 +982,7 @@ export default function ProfilePage() {
                 </div>
                 <span className="text-sm text-muted-foreground">FADIGA:</span>
                 <span className="text-xl font-bold text-foreground">{fatigue}</span>
+                <span className={`text-xs font-semibold ${fatigueStatus.className}`}>{fatigueStatus.label}</span>
               </div>
               {penaltyMessages.map((msg, i) => (
                 <p key={i} className="text-xs text-red-400 flex items-center gap-1">{msg}</p>

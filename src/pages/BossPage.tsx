@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useBosses, useBossBattles, useFightBoss, useProfile, useAttributes, useStartActiveCombat } from '@/hooks/useProfile';
+import { motion } from 'framer-motion';
+import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Loader2, Skull, Swords, Users, Flame, Trophy, Globe, Crown } from 'lucide-react';
+import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,10 +38,8 @@ export default function BossPage() {
   const { data: battles } = useBossBattles();
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
-  const fightBoss = useFightBoss();
   const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
-  const [battleResult, setBattleResult] = useState<{ won: boolean; damage: number } | null>(null);
   const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossHp: number; playerHp: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
   const [rankingRegion, setRankingRegion] = useState<string | null>(null);
@@ -101,32 +99,6 @@ export default function BossPage() {
   const defeatedBossIds = new Set(
     battles?.filter((b) => b.won).map((b) => b.boss_id) || []
   );
-
-  const handleFight = async (boss: any) => {
-    setBattleResult(null);
-    try {
-      const result = await fightBoss.mutateAsync({
-        bossId: boss.id,
-        bossHp: boss.hp,
-        xpReward: boss.xp_reward,
-        keysCost: boss.keys_cost || 1,
-      });
-      setBattleResult(result);
-      if (result.won) {
-        toast({ title: `🎉 ${boss.name} derrotado!`, description: `+${boss.xp_reward} XP +${boss.gold_reward || 10} 🪙` });
-      } else {
-        toast({ title: '💀 Derrota!', description: `Dano causado: ${result.damage}. Fique mais forte!`, variant: 'destructive' });
-      }
-    } catch (err: any) {
-      if (err?.message === 'BOSS_ALREADY_DEFEATED') {
-        toast({ title: '⚔️ Boss já derrotado!', description: 'Você já venceu este boss.', variant: 'destructive' });
-      } else if (err?.message === 'INSUFFICIENT_KEYS') {
-        toast({ title: '🔑 Chaves insuficientes!', description: 'Complete missões da rotina para ganhar chaves.', variant: 'destructive' });
-      } else {
-        toast({ title: 'Erro na batalha', variant: 'destructive' });
-      }
-    }
-  };
 
   const handleJoinDungeon = (dungeonName: string) => {
     toast({ title: `✨ Você se juntou a ${dungeonName}!`, description: 'Aguardando outros jogadores...' });
@@ -350,20 +322,6 @@ export default function BossPage() {
                     ) : (
                       <div className="w-full grid grid-cols-1 gap-2">
                         <Button
-                          onClick={() => handleFight(boss)}
-                          disabled={fightBoss.isPending}
-                          className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          size="sm"
-                        >
-                          {fightBoss.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                          ) : (
-                            <Swords className="w-4 h-4 mr-1" />
-                          )}
-                          Enfrentar (🔑 {boss.keys_cost || 1})
-                        </Button>
-
-                        <Button
                           onClick={() => handleStartArenaCombat(boss)}
                           disabled={startActiveCombat.isPending}
                           className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
@@ -374,7 +332,7 @@ export default function BossPage() {
                           ) : (
                             <Skull className="w-4 h-4 mr-1" />
                           )}
-                          Arena D20
+                          Enfrentar boss (🔑 {boss.keys_cost || 1})
                         </Button>
                       </div>
                     )}
@@ -384,25 +342,6 @@ export default function BossPage() {
                 </div>
               </div>
             )}
-
-            {/* Battle result */}
-            <AnimatePresence>
-              {battleResult && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  className={`rpg-card-glow text-center p-6 ${battleResult.won ? 'border-success' : 'border-destructive'}`}
-                  style={{ borderColor: battleResult.won ? 'hsl(142 70% 45%)' : 'hsl(0 72% 51%)' }}
-                >
-                  <span className="text-4xl">{battleResult.won ? '🎉' : '💀'}</span>
-                  <h3 className="font-display font-bold text-lg mt-2 text-foreground">
-                    {battleResult.won ? 'VITÓRIA!' : 'DERROTA!'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">Dano causado: {battleResult.damage}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Battle history */}
             {battles && battles.length > 0 && (

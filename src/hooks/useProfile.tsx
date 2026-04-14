@@ -644,14 +644,55 @@ export function useStartActiveCombat() {
 
       const { data: boss, error: bossError } = await (supabase as any)
         .from('bosses')
-        .select('id, hp, hp_max')
+        .select('id, hp, hp_max, level')
         .eq('id', bossId)
         .single();
 
       if (bossError) throw bossError;
 
       const hpInicialBoss = Number((boss as any).hp_max ?? (boss as any).hp ?? 100);
-      const hpInicialPersonagem = Number((personagem as any).hp_max ?? 120);
+      const hpMaxPersonagem = Number((personagem as any).hp_max ?? 120);
+
+      const { data: healthStats, error: healthStatsError } = await (supabase as any)
+        .from('user_health_stats')
+        .select('id, current_hp, max_hp, fatigue')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (healthStatsError) throw healthStatsError;
+
+      const hpAtualPersistido = Number((healthStats as any)?.current_hp ?? hpMaxPersonagem);
+      const hpInicialPersonagem = Math.max(1, Math.min(hpMaxPersonagem, hpAtualPersistido));
+
+      const bossLevel = Math.max(1, Number((boss as any).level ?? level));
+      const levelDiff = bossLevel - level;
+      const fatigueGain = levelDiff >= 2 ? 20 : levelDiff >= 1 ? 15 : levelDiff === 0 ? 10 : levelDiff <= -2 ? 4 : 6;
+      const fatigueAtual = Number((healthStats as any)?.fatigue ?? 0);
+      const fatigueFinal = Math.min(100, Math.max(0, fatigueAtual + fatigueGain));
+
+      if (healthStats) {
+        const { error: updateHealthError } = await (supabase as any)
+          .from('user_health_stats')
+          .update({
+            max_hp: hpMaxPersonagem,
+            current_hp: hpInicialPersonagem,
+            fatigue: fatigueFinal,
+          })
+          .eq('user_id', user.id);
+
+        if (updateHealthError) throw updateHealthError;
+      } else {
+        const { error: insertHealthError } = await (supabase as any)
+          .from('user_health_stats')
+          .insert({
+            user_id: user.id,
+            max_hp: hpMaxPersonagem,
+            current_hp: hpInicialPersonagem,
+            fatigue: fatigueFinal,
+          });
+
+        if (insertHealthError) throw insertHealthError;
+      }
 
       const { data: newCombat, error: combatInsertError } = await (supabase as any)
         .from('combates_ativos')
@@ -674,6 +715,7 @@ export function useStartActiveCombat() {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['bosses'] });
       queryClient.invalidateQueries({ queryKey: ['combates_ativos'] });
+      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
     },
   });
 }
