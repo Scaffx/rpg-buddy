@@ -196,7 +196,7 @@ export const useCompleteMission = () => {
         .filter((item: any) => item.completed)
         .reduce((sum: number, item: any) => sum + (item.xp_bonus || 2), 0);
 
-      const totalXpReward = xpReward + checklistBonus;
+      const totalXpReward = scaledXpReward + checklistBonus;
 
       // Atualizar atributo primário
       const { data: attr } = await supabase
