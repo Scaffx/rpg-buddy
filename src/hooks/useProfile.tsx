@@ -445,7 +445,7 @@ export function useFightBoss() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bossId, bossHp, xpReward }: { bossId: string; bossHp: number; xpReward: number }) => {
+    mutationFn: async ({ bossId, bossHp, xpReward, keysCost }: { bossId: string; bossHp: number; xpReward: number; keysCost: number }) => {
       // Check if boss was already defeated
       const { data: previousWin } = await supabase
         .from("boss_battles")
@@ -459,11 +459,23 @@ export function useFightBoss() {
         throw new Error("BOSS_ALREADY_DEFEATED");
       }
 
+      // 🔑 Verificar chaves
       const { data: profile } = await supabase
         .from("profiles")
-        .select("level, total_xp")
+        .select("level, total_xp, boss_keys")
         .eq("user_id", user!.id)
         .single();
+
+      const currentKeys = (profile as any)?.boss_keys || 0;
+      if (currentKeys < keysCost) {
+        throw new Error("INSUFFICIENT_KEYS");
+      }
+
+      // Consumir chaves
+      await supabase
+        .from("profiles")
+        .update({ boss_keys: currentKeys - keysCost } as any)
+        .eq("user_id", user!.id);
 
       const { data: attrs } = await supabase
         .from('attributes')
@@ -472,7 +484,7 @@ export function useFightBoss() {
 
       const { data: boss } = await supabase
         .from('bosses')
-        .select('id, level, hp')
+        .select('id, level, hp, gold_reward')
         .eq('id', bossId)
         .single();
 
@@ -505,7 +517,10 @@ export function useFightBoss() {
         won,
       });
 
+      const goldReward = (boss as any)?.gold_reward || 10;
+
       if (won && profile) {
+        // Boss dá XP reduzido + Ouro significativo
         const newTotalXp = profile.total_xp + xpReward;
         const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
         const newLevel = Math.max(calculatedLevel, profile.level);
@@ -517,23 +532,46 @@ export function useFightBoss() {
           })
           .eq("user_id", user!.id);
 
+        // Dar ouro ao jogador
+        const { data: bal } = await supabase
+          .from('user_balance')
+          .select('gold')
+          .eq('user_id', user!.id)
+          .maybeSingle();
+
+        if (bal) {
+          await supabase
+            .from('user_balance')
+            .update({ gold: (bal as any).gold + goldReward, updated_at: new Date().toISOString() } as any)
+            .eq('user_id', user!.id);
+        }
+
         await supabase.from("activity_log").insert({
           user_id: user!.id,
           action: "boss_defeated",
-          description: `Boss derrotado! +${xpReward} XP`,
+          description: `Boss derrotado! +${xpReward} XP +${goldReward} 🪙`,
           xp_gained: xpReward,
         });
 
-        await supabase.from("xp_history" as any).insert({
+        await supabase.from("xp_history").insert({
           user_id: user!.id,
           xp_gained: xpReward,
           type: "boss",
-        } as any);
+        });
       } else {
+        // Derrota: devolver metade das chaves
+        const refundKeys = Math.floor(keysCost / 2);
+        if (refundKeys > 0) {
+          await supabase
+            .from("profiles")
+            .update({ boss_keys: currentKeys - keysCost + refundKeys } as any)
+            .eq("user_id", user!.id);
+        }
+
         await supabase.from("activity_log").insert({
           user_id: user!.id,
           action: "boss_failed",
-          description: `Derrota contra o boss. Dano causado: ${damage}`,
+          description: `Derrota contra o boss. Dano causado: ${damage}. ${refundKeys > 0 ? `${refundKeys} 🔑 devolvidas.` : ''}`,
           xp_gained: 0,
         });
       }
