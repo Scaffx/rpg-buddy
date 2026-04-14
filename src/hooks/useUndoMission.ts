@@ -43,14 +43,14 @@ export function useUndoMission() {
 
       // Buscar registro de conclusão diária para saber o XP/gold real
       const { data: completion } = await supabase
-        .from('mission_daily_completions' as any)
+        .from('mission_daily_completions')
         .select('xp_earned, gold_earned')
         .eq('mission_id', missionId)
         .eq('completion_date', today)
         .single();
 
-      const xpEarned = completion?.xp_earned ?? 25;
-      const goldEarned = completion?.gold_earned ?? 2;
+      const xpEarned = (completion as any)?.xp_earned ?? 25;
+      const goldEarned = (completion as any)?.gold_earned ?? 2;
 
       // Remover registro de conclusão diária
       await supabase
