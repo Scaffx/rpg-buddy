@@ -169,9 +169,11 @@ export type Database = {
           description: string | null
           difficulty: string | null
           element: string | null
+          gold_reward: number
           hp: number
           icon: string
           id: string
+          keys_cost: number
           level: number
           mechanic: string | null
           name: string
@@ -186,9 +188,11 @@ export type Database = {
           description?: string | null
           difficulty?: string | null
           element?: string | null
+          gold_reward?: number
           hp?: number
           icon?: string
           id?: string
+          keys_cost?: number
           level?: number
           mechanic?: string | null
           name: string
@@ -203,9 +207,11 @@ export type Database = {
           description?: string | null
           difficulty?: string | null
           element?: string | null
+          gold_reward?: number
           hp?: number
           icon?: string
           id?: string
+          keys_cost?: number
           level?: number
           mechanic?: string | null
           name?: string
@@ -492,9 +498,87 @@ export type Database = {
           },
         ]
       }
+      plan_missions: {
+        Row: {
+          id: string
+          mission_id: string | null
+          plan_id: string | null
+          value_per_completion: number
+        }
+        Insert: {
+          id?: string
+          mission_id?: string | null
+          plan_id?: string | null
+          value_per_completion: number
+        }
+        Update: {
+          id?: string
+          mission_id?: string | null
+          plan_id?: string | null
+          value_per_completion?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_missions_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_missions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          created_at: string | null
+          current_value: number
+          description: string | null
+          id: string
+          status: string | null
+          target_value: number
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_value?: number
+          description?: string | null
+          id?: string
+          status?: string | null
+          target_value: number
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_value?: number
+          description?: string | null
+          id?: string
+          status?: string | null
+          target_value?: number
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          boss_keys: number
           created_at: string
           current_class_id: string | null
           display_name: string | null
@@ -510,6 +594,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          boss_keys?: number
           created_at?: string
           current_class_id?: string | null
           display_name?: string | null
@@ -525,6 +610,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          boss_keys?: number
           created_at?: string
           current_class_id?: string | null
           display_name?: string | null

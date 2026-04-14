@@ -116,24 +116,17 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   if (totalPenalty > 0) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('total_xp, level, hp_penalty, mp_penalty')
+      .select('total_xp, level')
       .eq('user_id', userId)
       .single();
 
     let updates: any = {};
     if (profile) {
-      const newXp = Math.max(0, profile.total_xp - totalPenalty);
+      const newXp = Math.max(0, (profile as any).total_xp - totalPenalty);
       const calculatedLevel = Math.floor(newXp / 200) + 1;
-      const newLevel = Math.max(calculatedLevel, profile.level);
+      const newLevel = Math.max(calculatedLevel, (profile as any).level);
       updates.total_xp = newXp;
       updates.level = newLevel;
-      // Acumular penalidade de HP/MP se houver
-      if (totalHpPenalty > 0) {
-        updates.hp_penalty = (profile.hp_penalty || 0) + totalHpPenalty;
-      }
-      if (totalMpPenalty > 0) {
-        updates.mp_penalty = (profile.mp_penalty || 0) + totalMpPenalty;
-      }
       await supabase.from('profiles').update(updates).eq('user_id', userId);
     }
 

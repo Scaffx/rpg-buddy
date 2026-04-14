@@ -106,16 +106,19 @@ export default function BossPage() {
         bossId: boss.id,
         bossHp: boss.hp,
         xpReward: boss.xp_reward,
+        keysCost: boss.keys_cost || 1,
       });
       setBattleResult(result);
       if (result.won) {
-        toast({ title: `🎉 ${boss.name} derrotado!`, description: `+${boss.xp_reward} XP!` });
+        toast({ title: `🎉 ${boss.name} derrotado!`, description: `+${boss.xp_reward} XP +${boss.gold_reward || 10} 🪙` });
       } else {
         toast({ title: '💀 Derrota!', description: `Dano causado: ${result.damage}. Fique mais forte!`, variant: 'destructive' });
       }
     } catch (err: any) {
       if (err?.message === 'BOSS_ALREADY_DEFEATED') {
         toast({ title: '⚔️ Boss já derrotado!', description: 'Você já venceu este boss.', variant: 'destructive' });
+      } else if (err?.message === 'INSUFFICIENT_KEYS') {
+        toast({ title: '🔑 Chaves insuficientes!', description: 'Complete missões da rotina para ganhar chaves.', variant: 'destructive' });
       } else {
         toast({ title: 'Erro na batalha', variant: 'destructive' });
       }
@@ -186,10 +189,20 @@ export default function BossPage() {
           <>
             {profile && (
               <div className="rpg-card">
-                <p className="text-sm text-muted-foreground">
-                  Seu poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">
+                    Seu poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
+                  </p>
+                  <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
+                    <span className="text-lg">🔑</span>
+                    <span className="font-bold text-primary text-lg">{(profile as any).boss_keys || 0}</span>
+                    <span className="text-xs text-muted-foreground">Chaves</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  💡 Complete missões da rotina para ganhar 🔑 Chaves de Boss. Cada boss custa chaves para ser enfrentado!
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mt-3 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">ATK</p><p className="font-bold">{playerStats.atk}</p></div>
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">MATK</p><p className="font-bold">{playerStats.matk}</p></div>
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">DEF</p><p className="font-bold">{playerStats.def}</p></div>
@@ -239,8 +252,8 @@ export default function BossPage() {
                       <span className="text-health font-bold">❤️ {boss.hp} HP</span>
                       <span className="text-primary font-bold">⭐ Nv.{boss.level}</span>
                       <span className="text-xp font-bold">🏆 {boss.xp_reward} XP</span>
-                      <span className="text-muted-foreground">⚔️ ATK {boss.damage_base || b.atk}</span>
-                      <span className="text-muted-foreground">🛡️ DEF {boss.defense || b.def}</span>
+                      <span className="font-bold text-accent">🪙 {boss.gold_reward || 10}</span>
+                      <span className="font-bold text-primary">🔑 {boss.keys_cost || 1}</span>
                     </div>
 
                     {/* Difficulty */}
@@ -293,6 +306,10 @@ export default function BossPage() {
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
                         🔒 Requer Nível {boss.level}
                       </Button>
+                    ) : ((profile as any)?.boss_keys || 0) < (boss.keys_cost || 1) ? (
+                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
+                        🔑 Precisa de {boss.keys_cost || 1} Chaves (tem {(profile as any)?.boss_keys || 0})
+                      </Button>
                     ) : (
                       <Button
                         onClick={() => handleFight(boss)}
@@ -305,7 +322,7 @@ export default function BossPage() {
                         ) : (
                           <Swords className="w-4 h-4 mr-1" />
                         )}
-                        Enfrentar
+                        Enfrentar (🔑 {boss.keys_cost || 1})
                       </Button>
                     )}
                   </motion.div>

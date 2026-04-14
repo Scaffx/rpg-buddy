@@ -113,6 +113,18 @@ export const useCompleteMission = () => {
     }) => {
       const today = new Date().toISOString().split('T')[0];
 
+      // Buscar perfil para XP scaling baseado no nível
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('level')
+        .eq('user_id', user!.id)
+        .single();
+      
+      const playerLevel = currentProfile?.level || 1;
+      // XP Dinâmico: escala com o nível do jogador
+      const xpMultiplier = 1 + Math.floor((playerLevel - 1) / 5) * 0.5; // +50% a cada 5 níveis
+      const scaledXpReward = Math.round(xpReward * xpMultiplier);
+
       // Buscar missão
       const { data: mission, error: missionError } = await supabase
         .from('missions')
@@ -143,14 +155,14 @@ export const useCompleteMission = () => {
 
         // Registrar conclusão diária
         const { error: insertError } = await supabase
-          .from('mission_daily_completions' as any)
+          .from('mission_daily_completions')
           .insert({
             mission_id: missionId,
             completion_date: today,
-            xp_earned: xpReward,
+            xp_earned: scaledXpReward,
             gold_earned: 2,
             user_id: user!.id,
-          } as any);
+          });
 
         if (insertError) throw insertError;
       } else {
@@ -166,6 +178,12 @@ export const useCompleteMission = () => {
         if (updateError) throw updateError;
       }
 
+      // 🔑 Gerar Chave de Boss (1 chave por missão concluída)
+      await supabase
+        .from('profiles')
+        .update({ boss_keys: (currentProfile as any)?.boss_keys ? (currentProfile as any).boss_keys + 1 : 1 } as any)
+        .eq('user_id', user!.id);
+
       // ... resto do código (XP, Ouro, etc.)
       
       // Calcular bônus do checklist
@@ -178,7 +196,7 @@ export const useCompleteMission = () => {
         .filter((item: any) => item.completed)
         .reduce((sum: number, item: any) => sum + (item.xp_bonus || 2), 0);
 
-      const totalXpReward = xpReward + checklistBonus;
+      const totalXpReward = scaledXpReward + checklistBonus;
 
       // Atualizar atributo primário
       const { data: attr } = await supabase
@@ -187,9 +205,10 @@ export const useCompleteMission = () => {
         .eq('id', attributeId)
         .single();
 
+      const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
+
       if (attr) {
         const newXp = attr.xp + totalXpReward;
-        const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
         let newLevel = 1;
         for (let i = xpTable.length - 1; i > 0; i--) {
           if (newXp >= xpTable[i]) {
@@ -260,22 +279,21 @@ export const useCompleteMission = () => {
 
       // Atualizar progresso dos planos vinculados
       const { data: planLinks } = await supabase
-        .from('plan_missions')
+        .from('plan_missions' as any)
         .select('id, plan_id, value_per_completion')
         .eq('mission_id', missionId);
 
-      if (planLinks && planLinks.length > 0) {
-        for (const link of planLinks) {
-          // Buscar valor atual do plano
+      if (planLinks && (planLinks as any[]).length > 0) {
+        for (const link of (planLinks as any[])) {
           const { data: plan } = await supabase
-            .from('plans')
+            .from('plans' as any)
             .select('current_value')
             .eq('id', link.plan_id)
             .single();
           if (plan) {
             await supabase
-              .from('plans')
-              .update({ current_value: Number(plan.current_value) + Number(link.value_per_completion) })
+              .from('plans' as any)
+              .update({ current_value: Number((plan as any).current_value) + Number(link.value_per_completion) } as any)
               .eq('id', link.plan_id);
           }
         }
@@ -427,7 +445,7 @@ export function useFightBoss() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bossId, bossHp, xpReward }: { bossId: string; bossHp: number; xpReward: number }) => {
+    mutationFn: async ({ bossId, bossHp, xpReward, keysCost }: { bossId: string; bossHp: number; xpReward: number; keysCost: number }) => {
       // Check if boss was already defeated
       const { data: previousWin } = await supabase
         .from("boss_battles")
@@ -441,11 +459,23 @@ export function useFightBoss() {
         throw new Error("BOSS_ALREADY_DEFEATED");
       }
 
+      // 🔑 Verificar chaves
       const { data: profile } = await supabase
         .from("profiles")
-        .select("level, total_xp")
+        .select("level, total_xp, boss_keys")
         .eq("user_id", user!.id)
         .single();
+
+      const currentKeys = (profile as any)?.boss_keys || 0;
+      if (currentKeys < keysCost) {
+        throw new Error("INSUFFICIENT_KEYS");
+      }
+
+      // Consumir chaves
+      await supabase
+        .from("profiles")
+        .update({ boss_keys: currentKeys - keysCost } as any)
+        .eq("user_id", user!.id);
 
       const { data: attrs } = await supabase
         .from('attributes')
@@ -454,7 +484,7 @@ export function useFightBoss() {
 
       const { data: boss } = await supabase
         .from('bosses')
-        .select('id, level, hp')
+        .select('id, level, hp, gold_reward')
         .eq('id', bossId)
         .single();
 
@@ -487,7 +517,10 @@ export function useFightBoss() {
         won,
       });
 
+      const goldReward = (boss as any)?.gold_reward || 10;
+
       if (won && profile) {
+        // Boss dá XP reduzido + Ouro significativo
         const newTotalXp = profile.total_xp + xpReward;
         const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
         const newLevel = Math.max(calculatedLevel, profile.level);
@@ -499,23 +532,46 @@ export function useFightBoss() {
           })
           .eq("user_id", user!.id);
 
+        // Dar ouro ao jogador
+        const { data: bal } = await supabase
+          .from('user_balance')
+          .select('gold')
+          .eq('user_id', user!.id)
+          .maybeSingle();
+
+        if (bal) {
+          await supabase
+            .from('user_balance')
+            .update({ gold: (bal as any).gold + goldReward, updated_at: new Date().toISOString() } as any)
+            .eq('user_id', user!.id);
+        }
+
         await supabase.from("activity_log").insert({
           user_id: user!.id,
           action: "boss_defeated",
-          description: `Boss derrotado! +${xpReward} XP`,
+          description: `Boss derrotado! +${xpReward} XP +${goldReward} 🪙`,
           xp_gained: xpReward,
         });
 
-        await supabase.from("xp_history" as any).insert({
+        await supabase.from("xp_history").insert({
           user_id: user!.id,
           xp_gained: xpReward,
           type: "boss",
-        } as any);
+        });
       } else {
+        // Derrota: devolver metade das chaves
+        const refundKeys = Math.floor(keysCost / 2);
+        if (refundKeys > 0) {
+          await supabase
+            .from("profiles")
+            .update({ boss_keys: currentKeys - keysCost + refundKeys } as any)
+            .eq("user_id", user!.id);
+        }
+
         await supabase.from("activity_log").insert({
           user_id: user!.id,
           action: "boss_failed",
-          description: `Derrota contra o boss. Dano causado: ${damage}`,
+          description: `Derrota contra o boss. Dano causado: ${damage}. ${refundKeys > 0 ? `${refundKeys} 🔑 devolvidas.` : ''}`,
           xp_gained: 0,
         });
       }
