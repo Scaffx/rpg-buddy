@@ -169,9 +169,11 @@ export type Database = {
           description: string | null
           difficulty: string | null
           element: string | null
+          gold_reward: number
           hp: number
           icon: string
           id: string
+          keys_cost: number
           level: number
           mechanic: string | null
           name: string
@@ -186,9 +188,11 @@ export type Database = {
           description?: string | null
           difficulty?: string | null
           element?: string | null
+          gold_reward?: number
           hp?: number
           icon?: string
           id?: string
+          keys_cost?: number
           level?: number
           mechanic?: string | null
           name: string
@@ -203,9 +207,11 @@ export type Database = {
           description?: string | null
           difficulty?: string | null
           element?: string | null
+          gold_reward?: number
           hp?: number
           icon?: string
           id?: string
+          keys_cost?: number
           level?: number
           mechanic?: string | null
           name?: string
@@ -572,6 +578,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          boss_keys: number
           created_at: string
           current_class_id: string | null
           display_name: string | null
@@ -587,6 +594,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          boss_keys?: number
           created_at?: string
           current_class_id?: string | null
           display_name?: string | null
@@ -602,6 +610,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          boss_keys?: number
           created_at?: string
           current_class_id?: string | null
           display_name?: string | null
