@@ -183,18 +183,6 @@ export const useCompleteMission = () => {
         .from('profiles')
         .update({ boss_keys: (currentProfile as any)?.boss_keys ? (currentProfile as any).boss_keys + 1 : 1 } as any)
         .eq('user_id', user!.id);
-      } else {
-        // ✅ MISSÃO ÚNICA
-        const { error: updateError } = await supabase
-          .from('missions')
-          .update({ 
-            completed: true, 
-            completed_at: new Date().toISOString() 
-          })
-          .eq('id', missionId);
-
-        if (updateError) throw updateError;
-      }
 
       // ... resto do código (XP, Ouro, etc.)
       
