@@ -252,8 +252,8 @@ export default function BossPage() {
                       <span className="text-health font-bold">❤️ {boss.hp} HP</span>
                       <span className="text-primary font-bold">⭐ Nv.{boss.level}</span>
                       <span className="text-xp font-bold">🏆 {boss.xp_reward} XP</span>
-                      <span className="text-muted-foreground">⚔️ ATK {boss.damage_base || b.atk}</span>
-                      <span className="text-muted-foreground">🛡️ DEF {boss.defense || b.def}</span>
+                      <span className="font-bold text-accent">🪙 {boss.gold_reward || 10}</span>
+                      <span className="font-bold text-primary">🔑 {boss.keys_cost || 1}</span>
                     </div>
 
                     {/* Difficulty */}
@@ -306,6 +306,10 @@ export default function BossPage() {
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
                         🔒 Requer Nível {boss.level}
                       </Button>
+                    ) : ((profile as any)?.boss_keys || 0) < (boss.keys_cost || 1) ? (
+                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
+                        🔑 Precisa de {boss.keys_cost || 1} Chaves (tem {(profile as any)?.boss_keys || 0})
+                      </Button>
                     ) : (
                       <Button
                         onClick={() => handleFight(boss)}
@@ -318,7 +322,7 @@ export default function BossPage() {
                         ) : (
                           <Swords className="w-4 h-4 mr-1" />
                         )}
-                        Enfrentar
+                        Enfrentar (🔑 {boss.keys_cost || 1})
                       </Button>
                     )}
                   </motion.div>
