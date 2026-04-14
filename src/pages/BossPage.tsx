@@ -189,10 +189,20 @@ export default function BossPage() {
           <>
             {profile && (
               <div className="rpg-card">
-                <p className="text-sm text-muted-foreground">
-                  Seu poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">
+                    Seu poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
+                  </p>
+                  <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
+                    <span className="text-lg">🔑</span>
+                    <span className="font-bold text-primary text-lg">{(profile as any).boss_keys || 0}</span>
+                    <span className="text-xs text-muted-foreground">Chaves</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  💡 Complete missões da rotina para ganhar 🔑 Chaves de Boss. Cada boss custa chaves para ser enfrentado!
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mt-3 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">ATK</p><p className="font-bold">{playerStats.atk}</p></div>
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">MATK</p><p className="font-bold">{playerStats.matk}</p></div>
                   <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">DEF</p><p className="font-bold">{playerStats.def}</p></div>
