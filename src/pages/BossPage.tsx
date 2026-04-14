@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useBosses, useBossBattles, useFightBoss, useProfile, useAttributes } from '@/hooks/useProfile';
+import { useBosses, useBossBattles, useFightBoss, useProfile, useAttributes, useStartActiveCombat } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Loader2, Skull, Swords, Users, Flame, Trophy, Globe, Crown } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import CombatArena from '@/components/CombatArena';
 
 const RANKING_REGIONS = [
   { id: null, name: 'Ranking Mundial', icon: '🌐' },
@@ -38,8 +39,10 @@ export default function BossPage() {
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
   const fightBoss = useFightBoss();
+  const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
   const [battleResult, setBattleResult] = useState<{ won: boolean; damage: number } | null>(null);
+  const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossHp: number; playerHp: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
   const [rankingRegion, setRankingRegion] = useState<string | null>(null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(rankingRegion);
@@ -129,6 +132,26 @@ export default function BossPage() {
     toast({ title: `✨ Você se juntou a ${dungeonName}!`, description: 'Aguardando outros jogadores...' });
   };
 
+  const handleStartArenaCombat = async (boss: any) => {
+    try {
+      const combat = await startActiveCombat.mutateAsync({ bossId: boss.id });
+      setActiveCombat({
+        id: combat.id,
+        bossName: boss.name,
+        bossIcon: boss.icon,
+        bossHp: Number(combat.hp_atual_boss ?? boss.hp_max ?? boss.hp ?? 100),
+        playerHp: Number(combat.hp_atual_personagem ?? playerStats.hp ?? 120),
+      });
+      toast({ title: '⚔️ Combate iniciado', description: `Arena aberta contra ${boss.name}.` });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao iniciar combate',
+        description: err?.message || 'Não foi possível iniciar combate agora.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getRankMedal = (position: number) => {
     if (position === 0) return '🥇';
     if (position === 1) return '🥈';
@@ -216,8 +239,22 @@ export default function BossPage() {
             {isLoading ? (
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {bosses?.map((boss: any, i: number) => {
+              <div className="space-y-6">
+                {activeCombat && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Arena ativa: {activeCombat.bossIcon} {activeCombat.bossName}
+                    </p>
+                    <CombatArena
+                      combateId={activeCombat.id}
+                      initialBossHp={activeCombat.bossHp}
+                      initialPlayerHp={activeCombat.playerHp}
+                    />
+                  </div>
+                )}
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {bosses?.map((boss: any, i: number) => {
                   const b = getBossCombatStats(boss);
                   const skills = (boss.skills || []) as { name: string; desc: string }[];
                   const elementColors: Record<string, string> = {
@@ -311,23 +348,40 @@ export default function BossPage() {
                         🔑 Precisa de {boss.keys_cost || 1} Chaves (tem {(profile as any)?.boss_keys || 0})
                       </Button>
                     ) : (
-                      <Button
-                        onClick={() => handleFight(boss)}
-                        disabled={fightBoss.isPending}
-                        className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        size="sm"
-                      >
-                        {fightBoss.isPending ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                        ) : (
-                          <Swords className="w-4 h-4 mr-1" />
-                        )}
-                        Enfrentar (🔑 {boss.keys_cost || 1})
-                      </Button>
+                      <div className="w-full grid grid-cols-1 gap-2">
+                        <Button
+                          onClick={() => handleFight(boss)}
+                          disabled={fightBoss.isPending}
+                          className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          size="sm"
+                        >
+                          {fightBoss.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          ) : (
+                            <Swords className="w-4 h-4 mr-1" />
+                          )}
+                          Enfrentar (🔑 {boss.keys_cost || 1})
+                        </Button>
+
+                        <Button
+                          onClick={() => handleStartArenaCombat(boss)}
+                          disabled={startActiveCombat.isPending}
+                          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                          size="sm"
+                        >
+                          {startActiveCombat.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          ) : (
+                            <Skull className="w-4 h-4 mr-1" />
+                          )}
+                          Arena D20
+                        </Button>
+                      </div>
                     )}
                   </motion.div>
                   );
                 })}
+                </div>
               </div>
             )}
 

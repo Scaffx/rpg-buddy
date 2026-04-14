@@ -587,6 +587,97 @@ export function useFightBoss() {
   });
 }
 
+export function useStartActiveCombat() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ bossId }: { bossId: string }) => {
+      if (!user) throw new Error('Não autenticado');
+
+      const { data: existingCombat, error: existingCombatError } = await (supabase as any)
+        .from('combates_ativos')
+        .select('*')
+        .eq('personagem_id', user.id)
+        .eq('boss_id', bossId)
+        .eq('status', 'em_andamento')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingCombatError) throw existingCombatError;
+      if (existingCombat) return existingCombat;
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('level, total_xp')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      const level = Math.max(1, profile?.level || 1);
+      const totalXp = Math.max(0, profile?.total_xp || 0);
+
+      const personagemPayload = {
+        id: user.id,
+        hp_max: 120 + level * 8,
+        ataque_base: 14 + level * 2,
+        defesa_base: 8 + Math.floor(level * 1.4),
+        nivel: level,
+        xp_atual: totalXp,
+      };
+
+      const { error: personagemUpsertError } = await (supabase as any)
+        .from('personagens')
+        .upsert(personagemPayload, { onConflict: 'id' });
+
+      if (personagemUpsertError) throw personagemUpsertError;
+
+      const { data: personagem, error: personagemFetchError } = await (supabase as any)
+        .from('personagens')
+        .select('id, hp_max')
+        .eq('id', user.id)
+        .single();
+
+      if (personagemFetchError) throw personagemFetchError;
+
+      const { data: boss, error: bossError } = await (supabase as any)
+        .from('bosses')
+        .select('id, hp, hp_max')
+        .eq('id', bossId)
+        .single();
+
+      if (bossError) throw bossError;
+
+      const hpInicialBoss = Number((boss as any).hp_max ?? (boss as any).hp ?? 100);
+      const hpInicialPersonagem = Number((personagem as any).hp_max ?? 120);
+
+      const { data: newCombat, error: combatInsertError } = await (supabase as any)
+        .from('combates_ativos')
+        .insert({
+          personagem_id: user.id,
+          boss_id: bossId,
+          hp_atual_boss: hpInicialBoss,
+          hp_atual_personagem: hpInicialPersonagem,
+          turno_atual: 'player',
+          status: 'em_andamento',
+        })
+        .select('*')
+        .single();
+
+      if (combatInsertError) throw combatInsertError;
+
+      return newCombat;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['bosses'] });
+      queryClient.invalidateQueries({ queryKey: ['combates_ativos'] });
+    },
+  });
+}
+
 export function useClasses() {
   return useQuery({
     queryKey: ["classes"],
