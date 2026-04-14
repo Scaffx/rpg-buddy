@@ -106,16 +106,19 @@ export default function BossPage() {
         bossId: boss.id,
         bossHp: boss.hp,
         xpReward: boss.xp_reward,
+        keysCost: boss.keys_cost || 1,
       });
       setBattleResult(result);
       if (result.won) {
-        toast({ title: `🎉 ${boss.name} derrotado!`, description: `+${boss.xp_reward} XP!` });
+        toast({ title: `🎉 ${boss.name} derrotado!`, description: `+${boss.xp_reward} XP +${boss.gold_reward || 10} 🪙` });
       } else {
         toast({ title: '💀 Derrota!', description: `Dano causado: ${result.damage}. Fique mais forte!`, variant: 'destructive' });
       }
     } catch (err: any) {
       if (err?.message === 'BOSS_ALREADY_DEFEATED') {
         toast({ title: '⚔️ Boss já derrotado!', description: 'Você já venceu este boss.', variant: 'destructive' });
+      } else if (err?.message === 'INSUFFICIENT_KEYS') {
+        toast({ title: '🔑 Chaves insuficientes!', description: 'Complete missões da rotina para ganhar chaves.', variant: 'destructive' });
       } else {
         toast({ title: 'Erro na batalha', variant: 'destructive' });
       }
