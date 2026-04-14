@@ -54,7 +54,7 @@ export function useUndoMission() {
 
       // Remover registro de conclusão diária
       await supabase
-        .from('mission_daily_completions' as any)
+        .from('mission_daily_completions')
         .delete()
         .eq('mission_id', missionId)
         .eq('completion_date', today);
