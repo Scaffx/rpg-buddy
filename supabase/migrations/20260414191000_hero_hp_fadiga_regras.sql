@@ -46,9 +46,21 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS sync_health_on_profile_level_change_trigger ON public.profiles;
-CREATE TRIGGER sync_health_on_profile_level_change_trigger
-AFTER INSERT OR UPDATE OF level
-ON public.profiles
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_health_on_profile_level_change();
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'profiles'
+  ) THEN
+    DROP TRIGGER IF EXISTS sync_health_on_profile_level_change_trigger ON public.profiles;
+
+    CREATE TRIGGER sync_health_on_profile_level_change_trigger
+    AFTER INSERT OR UPDATE OF level
+    ON public.profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.sync_health_on_profile_level_change();
+  END IF;
+END
+$$;
