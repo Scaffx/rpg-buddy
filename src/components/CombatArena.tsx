@@ -131,6 +131,7 @@ export default function CombatArena({
     setPlayerHp(initialPlayerHp);
     setRollValue(null);
     setDamagePopups([]);
+    setLootDrop(null);
     setTurn('player');
   };
 
