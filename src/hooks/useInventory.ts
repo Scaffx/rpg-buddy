@@ -11,8 +11,10 @@ export type GameItem = {
   icon: string;
   category: string;
   rarity: string;
+  requer_sintonizacao?: boolean;
   stat_label: string | null;
   atk_bonus: number;
+  matk_bonus: number;
   def_bonus: number;
   hp_bonus: number;
   mp_bonus: number;
@@ -34,12 +36,14 @@ export type InventoryItem = {
   item_id: string;
   quantity: number;
   equipped: boolean;
+  sintonizado?: boolean;
   obtained_at: string;
   game_items: GameItem;
 };
 
 export type EquipmentBonuses = {
   atk: number;
+  matk: number;
   def: number;
   hp: number;
   mp: number;
@@ -65,9 +69,20 @@ export function useInventory() {
 
 /** Calculate total bonuses from equipped items */
 export function getEquipmentBonuses(inventory: InventoryItem[]): EquipmentBonuses {
-  const equipped = inventory.filter(inv => inv.equipped && inv.game_items);
+  const equipped = inventory.filter((inv) => {
+    if (!inv.equipped || !inv.game_items) return false;
+    const requiresAttunement = Boolean(
+      inv.game_items.requer_sintonizacao ||
+      ['epico', 'lendario'].includes(String(inv.game_items.rarity || '').toLowerCase()),
+    );
+
+    // Itens mágicos (épicos/lendários) só concedem bônus quando sintonizados.
+    if (requiresAttunement && !inv.sintonizado) return false;
+    return true;
+  });
   return {
     atk: equipped.reduce((s, inv) => s + (inv.game_items.atk_bonus || 0), 0),
+    matk: equipped.reduce((s, inv) => s + (inv.game_items.matk_bonus || 0), 0),
     def: equipped.reduce((s, inv) => s + (inv.game_items.def_bonus || 0), 0),
     hp: equipped.reduce((s, inv) => s + (inv.game_items.hp_bonus || 0), 0),
     mp: equipped.reduce((s, inv) => s + (inv.game_items.mp_bonus || 0), 0),
@@ -78,8 +93,8 @@ export function getEquipmentBonuses(inventory: InventoryItem[]): EquipmentBonuse
 
 /** Compare two items: returns positive if itemA is better overall */
 export function compareItems(a: GameItem, b: GameItem): number {
-  const scoreA = (a.atk_bonus || 0) + (a.def_bonus || 0) + (a.hp_bonus || 0) * 0.5 + (a.mp_bonus || 0) * 0.5 + (a.agi_bonus || 0) + (a.crit_bonus || 0) * 2;
-  const scoreB = (b.atk_bonus || 0) + (b.def_bonus || 0) + (b.hp_bonus || 0) * 0.5 + (b.mp_bonus || 0) * 0.5 + (b.agi_bonus || 0) + (b.crit_bonus || 0) * 2;
+  const scoreA = (a.atk_bonus || 0) + (a.matk_bonus || 0) + (a.def_bonus || 0) + (a.hp_bonus || 0) * 0.5 + (a.mp_bonus || 0) * 0.5 + (a.agi_bonus || 0) + (a.crit_bonus || 0) * 2;
+  const scoreB = (b.atk_bonus || 0) + (b.matk_bonus || 0) + (b.def_bonus || 0) + (b.hp_bonus || 0) * 0.5 + (b.mp_bonus || 0) * 0.5 + (b.agi_bonus || 0) + (b.crit_bonus || 0) * 2;
   return scoreA - scoreB;
 }
 
@@ -185,7 +200,95 @@ export function useToggleEquip() {
   return useMutation({
     mutationFn: async ({ inventoryId, equipped }: { inventoryId: string; equipped: boolean }) => {
       if (!user) throw new Error('Não autenticado');
-      await db.from('user_inventory').update({ equipped }).eq('id', inventoryId).eq('user_id', user.id);
+
+      if (!equipped) {
+        await db.from('user_inventory').update({ equipped: false }).eq('id', inventoryId).eq('user_id', user.id);
+        return;
+      }
+
+      const { data: itemRow, error: itemError } = await db
+        .from('user_inventory')
+        .select('id, user_id, equipped, sintonizado, game_items(rarity, requer_sintonizacao)')
+        .eq('id', inventoryId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (itemError) throw itemError;
+      if (!itemRow) throw new Error('Item não encontrado no inventário.');
+
+      const rarity = String(itemRow?.game_items?.rarity || '').toLowerCase();
+      const requiresAttunement = Boolean(itemRow?.game_items?.requer_sintonizacao) || ['epico', 'lendario'].includes(rarity);
+
+      if (requiresAttunement && !itemRow.sintonizado) {
+        const { count: attunedCount, error: countError } = await db
+          .from('user_inventory')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('sintonizado', true);
+
+        if (countError) throw countError;
+        if ((attunedCount || 0) >= 3) {
+          throw new Error('Limite de sintonização atingido (3/3). Desequipe ou dessintonize um item mágico para continuar.');
+        }
+
+        await db
+          .from('user_inventory')
+          .update({ sintonizado: true, equipped: true })
+          .eq('id', inventoryId)
+          .eq('user_id', user.id);
+        return;
+      }
+
+      await db.from('user_inventory').update({ equipped: true }).eq('id', inventoryId).eq('user_id', user.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+}
+
+export function useToggleAttunement() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ inventoryId, sintonizado }: { inventoryId: string; sintonizado: boolean }) => {
+      if (!user) throw new Error('Não autenticado');
+
+      if (sintonizado) {
+        await db.from('user_inventory').update({ sintonizado: false }).eq('id', inventoryId).eq('user_id', user.id);
+        return;
+      }
+
+      const { data: itemRow, error: itemError } = await db
+        .from('user_inventory')
+        .select('id, sintonizado, game_items(rarity, requer_sintonizacao)')
+        .eq('id', inventoryId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (itemError) throw itemError;
+      if (!itemRow) throw new Error('Item não encontrado no inventário.');
+
+      const rarity = String(itemRow?.game_items?.rarity || '').toLowerCase();
+      const requiresAttunement = Boolean(itemRow?.game_items?.requer_sintonizacao) || ['epico', 'lendario'].includes(rarity);
+
+      if (!requiresAttunement) {
+        throw new Error('Este item não exige sintonização.');
+      }
+
+      const { count: attunedCount, error: countError } = await db
+        .from('user_inventory')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('sintonizado', true);
+
+      if (countError) throw countError;
+      if ((attunedCount || 0) >= 3) {
+        throw new Error('Limite de sintonização atingido (3/3). Desequipe ou dessintonize um item mágico para continuar.');
+      }
+
+      await db.from('user_inventory').update({ sintonizado: true }).eq('id', inventoryId).eq('user_id', user.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });

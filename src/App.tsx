@@ -16,6 +16,7 @@ import ShopPage from "./pages/ShopPage";
 import NpcPage from "./pages/NpcPage";
 import ProfilePage from "./pages/ProfilePage";
 import HealthPage from "./pages/HealthPage";
+import FeatsTree from "./pages/FeatsTree";
 import NotFound from "./pages/NotFound";
 import PrioridadePage from "./pages/PrioridadePage";
 import Onboarding from "./pages/Onboarding";
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
             <Route path="/boss" element={<ProtectedRoute><BossPage /></ProtectedRoute>} />
             <Route path="/health" element={<ProtectedRoute><HealthPage /></ProtectedRoute>} />
+            <Route path="/feats" element={<ProtectedRoute><FeatsTree /></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
             <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />

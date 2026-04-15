@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { getLevelFromXp } from '@/lib/progression';
 
 const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -123,7 +124,7 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     let updates: any = {};
     if (profile) {
       const newXp = Math.max(0, (profile as any).total_xp - totalPenalty);
-      const calculatedLevel = Math.floor(newXp / 200) + 1;
+      const calculatedLevel = getLevelFromXp(newXp);
       const newLevel = Math.max(calculatedLevel, (profile as any).level);
       updates.total_xp = newXp;
       updates.level = newLevel;
@@ -201,7 +202,7 @@ export function usePayPenalty() {
 
       if (profile) {
         const newXp = profile.total_xp + xpToRestore;
-        const newLevel = Math.floor(newXp / 200) + 1;
+        const newLevel = getLevelFromXp(newXp);
         await supabase.from('profiles').update({
           total_xp: newXp,
           level: newLevel,
@@ -279,6 +280,94 @@ export function useAcceptPenalty() {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['missions'] });
     },
+  });
+}
+
+export function useMarkFailedAsDone() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mission: any) => {
+      if (!user) throw new Error('Não autenticado');
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Verificar quantas recuperações já foram feitas hoje
+      const { data: todayRecoveries } = await supabase
+        .from('activity_log')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('action', 'mission_failed_recovered')
+        .gte('created_at', today + 'T00:00:00');
+
+      const recoveryCount = todayRecoveries?.length ?? 0;
+      if (recoveryCount >= 2) {
+        throw new Error('Limite atingido! Você já recuperou 2 missões fracassadas hoje.');
+      }
+
+      // Atualizar daily_status para marcar o dia do fracasso como concluído
+      const { data: missionData } = await supabase
+        .from('missions')
+        .select('daily_status')
+        .eq('id', mission.id)
+        .single();
+      const dailyStatus = (missionData as any)?.daily_status || {};
+      if (mission.failed_date) {
+        dailyStatus[mission.failed_date] = 'completed';
+      }
+
+      // Limpar estado de falha
+      await supabase
+        .from('missions')
+        .update({ is_failed: false, failed_date: null, xp_penalized: 0, daily_status: dailyStatus } as any)
+        .eq('id', mission.id);
+
+      // Restaurar XP perdido com a penalidade
+      const xpToRestore = mission.xp_penalized || mission.xp_reward;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('total_xp, level')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profile) {
+        const newXp = profile.total_xp + xpToRestore;
+        const newLevel = getLevelFromXp(newXp);
+        await supabase.from('profiles').update({ total_xp: newXp, level: newLevel }).eq('user_id', user.id);
+      }
+
+      // Registrar recuperação no log
+      await supabase.from('activity_log').insert({
+        user_id: user.id,
+        action: 'mission_failed_recovered',
+        description: `Recuperou missão fracassada: ${mission.title} (+${xpToRestore} XP)`,
+        xp_gained: xpToRestore,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['missions'] });
+      queryClient.invalidateQueries({ queryKey: ['today-recoveries'] });
+    },
+  });
+}
+
+export function useTodayRecoveryCount() {
+  const { user } = useAuth();
+  const today = new Date().toISOString().split('T')[0];
+  return useQuery({
+    queryKey: ['today-recoveries', user?.id, today],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('activity_log')
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('action', 'mission_failed_recovered')
+        .gte('created_at', today + 'T00:00:00');
+      return data?.length ?? 0;
+    },
+    enabled: !!user,
   });
 }
 

@@ -9,6 +9,7 @@ import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import CombatArena from '@/components/CombatArena';
+import HeroStatusBar from '@/components/HeroStatusBar';
 
 const RANKING_REGIONS = [
   { id: null, name: 'Ranking Mundial', icon: '🌐' },
@@ -183,10 +184,10 @@ export default function BossPage() {
         {activeTab === "solo" && (
           <>
             {profile && (
-              <div className="rpg-card">
-                <div className="flex items-center justify-between mb-2">
+              <div className="rpg-card space-y-3">
+                <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Seu poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
+                    Poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
                   </p>
                   <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
                     <span className="text-lg">🔑</span>
@@ -194,17 +195,10 @@ export default function BossPage() {
                     <span className="text-xs text-muted-foreground">Chaves</span>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground">
                   💡 Complete missões da rotina para ganhar 🔑 Chaves de Boss. Cada boss custa chaves para ser enfrentado!
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
-                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">ATK</p><p className="font-bold">{playerStats.atk}</p></div>
-                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">MATK</p><p className="font-bold">{playerStats.matk}</p></div>
-                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">DEF</p><p className="font-bold">{playerStats.def}</p></div>
-                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">AGI</p><p className="font-bold">{playerStats.agi}</p></div>
-                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">CRIT</p><p className="font-bold">{playerStats.crit}%</p></div>
-                  <div className="bg-muted/40 rounded p-2 border border-border/40"><p className="text-muted-foreground">HP</p><p className="font-bold">{playerStats.hp}</p></div>
-                </div>
+                <HeroStatusBar />
               </div>
             )}
 

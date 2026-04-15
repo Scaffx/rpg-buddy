@@ -17,7 +17,7 @@ import {
   useArchiveMission,
   useDeleteChecklistItem,
 } from "@/hooks/useMissionActions";
-import { useCheckFailedMissions, useFailedMissions, usePayPenalty, useAcceptPenalty, useWelcomeBackCheck } from "@/hooks/useFailedMissions";
+import { useCheckFailedMissions, useFailedMissions, usePayPenalty, useAcceptPenalty, useWelcomeBackCheck, useMarkFailedAsDone, useTodayRecoveryCount } from "@/hooks/useFailedMissions";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,6 +170,8 @@ export default function Missions() {
   const payPenalty = usePayPenalty();
   const acceptPenalty = useAcceptPenalty();
   const { showWelcomeBack, setShowWelcomeBack, daysAway } = useWelcomeBackCheck();
+  const markFailedAsDone = useMarkFailedAsDone();
+  const { data: todayRecoveryCount = 0 } = useTodayRecoveryCount();
 
   const todayDay = useMemo(() => {
     const d = new Date().getDay();
@@ -189,6 +191,9 @@ export default function Missions() {
     const hoje = new Date().toISOString().split('T')[0];
 
     allMissions.forEach((m: any) => {
+      // Missões fracassadas são exibidas na seção própria, não na lista regular
+      if ((m as any).is_failed) return;
+
       const days = (m.days_of_week as string[]) || [];
       const isDaily = days.length > 0;
       const isUnique = days.length === 0 && m.due_date; // Missão única tem due_date e não tem dias recorrentes
@@ -603,7 +608,21 @@ const handleSave = async () => {
                       <p className="text-xs text-destructive">XP Perdido: -{m.xp_penalized || m.xp_reward}</p>
                       <p className="text-xs text-muted-foreground">📅 {failedDate}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => {
+                          markFailedAsDone.mutate(m, {
+                            onSuccess: () => toast({ title: "✅ Missão recuperada! XP restaurado." }),
+                            onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
+                          });
+                        }}
+                        disabled={markFailedAsDone.isPending || todayRecoveryCount >= 2}
+                        className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-green-500/20 text-green-400 font-bold hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                        title={todayRecoveryCount >= 2 ? 'Limite de 2 recuperações por dia atingido' : `Recuperar (${2 - todayRecoveryCount} restantes hoje)`}
+                      >
+                        {markFailedAsDone.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "✅"}
+                        Fiz ({2 - todayRecoveryCount})
+                      </button>
                       <button
                         onClick={() => {
                           payPenalty.mutate(m, {
@@ -753,6 +772,7 @@ const handleSave = async () => {
                           newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                           onNewChecklistTextChange={setNewChecklistText}
                           isCompletedToday={false}
+                          isFutureMission={true}
                         />
                       ))}
                     </div>
@@ -787,6 +807,7 @@ const handleSave = async () => {
                       newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                       onNewChecklistTextChange={setNewChecklistText}
                       isCompletedToday={foiConcluidaHoje(m)}
+                      isFutureMission={!foiConcluidaHoje(m)}
                       proximoDia={obterProximoDiaAgendado(m)}
                     />
                   ))}
@@ -906,7 +927,7 @@ function MissionCard({
   onToggle: () => void; onComplete: () => void; onEdit: () => void;
   onDelete: () => void; onArchive: () => void; onPlay: () => void;
   completing: boolean; newChecklistText: string; onNewChecklistTextChange: (v: string) => void;
-  isCompletedToday: boolean; proximoDia?: string | null;
+  isCompletedToday: boolean; proximoDia?: string | null; isFutureMission?: boolean;
 }) {
   const { data: checklist } = useChecklistItems(mission.id);
   const addItem = useAddChecklistItem();
@@ -924,7 +945,8 @@ function MissionCard({
   const isCompleted = mission.completed;
 
   // Get all attributes for this mission
-  const primaryAttr = mission.attributes;
+  // Busca o atributo primário pelo ID na lista de atributos (a query de missions não faz join)
+  const primaryAttr = attrs.find((a: any) => a.id === mission.attribute_id) || null;
   const secondaryIds: string[] = (mission as any).secondary_attribute_ids || [];
   const secondaryAttrs = attrs.filter((a) => secondaryIds.includes(a.id));
 
@@ -1066,11 +1088,11 @@ function MissionCard({
         {/* XP + Date */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-primary font-bold">✨ +{mission.xp_reward} XP</span>
-          <span className="text-xs text-muted-foreground">
-            {mission.due_date && days.length === 0
-              ? `🎯 ${new Date(mission.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}`
-              : new Date(mission.created_at).toLocaleDateString('pt-BR')}
-          </span>
+          {mission.due_date && days.length === 0 && (
+            <span className="text-xs text-muted-foreground">
+              🎯 {new Date(mission.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+            </span>
+          )}
         </div>
 
         {/* Buttons */}
@@ -1078,17 +1100,23 @@ function MissionCard({
           <div className="flex gap-2">
             <Button
               onClick={onComplete}
-              disabled={completing || isCompletedToday}
+              disabled={completing || isCompletedToday || isFutureMission}
               className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-all ${
                 isCompletedToday
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
+                  : isFutureMission
+                  ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : 'bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30'
               }`}
-              title={isCompletedToday ? 'Missão já concluída hoje' : 'Completar missão'}
+              title={isCompletedToday ? 'Missão já concluída hoje' : isFutureMission ? 'Missão agendada para um dia futuro' : 'Completar missão'}
             >
               {isCompletedToday ? (
                 <>
                   <Lock className="w-4 h-4 mr-1" /> Bloqueada
+                </>
+              ) : isFutureMission ? (
+                <>
+                  <Lock className="w-4 h-4 mr-1" /> Futura
                 </>
               ) : (
                 <>
@@ -1099,9 +1127,9 @@ function MissionCard({
 
             <Button
               onClick={onPlay}
-              disabled={isCompletedToday}
+              disabled={isCompletedToday || isFutureMission}
               className={`h-9 w-10 rounded-lg p-0 border transition-all ${
-                isCompletedToday
+                isCompletedToday || isFutureMission
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30'
               }`}

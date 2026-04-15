@@ -29,10 +29,19 @@ type CombatRow = {
     ataque_base: number;
     defesa_base: number;
     level: number;
+    hp: number;
   } | null;
 };
 
 const rollD20 = () => Math.floor(Math.random() * 20) + 1;
+
+const getWeekStart = (date: Date): string => {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day; // monday start
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().split('T')[0];
+};
 
 const calculateDamage = (baseAttack: number, d20: number, defenderDefense: number, multiplier: number) => {
   const raw = baseAttack + Math.floor(d20 * multiplier) - Math.floor(defenderDefense * 0.5);
@@ -103,7 +112,7 @@ Deno.serve(async (req) => {
           status,
           boss_id,
           personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel),
-          bosses!combates_ativos_boss_id_fkey(id, ataque_base, defesa_base, level)
+          bosses!combates_ativos_boss_id_fkey(id, ataque_base, defesa_base, level, hp)
         `,
       )
       .eq('id', combateId)
@@ -137,7 +146,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    const dadoPlayer = rollD20();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('inspired_available')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const isFirstPlayerAttack = Number(combat.hp_atual_boss) >= Number(combat.bosses.hp || combat.hp_atual_boss);
+    const hasInspiration = Boolean((profile as any)?.inspired_available) && isFirstPlayerAttack;
+    const dadoPlayer = hasInspiration ? Math.max(rollD20(), rollD20()) : rollD20();
+
+    if (hasInspiration) {
+      await supabase
+        .from('profiles')
+        .update({ inspired_available: false, inspired_earned_at: null })
+        .eq('user_id', user.id);
+    }
     const danoPlayer = calculateDamage(
       combat.personagens.ataque_base,
       dadoPlayer,
@@ -218,31 +242,86 @@ Deno.serve(async (req) => {
     // On victory: grant loot drop
     if (status === 'vitoria' && combat.bosses) {
       const bossLevel = combat.bosses.level || 1;
+      const weekStart = getWeekStart(new Date());
 
-      // Find drop item for this boss level
-      const { data: dropItem } = await supabase
-        .from('game_items')
-        .select('id, name, icon, rarity')
-        .eq('boss_drop_level', bossLevel)
+      const { data: weeklyClaim } = await supabase
+        .from('boss_weekly_loot_claims')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('boss_level', bossLevel)
+        .eq('week_start', weekStart)
         .maybeSingle();
 
-      if (dropItem) {
-        // Check if player already has it
-        const { data: existing } = await supabase
-          .from('user_inventory')
-          .select('id')
+      if (weeklyClaim) {
+        const bonusGold = 5;
+        const materialGain = 3;
+
+        const { data: balance } = await supabase
+          .from('user_balance')
+          .select('gold')
           .eq('user_id', user.id)
-          .eq('item_id', dropItem.id)
           .maybeSingle();
 
-        if (!existing) {
-          await supabase.from('user_inventory').insert({
-            user_id: user.id,
-            item_id: dropItem.id,
-            quantity: 1,
-            equipped: false,
-          });
-          lootDrop = dropItem;
+        if (balance) {
+          await supabase
+            .from('user_balance')
+            .update({ gold: Number((balance as any).gold || 0) + bonusGold, updated_at: new Date().toISOString() })
+            .eq('user_id', user.id);
+        }
+
+        const { data: mats } = await supabase
+          .from('user_crafting_materials')
+          .select('quantity')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (mats) {
+          await supabase
+            .from('user_crafting_materials')
+            .update({ quantity: Number((mats as any).quantity || 0) + materialGain, updated_at: new Date().toISOString() })
+            .eq('user_id', user.id);
+        } else {
+          await supabase
+            .from('user_crafting_materials')
+            .insert({ user_id: user.id, quantity: materialGain });
+        }
+
+        await supabase.from('activity_log').insert({
+          user_id: user.id,
+          action: 'boss_repeat_reward',
+          description: `Boss repetido na semana (Lv ${bossLevel}): +${bonusGold} Ouro e +${materialGain} Materiais`,
+          xp_gained: 0,
+        });
+      } else {
+        await supabase
+          .from('boss_weekly_loot_claims')
+          .insert({ user_id: user.id, boss_level: bossLevel, week_start: weekStart });
+
+        // Find drop item for this boss level
+        const { data: dropItem } = await supabase
+          .from('game_items')
+          .select('id, name, icon, rarity')
+          .eq('boss_drop_level', bossLevel)
+          .maybeSingle();
+
+        if (dropItem) {
+          // Check if player already has it
+          const { data: existing } = await supabase
+            .from('user_inventory')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('item_id', dropItem.id)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from('user_inventory').insert({
+              user_id: user.id,
+              item_id: dropItem.id,
+              quantity: 1,
+              equipped: false,
+            });
+            lootDrop = dropItem;
+          }
         }
       }
     }

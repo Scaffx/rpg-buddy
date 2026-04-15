@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { getLevelFromXp } from '@/lib/progression';
 
 const DAILY_BONUS_XP = 15;
 const DAILY_BONUS_GOLD = 5;
@@ -75,7 +76,7 @@ export function useDailyBonus() {
 
       if (profile) {
         const newTotalXp = profile.total_xp + DAILY_BONUS_XP;
-        const newLevel = Math.floor(newTotalXp / 200) + 1;
+        const newLevel = getLevelFromXp(newTotalXp);
 
         await supabase
           .from('profiles')

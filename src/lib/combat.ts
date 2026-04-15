@@ -161,6 +161,28 @@ export function getPlayerCombatStats(profileLevel: number, levels: AttrLevels): 
   };
 }
 
+export function getRoutineXpBuffBonus(effects: Set<string>): number {
+  if (effects.has('xp_boost') || effects.has('foco_profundo')) {
+    return 0.5;
+  }
+  return 0;
+}
+
+export function getBossCombatBuffModifiers(effects: Set<string>): {
+  hasAdrenaline: boolean;
+  attackRollMultiplierBonus: number;
+  bossPowerMultiplier: number;
+} {
+  const hasAdrenaline = effects.has('adrenalina') || effects.has('adrenaline_boost');
+  const hasBossDebuff = effects.has('boss_debuff');
+
+  return {
+    hasAdrenaline,
+    attackRollMultiplierBonus: hasAdrenaline ? 2 : 0,
+    bossPowerMultiplier: hasBossDebuff ? 0.8 : 1,
+  };
+}
+
 function getWeaknessByIndex(index: number): string {
   const weaknesses = ['Forca', 'Inteligencia', 'Agilidade', 'Disciplina', 'Sabedoria', 'Resiliencia'];
   return weaknesses[index % weaknesses.length];

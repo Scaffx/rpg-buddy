@@ -2,9 +2,11 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
+import ActiveTalentsBadge from '@/components/ActiveTalentsBadge';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
   ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
+  Sparkles,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import {
@@ -25,6 +27,7 @@ const navItems = [
   { title: 'Calendário', url: '/calendar', icon: Calendar },
   { title: 'Missões Principais', url: '/missions', icon: Target },
   { title: 'Classes', url: '/classes', icon: Swords },
+  { title: 'Talentos', url: '/feats', icon: Sparkles },
   { title: 'Loja', url: '/shop', icon: Store },
   { title: 'Missões de NPC', url: '/npc', icon: Users },
   { title: 'Saúde', url: '/health', icon: Heart },
@@ -96,6 +99,7 @@ export function AppSidebar() {
                 <Coins className="w-4 h-4 text-yellow-400" />
                 <span className="text-sm font-bold text-yellow-400">{currentGold} 🪙</span>
               </div>
+              <ActiveTalentsBadge compact className="mt-1" />
             </div>
           </div>
         )}

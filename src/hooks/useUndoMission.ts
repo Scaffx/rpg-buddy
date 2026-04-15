@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/types/supabase';
+import { getLevelFromXp } from '@/lib/progression';
 
 export function useUndoMission() {
   const { user } = useAuth();
@@ -68,15 +69,7 @@ export function useUndoMission() {
 
       if (attr) {
         const newXp = Math.max(0, attr.xp - xpEarned);
-        // Usar xpTable para calcular o level
-        const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
-        let newLevel = 1;
-        for (let i = xpTable.length - 1; i > 0; i--) {
-          if (newXp >= xpTable[i]) {
-            newLevel = i + 1;
-            break;
-          }
-        }
+        let newLevel = getLevelFromXp(newXp);
         // O nível nunca pode diminuir
         newLevel = Math.max(newLevel, attr.level);
 
@@ -97,14 +90,7 @@ export function useUndoMission() {
 
         if (secAttr) {
           const newXp = Math.max(0, secAttr.xp - 1);
-          const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
-          let newLevel = 1;
-          for (let i = xpTable.length - 1; i > 0; i--) {
-            if (newXp >= xpTable[i]) {
-              newLevel = i + 1;
-              break;
-            }
-          }
+          let newLevel = getLevelFromXp(newXp);
           newLevel = Math.max(newLevel, secAttr.level);
 
           await supabase
@@ -123,14 +109,7 @@ export function useUndoMission() {
 
       if (profile) {
         const newTotalXp = Math.max(0, profile.total_xp - xpEarned);
-        const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
-        let newLevel = 1;
-        for (let i = xpTable.length - 1; i > 0; i--) {
-          if (newTotalXp >= xpTable[i]) {
-            newLevel = i + 1;
-            break;
-          }
-        }
+        let newLevel = getLevelFromXp(newTotalXp);
         newLevel = Math.max(newLevel, profile.level);
 
         await supabase

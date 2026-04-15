@@ -70,6 +70,19 @@ export function useBuyItem() {
   return useMutation({
     mutationFn: async (item: any) => {
       if (!user) throw new Error('Não autenticado');
+
+      const { data: talents } = await (supabase as any)
+        .from('talentos_jogador')
+        .select('talentos_disponiveis(efeito)')
+        .eq('personagem_id', user.id);
+
+      const hasMerchantTalent = (talents || []).some(
+        (row: any) => String(row?.talentos_disponiveis?.efeito || '') === 'mestre_mercador',
+      );
+
+      const finalCost = hasMerchantTalent
+        ? Math.max(1, Math.floor(Number(item.cost_percent || 0) * 0.9))
+        : Number(item.cost_percent || 0);
       
       const { data: bal } = await supabase
         .from('user_balance')
@@ -78,11 +91,11 @@ export function useBuyItem() {
         .single();
       
       const currentGold = (bal as any)?.gold ?? 0;
-      if (currentGold < item.cost_percent) {
+      if (currentGold < finalCost) {
         throw new Error('Saldo insuficiente! Ganhe ouro completando missões.');
       }
 
-      const newGold = currentGold - item.cost_percent;
+      const newGold = currentGold - finalCost;
       await supabase
         .from('user_balance')
         .update({ gold: newGold, updated_at: new Date().toISOString() } as any)
@@ -112,8 +125,10 @@ export function useBuyItem() {
       await supabase.from('gold_history' as any).insert({
         user_id: user.id,
         type: 'compra_loja',
-        amount: -item.cost_percent,
-        reason: `Comprou ${item.name}`,
+        amount: -finalCost,
+        reason: hasMerchantTalent
+          ? `Comprou ${item.name} com desconto de talento`
+          : `Comprou ${item.name}`,
       } as any);
     },
     onSuccess: () => {

@@ -67,6 +67,67 @@ CREATE POLICY "Users can delete own inventory"
 -- =============================================
 -- 3. ADD starter_kit_claimed TO profiles
 -- =============================================
+-- Safety repair: some remote environments have migration history but are missing public.profiles.
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name text DEFAULT 'Aventureiro',
+  avatar_url text,
+  level integer NOT NULL DEFAULT 1,
+  total_xp integer NOT NULL DEFAULT 0,
+  xp_today integer NOT NULL DEFAULT 0,
+  missions_completed integer NOT NULL DEFAULT 0,
+  current_class_id uuid,
+  onboarding_completed boolean NOT NULL DEFAULT false,
+  starter_class text,
+  starter_item text,
+  last_name_change timestamptz DEFAULT NULL,
+  region text DEFAULT NULL,
+  boss_keys integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'profiles' AND policyname = 'Users can view own profile'
+  ) THEN
+    CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'profiles' AND policyname = 'Users can insert own profile'
+  ) THEN
+    CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'profiles' AND policyname = 'Users can update own profile'
+  ) THEN
+    CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public;
+
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
+CREATE TRIGGER update_profiles_updated_at
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS starter_kit_claimed boolean NOT NULL DEFAULT false;
 
 -- =============================================

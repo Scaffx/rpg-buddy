@@ -2,7 +2,188 @@ import { Database } from '@/types/supabase';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
+import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, getPlayerCombatStats, getRoutineXpBuffBonus } from '@/lib/combat';
+import { getEquipmentBonuses, type InventoryItem } from './useInventory';
+import { getLevelFromXp } from '@/lib/progression';
+
+const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+
+function toDateString(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+
+function subtractDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() - days);
+  return toDateString(d);
+}
+
+async function getPlayerTalentEffects(userId: string): Promise<Set<string>> {
+  const { data } = await (supabase as any)
+    .from('talentos_jogador')
+    .select('talentos_disponiveis(efeito)')
+    .eq('personagem_id', userId);
+
+  const effects = new Set<string>();
+  for (const row of data || []) {
+    const effect = String((row as any)?.talentos_disponiveis?.efeito || '');
+    if (effect) effects.add(effect);
+  }
+  return effects;
+}
+
+async function getMissionGoldRewardFromStreakWithTalent(
+  missionId: string,
+  today: string,
+  hasExtendedCombo: boolean,
+): Promise<number> {
+  const { data: completions } = await (supabase as any)
+    .from('mission_daily_completions')
+    .select('completion_date')
+    .eq('mission_id', missionId)
+    .order('completion_date', { ascending: false })
+    .limit(60);
+
+  const uniqueDates = Array.from(new Set((completions || []).map((c: any) => String(c.completion_date || ''))))
+    .filter(Boolean)
+    .sort((a, b) => (a > b ? -1 : 1));
+
+  const maxGap = hasExtendedCombo ? 2 : 1;
+  let streak = 1;
+  let previous = new Date(`${today}T12:00:00`);
+
+  for (const dateStr of uniqueDates) {
+    const current = new Date(`${dateStr}T12:00:00`);
+    const diffMs = previous.getTime() - current.getTime();
+    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+
+    if (diffDays <= 0) continue;
+    if (diffDays <= maxGap) {
+      streak += 1;
+      previous = current;
+      continue;
+    }
+    break;
+  }
+
+  const bonusGold = Math.min(2, Math.floor(streak / 3));
+  return 2 + bonusGold;
+}
+
+async function grantInspirationIfPerfectDay(userId: string, today: string): Promise<boolean> {
+  const dayIndex = new Date(today + 'T12:00:00').getDay();
+  const todayShort = DAYS_NAMES[dayIndex];
+
+  const { data: missions } = await supabase
+    .from('missions')
+    .select('id, title, days_of_week, due_date, daily_status, completed, completed_at, is_failed')
+    .eq('user_id', userId)
+    .neq('status', 'arquivada');
+
+  const requiredToday = (missions || []).filter((m: any) => {
+    if (m.is_failed) return false;
+    const days = (m.days_of_week as string[]) || [];
+    const isDailyToday = days.length > 0 && days.includes(todayShort);
+    const isUniqueToday = days.length === 0 && m.due_date === today;
+    return isDailyToday || isUniqueToday;
+  });
+
+  if (requiredToday.length === 0) return false;
+
+  const allMissionsDone = requiredToday.every((m: any) => {
+    const days = (m.days_of_week as string[]) || [];
+    if (days.length > 0) {
+      return (m.daily_status || {})[today] === 'completed';
+    }
+    return !!m.completed;
+  });
+
+  if (!allMissionsDone) return false;
+
+  const missionIds = requiredToday.map((m: any) => m.id);
+  const { data: checklist } = await supabase
+    .from('checklist_items')
+    .select('mission_id, completed')
+    .in('mission_id', missionIds);
+
+  const checklistByMission = new Map<string, { total: number; completed: number }>();
+  for (const id of missionIds) checklistByMission.set(id, { total: 0, completed: 0 });
+  for (const item of checklist || []) {
+    const current = checklistByMission.get((item as any).mission_id);
+    if (!current) continue;
+    current.total += 1;
+    if ((item as any).completed) current.completed += 1;
+  }
+
+  const checklistPerfect = Array.from(checklistByMission.values()).every((m) => m.total === 0 || m.total === m.completed);
+  if (!checklistPerfect) return false;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('inspired_available')
+    .eq('user_id', userId)
+    .single();
+
+  if ((profile as any)?.inspired_available) return false;
+
+  await supabase
+    .from('profiles')
+    .update({ inspired_available: true, inspired_earned_at: new Date().toISOString() } as any)
+    .eq('user_id', userId);
+
+  await supabase.from('activity_log').insert({
+    user_id: userId,
+    action: 'day_perfect_inspiration',
+    description: 'Dia Perfeito concluido! Voce ganhou Inspiracao para o proximo boss.',
+    xp_gained: 0,
+  });
+
+  return true;
+}
+
+async function getActiveBuffEffects(userId: string): Promise<Set<string>> {
+  const { data: buffs } = await (supabase as any)
+    .from('user_buffs')
+    .select('id, expires_at, active, shop_items(effect)')
+    .eq('user_id', userId)
+    .eq('active', true);
+
+  const now = Date.now();
+  const effects = new Set<string>();
+
+  for (const b of buffs || []) {
+    const expiresAt = b.expires_at ? new Date(b.expires_at).getTime() : null;
+    if (expiresAt && expiresAt < now) continue;
+    const effect = b.shop_items?.effect as string | undefined;
+    if (effect) effects.add(effect);
+  }
+
+  return effects;
+}
+
+async function consumeOneShotBuff(userId: string, effectNames: string[]): Promise<void> {
+  const { data: buffs } = await (supabase as any)
+    .from('user_buffs')
+    .select('id, expires_at, active, purchased_at, shop_items(effect)')
+    .eq('user_id', userId)
+    .eq('active', true)
+    .order('purchased_at', { ascending: true });
+
+  const now = Date.now();
+  const match = (buffs || []).find((b: any) => {
+    const expiresAt = b.expires_at ? new Date(b.expires_at).getTime() : null;
+    if (expiresAt && expiresAt < now) return false;
+    return effectNames.includes(String(b.shop_items?.effect || ''));
+  });
+
+  if (!match) return;
+
+  await (supabase as any)
+    .from('user_buffs')
+    .update({ active: false })
+    .eq('id', match.id)
+    .eq('user_id', userId);
+}
 
 export function useProfile() {
   const { user } = useAuth();
@@ -116,13 +297,22 @@ export const useCompleteMission = () => {
       // Buscar perfil para XP scaling baseado no nível
       const { data: currentProfile } = await supabase
         .from('profiles')
-        .select('level')
+        .select('level, boss_keys')
         .eq('user_id', user!.id)
         .single();
       
       const playerLevel = currentProfile?.level || 1;
+      const activeBuffs = await getActiveBuffEffects(user!.id);
+      const talentEffects = await getPlayerTalentEffects(user!.id);
+
       // XP Dinâmico: escala com o nível do jogador
-      const xpMultiplier = 1 + Math.floor((playerLevel - 1) / 5) * 0.5; // +50% a cada 5 níveis
+      let xpMultiplier = 1 + Math.floor((playerLevel - 1) / 5) * 0.5; // +50% a cada 5 níveis
+      // Loja do Tempo: bônus de XP aplicados via regras de combate/economia centralizadas
+      xpMultiplier += getRoutineXpBuffBonus(activeBuffs);
+      const currentHour = new Date().getHours();
+      if (talentEffects.has('madrugador') && currentHour < 8) {
+        xpMultiplier *= 1.15;
+      }
       const scaledXpReward = Math.round(xpReward * xpMultiplier);
 
       // Buscar missão
@@ -139,7 +329,15 @@ export const useCompleteMission = () => {
       // Verificar se é diária
       const daysOfWeek = (typedMission.days_of_week as string[]) || [];
       
+      let goldReward = 2;
+
       if (daysOfWeek && Array.isArray(daysOfWeek) && daysOfWeek.length > 0) {
+        goldReward = await getMissionGoldRewardFromStreakWithTalent(
+          missionId,
+          today,
+          talentEffects.has('foco_inabalavel'),
+        );
+
         // ✅ MISSÃO DIÁRIA
         const dailyStatus = (typedMission.daily_status as { [key: string]: string }) || {};
         dailyStatus[today] = 'completed';
@@ -160,7 +358,7 @@ export const useCompleteMission = () => {
             mission_id: missionId,
             completion_date: today,
             xp_earned: scaledXpReward,
-            gold_earned: 2,
+            gold_earned: goldReward,
             user_id: user!.id,
           });
 
@@ -179,9 +377,10 @@ export const useCompleteMission = () => {
       }
 
       // 🔑 Gerar Chave de Boss (1 chave por missão concluída)
+      const currentKeys = (currentProfile as any)?.boss_keys ?? 0;
       await supabase
         .from('profiles')
-        .update({ boss_keys: (currentProfile as any)?.boss_keys ? (currentProfile as any).boss_keys + 1 : 1 } as any)
+        .update({ boss_keys: currentKeys + 1 } as any)
         .eq('user_id', user!.id);
 
       // ... resto do código (XP, Ouro, etc.)
@@ -205,17 +404,9 @@ export const useCompleteMission = () => {
         .eq('id', attributeId)
         .single();
 
-      const xpTable = [0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750, 5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450, 17750, 19100, 20500, 21950, 23450, 25000];
-
       if (attr) {
         const newXp = attr.xp + totalXpReward;
-        let newLevel = 1;
-        for (let i = xpTable.length - 1; i > 0; i--) {
-          if (newXp >= xpTable[i]) {
-            newLevel = i + 1;
-            break;
-          }
-        }
+        const newLevel = getLevelFromXp(newXp);
 
         await supabase
           .from('attributes')
@@ -233,13 +424,7 @@ export const useCompleteMission = () => {
 
         if (secAttr) {
           const newXp = secAttr.xp + 1;
-          let newLevel = 1;
-          for (let i = xpTable.length - 1; i > 0; i--) {
-            if (newXp >= xpTable[i]) {
-              newLevel = i + 1;
-              break;
-            }
-          }
+          const newLevel = getLevelFromXp(newXp);
 
           await supabase
             .from('attributes')
@@ -257,13 +442,7 @@ export const useCompleteMission = () => {
 
       if (profile) {
         const newTotalXp = profile.total_xp + totalXpReward;
-        let newLevel = 1;
-        for (let i = xpTable.length - 1; i > 0; i--) {
-          if (newTotalXp >= xpTable[i]) {
-            newLevel = i + 1;
-            break;
-          }
-        }
+        let newLevel = getLevelFromXp(newTotalXp);
         newLevel = Math.max(newLevel, profile.level);
 
         await supabase
@@ -305,7 +484,7 @@ export const useCompleteMission = () => {
         .insert({
           user_id: user!.id,
           action: 'mission_complete',
-          description: `Missão concluída! +${totalXpReward} XP`,
+          description: `Missao concluida! +${totalXpReward} XP +${goldReward} Ouro`,
           xp_gained: totalXpReward,
         });
 
@@ -322,7 +501,7 @@ export const useCompleteMission = () => {
         await supabase
           .from('user_balance')
           .update({ 
-            gold: currentGold + 2, 
+            gold: currentGold + goldReward,
             updated_at: new Date().toISOString() 
           } as any)
           .eq('user_id', user!.id);
@@ -332,11 +511,20 @@ export const useCompleteMission = () => {
           .insert({ 
             user_id: user!.id, 
             balance_percent: 100, 
-            gold: 102 
+            gold: 100 + goldReward
           } as any);
       }
 
-      return { success: true };
+      await supabase.from('gold_history').insert({
+        user_id: user!.id,
+        type: 'missao',
+        amount: goldReward,
+        reason: `Recompensa de missao: ${typedMission.title}`,
+      } as any);
+
+      const inspiredGranted = await grantInspirationIfPerfectDay(user!.id, today);
+
+      return { success: true, inspiredGranted };
     },
 
     onSuccess: () => {
@@ -462,7 +650,7 @@ export function useFightBoss() {
       // 🔑 Verificar chaves
       const { data: profile } = await supabase
         .from("profiles")
-        .select("level, total_xp, boss_keys")
+        .select("level, total_xp, boss_keys, inspired_available")
         .eq("user_id", user!.id)
         .single();
 
@@ -489,23 +677,47 @@ export function useFightBoss() {
         .single();
 
       const attrLevels = getAttributeLevels((attrs || []) as any[]);
-      const playerStats = getPlayerCombatStats(profile?.level || 1, attrLevels);
+      const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
+
+      const { data: inventoryData } = await (supabase as any)
+        .from('user_inventory')
+        .select('equipped, sintonizado, game_items(rarity, requer_sintonizacao, atk_bonus, matk_bonus, def_bonus, hp_bonus, mp_bonus, agi_bonus, crit_bonus)')
+        .eq('user_id', user!.id);
+
+      const equipBonuses = getEquipmentBonuses((inventoryData || []) as InventoryItem[]);
+      const playerStats = {
+        ...playerStatsBase,
+        atk: playerStatsBase.atk + equipBonuses.atk,
+        matk: playerStatsBase.matk + equipBonuses.matk,
+        def: playerStatsBase.def + equipBonuses.def,
+        agi: playerStatsBase.agi + equipBonuses.agi,
+        crit: playerStatsBase.crit + equipBonuses.crit,
+      };
+
+      const activeBuffs = await getActiveBuffEffects(user!.id);
+      const combatBuffs = getBossCombatBuffModifiers(activeBuffs);
       const bossStats = getBossCombatStats({ level: boss?.level || 1, hp: boss?.hp || bossHp });
 
       // Sistema de dano com base em atributos (balanceado no estilo d20)
-      const attackRoll = Math.floor(Math.random() * 20) + 1;
+      const firstRoll = Math.floor(Math.random() * 20) + 1;
+      const secondRoll = Math.floor(Math.random() * 20) + 1;
+      const hasInspiration = !!(profile as any)?.inspired_available;
+      const attackRoll = (combatBuffs.hasAdrenaline || hasInspiration) ? Math.max(firstRoll, secondRoll) : firstRoll;
+      const attackRollMultiplier = 3 + combatBuffs.attackRollMultiplierBonus;
       const critMultiplier = attackRoll === 20 ? 1.5 : 1;
       const physicalDamage = Math.max(0, playerStats.atk - Math.floor(bossStats.def * 0.65));
       const magicalDamage = Math.max(0, playerStats.matk - Math.floor(bossStats.matk * 0.35));
       const tacticalBonus = Math.floor((playerStats.agi + playerStats.crit) * 0.18);
-      const playerPower = Math.floor((physicalDamage + magicalDamage + tacticalBonus + attackRoll * 3) * critMultiplier);
+      const playerPower = Math.floor((physicalDamage + magicalDamage + tacticalBonus + attackRoll * attackRollMultiplier) * critMultiplier);
 
-      const bossPower = Math.floor(
+      let bossPower = Math.floor(
         bossStats.atk * 0.75 +
         bossStats.matk * 0.45 +
         bossStats.agi * 0.2 +
         (Math.random() * 30),
       );
+
+      bossPower = Math.floor(bossPower * combatBuffs.bossPowerMultiplier);
 
       const damage = Math.min(Math.max(1, playerPower), bossHp);
       const won = playerPower + Math.floor(playerStats.def * 0.4) >= bossPower;
@@ -519,10 +731,24 @@ export function useFightBoss() {
 
       const goldReward = (boss as any)?.gold_reward || 10;
 
+      // Consome buffs de uso único após entrar em combate
+      if (combatBuffs.hasAdrenaline) {
+        await consumeOneShotBuff(user!.id, ['adrenalina', 'adrenaline_boost']);
+      }
+      if (activeBuffs.has('boss_debuff')) {
+        await consumeOneShotBuff(user!.id, ['boss_debuff']);
+      }
+      if (hasInspiration) {
+        await supabase
+          .from('profiles')
+          .update({ inspired_available: false, inspired_earned_at: null } as any)
+          .eq('user_id', user!.id);
+      }
+
       if (won && profile) {
         // Boss dá XP reduzido + Ouro significativo
         const newTotalXp = profile.total_xp + xpReward;
-        const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
+        const calculatedLevel = getLevelFromXp(newTotalXp);
         const newLevel = Math.max(calculatedLevel, profile.level);
         await supabase
           .from("profiles")
@@ -801,7 +1027,7 @@ export function useToggleChecklistItem() {
           .single();
         if (profile) {
           const newTotalXp = profile.total_xp + bonus;
-          const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
+          const calculatedLevel = getLevelFromXp(newTotalXp);
           const newLevel = Math.max(calculatedLevel, profile.level);
           await supabase
             .from("profiles")
@@ -910,7 +1136,7 @@ export function useAwardHealthXP() {
 
       if (profile) {
         const newTotalXp = profile.total_xp + XP_REWARD;
-        const calculatedLevel = Math.floor(newTotalXp / 200) + 1;
+        const calculatedLevel = getLevelFromXp(newTotalXp);
         const newLevel = Math.max(calculatedLevel, profile.level);
 
         const { error: updateError } = await supabase
@@ -923,6 +1149,24 @@ export function useAwardHealthXP() {
           .eq('user_id', user!.id);
 
         if (updateError) throw updateError;
+      }
+
+      // Descanso Longo: cumprir desafio de saúde restaura HP/MP totalmente
+      const { data: healthStats } = await (supabase as any)
+        .from('user_health_stats')
+        .select('id, max_hp, max_mp')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      if (healthStats) {
+        await (supabase as any)
+          .from('user_health_stats')
+          .update({
+            current_hp: Number(healthStats.max_hp ?? 100),
+            current_mp: Number(healthStats.max_mp ?? 40),
+            fatigue: 0,
+          })
+          .eq('user_id', user!.id);
       }
 
       // Registrar atividade
@@ -941,6 +1185,80 @@ export function useAwardHealthXP() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['activity'] });
+      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
+    },
+  });
+}
+
+export function useShortRestRecovery() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Não autenticado');
+
+      const { data: healthStats, error: healthError } = await (supabase as any)
+        .from('user_health_stats')
+        .select('max_hp, current_hp, max_mp, current_mp')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (healthError) throw healthError;
+
+      const maxHp = Number(healthStats?.max_hp ?? 100);
+      const currentHp = Number(healthStats?.current_hp ?? maxHp);
+      const maxMp = Number(healthStats?.max_mp ?? 10);
+      const currentMp = Number(healthStats?.current_mp ?? maxMp);
+
+      const hpGain = Math.max(1, Math.ceil(maxHp * 0.3));
+      const mpGain = Math.max(1, Math.ceil(maxMp * 0.3));
+
+      const newHp = Math.min(maxHp, currentHp + hpGain);
+      const newMp = Math.min(maxMp, currentMp + mpGain);
+
+      if (healthStats) {
+        const { error: updateError } = await (supabase as any)
+          .from('user_health_stats')
+          .update({
+            current_hp: newHp,
+            current_mp: newMp,
+          })
+          .eq('user_id', user.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await (supabase as any)
+          .from('user_health_stats')
+          .insert({
+            user_id: user.id,
+            max_hp: maxHp,
+            current_hp: newHp,
+            max_mp: maxMp,
+            current_mp: newMp,
+            fatigue: 0,
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      await supabase.from('activity_log').insert({
+        user_id: user.id,
+        action: 'short_rest_complete',
+        description: `Descanso curto concluído: +${newHp - currentHp} HP e +${newMp - currentMp} MP`,
+        xp_gained: 0,
+      });
+
+      return {
+        hpRecovered: newHp - currentHp,
+        mpRecovered: newMp - currentMp,
+        currentHp: newHp,
+        currentMp: newMp,
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
     },
   });

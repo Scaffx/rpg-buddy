@@ -3,7 +3,7 @@ import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName } from "@/hooks/useProfile";
 import { useGoldBalance } from "@/hooks/useGold";
-import { useInventory, useToggleEquip, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
+import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
+import HeroStatusBar from "@/components/HeroStatusBar";
+import ActiveTalentsBadge from "@/components/ActiveTalentsBadge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -554,6 +556,7 @@ export default function ProfilePage() {
   const { data: todayWater } = useTodayWater();
   const { data: inventory = [] } = useInventory();
   const toggleEquip = useToggleEquip();
+  const toggleAttunement = useToggleAttunement();
   const consumeItem = useConsumeItem();
   const claimStarterKit = useClaimStarterKit();
   const equipBonuses = getEquipmentBonuses(inventory as InventoryItem[]);
@@ -877,6 +880,7 @@ export default function ProfilePage() {
                 </button>
               </div>
             )}
+            <ActiveTalentsBadge compact className="mt-2" />
           </div>
           <button
             onClick={() => setShowSettings(!showSettings)}
@@ -1075,36 +1079,7 @@ export default function ProfilePage() {
                 Inspiradas no estilo de progressão clássica, mas com design original e balanceamento próprio. O poder de cada habilidade usa seus atributos treinados em missões.
               </p>
 
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
-                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
-                  <p className="text-muted-foreground">ATK</p>
-                  <p className="text-base font-bold text-foreground">{playerCombatStats.atk}</p>
-                </div>
-                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
-                  <p className="text-muted-foreground">MATK</p>
-                  <p className="text-base font-bold text-foreground">{playerCombatStats.matk}</p>
-                </div>
-                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
-                  <p className="text-muted-foreground">DEF</p>
-                  <p className="text-base font-bold text-foreground">{playerCombatStats.def}</p>
-                </div>
-                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
-                  <p className="text-muted-foreground">AGI</p>
-                  <p className="text-base font-bold text-foreground">{playerCombatStats.agi}</p>
-                </div>
-                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
-                  <p className="text-muted-foreground">CRIT</p>
-                  <p className="text-base font-bold text-foreground">{playerCombatStats.crit}%</p>
-                </div>
-                <div className="bg-muted/40 rounded-md p-2 border border-border/50">
-                  <p className="text-muted-foreground">HP</p>
-                  <p className="text-base font-bold text-foreground">{playerCombatStats.hp}</p>
-                </div>
-              </div>
-
-              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs text-primary">
-                Foco atual do herói: <span className="font-bold">{playerCombatStats.focus}</span>. Esse foco vem do atributo mais treinado nas suas missões.
-              </div>
+              <HeroStatusBar />
 
               <div className="bg-muted/30 border border-border rounded-lg p-3 text-xs">
                 <p className="text-foreground font-semibold">Classe inicial: {starterClass}</p>
@@ -1288,31 +1263,40 @@ export default function ProfilePage() {
         {/* ======== ABA: INVENTÁRIO ======== */}
         {activeTab === "inventario" && (
           <div className="space-y-6">
-            {/* Dynamic Stats with Equipment */}
-            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Swords className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">📊 STATUS COM EQUIPAMENTO</h3>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs">
-                {[
-                  { label: 'ATK', base: playerCombatStats.atk, bonus: equipBonuses.atk },
-                  { label: 'DEF', base: playerCombatStats.def, bonus: equipBonuses.def },
-                  { label: 'HP', base: playerCombatStats.hp, bonus: equipBonuses.hp },
-                  { label: 'MP', base: playerCombatStats.mp, bonus: equipBonuses.mp },
-                  { label: 'AGI', base: playerCombatStats.agi, bonus: equipBonuses.agi },
-                  { label: 'CRIT', base: playerCombatStats.crit, bonus: equipBonuses.crit, suffix: '%' },
-                ].map(s => (
-                  <div key={s.label} className="bg-muted/40 rounded-md p-2 border border-border/50">
-                    <p className="text-muted-foreground">{s.label}</p>
-                    <p className="text-base font-bold text-foreground">{s.base + s.bonus}{s.suffix || ''}</p>
-                    {s.bonus > 0 && (
-                      <p className="text-[10px] text-emerald-400 font-semibold">+{s.bonus} equip</p>
-                    )}
+            <HeroStatusBar />
+
+            {(() => {
+              const attunedItems = (inventory as InventoryItem[]).filter((inv) => inv.sintonizado);
+              return (
+                <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-foreground">💍 Sintonização Mágica</h3>
+                    <span className="text-xs text-muted-foreground">{attunedItems.length}/3 slots</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="flex items-center gap-2">
+                    {[0, 1, 2].map((slot) => {
+                      const item = attunedItems[slot];
+                      return (
+                        <div
+                          key={slot}
+                          className={`h-10 min-w-10 px-2 rounded-lg border flex items-center justify-center text-sm ${
+                            item
+                              ? 'border-primary/50 bg-primary/10 text-primary'
+                              : 'border-border bg-muted/30 text-muted-foreground'
+                          }`}
+                          title={item ? `${item.game_items?.name || 'Item'} sintonizado` : 'Slot vazio'}
+                        >
+                          {item ? item.game_items?.icon || '💍' : '○'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Itens Épicos e Lendários precisam estar sintonizados para ativar bônus de status.
+                  </p>
+                </div>
+              );
+            })()}
 
             <div className="bg-card border border-border rounded-xl p-6 space-y-6">
               <div className="flex items-center gap-2 mb-4">
@@ -1385,6 +1369,7 @@ export default function ProfilePage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {sorted.map((inv) => {
                               const item = inv.game_items;
+                              const requiresAttunement = Boolean(item.requer_sintonizacao) || ['epico', 'lendario'].includes(String(item.rarity || '').toLowerCase());
                               const isBest = bestItem && bestItem.item_id === inv.item_id && items.length > 1;
                               const rarityColors: Record<string, string> = {
                                 comum: "bg-muted/30 border-border",
@@ -1424,26 +1409,66 @@ export default function ProfilePage() {
                                       {/* Stat bonuses */}
                                       <div className="flex flex-wrap gap-1.5 mt-1">
                                         {item.atk_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">+{item.atk_bonus} ATK</span>}
+                                        {item.matk_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">+{item.matk_bonus} MATK</span>}
                                         {item.def_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">+{item.def_bonus} DEF</span>}
                                         {item.hp_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+{item.hp_bonus} HP</span>}
                                         {item.mp_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">+{item.mp_bonus} MP</span>}
                                         {item.agi_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">+{item.agi_bonus} AGI</span>}
                                         {item.crit_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">+{item.crit_bonus}% CRIT</span>}
+                                        {requiresAttunement && (
+                                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${inv.sintonizado ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted/40 text-muted-foreground border-border'}`}>
+                                            {inv.sintonizado ? 'Sintonizado' : 'Exige Sintonização'}
+                                          </span>
+                                        )}
                                       </div>
+                                      {requiresAttunement && !inv.sintonizado && (
+                                        <p className="text-[11px] text-amber-400 mt-1">Este item não concede bônus enquanto não estiver sintonizado.</p>
+                                      )}
                                       {item.description && (
                                         <p className="text-xs text-muted-foreground/70 mt-1 italic">{item.description}</p>
                                       )}
                                     </div>
-                                    <button
-                                      onClick={() => toggleEquip.mutate({ inventoryId: inv.id, equipped: !inv.equipped })}
-                                      className={`px-2 py-1 text-xs rounded transition-colors font-medium shrink-0 ml-2 ${
-                                        inv.equipped
-                                          ? 'bg-primary/30 text-primary border border-primary/40'
-                                          : 'bg-muted/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
-                                      }`}
-                                    >
-                                      {inv.equipped ? '✓ Equipado' : 'Equipar'}
-                                    </button>
+                                    <div className="flex flex-col gap-1 shrink-0 ml-2">
+                                      <button
+                                        onClick={() => {
+                                          toggleEquip.mutate(
+                                            { inventoryId: inv.id, equipped: !inv.equipped },
+                                            { onError: (err: any) => toast.error(err?.message || 'Não foi possível equipar este item.') },
+                                          );
+                                        }}
+                                        className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
+                                          inv.equipped
+                                            ? 'bg-primary/30 text-primary border border-primary/40'
+                                            : 'bg-muted/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                                        }`}
+                                      >
+                                        {inv.equipped ? '✓ Equipado' : 'Equipar'}
+                                      </button>
+
+                                      {requiresAttunement && (
+                                        <button
+                                          onClick={() => {
+                                            toggleAttunement.mutate(
+                                              { inventoryId: inv.id, sintonizado: Boolean(inv.sintonizado) },
+                                              {
+                                                onError: (err: any) =>
+                                                  toast.error(
+                                                    err?.message ||
+                                                      'Limite de sintonização atingido. Dessintonize um item para continuar.',
+                                                  ),
+                                              },
+                                            );
+                                          }}
+                                          className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
+                                            inv.sintonizado
+                                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                                              : 'bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30'
+                                          }`}
+                                        >
+                                          {inv.sintonizado ? 'Dessintonizar' : 'Sintonizar'}
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               );
