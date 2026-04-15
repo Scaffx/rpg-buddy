@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { useShortRestRecovery } from '@/hooks/useProfile';
+import { useShortRestAvailability, useShortRestRecovery } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState, type ShortRestPersistentState } from '@/lib/shortRestState';
 
@@ -40,8 +40,10 @@ export default function ShortRestTimer({
   const [endAtMs, setEndAtMs] = useState<number | null>(initialSaved.endAtMs);
   const [needsApply, setNeedsApply] = useState<boolean>(Boolean(initialSaved.needsApply));
   const [finished, setFinished] = useState(false);
+  const [lastRecoverySummary, setLastRecoverySummary] = useState<string | null>(null);
   const completedRef = useRef(false);
 
+  const shortRestAvailability = useShortRestAvailability();
   const shortRestRecovery = useShortRestRecovery();
 
   const formatted = useMemo(() => formatSeconds(secondsLeft), [secondsLeft]);
@@ -52,22 +54,35 @@ export default function ShortRestTimer({
 
     try {
       const result = await shortRestRecovery.mutateAsync();
+      setLastRecoverySummary(`+${result.hpRecovered} HP e +${result.mpRecovered} MP`);
       toast.success(`Descanso curto completo: +${result.hpRecovered} HP e +${result.mpRecovered} MP`);
       onRestComplete?.();
-    } catch (error: any) {
-      toast.error(error?.message || 'Não foi possível aplicar a recuperação do descanso curto.');
-    } finally {
       setNeedsApply(false);
+    } catch (error: any) {
+      completedRef.current = false;
+      setLastRecoverySummary(null);
+      toast.error(error?.message || 'Não foi possível aplicar a recuperação do descanso curto.');
     }
   };
 
   const handleStart = () => {
+    if (shortRestAvailability.isLoading) {
+      toast.info('Verificando disponibilidade do descanso breve...');
+      return;
+    }
+
+    if (shortRestAvailability.data && !shortRestAvailability.data.canRest) {
+      toast.warning(shortRestAvailability.data.message);
+      return;
+    }
+
     const baseSeconds = secondsLeft > 0 ? secondsLeft : minutes * 60;
     setSecondsLeft(baseSeconds);
     setEndAtMs(Date.now() + baseSeconds * 1000);
     setFinished(false);
     setIsRunning(true);
     setNeedsApply(true);
+    setLastRecoverySummary(null);
     completedRef.current = false;
   };
 
@@ -78,6 +93,7 @@ export default function ShortRestTimer({
     setNeedsApply(false);
     setEndAtMs(null);
     setSecondsLeft(minutes * 60);
+    setLastRecoverySummary(null);
     toast.info('Descanso curto cancelado. Nenhuma recuperação foi aplicada.');
   };
 
@@ -88,6 +104,7 @@ export default function ShortRestTimer({
     setNeedsApply(false);
     setEndAtMs(null);
     setSecondsLeft(minutes * 60);
+    setLastRecoverySummary(null);
   };
 
   useEffect(() => {
@@ -154,6 +171,12 @@ export default function ShortRestTimer({
 
     setSecondsLeft(minutes * 60);
   }, [minutes, isRunning, finished]);
+
+  const canStartRest =
+    !isRunning &&
+    !shortRestRecovery.isPending &&
+    !shortRestAvailability.isLoading &&
+    Boolean(shortRestAvailability.data?.canRest ?? true);
 
   return (
     <div className={`rpg-card space-y-4 ${className}`}>
@@ -227,7 +250,7 @@ export default function ShortRestTimer({
       <div className="flex flex-wrap gap-2">
         <button
           onClick={handleStart}
-          disabled={isRunning || shortRestRecovery.isPending}
+          disabled={!canStartRest}
           className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500/25 disabled:opacity-50"
         >
           <Play className="h-4 w-4" />
@@ -253,9 +276,21 @@ export default function ShortRestTimer({
         </button>
       </div>
 
-      {finished && (
+      {shortRestAvailability.isLoading && (
+        <p className="text-xs text-muted-foreground">Verificando se o descanso breve está disponível...</p>
+      )}
+
+      {!shortRestAvailability.isLoading && shortRestAvailability.data?.canRest && (
+        <p className="text-xs text-emerald-300">{shortRestAvailability.data.message}</p>
+      )}
+
+      {!shortRestAvailability.isLoading && shortRestAvailability.data && !shortRestAvailability.data.canRest && (
+        <p className="text-xs text-amber-300">{shortRestAvailability.data.message}</p>
+      )}
+
+      {finished && lastRecoverySummary && (
         <p className="text-xs text-emerald-300">
-          Descanso finalizado. Recuperação aplicada em 30% do HP/MP máximos.
+          Descanso finalizado. Recuperação aplicada: {lastRecoverySummary}.
         </p>
       )}
     </div>

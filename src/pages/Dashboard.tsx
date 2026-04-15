@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { motion } from "framer-motion";
-import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount, useRankPosition } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
 import { useDailyBonus } from "@/hooks/useDailyBonus";
 import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock } from "lucide-react";
@@ -11,15 +11,6 @@ import AppLayout from "@/components/AppLayout";
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 // Importado de @/lib/attributes
-
-function getRank(level: number) {
-  if (level >= 50) return "Lendário";
-  if (level >= 30) return "Mestre";
-  if (level >= 20) return "Veterano";
-  if (level >= 10) return "Guerreiro";
-  if (level >= 5) return "Aprendiz";
-  return "Novato";
-}
 
 function BonusCountdown({ nextClaimAt }: { nextClaimAt: string | null }) {
   const [timeLeft, setTimeLeft] = useState('');
@@ -52,6 +43,7 @@ export default function Dashboard() {
   const { data: classes } = useClasses();
   const { data: todayXp = 0 } = useTodayXp();
   const { data: todayMissionsCount = 0 } = useTodayMissionsCount();
+  const { data: rankPosition } = useRankPosition();
   const dailyBonus = useDailyBonus();
   const completeMission = useCompleteMission();
 
@@ -98,7 +90,7 @@ export default function Dashboard() {
 
   const statCards = [
     { key: "level", label: "Nível", icon: Star, value: profile?.level || 1 },
-    { key: "rank", label: "Rank", icon: Trophy, value: getRank(profile?.level || 1) },
+    { key: "rank", label: "Rank", icon: Trophy, value: rankPosition ? `#${rankPosition}` : "--" },
     {
       key: "class",
       label: "Classe",

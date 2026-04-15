@@ -19,6 +19,76 @@ function subtractDays(dateStr: string, days: number): string {
   return toDateString(d);
 }
 
+type ShortRestAvailability = {
+  canRest: boolean;
+  message: string;
+  nextAvailableAt: string | null;
+  lastRestAt: string | null;
+};
+
+const SHORT_REST_ACTION = 'short_rest_complete';
+
+function getStartOfLocalDay(base: Date = new Date()): Date {
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate());
+}
+
+function getStartOfNextLocalDay(base: Date = new Date()): Date {
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate() + 1);
+}
+
+function formatPtBrDateTime(date: Date): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+async function getShortRestUsageToday(userId: string): Promise<string | null> {
+  const startOfDayLocal = getStartOfLocalDay();
+  const { data, error } = await supabase
+    .from('activity_log')
+    .select('created_at')
+    .eq('user_id', userId)
+    .eq('action', SHORT_REST_ACTION)
+    .gte('created_at', startOfDayLocal.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as any)?.created_at ?? null;
+}
+
+export function useShortRestAvailability() {
+  const { user } = useAuth();
+
+  return useQuery<ShortRestAvailability>({
+    queryKey: ['short_rest_status', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user) throw new Error('Não autenticado');
+
+      const usedAt = await getShortRestUsageToday(user.id);
+      if (!usedAt) {
+        return {
+          canRest: true,
+          message: 'Descanso breve disponível. Você já pode descansar.',
+          nextAvailableAt: null,
+          lastRestAt: null,
+        };
+      }
+
+      const nextAvailableDate = getStartOfNextLocalDay();
+      return {
+        canRest: false,
+        message: `Descanso breve em recarga. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`,
+        nextAvailableAt: nextAvailableDate.toISOString(),
+        lastRestAt: usedAt,
+      };
+    },
+  });
+}
+
 async function getPlayerTalentEffects(userId: string): Promise<Set<string>> {
   const { data } = await (supabase as any)
     .from('talentos_jogador')
@@ -700,6 +770,9 @@ export const useCompleteMission = () => {
       queryClient.invalidateQueries({ queryKey: ['attributes'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
+      queryClient.invalidateQueries({ queryKey: ['xp_today'] });
+      queryClient.invalidateQueries({ queryKey: ['missions_today_count'] });
+      queryClient.invalidateQueries({ queryKey: ['rank_position'] });
     },
   });
 };
@@ -1263,16 +1336,19 @@ export function useTodayXp() {
   return useQuery({
     queryKey: ["xp_today", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const startOfDayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const { data, error } = await supabase
-        .from("xp_history" as any)
+        .from("activity_log" as any)
         .select("xp_gained")
         .eq("user_id", user!.id)
-        .eq("date", today);
+        .gt("xp_gained", 0)
+        .gte("created_at", startOfDayLocal.toISOString());
       if (error) throw error;
       return (data || []).reduce((sum: number, item: any) => sum + (item.xp_gained || 0), 0);
     },
     enabled: !!user,
+    refetchInterval: 10000,
   });
 }
 
@@ -1281,16 +1357,56 @@ export function useTodayMissionsCount() {
   return useQuery({
     queryKey: ["missions_today_count", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString('en-CA');
       const { data, error } = await supabase
         .from("mission_daily_completions" as any)
         .select("id")
-        .eq("mission_id", user!.id)
+        .eq("user_id", user!.id)
         .eq("completion_date", today);
       if (error) throw error;
       return (data || []).length;
     },
     enabled: !!user,
+    refetchInterval: 10000,
+  });
+}
+
+export function useRankPosition() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['rank_position', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: me, error: meError } = await supabase
+        .from('profiles')
+        .select('level, total_xp')
+        .eq('user_id', user!.id)
+        .single();
+
+      if (meError) throw meError;
+
+      const myLevel = Number((me as any)?.level ?? 1);
+      const myTotalXp = Number((me as any)?.total_xp ?? 0);
+
+      const { count: higherLevelCount, error: higherLevelError } = await supabase
+        .from('profiles')
+        .select('user_id', { count: 'exact', head: true })
+        .gt('level', myLevel);
+
+      if (higherLevelError) throw higherLevelError;
+
+      const { count: sameLevelHigherXpCount, error: sameLevelHigherXpError } = await supabase
+        .from('profiles')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('level', myLevel)
+        .gt('total_xp', myTotalXp);
+
+      if (sameLevelHigherXpError) throw sameLevelHigherXpError;
+
+      return Number(higherLevelCount ?? 0) + Number(sameLevelHigherXpCount ?? 0) + 1;
+    },
+    refetchInterval: 15000,
   });
 }
 
@@ -1389,20 +1505,10 @@ export function useShortRestRecovery() {
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
-      const now = new Date();
-      const startOfDayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-      const { data: alreadyUsedToday } = await supabase
-        .from('activity_log')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('action', 'short_rest_complete')
-        .gte('created_at', startOfDayLocal.toISOString())
-        .limit(1)
-        .maybeSingle();
-
-      if (alreadyUsedToday) {
-        throw new Error('Voce ja realizou o descanso breve hoje. O proximo descanso breve fica disponivel no dia seguinte.');
+      const usedAt = await getShortRestUsageToday(user.id);
+      if (usedAt) {
+        const nextAvailableDate = getStartOfNextLocalDay();
+        throw new Error(`Você já realizou o descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
       }
 
       const { data: healthStats, error: healthError } = await (supabase as any)
@@ -1449,12 +1555,14 @@ export function useShortRestRecovery() {
         if (insertError) throw insertError;
       }
 
-      await supabase.from('activity_log').insert({
+      const { error: logError } = await supabase.from('activity_log').insert({
         user_id: user.id,
-        action: 'short_rest_complete',
+        action: SHORT_REST_ACTION,
         description: `Descanso curto concluído: +${newHp - currentHp} HP e +${newMp - currentMp} MP`,
         xp_gained: 0,
       });
+
+      if (logError) throw logError;
 
       return {
         hpRecovered: newHp - currentHp,
@@ -1466,6 +1574,7 @@ export function useShortRestRecovery() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health_stats'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
+      queryClient.invalidateQueries({ queryKey: ['short_rest_status'] });
     },
   });
 }
