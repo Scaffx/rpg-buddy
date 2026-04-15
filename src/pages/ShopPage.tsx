@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ShoppingBag, Clock, History,
   Shield, Tv, BedDouble, Utensils, Gamepad2, UsersRound,
-  FlaskConical, Sparkles, Zap, HeartPulse, Skull, Coins, Sword,
+  FlaskConical, Sparkles, Zap, HeartPulse, Skull, Coins, Sword, Loader2, AlertTriangle,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -37,13 +37,20 @@ const COLOR_GLOW: Record<string, string> = {
 
 export default function ShopPage() {
   const [buying, setBuying] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('tempo');
   const { data: balance } = useGoldBalance();
   const buyMutation = useBuyItem();
   const buyEquipMutation = useBuyEquipment();
-  const { data: shopEquipItems = [] } = useShopItems();
+  const {
+    data: shopEquipItems = [],
+    isLoading: isEquipLoading,
+    error: equipError,
+  } = useShopItems();
 
-  const { data: items = [] } = useQuery({
+  const {
+    data: items = [],
+    isLoading: isTimeShopLoading,
+    error: timeShopError,
+  } = useQuery({
     queryKey: ['shop-items'],
     queryFn: async () => {
       const { data, error } = await supabase.from('shop_items').select('*');
@@ -91,13 +98,23 @@ export default function ShopPage() {
     });
   };
 
-  const renderItems = (itemsList: any[]) => (
+  const renderItems = (itemsList: any[]) => {
+    if (!itemsList || itemsList.length === 0) {
+      return (
+        <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">
+          Nenhum item disponível na Loja do Tempo no momento.
+        </div>
+      );
+    }
+
+    return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {itemsList.map((item: any) => {
         const IconComp = ICON_MAP[item.icon] || ShoppingBag;
         const colorClass = COLOR_MAP[item.icon_color] || 'text-cyan-400';
         const glowClass = COLOR_GLOW[item.icon_color] || '';
-        const canAfford = currentGold >= item.cost_percent;
+        const itemCost = Number(item.cost_percent ?? 0);
+        const canAfford = currentGold >= itemCost;
 
         return (
           <div
@@ -141,7 +158,10 @@ export default function ShopPage() {
         );
       })}
     </div>
-  );
+    );
+  };
+
+  const hasShopError = Boolean(timeShopError || equipError);
 
   return (
     <AppLayout>
@@ -175,6 +195,16 @@ export default function ShopPage() {
           </div>
         </div>
 
+        {hasShopError && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5" />
+            <div>
+              <p className="font-semibold">Erro ao carregar a loja</p>
+              <p className="text-xs opacity-90">Tente atualizar a página. Se persistir, pode ser um problema de dados no Supabase.</p>
+            </div>
+          </div>
+        )}
+
         {/* Tabs */}
         <Tabs defaultValue="tempo" className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2 bg-secondary/50 border border-border rounded-lg p-1">
@@ -196,7 +226,13 @@ export default function ShopPage() {
                 "O tempo é seu maior ativo. Adquira pausas, proteção e equilíbrio para evoluir com sabedoria."
               </p>
             </div>
-            {renderItems(items)}
+            {isTimeShopLoading ? (
+              <div className="flex items-center justify-center py-10 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando itens...
+              </div>
+            ) : (
+              renderItems(items)
+            )}
           </TabsContent>
 
           {/* Loja de Equipamentos */}
@@ -208,7 +244,11 @@ export default function ShopPage() {
               </p>
             </div>
 
-            {(['weapon', 'armor', 'accessory', 'consumable'] as const).map((cat) => {
+            {isEquipLoading ? (
+              <div className="flex items-center justify-center py-10 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando equipamentos...
+              </div>
+            ) : (['weapon', 'armor', 'accessory', 'consumable'] as const).map((cat) => {
               const catItems = shopEquipItems.filter((i: any) => i.category === cat);
               if (catItems.length === 0) return null;
               return (
@@ -216,9 +256,11 @@ export default function ShopPage() {
                   <h3 className="text-md font-semibold text-foreground">{CATEGORY_LABELS[cat]}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {catItems.map((item: any) => {
-                      const canAfford = currentGold >= item.shop_price;
-                      const rarityColor = RARITY_COLORS[item.rarity] || 'text-slate-400';
-                      const glowClass = RARITY_GLOW[item.rarity] || '';
+                      const itemPrice = Number(item.shop_price ?? 0);
+                      const canAfford = currentGold >= itemPrice;
+                      const rarityKey = String(item.rarity || 'comum').toLowerCase();
+                      const rarityColor = RARITY_COLORS[rarityKey] || 'text-slate-400';
+                      const glowClass = RARITY_GLOW[rarityKey] || '';
                       return (
                         <div
                           key={item.id}
@@ -226,7 +268,7 @@ export default function ShopPage() {
                         >
                           <div className="flex items-start justify-between">
                             <span className="text-3xl">{item.icon}</span>
-                            <span className={`text-xs font-bold ${rarityColor}`}>{item.rarity.toUpperCase()}</span>
+                            <span className={`text-xs font-bold ${rarityColor}`}>{String(item.rarity || 'comum').toUpperCase()}</span>
                           </div>
 
                           <div>
@@ -238,7 +280,7 @@ export default function ShopPage() {
                           </div>
 
                           <div className="flex items-center mt-auto">
-                            <span className="text-2xl font-bold text-yellow-400">{item.shop_price} 🪙</span>
+                            <span className="text-2xl font-bold text-yellow-400">{itemPrice} 🪙</span>
                           </div>
 
                           <button
@@ -272,6 +314,12 @@ export default function ShopPage() {
                 </div>
               );
             })}
+
+            {!isEquipLoading && (shopEquipItems?.length || 0) === 0 && (
+              <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">
+                Nenhum equipamento disponível na loja no momento.
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

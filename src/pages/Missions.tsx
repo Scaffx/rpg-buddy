@@ -921,7 +921,7 @@ function AttributeChip({ name, icon }: { name: string; icon: string }) {
 /* ─── Mission Card ─── */
 function MissionCard({
   mission, attrs, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
-  completing, newChecklistText, onNewChecklistTextChange, isCompletedToday, proximoDia,
+  completing, newChecklistText, onNewChecklistTextChange, isCompletedToday, proximoDia, isFutureMission = false,
 }: {
   mission: any; attrs: any[]; index: number; expanded: boolean;
   onToggle: () => void; onComplete: () => void; onEdit: () => void;
