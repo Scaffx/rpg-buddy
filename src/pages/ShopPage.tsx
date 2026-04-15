@@ -35,6 +35,32 @@ const COLOR_GLOW: Record<string, string> = {
   red: 'shadow-red-500/20',
 };
 
+function normalizeCategory(rawCategory: string | null | undefined): 'consumable' | 'weapon' | 'armor' | 'accessory' | null {
+  const normalized = String(rawCategory || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  const aliases: Record<string, 'consumable' | 'weapon' | 'armor' | 'accessory'> = {
+    consumable: 'consumable',
+    consumivel: 'consumable',
+    potion: 'consumable',
+    weapon: 'weapon',
+    arma: 'weapon',
+    armas: 'weapon',
+    armor: 'armor',
+    armadura: 'armor',
+    armaduras: 'armor',
+    accessory: 'accessory',
+    acessorio: 'accessory',
+    acessorios: 'accessory',
+    acessory: 'accessory',
+  };
+
+  return aliases[normalized] || null;
+}
+
 export default function ShopPage() {
   const [buying, setBuying] = useState<string | null>(null);
   const { data: balance } = useGoldBalance();
@@ -288,7 +314,7 @@ export default function ShopPage() {
                 </TabsList>
 
                 {CATEGORY_ORDER.map((cat) => {
-                  const catItems = shopEquipItems.filter((i: any) => i.category === cat);
+                  const catItems = shopEquipItems.filter((i: any) => normalizeCategory(i.category) === cat);
                   return (
                     <TabsContent key={cat} value={cat} className="space-y-3 mt-2">
                       <h3 className="text-md font-semibold text-foreground">{CATEGORY_LABELS[cat]}</h3>
