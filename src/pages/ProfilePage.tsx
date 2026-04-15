@@ -61,8 +61,8 @@ function useHealthStats() {
       }
 
       const resetPayload = {
-        current_hp: Number(data.max_hp ?? 100),
-        current_mp: Number(data.max_mp ?? 10),
+        current_hp: Number(d.max_hp ?? 100),
+        current_mp: Number(d.max_mp ?? 10),
         fatigue: 0,
         last_reset_date: today,
       };
