@@ -329,6 +329,81 @@ export type Database = {
         }
         Relationships: []
       }
+      game_items: {
+        Row: {
+          agi_bonus: number
+          atk_bonus: number
+          boss_drop_level: number | null
+          category: string
+          created_at: string
+          crit_bonus: number
+          def_bonus: number
+          description: string | null
+          effect: string | null
+          hp_bonus: number
+          icon: string
+          id: string
+          is_consumable: boolean
+          is_starter: boolean
+          level_required: number
+          mp_bonus: number
+          name: string
+          rarity: string
+          shop_price: number | null
+          stackable: boolean
+          starter_class: string | null
+          stat_label: string | null
+        }
+        Insert: {
+          agi_bonus?: number
+          atk_bonus?: number
+          boss_drop_level?: number | null
+          category?: string
+          created_at?: string
+          crit_bonus?: number
+          def_bonus?: number
+          description?: string | null
+          effect?: string | null
+          hp_bonus?: number
+          icon?: string
+          id?: string
+          is_consumable?: boolean
+          is_starter?: boolean
+          level_required?: number
+          mp_bonus?: number
+          name: string
+          rarity?: string
+          shop_price?: number | null
+          stackable?: boolean
+          starter_class?: string | null
+          stat_label?: string | null
+        }
+        Update: {
+          agi_bonus?: number
+          atk_bonus?: number
+          boss_drop_level?: number | null
+          category?: string
+          created_at?: string
+          crit_bonus?: number
+          def_bonus?: number
+          description?: string | null
+          effect?: string | null
+          hp_bonus?: number
+          icon?: string
+          id?: string
+          is_consumable?: boolean
+          is_starter?: boolean
+          level_required?: number
+          mp_bonus?: number
+          name?: string
+          rarity?: string
+          shop_price?: number | null
+          stackable?: boolean
+          starter_class?: string | null
+          stat_label?: string | null
+        }
+        Relationships: []
+      }
       gold_history: {
         Row: {
           amount: number
@@ -587,6 +662,7 @@ export type Database = {
           missions_completed: number
           onboarding_completed: boolean
           region: string | null
+          starter_kit_claimed: boolean
           total_xp: number
           updated_at: string
           user_id: string
@@ -603,6 +679,7 @@ export type Database = {
           missions_completed?: number
           onboarding_completed?: boolean
           region?: string | null
+          starter_kit_claimed?: boolean
           total_xp?: number
           updated_at?: string
           user_id: string
@@ -619,6 +696,7 @@ export type Database = {
           missions_completed?: number
           onboarding_completed?: boolean
           region?: string | null
+          starter_kit_claimed?: boolean
           total_xp?: number
           updated_at?: string
           user_id?: string
@@ -785,6 +863,41 @@ export type Database = {
           weight_kg?: number | null
         }
         Relationships: []
+      }
+      user_inventory: {
+        Row: {
+          equipped: boolean
+          id: string
+          item_id: string
+          obtained_at: string
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          equipped?: boolean
+          id?: string
+          item_id: string
+          obtained_at?: string
+          quantity?: number
+          user_id: string
+        }
+        Update: {
+          equipped?: boolean
+          id?: string
+          item_id?: string
+          obtained_at?: string
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_inventory_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "game_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       water_log: {
         Row: {
