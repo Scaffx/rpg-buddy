@@ -3,7 +3,7 @@ import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName } from "@/hooks/useProfile";
 import { useGoldBalance } from "@/hooks/useGold";
-import { useInventory, useToggleEquip, useConsumeItem } from "@/hooks/useInventory";
+import { useInventory, useToggleEquip, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
