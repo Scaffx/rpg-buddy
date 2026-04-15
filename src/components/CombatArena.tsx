@@ -13,6 +13,7 @@ type TurnSummary = {
   hp_boss_restante: number;
   hp_player_restante: number;
   status: 'em_andamento' | 'vitoria' | 'derrota';
+  loot_drop?: { id: string; name: string; icon: string; rarity: string } | null;
 };
 
 type CombatDataProvider = {
