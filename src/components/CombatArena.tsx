@@ -106,6 +106,7 @@ export default function CombatArena({
   const [bossHp, setBossHp] = useState(initialBossHp);
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
+  const [lootDrop, setLootDrop] = useState<{ name: string; icon: string; rarity: string } | null>(null);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
 
