@@ -53,10 +53,11 @@ function useHealthStats() {
       if (error) throw error;
 
       if (!data) return null;
+      const d = data as any;
 
-      const shouldReset = data.last_reset_date !== today;
+      const shouldReset = d.last_reset_date !== today;
       if (!shouldReset) {
-        return data as any;
+        return d;
       }
 
       const resetPayload = {
