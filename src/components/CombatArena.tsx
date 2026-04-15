@@ -174,6 +174,9 @@ export default function CombatArena({
       }
 
       if (turnResult.status === 'vitoria') {
+        if (turnResult.loot_drop) {
+          setLootDrop(turnResult.loot_drop);
+        }
         setTurn('finished');
         return;
       }
