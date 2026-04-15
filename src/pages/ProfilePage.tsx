@@ -557,6 +557,8 @@ export default function ProfilePage() {
   const consumeItem = useConsumeItem();
   const claimStarterKit = useClaimStarterKit();
   const equipBonuses = getEquipmentBonuses(inventory as InventoryItem[]);
+  const awardHealthXP = useAwardHealthXP();
+  const updateDisplayName = useUpdateDisplayName();
   const queryClient = useQueryClient();
 
   const [showSettings, setShowSettings] = useState(false);
