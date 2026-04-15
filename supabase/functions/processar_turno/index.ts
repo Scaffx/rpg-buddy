@@ -101,12 +101,13 @@ Deno.serve(async (req) => {
           hp_atual_personagem,
           turno_atual,
           status,
+          boss_id,
           personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel),
           bosses!combates_ativos_boss_id_fkey(id, ataque_base, defesa_base, level)
         `,
       )
       .eq('id', combateId)
-      .single<CombatRow>();
+      .single();
 
     if (combatError || !combat) {
       return new Response(JSON.stringify({ error: 'Combat not found' }), {
@@ -150,6 +151,7 @@ Deno.serve(async (req) => {
     let hpPlayerRestante = combat.hp_atual_personagem;
     let status: 'em_andamento' | 'vitoria' | 'derrota' = 'em_andamento';
     let turnoAtual: 'player' | 'boss' = 'boss';
+    let lootDrop: any = null;
 
     if (hpBossRestante <= 0) {
       status = 'vitoria';
@@ -188,28 +190,61 @@ Deno.serve(async (req) => {
       throw updateError;
     }
 
-    const { data: currentHealth } = await (supabase as any)
+    // Update health stats
+    const { data: currentHealth } = await supabase
       .from('user_health_stats')
       .select('id, max_hp')
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (currentHealth) {
-      const maxHp = Number((currentHealth as any).max_hp ?? hpPlayerRestante);
-      await (supabase as any)
+      const maxHp = Number(currentHealth.max_hp ?? hpPlayerRestante);
+      await supabase
         .from('user_health_stats')
         .update({
           current_hp: Math.max(0, Math.min(maxHp, hpPlayerRestante)),
         })
         .eq('user_id', user.id);
     } else {
-      await (supabase as any)
+      await supabase
         .from('user_health_stats')
         .insert({
           user_id: user.id,
           max_hp: Math.max(1, hpPlayerRestante),
           current_hp: Math.max(0, hpPlayerRestante),
         });
+    }
+
+    // On victory: grant loot drop
+    if (status === 'vitoria' && combat.bosses) {
+      const bossLevel = combat.bosses.level || 1;
+
+      // Find drop item for this boss level
+      const { data: dropItem } = await supabase
+        .from('game_items')
+        .select('id, name, icon, rarity')
+        .eq('boss_drop_level', bossLevel)
+        .maybeSingle();
+
+      if (dropItem) {
+        // Check if player already has it
+        const { data: existing } = await supabase
+          .from('user_inventory')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('item_id', dropItem.id)
+          .maybeSingle();
+
+        if (!existing) {
+          await supabase.from('user_inventory').insert({
+            user_id: user.id,
+            item_id: dropItem.id,
+            quantity: 1,
+            equipped: false,
+          });
+          lootDrop = dropItem;
+        }
+      }
     }
 
     return new Response(
@@ -221,6 +256,7 @@ Deno.serve(async (req) => {
         hp_boss_restante: hpBossRestante,
         hp_player_restante: hpPlayerRestante,
         status,
+        loot_drop: lootDrop,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
