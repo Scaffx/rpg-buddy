@@ -7,7 +7,6 @@ import { useDailyBonus } from "@/hooks/useDailyBonus";
 import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
-import ShortRestTimer from "@/components/ShortRestTimer";
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -227,15 +226,6 @@ export default function Dashboard() {
             </div>
           </motion.div>
         )}
-
-        {/* Short Rest */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <ShortRestTimer defaultMinutes={15} minMinutes={1} maxMinutes={60} />
-        </motion.div>
 
         {/* Today's Daily Missions */}
         <div>
