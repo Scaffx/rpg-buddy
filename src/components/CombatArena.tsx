@@ -308,6 +308,19 @@ export default function CombatArena({
       <footer className="mt-8 flex flex-col items-center gap-3">
         {winnerLabel ? <p className="text-lg font-bold text-amber-200">{winnerLabel}</p> : null}
 
+        {lootDrop && bossHp <= 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-center space-y-1"
+          >
+            <p className="text-sm font-bold text-yellow-300">🎁 Item Obtido!</p>
+            <p className="text-2xl">{lootDrop.icon}</p>
+            <p className="text-sm font-semibold text-foreground">{lootDrop.name}</p>
+            <p className="text-xs text-yellow-400 uppercase font-bold">{lootDrop.rarity}</p>
+            <p className="text-[10px] text-muted-foreground">Vá ao seu Inventário para equipar!</p>
+          </motion.div>
+        )}
         <button
           type="button"
           onClick={startBattle}
