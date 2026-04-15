@@ -1,4 +1,6 @@
 // src/types/supabase.ts
+import type { MissionCategory, MissionDailyStatus, MissionPriority, MissionStatus, Weekday } from './missions'
+
 export type Json =
   | string
   | number
@@ -19,12 +21,13 @@ export interface Database {
           attribute_id: string
           secondary_attribute_ids: string[] | null
           xp_reward: number
-          priority: string
-          status: string
+          priority: MissionPriority
+          status: MissionStatus
           completed: boolean
           completed_at: string | null
-          days_of_week: string[] | null
-          daily_status: { [key: string]: string } | null // ✅ NOVO
+          days_of_week: Weekday[] | null
+          daily_status: MissionDailyStatus | null
+          mission_category: MissionCategory | null
           horario_provavel: string | null
           notes: string | null
           created_at: string
@@ -40,12 +43,13 @@ export interface Database {
           attribute_id: string
           secondary_attribute_ids?: string[] | null
           xp_reward?: number
-          priority?: string
-          status?: string
+          priority?: MissionPriority
+          status?: MissionStatus
           completed?: boolean
           completed_at?: string | null
-          days_of_week?: string[] | null
-          daily_status?: { [key: string]: string } | null // ✅ NOVO
+          days_of_week?: Weekday[] | null
+          daily_status?: MissionDailyStatus | null
+          mission_category?: MissionCategory | null
           horario_provavel?: string | null
           notes?: string | null
           created_at?: string
@@ -61,12 +65,13 @@ export interface Database {
           attribute_id?: string
           secondary_attribute_ids?: string[] | null
           xp_reward?: number
-          priority?: string
-          status?: string
+          priority?: MissionPriority
+          status?: MissionStatus
           completed?: boolean
           completed_at?: string | null
-          days_of_week?: string[] | null
-          daily_status?: { [key: string]: string } | null // ✅ NOVO
+          days_of_week?: Weekday[] | null
+          daily_status?: MissionDailyStatus | null
+          mission_category?: MissionCategory | null
           horario_provavel?: string | null
           notes?: string | null
           created_at?: string

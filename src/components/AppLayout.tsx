@@ -1,11 +1,46 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import ShortRestTimer from '@/components/ShortRestTimer';
 import { Clock } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { formatSeconds, getRemainingSeconds, readShortRestState } from '@/lib/shortRestState';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [showRestTimer, setShowRestTimer] = useState(false);
+  const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setHeaderSeconds(null);
+      return;
+    }
+
+    const tick = () => {
+      const saved = readShortRestState(user.id);
+      if (!saved || !saved.isRunning) {
+        setHeaderSeconds(null);
+        return;
+      }
+
+      const remaining = getRemainingSeconds(saved);
+      if (remaining <= 0) {
+        setHeaderSeconds(null);
+        return;
+      }
+      setHeaderSeconds(remaining);
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [user?.id]);
+
+  const headerLabel = useMemo(() => {
+    if (headerSeconds == null) return null;
+    return formatSeconds(headerSeconds);
+  }, [headerSeconds]);
 
   return (
     <SidebarProvider>
@@ -19,7 +54,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               className="inline-flex items-center gap-2 px-3 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition text-sm font-medium"
               title="Descanso Breve"
             >
-              <Clock className="w-4 h-4" />
+              {headerLabel ? (
+                <span className="font-mono text-xs leading-none">{headerLabel}</span>
+              ) : (
+                <Clock className="w-4 h-4" />
+              )}
             </button>
           </header>
           <main className="flex-1 p-4 md:p-6 overflow-auto">

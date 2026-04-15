@@ -306,7 +306,7 @@ export function useConsumeItem() {
 
       const { data: inventoryRow, error: inventoryError } = await db
         .from('user_inventory')
-        .select('id, item_id, quantity, game_items(effect, is_consumable)')
+        .select('id, item_id, quantity, game_items(name, effect, is_consumable)')
         .eq('id', inventoryId)
         .eq('user_id', user.id)
         .maybeSingle();
@@ -314,7 +314,26 @@ export function useConsumeItem() {
       if (inventoryError) throw inventoryError;
 
       const itemEffect = String(inventoryRow?.game_items?.effect || '');
+      const itemName = String(inventoryRow?.game_items?.name || '');
       const isConsumable = Boolean(inventoryRow?.game_items?.is_consumable);
+
+      const { data: talents } = await (supabase as any)
+        .from('talentos_jogador')
+        .select('talentos_disponiveis(efeito)')
+        .eq('personagem_id', user.id);
+
+      const hasAlquimistaAmador = (talents || []).some(
+        (row: any) => String(row?.talentos_disponiveis?.efeito || '') === 'alquimista_amador',
+      );
+
+      const isPotionLike = isConsumable && (
+        itemEffect.startsWith('heal_') ||
+        itemEffect.startsWith('mana_') ||
+        itemEffect === 'full_rest' ||
+        itemName.toLowerCase().includes('pocao')
+      );
+
+      const preserveCharge = hasAlquimistaAmador && isPotionLike && Math.random() < 0.1;
 
       if (isConsumable && itemEffect) {
         const { data: healthStats, error: healthError } = await db
@@ -367,10 +386,21 @@ export function useConsumeItem() {
         }
       }
 
-      if (quantity <= 1) {
-        await db.from('user_inventory').delete().eq('id', inventoryId).eq('user_id', user.id);
-      } else {
-        await db.from('user_inventory').update({ quantity: quantity - 1 }).eq('id', inventoryId).eq('user_id', user.id);
+      if (!preserveCharge) {
+        if (quantity <= 1) {
+          await db.from('user_inventory').delete().eq('id', inventoryId).eq('user_id', user.id);
+        } else {
+          await db.from('user_inventory').update({ quantity: quantity - 1 }).eq('id', inventoryId).eq('user_id', user.id);
+        }
+      }
+
+      if (preserveCharge) {
+        await (supabase as any).from('activity_log').insert({
+          user_id: user.id,
+          action: 'alquimista_amador_proc',
+          description: `Alquimista Amador preservou a carga de ${itemName}.`,
+          xp_gained: 0,
+        });
       }
     },
     onSuccess: () => {

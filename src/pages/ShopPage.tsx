@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ShoppingBag, Clock, History,
   Shield, Tv, BedDouble, Utensils, Gamepad2, UsersRound,
-  FlaskConical, Sparkles, Zap, HeartPulse, Skull, Coins, Sword, Loader2, AlertTriangle,
+  FlaskConical, Sparkles, Zap, HeartPulse, Skull, Coins, Sword, Loader2, AlertTriangle, Pill,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -83,6 +83,27 @@ export default function ShopPage() {
     accessory: '📿 Acessório',
     consumable: '🧪 Consumível',
   };
+
+  const CATEGORY_TAB_LABELS: Record<string, string> = {
+    consumable: 'Consumíveis',
+    weapon: 'Armas',
+    armor: 'Armaduras',
+    accessory: 'Acessórios',
+  };
+
+  const CATEGORY_TAB_ICONS: Record<string, React.ComponentType<any>> = {
+    consumable: Pill,
+    weapon: Sword,
+    armor: Shield,
+    accessory: Sparkles,
+  };
+
+  const CATEGORY_ORDER: Array<'consumable' | 'weapon' | 'armor' | 'accessory'> = [
+    'consumable',
+    'weapon',
+    'armor',
+    'accessory',
+  ];
 
   const handleBuy = (item: any) => {
     setBuying(item.id);
@@ -248,72 +269,98 @@ export default function ShopPage() {
               <div className="flex items-center justify-center py-10 text-muted-foreground">
                 <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando equipamentos...
               </div>
-            ) : (['weapon', 'armor', 'accessory', 'consumable'] as const).map((cat) => {
-              const catItems = shopEquipItems.filter((i: any) => i.category === cat);
-              if (catItems.length === 0) return null;
-              return (
-                <div key={cat} className="space-y-3">
-                  <h3 className="text-md font-semibold text-foreground">{CATEGORY_LABELS[cat]}</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {catItems.map((item: any) => {
-                      const itemPrice = Number(item.shop_price ?? 0);
-                      const canAfford = currentGold >= itemPrice;
-                      const rarityKey = String(item.rarity || 'comum').toLowerCase();
-                      const rarityColor = RARITY_COLORS[rarityKey] || 'text-slate-400';
-                      const glowClass = RARITY_GLOW[rarityKey] || '';
-                      return (
-                        <div
-                          key={item.id}
-                          className={`bg-card border border-border rounded-2xl p-5 flex flex-col gap-3 hover:border-primary/30 transition-all shadow-lg ${glowClass}`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <span className="text-3xl">{item.icon}</span>
-                            <span className={`text-xs font-bold ${rarityColor}`}>{String(item.rarity || 'comum').toUpperCase()}</span>
-                          </div>
+            ) : (
+              <Tabs defaultValue="consumable" className="w-full space-y-4">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-secondary/50 border border-border rounded-lg p-1">
+                  {CATEGORY_ORDER.map((cat) => {
+                    const Icon = CATEGORY_TAB_ICONS[cat];
+                    return (
+                      <TabsTrigger
+                        key={cat}
+                        value={cat}
+                        className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+                      >
+                        <Icon className="w-4 h-4 mr-2" />
+                        {CATEGORY_TAB_LABELS[cat]}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
 
-                          <div>
-                            <h3 className="text-lg font-bold text-foreground">{item.name}</h3>
-                            <p className="text-sm text-muted-foreground">{item.description}</p>
-                            {item.stat_label && (
-                              <p className="text-xs text-primary mt-1 font-semibold">{item.stat_label}</p>
-                            )}
-                          </div>
+                {CATEGORY_ORDER.map((cat) => {
+                  const catItems = shopEquipItems.filter((i: any) => i.category === cat);
+                  return (
+                    <TabsContent key={cat} value={cat} className="space-y-3 mt-2">
+                      <h3 className="text-md font-semibold text-foreground">{CATEGORY_LABELS[cat]}</h3>
 
-                          <div className="flex items-center mt-auto">
-                            <span className="text-2xl font-bold text-yellow-400">{itemPrice} 🪙</span>
-                          </div>
-
-                          <button
-                            onClick={() => {
-                              setBuying(item.id);
-                              buyEquipMutation.mutate(item, {
-                                onSuccess: () => {
-                                  toast.success(`${item.name} comprado! Verifique seu inventário.`);
-                                  setBuying(null);
-                                },
-                                onError: (err: Error) => {
-                                  toast.error(err.message);
-                                  setBuying(null);
-                                },
-                              });
-                            }}
-                            disabled={!canAfford || buying === item.id}
-                            className="w-full py-2.5 rounded-xl font-bold text-sm text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{
-                              background: canAfford
-                                ? 'linear-gradient(135deg, hsl(25 95% 53%), hsl(270 60% 55%))'
-                                : undefined,
-                            }}
-                          >
-                            {buying === item.id ? 'COMPRANDO...' : !canAfford ? 'OURO INSUFICIENTE' : 'COMPRAR'}
-                          </button>
+                      {catItems.length === 0 ? (
+                        <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">
+                          Nenhum item disponível em {CATEGORY_TAB_LABELS[cat].toLowerCase()} no momento.
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {catItems.map((item: any) => {
+                            const itemPrice = Number(item.shop_price ?? 0);
+                            const canAfford = currentGold >= itemPrice;
+                            const rarityKey = String(item.rarity || 'comum').toLowerCase();
+                            const rarityColor = RARITY_COLORS[rarityKey] || 'text-slate-400';
+                            const glowClass = RARITY_GLOW[rarityKey] || '';
+                            return (
+                              <div
+                                key={item.id}
+                                className={`bg-card border border-border rounded-2xl p-5 flex flex-col gap-3 hover:border-primary/30 transition-all shadow-lg ${glowClass}`}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <span className="text-3xl">{item.icon}</span>
+                                  <span className={`text-xs font-bold ${rarityColor}`}>{String(item.rarity || 'comum').toUpperCase()}</span>
+                                </div>
+
+                                <div>
+                                  <h3 className="text-lg font-bold text-foreground">{item.name}</h3>
+                                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                                  {item.stat_label && (
+                                    <p className="text-xs text-primary mt-1 font-semibold">{item.stat_label}</p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center mt-auto">
+                                  <span className="text-2xl font-bold text-yellow-400">{itemPrice} 🪙</span>
+                                </div>
+
+                                <button
+                                  onClick={() => {
+                                    setBuying(item.id);
+                                    buyEquipMutation.mutate(item, {
+                                      onSuccess: () => {
+                                        toast.success(`${item.name} comprado! Verifique seu inventário.`);
+                                        setBuying(null);
+                                      },
+                                      onError: (err: Error) => {
+                                        toast.error(err.message);
+                                        setBuying(null);
+                                      },
+                                    });
+                                  }}
+                                  disabled={!canAfford || buying === item.id}
+                                  className="w-full py-2.5 rounded-xl font-bold text-sm text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                  style={{
+                                    background: canAfford
+                                      ? 'linear-gradient(135deg, hsl(25 95% 53%), hsl(270 60% 55%))'
+                                      : undefined,
+                                  }}
+                                >
+                                  {buying === item.id ? 'COMPRANDO...' : !canAfford ? 'OURO INSUFICIENTE' : 'COMPRAR'}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            )}
 
             {!isEquipLoading && (shopEquipItems?.length || 0) === 0 && (
               <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">

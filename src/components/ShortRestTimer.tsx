@@ -4,6 +4,7 @@ import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useShortRestRecovery } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
+import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState, type ShortRestPersistentState } from '@/lib/shortRestState';
 
 type ShortRestTimerProps = {
   defaultMinutes?: number;
@@ -24,38 +25,26 @@ export default function ShortRestTimer({
 }: ShortRestTimerProps) {
   const { user } = useAuth();
   const safeDefault = clamp(defaultMinutes, minMinutes, maxMinutes);
-  
-  // Carrega estado do localStorage
-  const getInitialState = () => {
-    if (!user) return { minutes: safeDefault, secondsLeft: safeDefault * 60, isRunning: false, finishedTime: null };
-    const saved = localStorage.getItem(`short_rest_${user.id}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed;
-      } catch {
-        return { minutes: safeDefault, secondsLeft: safeDefault * 60, isRunning: false, finishedTime: null };
-      }
-    }
-    return { minutes: safeDefault, secondsLeft: safeDefault * 60, isRunning: false, finishedTime: null };
+  const initialSaved = readShortRestState(user?.id) || {
+    minutes: safeDefault,
+    secondsLeft: safeDefault * 60,
+    isRunning: false,
+    endAtMs: null,
+    needsApply: false,
+    updatedAtMs: Date.now(),
   };
 
-  const initialState = getInitialState();
-  const [minutes, setMinutes] = useState<number>(initialState.minutes);
-  const [secondsLeft, setSecondsLeft] = useState<number>(initialState.secondsLeft);
-  const [isRunning, setIsRunning] = useState(false); // Sempre começa como false ao montar
+  const [minutes, setMinutes] = useState<number>(clamp(initialSaved.minutes, minMinutes, maxMinutes));
+  const [secondsLeft, setSecondsLeft] = useState<number>(Math.max(0, getRemainingSeconds(initialSaved)));
+  const [isRunning, setIsRunning] = useState<boolean>(Boolean(initialSaved.isRunning && initialSaved.endAtMs && getRemainingSeconds(initialSaved) > 0));
+  const [endAtMs, setEndAtMs] = useState<number | null>(initialSaved.endAtMs);
+  const [needsApply, setNeedsApply] = useState<boolean>(Boolean(initialSaved.needsApply));
   const [finished, setFinished] = useState(false);
   const completedRef = useRef(false);
 
   const shortRestRecovery = useShortRestRecovery();
 
-  const formatted = useMemo(() => {
-    const mm = Math.floor(secondsLeft / 60)
-      .toString()
-      .padStart(2, '0');
-    const ss = (secondsLeft % 60).toString().padStart(2, '0');
-    return `${mm}:${ss}`;
-  }, [secondsLeft]);
+  const formatted = useMemo(() => formatSeconds(secondsLeft), [secondsLeft]);
 
   const handleRestComplete = async () => {
     if (completedRef.current) return;
@@ -67,21 +56,27 @@ export default function ShortRestTimer({
       onRestComplete?.();
     } catch (error: any) {
       toast.error(error?.message || 'Não foi possível aplicar a recuperação do descanso curto.');
+    } finally {
+      setNeedsApply(false);
     }
   };
 
   const handleStart = () => {
-    if (secondsLeft <= 0) {
-      setSecondsLeft(minutes * 60);
-    }
+    const baseSeconds = secondsLeft > 0 ? secondsLeft : minutes * 60;
+    setSecondsLeft(baseSeconds);
+    setEndAtMs(Date.now() + baseSeconds * 1000);
     setFinished(false);
     setIsRunning(true);
+    setNeedsApply(true);
+    completedRef.current = false;
   };
 
   const handleCancel = () => {
     setIsRunning(false);
     setFinished(false);
     completedRef.current = false;
+    setNeedsApply(false);
+    setEndAtMs(null);
     setSecondsLeft(minutes * 60);
     toast.info('Descanso curto cancelado. Nenhuma recuperação foi aplicada.');
   };
@@ -90,66 +85,68 @@ export default function ShortRestTimer({
     setIsRunning(false);
     setFinished(false);
     completedRef.current = false;
+    setNeedsApply(false);
+    setEndAtMs(null);
     setSecondsLeft(minutes * 60);
   };
 
-  // Salva estado no localStorage sempre que muda
   useEffect(() => {
     if (!user) return;
-    const state = {
+
+    const state: ShortRestPersistentState = {
       minutes,
       secondsLeft,
       isRunning,
-      finishedTime: null,
+      endAtMs,
+      needsApply,
+      updatedAtMs: Date.now(),
     };
-    localStorage.setItem(`short_rest_${user.id}`, JSON.stringify(state));
-  }, [minutes, secondsLeft, isRunning, user]);
+    writeShortRestState(user.id, state);
+  }, [minutes, secondsLeft, isRunning, endAtMs, needsApply, user]);
 
-  // Verifica se há tempo decorrido offline (se estava rodando e o usuário saiu)
   useEffect(() => {
     if (!user) return;
-    const saved = localStorage.getItem(`short_rest_last_check_${user.id}`);
-    const lastCheck = saved ? parseInt(saved) : Date.now();
-    const elapsedMs = Date.now() - lastCheck;
-    const elapsedSeconds = Math.floor(elapsedMs / 1000);
 
-    // Se estava rodando e houve tempo decorrido, desconta dos segundos
-    if (initialState.isRunning && elapsedSeconds > 0) {
-      setSecondsLeft((prev) => {
-        const newSeconds = Math.max(0, prev - elapsedSeconds);
-        if (newSeconds === 0 && !completedRef.current) {
-          // Se zerou, executa a conclusão
-          completedRef.current = true;
-          setIsRunning(false);
-          setFinished(true);
-          void handleRestComplete();
-        }
-        return newSeconds;
-      });
+    const saved = readShortRestState(user.id);
+    if (!saved) return;
+
+    const resumedSeconds = getRemainingSeconds(saved);
+    const shouldRun = Boolean(saved.isRunning && saved.endAtMs && resumedSeconds > 0);
+
+    setMinutes(clamp(saved.minutes, minMinutes, maxMinutes));
+    setSecondsLeft(resumedSeconds);
+    setIsRunning(shouldRun);
+    setEndAtMs(saved.endAtMs);
+    setNeedsApply(Boolean(saved.needsApply));
+
+    if (saved.isRunning && resumedSeconds <= 0 && saved.needsApply) {
+      setIsRunning(false);
+      setFinished(true);
+      setNeedsApply(false);
+      void handleRestComplete();
     }
-
-    // Registra o momento do check
-    localStorage.setItem(`short_rest_last_check_${user.id}`, Date.now().toString());
-  }, [user]);
+  }, [user, minMinutes, maxMinutes]);
 
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning || !endAtMs) return;
 
     const id = window.setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(id);
-          setIsRunning(false);
-          setFinished(true);
+      const remaining = Math.max(0, Math.ceil((endAtMs - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+
+      if (remaining <= 0) {
+        window.clearInterval(id);
+        setIsRunning(false);
+        setFinished(true);
+        setEndAtMs(null);
+        if (needsApply) {
           void handleRestComplete();
-          return 0;
         }
-        return prev - 1;
-      });
+      }
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [isRunning]);
+  }, [isRunning, endAtMs, needsApply]);
 
   useEffect(() => {
     if (isRunning) return;
@@ -178,6 +175,9 @@ export default function ShortRestTimer({
               const value = clamp(Number(e.target.value || safeDefault), minMinutes, maxMinutes);
               setMinutes(value);
               completedRef.current = false;
+              if (!isRunning) {
+                setSecondsLeft(value * 60);
+              }
             }}
             className="w-20 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
           />

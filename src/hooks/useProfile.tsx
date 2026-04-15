@@ -5,6 +5,7 @@ import { useAuth } from "./useAuth";
 import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, getPlayerCombatStats, getRoutineXpBuffBonus } from '@/lib/combat';
 import { getEquipmentBonuses, type InventoryItem } from './useInventory';
 import { getLevelFromXp } from '@/lib/progression';
+import { deriveMissionCategory, resolveMissionTalentEffects, type MissionTalentResolution } from '@/lib/missionTalentRules';
 
 const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
@@ -185,6 +186,144 @@ async function consumeOneShotBuff(userId: string, effectNames: string[]): Promis
     .eq('user_id', userId);
 }
 
+async function grantFlowXpOneShotBuff(userId: string): Promise<void> {
+  const { data: flowItem } = await (supabase as any)
+    .from('shop_items')
+    .select('id')
+    .eq('effect', 'estado_fluxo_xp')
+    .maybeSingle();
+
+  if (!flowItem?.id) return;
+
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  await (supabase as any).from('user_buffs').insert({
+    user_id: userId,
+    item_id: flowItem.id,
+    active: true,
+    expires_at: expiresAt,
+  });
+}
+
+async function applyMissionTalentPostEffects(params: {
+  userId: string;
+  missionTitle: string;
+  effects: MissionTalentResolution;
+}): Promise<void> {
+  const { userId, missionTitle, effects } = params;
+
+  const shouldTouchHealth = effects.recoverLostHpPct > 0 || effects.addMaxHp > 0 || effects.addMaxMp > 0;
+
+  if (shouldTouchHealth) {
+    let healthStats: any = null;
+    let hasTalentBonusColumns = true;
+
+    const withBonusColumns = await (supabase as any)
+      .from('user_health_stats')
+      .select('max_hp, current_hp, max_mp, current_mp, fatigue, talent_bonus_hp, talent_bonus_mp')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (withBonusColumns.error) {
+      hasTalentBonusColumns = false;
+      const fallback = await (supabase as any)
+        .from('user_health_stats')
+        .select('max_hp, current_hp, max_mp, current_mp, fatigue')
+        .eq('user_id', userId)
+        .maybeSingle();
+      healthStats = fallback.data;
+    } else {
+      healthStats = withBonusColumns.data;
+    }
+
+    const baseMaxHp = Number(healthStats?.max_hp ?? 100);
+    const baseCurrentHp = Number(healthStats?.current_hp ?? baseMaxHp);
+    const baseMaxMp = Number(healthStats?.max_mp ?? 10);
+    const baseCurrentMp = Number(healthStats?.current_mp ?? baseMaxMp);
+    const fatigue = Number(healthStats?.fatigue ?? 0);
+    const bonusHp = Number(healthStats?.talent_bonus_hp ?? 0);
+    const bonusMp = Number(healthStats?.talent_bonus_mp ?? 0);
+
+    const hpCapRemaining = hasTalentBonusColumns ? (100 - bonusHp) : Math.max(0, 200 - baseMaxHp);
+    const mpCapRemaining = hasTalentBonusColumns ? (50 - bonusMp) : Math.max(0, 60 - baseMaxMp);
+
+    const hpGainAllowed = Math.max(0, Math.min(effects.addMaxHp, hpCapRemaining));
+    const mpGainAllowed = Math.max(0, Math.min(effects.addMaxMp, mpCapRemaining));
+
+    const maxHpAfter = baseMaxHp + hpGainAllowed;
+    const maxMpAfter = baseMaxMp + mpGainAllowed;
+
+    const lostHp = Math.max(0, maxHpAfter - (baseCurrentHp + hpGainAllowed));
+    const recovered = effects.recoverLostHpPct > 0 ? Math.max(0, Math.ceil(lostHp * effects.recoverLostHpPct)) : 0;
+    const currentHpAfter = Math.min(maxHpAfter, baseCurrentHp + hpGainAllowed + recovered);
+    const currentMpAfter = Math.min(maxMpAfter, baseCurrentMp + mpGainAllowed);
+
+    if (healthStats) {
+      const payload: Record<string, any> = {
+        max_hp: maxHpAfter,
+        current_hp: currentHpAfter,
+        max_mp: maxMpAfter,
+        current_mp: currentMpAfter,
+      };
+
+      if (hasTalentBonusColumns) {
+        payload.talent_bonus_hp = bonusHp + hpGainAllowed;
+        payload.talent_bonus_mp = bonusMp + mpGainAllowed;
+      }
+
+      await (supabase as any)
+        .from('user_health_stats')
+        .update(payload)
+        .eq('user_id', userId);
+    } else {
+      const payload: Record<string, any> = {
+        user_id: userId,
+        max_hp: maxHpAfter,
+        current_hp: currentHpAfter,
+        max_mp: maxMpAfter,
+        current_mp: currentMpAfter,
+        fatigue,
+      };
+
+      if (hasTalentBonusColumns) {
+        payload.talent_bonus_hp = bonusHp + hpGainAllowed;
+        payload.talent_bonus_mp = bonusMp + mpGainAllowed;
+      }
+
+      await (supabase as any).from('user_health_stats').insert({
+        ...payload,
+      });
+    }
+  }
+
+  if (effects.grantInspired) {
+    await (supabase as any)
+      .from('profiles')
+      .update({ inspired_available: true, inspired_earned_at: new Date().toISOString() })
+      .eq('user_id', userId);
+  }
+
+  if (effects.grantFlowXpBuff) {
+    await grantFlowXpOneShotBuff(userId);
+  }
+
+  const logParts: string[] = [];
+  if (effects.doubledByOrderNoCaos) logParts.push('Ordem no Caos dobrou o ouro da missao');
+  if (effects.grantFlowXpBuff) logParts.push('Estado de Fluxo ativado (+20% XP na proxima missao)');
+  if (effects.grantInspired) logParts.push('Presenca Inspiradora concedeu buff Inspirado');
+  if (effects.addMaxMp > 0) logParts.push('Rato de Biblioteca aumentou MP maximo');
+  if (effects.addMaxHp > 0) logParts.push('Corpo de Ferro aumentou HP maximo');
+  if (effects.recoverLostHpPct > 0) logParts.push('Pulmoes de Aco recuperou parte do HP perdido');
+
+  if (logParts.length > 0) {
+    await (supabase as any).from('activity_log').insert({
+      user_id: userId,
+      action: 'mission_talent_bonus',
+      description: `[${missionTitle}] ${logParts.join(' | ')}`,
+      xp_gained: 0,
+    });
+  }
+}
+
 export function useProfile() {
   const { user } = useAuth();
   return useQuery({
@@ -304,11 +443,15 @@ export const useCompleteMission = () => {
       const playerLevel = currentProfile?.level || 1;
       const activeBuffs = await getActiveBuffEffects(user!.id);
       const talentEffects = await getPlayerTalentEffects(user!.id);
+      const hadFlowXpBuff = activeBuffs.has('estado_fluxo_xp');
 
       // XP Dinâmico: escala com o nível do jogador
       let xpMultiplier = 1 + Math.floor((playerLevel - 1) / 5) * 0.5; // +50% a cada 5 níveis
       // Loja do Tempo: bônus de XP aplicados via regras de combate/economia centralizadas
       xpMultiplier += getRoutineXpBuffBonus(activeBuffs);
+      if (hadFlowXpBuff) {
+        xpMultiplier *= 1.2;
+      }
       const currentHour = new Date().getHours();
       if (talentEffects.has('madrugador') && currentHour < 8) {
         xpMultiplier *= 1.15;
@@ -325,6 +468,19 @@ export const useCompleteMission = () => {
       if (missionError) throw missionError;
 
       const typedMission = mission as any;
+
+      const { data: primaryAttrMeta } = await supabase
+        .from('attributes')
+        .select('name')
+        .eq('id', attributeId)
+        .maybeSingle();
+
+      const missionCategory = deriveMissionCategory({
+        mission: typedMission,
+        primaryAttributeName: String((primaryAttrMeta as any)?.name || ''),
+      });
+
+      const missionTalentEffects = resolveMissionTalentEffects(missionCategory, talentEffects);
 
       // Verificar se é diária
       const daysOfWeek = (typedMission.days_of_week as string[]) || [];
@@ -375,6 +531,8 @@ export const useCompleteMission = () => {
 
         if (updateError) throw updateError;
       }
+
+      goldReward = Math.max(0, Math.round(goldReward * missionTalentEffects.goldMultiplier));
 
       // 🔑 Gerar Chave de Boss (1 chave por missão concluída)
       const currentKeys = (currentProfile as any)?.boss_keys ?? 0;
@@ -522,6 +680,16 @@ export const useCompleteMission = () => {
         reason: `Recompensa de missao: ${typedMission.title}`,
       } as any);
 
+      await applyMissionTalentPostEffects({
+        userId: user!.id,
+        missionTitle: String(typedMission.title || 'Missao'),
+        effects: missionTalentEffects,
+      });
+
+      if (hadFlowXpBuff) {
+        await consumeOneShotBuff(user!.id, ['estado_fluxo_xp']);
+      }
+
       const inspiredGranted = await grantInspirationIfPerfectDay(user!.id, today);
 
       return { success: true, inspiredGranted };
@@ -562,10 +730,22 @@ export function useCreateMission() {
       notes?: string;
       secondaryAttributeIds?: string[];
     }) => {
-      const { error } = await supabase.from("missions").insert({
+      const { data: primaryAttrMeta } = await supabase
+        .from('attributes')
+        .select('name')
+        .eq('id', attributeId)
+        .maybeSingle();
+
+      const missionCategory = deriveMissionCategory({
+        mission: { title, description },
+        primaryAttributeName: String((primaryAttrMeta as any)?.name || ''),
+      });
+
+      const missionPayload = {
         user_id: user!.id,
         title,
         attribute_id: attributeId,
+        mission_category: missionCategory,
         due_date: dueDate || null,
         days_of_week: daysOfWeek || [],
         horario_provavel: horarioProvavel || "flex",
@@ -573,8 +753,18 @@ export function useCreateMission() {
         description: description || null,
         notes: notes || null,
         secondary_attribute_ids: secondaryAttributeIds || [],
-      } as any);
-      if (error) throw error;
+      } as any;
+
+      const { error } = await supabase.from("missions").insert(missionPayload);
+
+      if (error) {
+        const maybeMissingCategoryColumn = String(error.message || '').toLowerCase().includes('mission_category');
+        if (!maybeMissingCategoryColumn) throw error;
+
+        const { mission_category, ...fallbackPayload } = missionPayload;
+        const { error: fallbackError } = await supabase.from('missions').insert(fallbackPayload as any);
+        if (fallbackError) throw fallbackError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["missions"] });
@@ -1198,6 +1388,22 @@ export function useShortRestRecovery() {
   return useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
+
+      const now = new Date();
+      const startOfDayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      const { data: alreadyUsedToday } = await supabase
+        .from('activity_log')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('action', 'short_rest_complete')
+        .gte('created_at', startOfDayLocal.toISOString())
+        .limit(1)
+        .maybeSingle();
+
+      if (alreadyUsedToday) {
+        throw new Error('Voce ja realizou o descanso breve hoje. O proximo descanso breve fica disponivel no dia seguinte.');
+      }
 
       const { data: healthStats, error: healthError } = await (supabase as any)
         .from('user_health_stats')

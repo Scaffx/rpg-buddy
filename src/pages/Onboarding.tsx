@@ -23,16 +23,9 @@ import {
   Check,
   Loader2,
 } from 'lucide-react';
+import type { MissionPreset } from '@/types/missions';
 
 // ─── Classes e missões pré-definidas ───────────────────────────────────────────
-
-type MissionPreset = {
-  title: string;
-  description: string;
-  attribute: string; // nome do atributo
-  days: string[];
-  priority: 'baixa' | 'media' | 'alta';
-};
 
 type ClassDef = {
   id: string;
