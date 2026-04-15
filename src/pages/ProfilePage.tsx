@@ -3,7 +3,7 @@ import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName } from "@/hooks/useProfile";
 import { useGoldBalance } from "@/hooks/useGold";
-import { useInventory, useToggleEquip, useConsumeItem } from "@/hooks/useInventory";
+import { useInventory, useToggleEquip, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -53,15 +53,16 @@ function useHealthStats() {
       if (error) throw error;
 
       if (!data) return null;
+      const d = data as any;
 
-      const shouldReset = data.last_reset_date !== today;
+      const shouldReset = d.last_reset_date !== today;
       if (!shouldReset) {
-        return data as any;
+        return d;
       }
 
       const resetPayload = {
-        current_hp: Number(data.max_hp ?? 100),
-        current_mp: Number(data.max_mp ?? 10),
+        current_hp: Number(d.max_hp ?? 100),
+        current_mp: Number(d.max_mp ?? 10),
         fatigue: 0,
         last_reset_date: today,
       };
@@ -554,6 +555,8 @@ export default function ProfilePage() {
   const { data: inventory = [] } = useInventory();
   const toggleEquip = useToggleEquip();
   const consumeItem = useConsumeItem();
+  const claimStarterKit = useClaimStarterKit();
+  const equipBonuses = getEquipmentBonuses(inventory as InventoryItem[]);
   const awardHealthXP = useAwardHealthXP();
   const updateDisplayName = useUpdateDisplayName();
   const queryClient = useQueryClient();
@@ -1285,6 +1288,32 @@ export default function ProfilePage() {
         {/* ======== ABA: INVENTÁRIO ======== */}
         {activeTab === "inventario" && (
           <div className="space-y-6">
+            {/* Dynamic Stats with Equipment */}
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Swords className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">📊 STATUS COM EQUIPAMENTO</h3>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs">
+                {[
+                  { label: 'ATK', base: playerCombatStats.atk, bonus: equipBonuses.atk },
+                  { label: 'DEF', base: playerCombatStats.def, bonus: equipBonuses.def },
+                  { label: 'HP', base: playerCombatStats.hp, bonus: equipBonuses.hp },
+                  { label: 'MP', base: playerCombatStats.mp, bonus: equipBonuses.mp },
+                  { label: 'AGI', base: playerCombatStats.agi, bonus: equipBonuses.agi },
+                  { label: 'CRIT', base: playerCombatStats.crit, bonus: equipBonuses.crit, suffix: '%' },
+                ].map(s => (
+                  <div key={s.label} className="bg-muted/40 rounded-md p-2 border border-border/50">
+                    <p className="text-muted-foreground">{s.label}</p>
+                    <p className="text-base font-bold text-foreground">{s.base + s.bonus}{s.suffix || ''}</p>
+                    {s.bonus > 0 && (
+                      <p className="text-[10px] text-emerald-400 font-semibold">+{s.bonus} equip</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-card border border-border rounded-xl p-6 space-y-6">
               <div className="flex items-center gap-2 mb-4">
                 <Swords className="w-6 h-6 text-primary" />
@@ -1294,137 +1323,140 @@ export default function ProfilePage() {
               {inventory.length === 0 ? (
                 <div className="text-center py-8 space-y-4">
                   <p className="text-lg text-muted-foreground mb-2">Inventário vazio</p>
-                  <p className="text-sm text-muted-foreground">Você ainda não possui itens. Clique abaixo para receber seu kit inicial!</p>
-                  {localStorage.getItem(`starter_kit_claimed_${user?.id}`) ? (
-                    <p className="text-xs text-muted-foreground/60 italic">Kit inicial já resgatado. Visite a loja para adquirir novos itens.</p>
+                  <p className="text-sm text-muted-foreground">Clique abaixo para receber seu kit inicial!</p>
+                  {(profile as any)?.starter_kit_claimed ? (
+                    <p className="text-xs text-muted-foreground/60 italic">Kit inicial já resgatado. Derrote bosses para conseguir novos itens!</p>
                   ) : (
                     <button
-                      onClick={async () => {
-                        if (!user) return;
+                      onClick={() => {
                         const cls = (profile as any)?.starter_class
-                          || localStorage.getItem(`starter_class_v1_${user.id}`)
+                          || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null)
                           || 'novato';
-
-                        // Tenta RPC primeiro, fallback para inserts diretos
-                        const { error: rpcErr } = await (supabase.rpc as any)('grant_starter_items', {
-                          p_user_id: user.id,
-                          p_class: cls,
+                        claimStarterKit.mutate(cls, {
+                          onSuccess: () => toast.success('🎁 Kit inicial resgatado! Confira seu inventário.'),
+                          onError: (err: any) => toast.error(err.message || 'Erro ao resgatar kit'),
                         });
-
-                        if (rpcErr) {
-                          // Fallback: busca itens iniciais da classe e insere direto
-                          const { data: starterItems } = await (supabase as any)
-                            .from('game_items')
-                            .select('id, category, stackable')
-                            .eq('is_starter', true)
-                            .or(`starter_class.eq.${cls},category.eq.consumable`);
-
-                          if (!starterItems || starterItems.length === 0) {
-                            // Tabela game_items não existe ainda — marca como resgatado via localStorage
-                            localStorage.setItem(`starter_kit_claimed_${user.id}`, 'true');
-                            localStorage.setItem(`starter_kit_pending_${user.id}`, cls);
-                            queryClient.invalidateQueries({ queryKey: ['inventory'] });
-                            toast.success('Kit inicial registrado! Os itens aparecerão quando o sistema de inventário estiver ativo.');
-                            return;
-                          }
-
-                          for (const item of starterItems) {
-                            const isConsumable = (item as any).category === 'consumable';
-                            const isClassItem = !isConsumable;
-                            await (supabase as any).from('user_inventory').upsert({
-                              user_id: user.id,
-                              item_id: (item as any).id,
-                              quantity: isConsumable ? 2 : 1,
-                              equipped: isClassItem,
-                            }, { onConflict: 'user_id,item_id' });
-                          }
-                        }
-
-                        localStorage.setItem(`starter_kit_claimed_${user.id}`, 'true');
-                        queryClient.invalidateQueries({ queryKey: ['inventory'] });
-                        toast.success('Kit inicial resgatado! Confira seu inventário.');
                       }}
-                      className="px-6 py-3 rounded-xl font-bold text-sm text-foreground transition-all hover:scale-105"
+                      disabled={claimStarterKit.isPending}
+                      className="px-6 py-3 rounded-xl font-bold text-sm text-foreground transition-all hover:scale-105 disabled:opacity-50"
                       style={{ background: 'linear-gradient(135deg, hsl(25 95% 53%), hsl(270 60% 55%))' }}
                     >
-                      🎁 Resgatar Kit Inicial
+                      {claimStarterKit.isPending ? '⏳ Resgatando...' : '🎁 Resgatar Kit Inicial'}
                     </button>
                   )}
                 </div>
               ) : (
                 <>
-                  {/* Equipamentos (armas, armaduras, acessórios) */}
+                  {/* Equipment items with comparison */}
                   {(() => {
-                    const equipItems = inventory.filter((inv: any) =>
+                    const equipItems = (inventory as InventoryItem[]).filter(inv =>
                       ['weapon', 'armor', 'accessory'].includes(inv.game_items?.category)
                     );
                     if (equipItems.length === 0) return null;
-                    return (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                          <Dumbbell className="w-4 h-4" />
-                          Equipamentos
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {equipItems.map((inv: any) => {
-                            const item = inv.game_items;
-                            const rarityColors: Record<string, string> = {
-                              comum: "bg-slate-500/10 border-slate-500/30",
-                              incomum: "bg-green-500/10 border-green-500/30",
-                              raro: "bg-blue-500/10 border-blue-500/30",
-                              epico: "bg-purple-500/10 border-purple-500/30",
-                              lendario: "bg-yellow-500/10 border-yellow-500/30",
-                            };
-                            const rarityTextColors: Record<string, string> = {
-                              comum: "text-slate-400",
-                              incomum: "text-green-400",
-                              raro: "text-blue-400",
-                              epico: "text-purple-400",
-                              lendario: "text-yellow-400",
-                            };
-                            return (
-                              <div
-                                key={inv.id}
-                                className={`p-3 rounded-lg border ${rarityColors[item.rarity] || rarityColors.comum} ${inv.equipped ? 'ring-2 ring-primary/50' : ''}`}
-                              >
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className="text-2xl">{item.icon}</span>
-                                      <div>
-                                        <p className="font-bold text-foreground text-sm">{item.name}</p>
-                                        <p className={`text-xs font-semibold ${rarityTextColors[item.rarity] || rarityTextColors.comum}`}>
-                                          {item.rarity.toUpperCase()}
-                                        </p>
+
+                    // Group by category for comparison
+                    const byCategory: Record<string, InventoryItem[]> = {};
+                    equipItems.forEach(inv => {
+                      const cat = inv.game_items?.category || 'other';
+                      if (!byCategory[cat]) byCategory[cat] = [];
+                      byCategory[cat].push(inv);
+                    });
+
+                    const categoryLabels: Record<string, string> = {
+                      weapon: '⚔️ Armas',
+                      armor: '🛡️ Armaduras',
+                      accessory: '💍 Acessórios',
+                    };
+
+                    return Object.entries(byCategory).map(([cat, items]) => {
+                      // Sort: equipped first, then by power score desc
+                      const sorted = [...items].sort((a, b) => {
+                        if (a.equipped && !b.equipped) return -1;
+                        if (!a.equipped && b.equipped) return 1;
+                        return compareItems(b.game_items, a.game_items);
+                      });
+
+                      // Find best item in category (highest score)
+                      const bestItem = [...items].sort((a, b) => compareItems(b.game_items, a.game_items))[0];
+
+                      return (
+                        <div key={cat} className="space-y-3">
+                          <h4 className="text-sm font-semibold text-foreground">{categoryLabels[cat] || cat}</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {sorted.map((inv) => {
+                              const item = inv.game_items;
+                              const isBest = bestItem && bestItem.item_id === inv.item_id && items.length > 1;
+                              const rarityColors: Record<string, string> = {
+                                comum: "bg-muted/30 border-border",
+                                incomum: "bg-emerald-500/5 border-emerald-500/30",
+                                raro: "bg-blue-500/5 border-blue-500/30",
+                                epico: "bg-purple-500/5 border-purple-500/30",
+                                lendario: "bg-yellow-500/5 border-yellow-500/30",
+                              };
+                              const rarityTextColors: Record<string, string> = {
+                                comum: "text-muted-foreground",
+                                incomum: "text-emerald-400",
+                                raro: "text-blue-400",
+                                epico: "text-purple-400",
+                                lendario: "text-yellow-400",
+                              };
+                              return (
+                                <div
+                                  key={inv.id}
+                                  className={`p-3 rounded-lg border ${rarityColors[item.rarity] || rarityColors.comum} ${inv.equipped ? 'ring-2 ring-primary/50' : ''}`}
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-2xl">{item.icon}</span>
+                                        <div>
+                                          <div className="flex items-center gap-1.5">
+                                            <p className="font-bold text-foreground text-sm">{item.name}</p>
+                                            {isBest && !inv.equipped && (
+                                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">MELHOR</span>
+                                            )}
+                                          </div>
+                                          <p className={`text-xs font-semibold ${rarityTextColors[item.rarity] || rarityTextColors.comum}`}>
+                                            {item.rarity.toUpperCase()}
+                                          </p>
+                                        </div>
                                       </div>
+                                      {/* Stat bonuses */}
+                                      <div className="flex flex-wrap gap-1.5 mt-1">
+                                        {item.atk_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">+{item.atk_bonus} ATK</span>}
+                                        {item.def_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">+{item.def_bonus} DEF</span>}
+                                        {item.hp_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+{item.hp_bonus} HP</span>}
+                                        {item.mp_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">+{item.mp_bonus} MP</span>}
+                                        {item.agi_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">+{item.agi_bonus} AGI</span>}
+                                        {item.crit_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">+{item.crit_bonus}% CRIT</span>}
+                                      </div>
+                                      {item.description && (
+                                        <p className="text-xs text-muted-foreground/70 mt-1 italic">{item.description}</p>
+                                      )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground">{item.stat_label}</p>
-                                    {item.description && (
-                                      <p className="text-xs text-muted-foreground/70 mt-1 italic">{item.description}</p>
-                                    )}
+                                    <button
+                                      onClick={() => toggleEquip.mutate({ inventoryId: inv.id, equipped: !inv.equipped })}
+                                      className={`px-2 py-1 text-xs rounded transition-colors font-medium shrink-0 ml-2 ${
+                                        inv.equipped
+                                          ? 'bg-primary/30 text-primary border border-primary/40'
+                                          : 'bg-muted/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                                      }`}
+                                    >
+                                      {inv.equipped ? '✓ Equipado' : 'Equipar'}
+                                    </button>
                                   </div>
-                                  <button
-                                    onClick={() => toggleEquip.mutate({ inventoryId: inv.id, equipped: !inv.equipped })}
-                                    className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
-                                      inv.equipped
-                                        ? 'bg-primary/30 text-primary border border-primary/40'
-                                        : 'bg-muted/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
-                                    }`}
-                                  >
-                                    {inv.equipped ? '✓ Equipado' : 'Equipar'}
-                                  </button>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    );
+                      );
+                    });
                   })()}
 
-                  {/* Consumíveis */}
+                  {/* Consumables */}
                   {(() => {
-                    const consumables = inventory.filter((inv: any) => inv.game_items?.category === 'consumable');
+                    const consumables = (inventory as InventoryItem[]).filter(inv => inv.game_items?.category === 'consumable');
                     if (consumables.length === 0) return null;
                     return (
                       <div className="space-y-3 border-t border-border pt-4">
@@ -1433,7 +1465,7 @@ export default function ProfilePage() {
                           Consumíveis
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {consumables.map((inv: any) => {
+                          {consumables.map((inv) => {
                             const item = inv.game_items;
                             return (
                               <div key={inv.id} className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
@@ -1449,7 +1481,7 @@ export default function ProfilePage() {
                                 </div>
                                 <button
                                   onClick={() => consumeItem.mutate({ inventoryId: inv.id, quantity: inv.quantity })}
-                                  className="w-full px-2 py-1 bg-success/20 text-success text-xs rounded hover:bg-success/30 transition-colors font-medium"
+                                  className="w-full px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded hover:bg-emerald-500/30 transition-colors font-medium"
                                 >
                                   Usar
                                 </button>
@@ -1463,9 +1495,8 @@ export default function ProfilePage() {
                 </>
               )}
 
-              {/* Info */}
               <div className="bg-muted/30 border border-border/50 rounded-lg p-3 text-xs text-muted-foreground">
-                💡 Dica: Complete missões para ganhar ouro e comprar itens na loja!
+                💡 Dica: Derrote bosses para ganhar equipamentos raros! O item marcado como "MELHOR" tem status superiores na categoria.
               </div>
             </div>
           </div>

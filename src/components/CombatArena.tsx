@@ -13,6 +13,7 @@ type TurnSummary = {
   hp_boss_restante: number;
   hp_player_restante: number;
   status: 'em_andamento' | 'vitoria' | 'derrota';
+  loot_drop?: { id: string; name: string; icon: string; rarity: string } | null;
 };
 
 type CombatDataProvider = {
@@ -105,6 +106,7 @@ export default function CombatArena({
   const [bossHp, setBossHp] = useState(initialBossHp);
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
+  const [lootDrop, setLootDrop] = useState<{ name: string; icon: string; rarity: string } | null>(null);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
 
@@ -129,6 +131,7 @@ export default function CombatArena({
     setPlayerHp(initialPlayerHp);
     setRollValue(null);
     setDamagePopups([]);
+    setLootDrop(null);
     setTurn('player');
   };
 
@@ -171,6 +174,9 @@ export default function CombatArena({
       }
 
       if (turnResult.status === 'vitoria') {
+        if (turnResult.loot_drop) {
+          setLootDrop(turnResult.loot_drop);
+        }
         setTurn('finished');
         return;
       }
@@ -302,6 +308,19 @@ export default function CombatArena({
       <footer className="mt-8 flex flex-col items-center gap-3">
         {winnerLabel ? <p className="text-lg font-bold text-amber-200">{winnerLabel}</p> : null}
 
+        {lootDrop && bossHp <= 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-center space-y-1"
+          >
+            <p className="text-sm font-bold text-yellow-300">🎁 Item Obtido!</p>
+            <p className="text-2xl">{lootDrop.icon}</p>
+            <p className="text-sm font-semibold text-foreground">{lootDrop.name}</p>
+            <p className="text-xs text-yellow-400 uppercase font-bold">{lootDrop.rarity}</p>
+            <p className="text-[10px] text-muted-foreground">Vá ao seu Inventário para equipar!</p>
+          </motion.div>
+        )}
         <button
           type="button"
           onClick={startBattle}
