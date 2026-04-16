@@ -506,7 +506,7 @@ export const useCompleteMission = () => {
       // Buscar perfil para XP scaling baseado no nível
       const { data: currentProfile } = await supabase
         .from('profiles')
-        .select('level, boss_keys')
+        .select('level, boss_keys, missions_completed')
         .eq('user_id', user!.id)
         .single();
       
@@ -604,12 +604,27 @@ export const useCompleteMission = () => {
 
       goldReward = Math.max(0, Math.round(goldReward * missionTalentEffects.goldMultiplier));
 
-      // 🔑 Gerar Chave de Boss (1 chave por missão concluída)
-      const currentKeys = (currentProfile as any)?.boss_keys ?? 0;
-      await supabase
-        .from('profiles')
-        .update({ boss_keys: currentKeys + 1 } as any)
-        .eq('user_id', user!.id);
+      // 🔑 Rebalanceamento: 1 chave a cada 5 missões concluídas.
+      const previousMissionCount = Number((currentProfile as any)?.missions_completed ?? 0);
+      const nextMissionCount = previousMissionCount + 1;
+      const previousKeysEarned = Math.floor(previousMissionCount / 5);
+      const nextKeysEarned = Math.floor(nextMissionCount / 5);
+      const gainedKeys = Math.max(0, nextKeysEarned - previousKeysEarned);
+      const currentKeys = Number((currentProfile as any)?.boss_keys ?? 0);
+
+      if (gainedKeys > 0) {
+        await supabase
+          .from('profiles')
+          .update({ boss_keys: currentKeys + gainedKeys } as any)
+          .eq('user_id', user!.id);
+
+        await supabase.from('activity_log').insert({
+          user_id: user!.id,
+          action: 'boss_key_earned',
+          description: `Voce ganhou ${gainedKeys} chave(s) de boss por completar 5 missoes.`,
+          xp_gained: 0,
+        });
+      }
 
       // ... resto do código (XP, Ouro, etc.)
       

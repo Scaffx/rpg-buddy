@@ -31,6 +31,7 @@ const ATTRIBUTE_ICONS: Record<string, any> = {
 };
 
 const RESPEC_COST = 120;
+const MAX_COMBAT_SKILLS = 4;
 
 const RESPEC_CLASSES = [
   { id: "guerreiro", label: "Guerreiro" },
@@ -572,6 +573,7 @@ export default function ProfilePage() {
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [selectedRespecClass, setSelectedRespecClass] = useState<string>("guerreiro");
+  const [selectedCombatSkillIds, setSelectedCombatSkillIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -631,6 +633,27 @@ export default function ProfilePage() {
     () => [...noviceSkills, ...classSkills].filter((s) => s.unlocked),
     [noviceSkills, classSkills],
   );
+  const unlockedSkillsById = useMemo(
+    () => new Map(unlockedSkills.map((skill) => [skill.id, skill])),
+    [unlockedSkills],
+  );
+  const selectedCombatSkills = useMemo(
+    () => selectedCombatSkillIds.map((id) => unlockedSkillsById.get(id)).filter(Boolean),
+    [selectedCombatSkillIds, unlockedSkillsById],
+  );
+
+  useEffect(() => {
+    const rawLoadout = Array.isArray((profile as any)?.combat_skill_loadout)
+      ? (profile as any).combat_skill_loadout
+      : [];
+
+    const ids = rawLoadout
+      .map((entry: any) => String(entry?.id || ''))
+      .filter((id: string) => id && unlockedSkillsById.has(id))
+      .slice(0, MAX_COMBAT_SKILLS);
+
+    setSelectedCombatSkillIds(ids);
+  }, [profile, unlockedSkillsById]);
 
   const mealHalf = Math.ceil(mealsTarget / 2);
   const maxHp = playerCombatStats.hp;
@@ -691,6 +714,55 @@ export default function ProfilePage() {
       setShowSettings(false);
     },
   });
+
+  const saveCombatLoadout = useMutation({
+    mutationFn: async (skillIds: string[]) => {
+      if (!user) throw new Error('Nao autenticado');
+
+      const payload = skillIds
+        .map((id) => unlockedSkillsById.get(id))
+        .filter(Boolean)
+        .slice(0, MAX_COMBAT_SKILLS)
+        .map((skill: any) => ({
+          id: skill.id,
+          name: skill.name,
+          power: skill.power,
+          cooldown: skill.cooldown,
+          category: skill.category,
+        }));
+
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update({ combat_skill_loadout: payload })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Loadout de combate salvo com sucesso!');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Nao foi possivel salvar o loadout de combate.');
+    },
+  });
+
+  const toggleCombatSkill = (skillId: string) => {
+    if (!unlockedSkillsById.has(skillId)) {
+      return;
+    }
+
+    setSelectedCombatSkillIds((prev) => {
+      if (prev.includes(skillId)) {
+        return prev.filter((id) => id !== skillId);
+      }
+      if (prev.length >= MAX_COMBAT_SKILLS) {
+        toast.error(`Voce so pode equipar ate ${MAX_COMBAT_SKILLS} habilidades.`);
+        return prev;
+      }
+      return [...prev, skillId];
+    });
+  };
 
   const logMeal = useMutation({
     mutationFn: async () => {
@@ -1133,6 +1205,19 @@ export default function ProfilePage() {
                           <p className="font-bold text-foreground">{skill.basedOn.join(" + ")}</p>
                         </div>
                       </div>
+
+                      {skill.unlocked && (
+                        <button
+                          onClick={() => toggleCombatSkill(skill.id)}
+                          className={`w-full rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                            selectedCombatSkillIds.includes(skill.id)
+                              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
+                              : 'bg-zinc-800/80 border border-zinc-700 text-zinc-200 hover:bg-zinc-700/80'
+                          }`}
+                        >
+                          {selectedCombatSkillIds.includes(skill.id) ? 'Remover do loadout' : 'Adicionar ao loadout'}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1177,6 +1262,19 @@ export default function ProfilePage() {
                         <p className="font-bold text-foreground">{skill.basedOn.join(" + ")}</p>
                       </div>
                     </div>
+
+                    {skill.unlocked && (
+                      <button
+                        onClick={() => toggleCombatSkill(skill.id)}
+                        className={`w-full rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                          selectedCombatSkillIds.includes(skill.id)
+                            ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
+                            : 'bg-zinc-800/80 border border-zinc-700 text-zinc-200 hover:bg-zinc-700/80'
+                        }`}
+                      >
+                        {selectedCombatSkillIds.includes(skill.id) ? 'Remover do loadout' : 'Adicionar ao loadout'}
+                      </button>
+                    )}
                   </div>
                 ))}
                 </div>
@@ -1185,6 +1283,34 @@ export default function ProfilePage() {
               <div className="bg-secondary/40 border border-border rounded-lg p-3 flex items-center justify-between">
                 <span className="text-sm text-foreground font-semibold">Habilidades desbloqueadas</span>
                 <span className="text-2xl font-bold text-primary">{unlockedSkills.length}</span>
+              </div>
+
+              <div className="bg-zinc-900/40 border border-zinc-700 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-foreground font-semibold">Loadout de Combate</span>
+                  <span className="text-xs text-zinc-300">{selectedCombatSkills.length}/{MAX_COMBAT_SKILLS}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecione ate {MAX_COMBAT_SKILLS} habilidades desbloqueadas. Elas serao usadas em rotacao no combate contra boss.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedCombatSkills.length > 0 ? (
+                    selectedCombatSkills.map((skill: any) => (
+                      <span key={skill.id} className="text-xs px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                        {skill.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-zinc-400">Nenhuma habilidade selecionada.</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => saveCombatLoadout.mutate(selectedCombatSkillIds)}
+                  disabled={saveCombatLoadout.isPending}
+                  className="rounded-lg bg-primary/80 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary disabled:opacity-60"
+                >
+                  {saveCombatLoadout.isPending ? 'Salvando...' : 'Salvar loadout'}
+                </button>
               </div>
             </div>
 
@@ -1226,6 +1352,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">Nenhum boss encontrado.</p>
               )}
             </div>
+
           </div>
         )}
 
@@ -1393,6 +1520,7 @@ export default function ProfilePage() {
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className="text-2xl">{item.icon}</span>
+
                                         <div>
                                           <div className="flex items-center gap-1.5">
                                             <p className="font-bold text-foreground text-sm">{item.name}</p>

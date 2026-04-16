@@ -4,9 +4,12 @@ import { motion } from "framer-motion";
 import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount, useRankPosition } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
 import { useDailyBonus } from "@/hooks/useDailyBonus";
-import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock } from "lucide-react";
+import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock, Flame, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -41,6 +44,7 @@ function BonusCountdown({ nextClaimAt }: { nextClaimAt: string | null }) {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: attributes, isLoading: attrsLoading } = useAttributes();
   const { data: allMissions, isLoading: missionsLoading } = useMissions();
@@ -50,6 +54,8 @@ export default function Dashboard() {
   const { data: rankPosition } = useRankPosition();
   const dailyBonus = useDailyBonus();
   const completeMission = useCompleteMission();
+  const [showCoachPopup, setShowCoachPopup] = useState(false);
+  const [coachQuote, setCoachQuote] = useState("");
 
   const currentClass = classes?.find((c: any) => c.id === profile?.current_class_id);
 
@@ -81,6 +87,138 @@ export default function Dashboard() {
         return (order[a.priority || "media"] ?? 1) - (order[b.priority || "media"] ?? 1);
       });
   }, [allMissions, todayDay]);
+
+  const todayDate = getLocalDateString();
+
+  const todayMissionMetrics = useMemo(() => {
+    const required = (allMissions || []).filter((m: any) => {
+      const days: string[] = m.days_of_week || [];
+      if (!(days.length > 0 && days.includes(todayDay))) return false;
+      return !m.completed;
+    });
+
+    let completed = 0;
+    let failed = 0;
+    for (const mission of required) {
+      const dailyStatus = (mission.daily_status as Record<string, string>) || {};
+      const state = dailyStatus[todayDate];
+      if (state === 'completed' || state === 'protected') completed += 1;
+      if (state === 'failed' || state === 'failed_accepted') failed += 1;
+      if ((mission as any).is_failed && (mission as any).failed_date === todayDate) failed += 1;
+    }
+
+    return {
+      required: required.length,
+      completed,
+      failed,
+      pending: Math.max(0, required.length - completed - failed),
+    };
+  }, [allMissions, todayDay, todayDate]);
+
+  const streakActive =
+    todayMissionMetrics.required > 0 &&
+    todayMissionMetrics.failed === 0 &&
+    (todayMissionMetrics.completed > 0 || todayMissionMetrics.pending > 0);
+
+  useEffect(() => {
+    const tryWeeklyProtectorReset = async () => {
+      if (!user || !profile) return;
+
+      const now = new Date();
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const day = d.getUTCDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setUTCDate(d.getUTCDate() + diff);
+      const weekToken = d.toISOString().slice(0, 10);
+
+      const currentWeek = String((profile as any).streak_protector_week || '');
+      const maxSlots = Math.min(3, Math.max(1, Number((profile as any).streak_protector_max ?? 3)));
+
+      if (currentWeek !== weekToken) {
+        await supabase
+          .from('profiles')
+          .update({
+            streak_protector_week: weekToken,
+            streak_protector_charges: Math.min(2, maxSlots),
+            streak_protector_max: maxSlots,
+          } as any)
+          .eq('user_id', user.id);
+      }
+    };
+
+    void tryWeeklyProtectorReset();
+  }, [user, profile]);
+
+  useEffect(() => {
+    if (!user || !profile) return;
+
+    const key = `streak_risk_alert_${user.id}_${todayDate}`;
+    const maybeAlert = () => {
+      const hour = new Date().getHours();
+      const hasPending = todayMissionMetrics.pending > 0;
+      const charges = Number((profile as any).streak_protector_charges ?? 0);
+      if (hour >= 22 && hasPending && charges <= 0 && !sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, 'shown');
+        toast.error('A sua Streak de missoes esta em risco, e voce nao possui um Protetor de Streak, se proteja.');
+      }
+    };
+
+    maybeAlert();
+    const interval = window.setInterval(maybeAlert, 60 * 1000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [user, profile, todayDate, todayMissionMetrics.pending]);
+
+  useEffect(() => {
+    if (!user || !allMissions || allMissions.length === 0) return;
+
+    const philosopherQuotes = [
+      '"Nao e porque as coisas sao dificeis que nao ousamos; e porque nao ousamos que elas sao dificeis." - Seneca',
+      '"Somos o que repetidamente fazemos. A excelencia, portanto, nao e um ato, mas um habito." - Aristoteles',
+      '"A disciplina e a ponte entre metas e realizacoes." - Jim Rohn',
+    ];
+
+    const getDateDaysAgo = (daysAgo: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return d;
+    };
+
+    const isCriticalFailureDay = (date: Date): boolean => {
+      const dateStr = getLocalDateString(date);
+      const dayName = DAYS_MAP[date.getDay()];
+
+      const required = (allMissions || []).filter((m: any) => {
+        const days: string[] = m.days_of_week || [];
+        return days.length > 0 && days.includes(dayName);
+      });
+      if (required.length === 0) return false;
+
+      let failed = 0;
+      for (const mission of required) {
+        const dailyStatus = (mission.daily_status as Record<string, string>) || {};
+        const state = dailyStatus[dateStr];
+        if (state === 'failed' || state === 'failed_accepted') {
+          failed += 1;
+        } else if ((mission as any).failed_date === dateStr) {
+          failed += 1;
+        }
+      }
+
+      const rate = failed / required.length;
+      return rate > 0.6;
+    };
+
+    const critical3Days = [0, 1, 2].every((offset) => isCriticalFailureDay(getDateDaysAgo(offset)));
+    const popupKey = `mission_coach_popup_${user.id}_${todayDate}`;
+
+    if (critical3Days && !sessionStorage.getItem(popupKey)) {
+      sessionStorage.setItem(popupKey, 'shown');
+      setCoachQuote(philosopherQuotes[Math.floor(Math.random() * philosopherQuotes.length)]);
+      setShowCoachPopup(true);
+    }
+  }, [user, allMissions, todayDate]);
 
   if (profileLoading || attrsLoading) {
     return (
@@ -129,6 +267,16 @@ export default function Dashboard() {
             Olá, {profile?.display_name || "Aventureiro"}!
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Sua jornada continua. Continue evoluindo!</p>
+
+          {streakActive && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-500/60 bg-red-500/15 px-3 py-1.5 text-red-200 animate-streak-shake streak-fire-aura">
+              <Flame className="w-4 h-4 text-red-400" />
+              <span className="text-sm font-bold">STREAK DE MISSOES ATIVA</span>
+              <span className="text-xs text-red-300">
+                {todayMissionMetrics.completed}/{todayMissionMetrics.required} hoje
+              </span>
+            </div>
+          )}
         </motion.div>
 
         {/* Stat cards */}
@@ -317,6 +465,31 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showCoachPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-orange-500/40 bg-card p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 w-5 h-5 text-orange-400" />
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold text-foreground">O que acha de diminuirmos nossas tarefas diarias?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Percebemos um padrao de mais de 60% de falhas por 3 dias consecutivos. Podemos reduzir metas para recuperar consistencia.
+                </p>
+                <p className="text-sm italic text-orange-300">{coachQuote}</p>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => setShowCoachPopup(false)}
+                    className="bg-orange-500/20 text-orange-300 border border-orange-500/40 hover:bg-orange-500/30"
+                  >
+                    Entendi
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

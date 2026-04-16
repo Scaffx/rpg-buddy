@@ -2,16 +2,37 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import ShortRestTimer from '@/components/ShortRestTimer';
-import { Clock } from 'lucide-react';
+import { Clock, Flame, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const DAILY_RESET_EVENT = 'daily-reset-processed';
 
 function getDailyResetStorageKey(userId: string): string {
   return `daily_reset_last_processed_${userId}`;
 }
+
+function getWeekToken(date: Date = new Date()): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+type StreakProtectorStatus = {
+  charges: number;
+  max: number;
+};
+
+type StreakProtectorProfileRow = {
+  streak_protector_charges?: number | null;
+  streak_protector_max?: number | null;
+  streak_protector_week?: string | null;
+};
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -20,6 +41,37 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
   const [showDailyResetNotice, setShowDailyResetNotice] = useState(false);
   const [dailyResetMessage, setDailyResetMessage] = useState('');
+
+  const { data: streakProtector } = useQuery<StreakProtectorStatus>({
+    queryKey: ['streak-protector-header', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('streak_protector_charges, streak_protector_max, streak_protector_week')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      const row = data as StreakProtectorProfileRow | null;
+
+      const weekToken = getWeekToken();
+      const profileWeek = String(row?.streak_protector_week || '');
+      const max = Math.min(3, Math.max(1, Number(row?.streak_protector_max ?? 3)));
+      const charges = profileWeek === weekToken
+        ? Number(row?.streak_protector_charges ?? 2)
+        : 2;
+
+      return {
+        charges: Math.max(0, Math.min(max, charges)),
+        max,
+      };
+    },
+    refetchInterval: 60_000,
+  });
+
+  const protectorCharges = streakProtector?.charges ?? 0;
+  const protectorMax = streakProtector?.max ?? 3;
+  const isProtectorRisk = protectorCharges <= 0;
 
   useEffect(() => {
     if (!user?.id) {
@@ -102,17 +154,41 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-12 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 px-2">
             <SidebarTrigger />
-            <button
-              onClick={() => setShowRestTimer(!showRestTimer)}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition text-sm font-medium"
-              title="Descanso Breve"
-            >
-              {headerLabel ? (
-                <span className="font-mono text-xs leading-none">{headerLabel}</span>
-              ) : (
-                <Clock className="w-4 h-4" />
-              )}
-            </button>
+
+            <div className="hidden md:flex items-center justify-center flex-1 pointer-events-none">
+              <div
+                className={`hero-header-sprite ${showRestTimer ? 'is-rest' : 'is-attack'}`}
+                aria-label={showRestTimer ? 'Heroi descansando na fogueira' : 'Heroi lutando contra orcs'}
+                role="img"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${
+                  isProtectorRisk
+                    ? 'border-red-500/50 bg-red-500/15 text-red-300 animate-pulse'
+                    : 'border-orange-400/40 bg-orange-400/10 text-orange-300'
+                }`}
+                title="Cargas do Protetor de Streak"
+              >
+                {isProtectorRisk ? <ShieldAlert className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
+                <span>Protetor {protectorCharges}/{protectorMax}</span>
+              </div>
+
+              <button
+                onClick={() => setShowRestTimer(!showRestTimer)}
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition text-sm font-medium"
+                title="Descanso Breve"
+              >
+                {headerLabel ? (
+                  <span className="font-mono text-xs leading-none">{headerLabel}</span>
+                ) : (
+                  <Clock className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">Short Rest</span>
+              </button>
+            </div>
           </header>
           {showDailyResetNotice && (
             <div className="mx-2 mt-2 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-300">
@@ -143,6 +219,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   setTimeout(() => setShowRestTimer(false), 2000);
                 }}
               />
+
+              <div className="mt-3 flex items-center justify-center">
+                <div className="hero-header-sprite is-rest is-large" aria-hidden="true" />
+              </div>
             </div>
           </div>
         )}

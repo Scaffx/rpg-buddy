@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 type Turn = 'idle' | 'player' | 'boss' | 'finished';
 
@@ -14,6 +15,11 @@ type TurnSummary = {
   hp_player_restante: number;
   status: 'em_andamento' | 'vitoria' | 'derrota';
   loot_drop?: { id: string; name: string; icon: string; rarity: string } | null;
+  habilidade_player?: string;
+  habilidade_boss?: string;
+  efeitos_player?: string[];
+  efeitos_boss?: string[];
+  log_id?: string | null;
 };
 
 type CombatDataProvider = {
@@ -22,6 +28,9 @@ type CombatDataProvider = {
     currentBossHp: number;
     currentPlayerHp: number;
     acaoEscolhida: 'atacar';
+    skillId?: string;
+    skillName?: string;
+    skillPower?: number;
   }) => Promise<TurnSummary>;
 };
 
@@ -38,16 +47,38 @@ type CombatArenaProps = {
   provider?: CombatDataProvider;
 };
 
+type CombatSkill = {
+  id: string;
+  name: string;
+  power: number;
+};
+
+type BattleLogEntry = {
+  id: number;
+  actor: 'player' | 'boss';
+  skill: string;
+  damage: number;
+  roll: number;
+  effects: string[];
+};
+
+type ProfileLoadoutRow = {
+  combat_skill_loadout?: unknown;
+};
+
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Default provider with Supabase integration and local mock fallback.
 const mockProvider: CombatDataProvider = {
-  async processTurn({ combateId, currentBossHp, currentPlayerHp, acaoEscolhida }) {
+  async processTurn({ combateId, currentBossHp, currentPlayerHp, acaoEscolhida, skillId, skillName, skillPower }) {
     if (combateId) {
       const { data, error } = await supabase.functions.invoke('processar_turno', {
         body: {
           combate_id: combateId,
           acao_escolhida: acaoEscolhida,
+          skill_id: skillId,
+          skill_name: skillName,
+          skill_power: skillPower,
         },
       });
 
@@ -88,6 +119,10 @@ const mockProvider: CombatDataProvider = {
       hp_boss_restante: hpBossRestante,
       hp_player_restante: hpPlayerRestante,
       status: hpPlayerRestante <= 0 ? 'derrota' : 'em_andamento',
+      habilidade_player: skillName || 'Ataque Basico',
+      habilidade_boss: 'Golpe Selvagem',
+      efeitos_player: [],
+      efeitos_boss: [],
     };
   },
 };
@@ -98,6 +133,7 @@ export default function CombatArena({
   initialPlayerHp = 120,
   provider,
 }: CombatArenaProps) {
+  const { user } = useAuth();
   const dataProvider = useMemo(() => provider ?? mockProvider, [provider]);
 
   const [turn, setTurn] = useState<Turn>('idle');
@@ -107,8 +143,13 @@ export default function CombatArena({
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
   const [lootDrop, setLootDrop] = useState<{ name: string; icon: string; rarity: string } | null>(null);
+  const [selectedSkills, setSelectedSkills] = useState<CombatSkill[]>([]);
+  const [battleLog, setBattleLog] = useState<BattleLogEntry[]>([]);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
+  const currentBattleTokenRef = useRef(0);
+  const mountedRef = useRef(true);
+  const skillCursorRef = useRef(0);
 
   useEffect(() => {
     bossHpRef.current = bossHp;
@@ -117,6 +158,54 @@ export default function CombatArena({
   useEffect(() => {
     playerHpRef.current = playerHp;
   }, [playerHp]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      currentBattleTokenRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadCombatSkills = async () => {
+      if (!user) {
+        setSelectedSkills([]);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('combat_skill_loadout')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const row = data as ProfileLoadoutRow | null;
+      const raw = Array.isArray(row?.combat_skill_loadout) ? row.combat_skill_loadout : [];
+      const parsed = raw
+        .map((entry: unknown) => {
+          const safeEntry = typeof entry === 'object' && entry ? (entry as Record<string, unknown>) : {};
+          return {
+            id: String(safeEntry.id || ''),
+            name: String(safeEntry.name || 'Ataque Basico'),
+            power: Number(safeEntry.power || 0),
+          };
+        })
+        .filter((skill: CombatSkill) => skill.id);
+
+      setSelectedSkills(parsed.slice(0, 4));
+    };
+
+    loadCombatSkills();
+  }, [user]);
+
+  const appendBattleLog = (entry: Omit<BattleLogEntry, 'id'>) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setBattleLog((prev) => [
+      { id, ...entry },
+      ...prev,
+    ].slice(0, 12));
+  };
 
   const pushDamage = (target: 'boss' | 'player', value: number) => {
     const popupId = Date.now() + Math.floor(Math.random() * 1000);
@@ -127,11 +216,14 @@ export default function CombatArena({
   };
 
   const startBattle = () => {
+    currentBattleTokenRef.current += 1;
+    skillCursorRef.current = 0;
     setBossHp(initialBossHp);
     setPlayerHp(initialPlayerHp);
     setRollValue(null);
     setDamagePopups([]);
     setLootDrop(null);
+    setBattleLog([]);
     setTurn('player');
   };
 
@@ -140,11 +232,15 @@ export default function CombatArena({
       return;
     }
 
-    let cancelled = false;
-
     const resolveTurn = async () => {
       if (turn !== 'player') {
         return;
+      }
+
+      const battleToken = currentBattleTokenRef.current;
+      const chosenSkill = selectedSkills.length > 0 ? selectedSkills[skillCursorRef.current % selectedSkills.length] : null;
+      if (selectedSkills.length > 0) {
+        skillCursorRef.current += 1;
       }
 
       const turnResult = await dataProvider.processTurn({
@@ -152,9 +248,12 @@ export default function CombatArena({
         currentBossHp: bossHpRef.current,
         currentPlayerHp: playerHpRef.current,
         acaoEscolhida: 'atacar',
+        skillId: chosenSkill?.id,
+        skillName: chosenSkill?.name,
+        skillPower: chosenSkill?.power,
       });
 
-      if (cancelled) {
+      if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
         return;
       }
 
@@ -167,9 +266,16 @@ export default function CombatArena({
       setRollValue(turnResult.dado_player);
       setBossHp(turnResult.hp_boss_restante);
       pushDamage('boss', turnResult.dano_player);
+      appendBattleLog({
+        actor: 'player',
+        skill: turnResult.habilidade_player || chosenSkill?.name || 'Ataque Basico',
+        damage: turnResult.dano_player,
+        roll: turnResult.dado_player,
+        effects: turnResult.efeitos_player || [],
+      });
 
       await wait(950);
-      if (cancelled) {
+      if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
         return;
       }
 
@@ -186,7 +292,7 @@ export default function CombatArena({
       setRollValue(null);
       await wait(700);
 
-      if (cancelled) {
+      if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
         return;
       }
 
@@ -194,9 +300,16 @@ export default function CombatArena({
       setRollValue(turnResult.dado_boss);
       setPlayerHp(turnResult.hp_player_restante);
       pushDamage('player', turnResult.dano_boss);
+      appendBattleLog({
+        actor: 'boss',
+        skill: turnResult.habilidade_boss || 'Golpe Selvagem',
+        damage: turnResult.dano_boss,
+        roll: turnResult.dado_boss,
+        effects: turnResult.efeitos_boss || [],
+      });
 
       await wait(950);
-      if (cancelled) {
+      if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
         return;
       }
 
@@ -208,12 +321,14 @@ export default function CombatArena({
       setTurn('player');
     };
 
-    resolveTurn();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [turn, dataProvider, combateId]);
+    resolveTurn().catch((error) => {
+      console.error('Falha ao resolver turno de combate', error);
+      if (mountedRef.current) {
+        setTurn('finished');
+        setIsRolling(false);
+      }
+    });
+  }, [turn, dataProvider, combateId, selectedSkills]);
 
   const winnerLabel =
     turn === 'finished'
@@ -241,6 +356,15 @@ export default function CombatArena({
           {turn === 'finished' && 'Battle Ended'}
         </div>
       </header>
+
+      <div className="mb-4 rounded-xl border border-zinc-700/60 bg-zinc-800/60 p-3">
+        <p className="text-xs uppercase tracking-wide text-zinc-400">Loadout (max 4)</p>
+        <p className="mt-1 text-sm text-zinc-300">
+          {selectedSkills.length > 0
+            ? selectedSkills.map((skill) => skill.name).join(' | ')
+            : 'Nenhuma habilidade equipada na aba de Habilidades. Usando Ataque Basico.'}
+        </p>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-3 md:items-center">
         <div className="relative rounded-xl border border-zinc-700/60 bg-zinc-800/70 p-4 text-center">
@@ -334,6 +458,27 @@ export default function CombatArena({
           Com combate_id preenchido, os valores vem da Edge Function processar_turno no Supabase.
         </p>
       </footer>
+
+      <div className="mt-6 rounded-xl border border-zinc-700/60 bg-zinc-950/50 p-4">
+        <p className="text-sm font-bold text-zinc-100">Registro de Turnos</p>
+        <div className="mt-3 space-y-2 text-xs">
+          {battleLog.length === 0 ? (
+            <p className="text-zinc-400">Sem eventos ainda. Inicie o combate para registrar habilidades e dano.</p>
+          ) : (
+            battleLog.map((entry) => (
+              <div key={entry.id} className="rounded-lg border border-zinc-700/60 bg-zinc-900/80 p-2">
+                <p className={entry.actor === 'player' ? 'text-emerald-300 font-semibold' : 'text-rose-300 font-semibold'}>
+                  {entry.actor === 'player' ? 'Heroi' : 'Boss'} usou {entry.skill}
+                </p>
+                <p className="text-zinc-300">D20: {entry.roll} | Dano: {entry.damage}</p>
+                {entry.effects.length > 0 ? (
+                  <p className="text-amber-300">Efeitos: {entry.effects.join(', ')}</p>
+                ) : null}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </section>
   );
 }

@@ -15,6 +15,14 @@ function getStartOfLocalDay(base: Date = new Date()): Date {
   return new Date(base.getFullYear(), base.getMonth(), base.getDate());
 }
 
+function getWeekToken(date: Date = new Date()): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
 export function useCheckFailedMissions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -49,6 +57,28 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   let totalMpPenalty = 0;
   const failedList: any[] = [];
   const startOfToday = getStartOfLocalDay();
+  const currentWeek = getWeekToken();
+
+  const { data: streakProfile } = await supabase
+    .from('profiles')
+    .select('streak_protector_charges, streak_protector_max, streak_protector_week')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const maxSlots = Math.min(3, Math.max(1, Number((streakProfile as any)?.streak_protector_max ?? 3)));
+  let availableProtectors =
+    String((streakProfile as any)?.streak_protector_week || '') === currentWeek
+      ? Number((streakProfile as any)?.streak_protector_charges ?? 2)
+      : 2;
+
+  await supabase
+    .from('profiles')
+    .update({
+      streak_protector_week: currentWeek,
+      streak_protector_max: maxSlots,
+      streak_protector_charges: Math.min(maxSlots, Math.max(0, availableProtectors)),
+    } as any)
+    .eq('user_id', userId);
 
   for (let daysBack = 1; daysBack <= 30; daysBack++) {
     const pastDate = new Date(startOfToday);
@@ -83,6 +113,38 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
         .limit(1);
 
       if (completions && completions.length > 0) continue;
+
+      if (availableProtectors > 0) {
+        const { data: missionStatusRow } = await supabase
+          .from('missions')
+          .select('daily_status')
+          .eq('id', m.id)
+          .single();
+
+        const protectedDailyStatus = (missionStatusRow as any)?.daily_status || {};
+        protectedDailyStatus[pastDateStr] = 'protected';
+
+        availableProtectors = Math.max(0, availableProtectors - 1);
+
+        await supabase
+          .from('profiles')
+          .update({ streak_protector_charges: availableProtectors, streak_protector_week: currentWeek } as any)
+          .eq('user_id', userId);
+
+        await supabase
+          .from('missions')
+          .update({ daily_status: protectedDailyStatus } as any)
+          .eq('id', m.id);
+
+        await supabase.from('activity_log').insert({
+          user_id: userId,
+          action: 'streak_protected',
+          description: `Protetor de Streak usado em ${m.title} (${pastDateStr}). Cargas restantes: ${availableProtectors}/${maxSlots}`,
+          xp_gained: 0,
+        });
+
+        continue;
+      }
 
       // Esta missão falhou nesta data - aplicar penalidade dinâmica
       const xpPenalty = m.xp_reward;
@@ -124,6 +186,11 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
           failed_date: pastDateStr,
         } as any)
         .eq('id', m.id);
+
+      await supabase
+        .from('profiles')
+        .update({ streak_current_days: 0 } as any)
+        .eq('user_id', userId);
 
       failedList.push({ ...m, failed_date: pastDateStr });
       break; // One failure per mission at a time
