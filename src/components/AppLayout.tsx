@@ -73,6 +73,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const protectorMax = streakProtector?.max ?? 3;
   const isProtectorRisk = protectorCharges <= 0;
 
+  const closeRestTimer = () => {
+    setShowRestTimer(false);
+  };
+
   useEffect(() => {
     if (!user?.id) {
       setHeaderSeconds(null);
@@ -147,15 +151,30 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(hideTimer);
   }, [showDailyResetNotice]);
 
+  useEffect(() => {
+    if (!showRestTimer) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeRestTimer();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showRestTimer]);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-12 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 px-2">
+          <header className="h-16 overflow-hidden flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 px-2">
             <SidebarTrigger />
 
-            <div className="hidden md:flex items-center justify-center flex-1 pointer-events-none">
+            <div className="hidden md:flex items-center justify-center flex-1 h-full overflow-hidden pointer-events-none px-4">
               <div
                 className={`hero-header-sprite ${showRestTimer ? 'is-rest' : 'is-attack'}`}
                 aria-label={showRestTimer ? 'Heroi descansando na fogueira' : 'Heroi lutando contra orcs'}
@@ -202,11 +221,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         {/* Short Rest Modal */}
         {showRestTimer && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="relative max-w-md w-full">
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={closeRestTimer}
+          >
+            <div
+              className="relative max-w-md w-full"
+              onClick={(event) => event.stopPropagation()}
+            >
               <button
-                onClick={() => setShowRestTimer(false)}
+                onClick={closeRestTimer}
                 className="absolute -top-8 right-0 text-muted-foreground hover:text-foreground text-xl"
+                aria-label="Fechar short rest"
               >
                 ✕
               </button>
@@ -216,13 +242,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 maxMinutes={60}
                 onRestComplete={() => {
                   // Mantém aberto depois de completo para mostrar mensagem
-                  setTimeout(() => setShowRestTimer(false), 2000);
+                  setTimeout(closeRestTimer, 2000);
                 }}
               />
-
-              <div className="mt-3 flex items-center justify-center">
-                <div className="hero-header-sprite is-rest is-large" aria-hidden="true" />
-              </div>
             </div>
           </div>
         )}

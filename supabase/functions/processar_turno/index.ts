@@ -9,6 +9,9 @@ const corsHeaders = {
 type ProcessarTurnoBody = {
   combate_id?: string;
   acao_escolhida?: 'atacar' | string;
+  skill_id?: string;
+  skill_name?: string;
+  skill_power?: number;
 };
 
 type CombatRow = {
@@ -26,11 +29,39 @@ type CombatRow = {
   } | null;
   bosses: {
     id: string;
+    name: string;
     ataque_base: number;
     defesa_base: number;
     level: number;
     hp: number;
+    element?: string | null;
+    skills?: any;
+    signature_item_name?: string | null;
   } | null;
+};
+
+type SkillResolution = {
+  name: string;
+  damageMultiplier: number;
+  reduceIncomingPct: number;
+  slowBossPct: number;
+  effects: string[];
+};
+
+type BossSkillResolution = {
+  name: string;
+  damageMultiplier: number;
+  effects: string[];
+};
+
+type BossItem = {
+  id: string;
+  name: string;
+  atk_bonus?: number;
+  matk_bonus?: number;
+  def_bonus?: number;
+  required_attribute?: string | null;
+  required_attribute_level?: number | null;
 };
 
 const rollD20 = () => Math.floor(Math.random() * 20) + 1;
@@ -46,6 +77,89 @@ const getWeekStart = (date: Date): string => {
 const calculateDamage = (baseAttack: number, d20: number, defenderDefense: number, multiplier: number) => {
   const raw = baseAttack + Math.floor(d20 * multiplier) - Math.floor(defenderDefense * 0.5);
   return Math.max(1, raw);
+};
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const toNumber = (value: unknown, fallback = 0): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const buildPlayerSkillResolution = (body: ProcessarTurnoBody): SkillResolution => {
+  const idAndName = `${String(body.skill_id || '')} ${String(body.skill_name || '')}`.toLowerCase();
+  const skillPower = Math.max(0, toNumber(body.skill_power, 0));
+  const powerBonus = clamp(skillPower / 240, 0, 0.55);
+  const isDefensive = /escudo|guarda|postura|oracao|amparo|voto/.test(idAndName);
+  const isSlow = /lateral|passo|fantasma|vetor|cortina|selo|ritmo|finta/.test(idAndName);
+
+  const effects: string[] = [];
+  if (isDefensive) effects.push('damage_reduction');
+  if (isSlow) effects.push('slow');
+
+  return {
+    name: String(body.skill_name || 'Ataque Basico'),
+    damageMultiplier: 1 + powerBonus,
+    reduceIncomingPct: isDefensive ? 0.18 : 0,
+    slowBossPct: isSlow ? 0.15 : 0,
+    effects,
+  };
+};
+
+const parseBossSkills = (raw: unknown): BossSkillResolution[] => {
+  const fallback: BossSkillResolution[] = [
+    { name: 'Golpe Selvagem', damageMultiplier: 1.1, effects: [] },
+    { name: 'Acoite Pesado', damageMultiplier: 1.2, effects: [] },
+    { name: 'Pressao Brutal', damageMultiplier: 0.95, effects: ['damage_reduction'] },
+  ];
+
+  if (!Array.isArray(raw) || raw.length === 0) return fallback;
+
+  return raw.map((entry: any) => {
+    const name = String(entry?.name || 'Golpe Selvagem');
+    const multiplier = clamp(toNumber(entry?.damage_multiplier, 1.05), 0.75, 2.5);
+    const explicitEffects = Array.isArray(entry?.effects)
+      ? entry.effects.map((e: unknown) => String(e).toLowerCase())
+      : [];
+
+    const derivedEffects = [...explicitEffects];
+    const normalizedName = name.toLowerCase();
+    if (derivedEffects.length === 0 && /lento|teia|gel|torpor/.test(normalizedName)) derivedEffects.push('slow');
+    if (derivedEffects.length === 0 && /postura|barreira|pedra|escudo/.test(normalizedName)) derivedEffects.push('damage_reduction');
+
+    return {
+      name,
+      damageMultiplier: multiplier,
+      effects: derivedEffects,
+    };
+  });
+};
+
+const canBossUseItem = (boss: CombatRow['bosses'], item: BossItem | null): boolean => {
+  if (!boss || !item) return false;
+
+  const requiredAttr = String(item.required_attribute || '').toLowerCase().trim();
+  const requiredLevel = Math.max(1, toNumber(item.required_attribute_level, 1));
+
+  if (!requiredAttr) {
+    return boss.level >= requiredLevel;
+  }
+
+  if (requiredAttr === 'forca') {
+    return toNumber(boss.ataque_base, 0) >= requiredLevel * 2;
+  }
+  if (requiredAttr === 'resiliencia') {
+    return toNumber(boss.defesa_base, 0) >= requiredLevel * 2;
+  }
+  if (requiredAttr === 'agilidade') {
+    return toNumber(boss.level, 1) + Math.floor(toNumber(boss.ataque_base, 0) / 12) >= requiredLevel;
+  }
+  if (requiredAttr === 'inteligencia') {
+    const elementBonus = String(boss.element || '').toLowerCase().includes('arc') ? 3 : 0;
+    return toNumber(boss.level, 1) + elementBonus >= requiredLevel;
+  }
+
+  return toNumber(boss.level, 1) >= requiredLevel;
 };
 
 Deno.serve(async (req) => {
@@ -112,7 +226,7 @@ Deno.serve(async (req) => {
           status,
           boss_id,
           personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel),
-          bosses!combates_ativos_boss_id_fkey(id, ataque_base, defesa_base, level, hp)
+          bosses!combates_ativos_boss_id_fkey(id, name, ataque_base, defesa_base, level, hp, element, skills, signature_item_name)
         `,
       )
       .eq('id', combateId)
@@ -152,6 +266,41 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    let bossItem: BossItem | null = null;
+    if (combat.bosses) {
+      const signatureItemName = String(combat.bosses.signature_item_name || '').trim();
+      if (signatureItemName) {
+        const { data: signatureItem } = await supabase
+          .from('game_items')
+          .select('id, name, atk_bonus, matk_bonus, def_bonus, required_attribute, required_attribute_level')
+          .eq('name', signatureItemName)
+          .limit(1)
+          .maybeSingle();
+        if (signatureItem) {
+          bossItem = signatureItem as BossItem;
+        }
+      }
+
+      if (!bossItem) {
+        const { data: fallbackDropItem } = await supabase
+          .from('game_items')
+          .select('id, name, atk_bonus, matk_bonus, def_bonus, required_attribute, required_attribute_level')
+          .eq('boss_drop_level', combat.bosses.level || 1)
+          .eq('category', 'weapon')
+          .order('atk_bonus', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (fallbackDropItem) {
+          bossItem = fallbackDropItem as BossItem;
+        }
+      }
+    }
+
+    const playerSkill = buildPlayerSkillResolution(body);
+    const bossSkillPool = parseBossSkills(combat.bosses?.skills);
+    const bossSkill = bossSkillPool[Math.floor(Math.random() * bossSkillPool.length)];
+    const bossItemEnabled = canBossUseItem(combat.bosses, bossItem);
+
     const isFirstPlayerAttack = Number(combat.hp_atual_boss) >= Number(combat.bosses.hp || combat.hp_atual_boss);
     const hasInspiration = Boolean((profile as any)?.inspired_available) && isFirstPlayerAttack;
     const dadoPlayer = hasInspiration ? Math.max(rollD20(), rollD20()) : rollD20();
@@ -162,11 +311,16 @@ Deno.serve(async (req) => {
         .update({ inspired_available: false, inspired_earned_at: null })
         .eq('user_id', user.id);
     }
+    const playerAttackBase =
+      combat.personagens.ataque_base + Math.floor(Math.max(0, toNumber(body.skill_power, 0)) * 0.22);
+    const effectiveBossDefense =
+      combat.bosses.defesa_base + (bossItemEnabled ? Math.floor(toNumber(bossItem?.def_bonus, 0) * 0.5) : 0);
+
     const danoPlayer = calculateDamage(
-      combat.personagens.ataque_base,
+      playerAttackBase,
       dadoPlayer,
-      combat.bosses.defesa_base,
-      2,
+      effectiveBossDefense,
+      2 * playerSkill.damageMultiplier,
     );
 
     let hpBossRestante = Math.max(combat.hp_atual_boss - danoPlayer, 0);
@@ -182,12 +336,20 @@ Deno.serve(async (req) => {
       turnoAtual = 'player';
     } else {
       dadoBoss = rollD20();
+      const bossAttackBase =
+        combat.bosses.ataque_base +
+        (bossItemEnabled ? toNumber(bossItem?.atk_bonus, 0) + Math.floor(toNumber(bossItem?.matk_bonus, 0) * 0.5) : 0);
+      const bossMultiplier = Math.max(0.6, 1.5 * bossSkill.damageMultiplier * (1 - playerSkill.slowBossPct));
+
       danoBoss = calculateDamage(
-        combat.bosses.ataque_base,
+        bossAttackBase,
         dadoBoss,
         combat.personagens.defesa_base,
-        1.5,
+        bossMultiplier,
       );
+      if (playerSkill.reduceIncomingPct > 0) {
+        danoBoss = Math.max(1, Math.floor(danoBoss * (1 - playerSkill.reduceIncomingPct)));
+      }
       hpPlayerRestante = Math.max(combat.hp_atual_personagem - danoBoss, 0);
 
       if (hpPlayerRestante <= 0) {
@@ -197,6 +359,12 @@ Deno.serve(async (req) => {
       }
 
       turnoAtual = 'player';
+    }
+
+    const playerEffects = [...playerSkill.effects];
+    const bossEffects = [...bossSkill.effects];
+    if (bossItemEnabled && bossItem?.name) {
+      bossEffects.push(`item:${bossItem.name}`);
     }
 
     const { error: updateError } = await supabase
@@ -213,6 +381,46 @@ Deno.serve(async (req) => {
     if (updateError) {
       throw updateError;
     }
+
+    let turnLogId: string | null = null;
+    const { data: latestRound } = await supabase
+      .from('combat_turn_logs')
+      .select('rodada')
+      .eq('combate_id', combat.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const rodada = Math.max(1, Number((latestRound as any)?.rodada || 0) + 1);
+
+    const { data: insertedLog } = await supabase
+      .from('combat_turn_logs')
+      .insert({
+        combate_id: combat.id,
+        user_id: user.id,
+        rodada,
+        habilidade_player: playerSkill.name,
+        habilidade_boss: bossSkill.name,
+        dado_player: dadoPlayer,
+        dado_boss: dadoBoss,
+        dano_player: danoPlayer,
+        dano_boss: danoBoss,
+        efeitos_player: playerEffects,
+        efeitos_boss: bossEffects,
+        hp_boss_apos: hpBossRestante,
+        hp_player_apos: hpPlayerRestante,
+        status,
+      })
+      .select('id')
+      .maybeSingle();
+
+    turnLogId = (insertedLog as any)?.id || null;
+
+    await supabase.from('activity_log').insert({
+      user_id: user.id,
+      action: 'combat_turn',
+      description: `[Rodada ${rodada}] Player ${playerSkill.name} (${danoPlayer}) vs Boss ${bossSkill.name} (${danoBoss})`,
+      xp_gained: 0,
+    });
 
     // Update health stats
     const { data: currentHealth } = await supabase
@@ -302,6 +510,8 @@ Deno.serve(async (req) => {
           .from('game_items')
           .select('id, name, icon, rarity')
           .eq('boss_drop_level', bossLevel)
+          .order('atk_bonus', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (dropItem) {
@@ -336,6 +546,11 @@ Deno.serve(async (req) => {
         hp_player_restante: hpPlayerRestante,
         status,
         loot_drop: lootDrop,
+        habilidade_player: playerSkill.name,
+        habilidade_boss: bossSkill.name,
+        efeitos_player: playerEffects,
+        efeitos_boss: bossEffects,
+        log_id: turnLogId,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

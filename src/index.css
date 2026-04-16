@@ -157,19 +157,22 @@
   }
 
   .hero-header-sprite {
-    --frame-width: 128px;
-    --frame-height: 128px;
+    --frame-width: 64px;
+    --frame-height: 64px;
     --frame-count: 4;
+    --sheet-rows: 4;
     --row-index: 0;
     width: var(--frame-width);
     height: var(--frame-height);
-    background-image: url('/hero-orc-sprite-sheet.png');
+    flex-shrink: 0;
+    background-image: url('/Generatedimage_1776370259307-removebg-preview.png');
     background-repeat: no-repeat;
-    background-size: calc(var(--frame-width) * var(--frame-count)) calc(var(--frame-height) * 2);
+    background-size: calc(var(--frame-width) * var(--frame-count)) calc(var(--frame-height) * var(--sheet-rows));
     background-position: 0 calc(var(--row-index) * var(--frame-height) * -1);
-    image-rendering: auto;
+    image-rendering: pixelated;
     filter: drop-shadow(0 0 8px hsl(43 96% 56% / 0.25));
     animation: hero-sprite-play 0.85s steps(4) infinite;
+    transform: translateY(2px);
   }
 
   .hero-header-sprite.is-attack {
@@ -177,14 +180,9 @@
   }
 
   .hero-header-sprite.is-rest {
-    --row-index: 1;
+    --row-index: 2;
     filter: drop-shadow(0 0 10px hsl(15 92% 52% / 0.35));
-    animation-duration: 1.1s;
-  }
-
-  .hero-header-sprite.is-large {
-    --frame-width: 192px;
-    --frame-height: 192px;
+    animation-duration: 1.15s;
   }
 
   @keyframes hero-sprite-play {
