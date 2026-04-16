@@ -160,17 +160,44 @@ export type Database = {
           },
         ]
       }
+      boss_weekly_loot_claims: {
+        Row: {
+          boss_level: number
+          created_at: string
+          id: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          boss_level: number
+          created_at?: string
+          id?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          boss_level?: number
+          created_at?: string
+          id?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       bosses: {
         Row: {
           arena: string | null
+          ataque_base: number | null
           created_at: string
           damage_base: number | null
           defense: number | null
+          defesa_base: number | null
           description: string | null
           difficulty: string | null
           element: string | null
           gold_reward: number
           hp: number
+          hp_max: number | null
           icon: string
           id: string
           keys_cost: number
@@ -182,14 +209,17 @@ export type Database = {
         }
         Insert: {
           arena?: string | null
+          ataque_base?: number | null
           created_at?: string
           damage_base?: number | null
           defense?: number | null
+          defesa_base?: number | null
           description?: string | null
           difficulty?: string | null
           element?: string | null
           gold_reward?: number
           hp?: number
+          hp_max?: number | null
           icon?: string
           id?: string
           keys_cost?: number
@@ -201,14 +231,17 @@ export type Database = {
         }
         Update: {
           arena?: string | null
+          ataque_base?: number | null
           created_at?: string
           damage_base?: number | null
           defense?: number | null
+          defesa_base?: number | null
           description?: string | null
           difficulty?: string | null
           element?: string | null
           gold_reward?: number
           hp?: number
+          hp_max?: number | null
           icon?: string
           id?: string
           keys_cost?: number
@@ -298,6 +331,57 @@ export type Database = {
             columns: ["parent_class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      combates_ativos: {
+        Row: {
+          boss_id: string
+          created_at: string
+          hp_atual_boss: number
+          hp_atual_personagem: number
+          id: string
+          personagem_id: string
+          status: string
+          turno_atual: string
+          updated_at: string
+        }
+        Insert: {
+          boss_id: string
+          created_at?: string
+          hp_atual_boss: number
+          hp_atual_personagem: number
+          id?: string
+          personagem_id: string
+          status?: string
+          turno_atual?: string
+          updated_at?: string
+        }
+        Update: {
+          boss_id?: string
+          created_at?: string
+          hp_atual_boss?: number
+          hp_atual_personagem?: number
+          id?: string
+          personagem_id?: string
+          status?: string
+          turno_atual?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combates_ativos_boss_id_fkey"
+            columns: ["boss_id"]
+            isOneToOne: false
+            referencedRelation: "bosses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "combates_ativos_personagem_id_fkey"
+            columns: ["personagem_id"]
+            isOneToOne: false
+            referencedRelation: "personagens"
             referencedColumns: ["id"]
           },
         ]
@@ -573,6 +657,39 @@ export type Database = {
           },
         ]
       }
+      personagens: {
+        Row: {
+          ataque_base: number
+          created_at: string
+          defesa_base: number
+          hp_max: number
+          id: string
+          nivel: number
+          updated_at: string
+          xp_atual: number
+        }
+        Insert: {
+          ataque_base?: number
+          created_at?: string
+          defesa_base?: number
+          hp_max?: number
+          id: string
+          nivel?: number
+          updated_at?: string
+          xp_atual?: number
+        }
+        Update: {
+          ataque_base?: number
+          created_at?: string
+          defesa_base?: number
+          hp_max?: number
+          id?: string
+          nivel?: number
+          updated_at?: string
+          xp_atual?: number
+        }
+        Relationships: []
+      }
       plan_missions: {
         Row: {
           id: string
@@ -809,6 +926,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_crafting_materials: {
+        Row: {
+          created_at: string
+          id: string
+          quantity: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          quantity?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          quantity?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_health_stats: {
         Row: {
