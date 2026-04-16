@@ -12,7 +12,7 @@ export function useUndoMission() {
 
   return useMutation({
     mutationFn: async (missionId: string) => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toLocaleDateString('en-CA');
 
       // Buscar missão
       const { data: mission, error: missionError } = await supabase

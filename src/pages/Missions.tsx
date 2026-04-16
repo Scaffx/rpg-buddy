@@ -108,9 +108,13 @@ const STATUS_COLORS: Record<string, string> = {
   arquivada: "bg-muted-foreground",
 };
 
+function getLocalDateString(date: Date = new Date()): string {
+  return date.toLocaleDateString('en-CA');
+}
+
 // ✅ FUNÇÃO AUXILIAR: Verificar se missão foi concluída hoje
 function foiConcluidaHoje(mission: any): boolean {
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalDateString();
   const dailyStatus = mission.daily_status || {};
   return dailyStatus[today] === "completed";
 }
@@ -173,10 +177,10 @@ export default function Missions() {
   const markFailedAsDone = useMarkFailedAsDone();
   const { data: todayRecoveryCount = 0 } = useTodayRecoveryCount();
 
-  const todayDay = useMemo(() => {
+  const todayDay = (() => {
     const d = new Date().getDay();
     return DAYS[d === 0 ? 6 : d - 1];
-  }, []);
+  })();
 
   // ✅ FILTRO ATUALIZADO: Separar "Hoje" de "Próximos Dias" + "Missões Únicas"
   const { todayMissions, nextDaysMissions, todayUniqueMissions, nextUniqueMissions, completedMissions } = useMemo(() => {
@@ -188,7 +192,7 @@ export default function Missions() {
     let nextUnique: any[] = [];
     let completed: any[] = [];
 
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = getLocalDateString();
 
     allMissions.forEach((m: any) => {
       // Missões fracassadas são exibidas na seção própria, não na lista regular

@@ -10,6 +10,10 @@ import AppLayout from "@/components/AppLayout";
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+function getLocalDateString(date: Date = new Date()): string {
+  return date.toLocaleDateString('en-CA');
+}
+
 // Importado de @/lib/attributes
 
 function BonusCountdown({ nextClaimAt }: { nextClaimAt: string | null }) {
@@ -49,20 +53,20 @@ export default function Dashboard() {
 
   const currentClass = classes?.find((c: any) => c.id === profile?.current_class_id);
 
-  const todayDay = useMemo(() => {
+  const todayDay = (() => {
     const d = new Date().getDay();
     return DAYS_MAP[d];
-  }, []);
+  })();
 
-  const todayDayLabel = useMemo(() => {
+  const todayDayLabel = (() => {
     const days = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
     return days[new Date().getDay()];
-  }, []);
+  })();
 
   // Filter today's daily missions
   const todayMissions = useMemo(() => {
     if (!allMissions) return [];
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     return allMissions
       .filter((m: any) => {
         if (m.completed) return false;

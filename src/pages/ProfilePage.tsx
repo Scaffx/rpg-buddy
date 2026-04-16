@@ -85,10 +85,10 @@ function useHealthStats() {
 
 function useTodayMeals() {
   const { user } = useAuth();
-  const today = new Date().toLocaleDateString('en-CA');
   return useQuery({
-    queryKey: ["meal_log", user?.id, today],
+    queryKey: ["meal_log", user?.id],
     queryFn: async () => {
+      const today = new Date().toLocaleDateString('en-CA');
       const { data, error } = await supabase
         .from("meal_log" as any)
         .select("*")
@@ -103,10 +103,10 @@ function useTodayMeals() {
 
 function useTodayWater() {
   const { user } = useAuth();
-  const today = new Date().toLocaleDateString('en-CA');
   return useQuery({
-    queryKey: ["water_log", user?.id, today],
+    queryKey: ["water_log", user?.id],
     queryFn: async () => {
+      const today = new Date().toLocaleDateString('en-CA');
       const { data, error } = await supabase
         .from("water_log" as any)
         .select("*")

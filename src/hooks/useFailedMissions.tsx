@@ -7,19 +7,33 @@ import { getLevelFromXp } from '@/lib/progression';
 
 const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+function getLocalDateString(date: Date = new Date()): string {
+  return date.toLocaleDateString('en-CA');
+}
+
+function getStartOfLocalDay(base: Date = new Date()): Date {
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate());
+}
+
 export function useCheckFailedMissions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!user) return;
-    checkAndMarkFailed(user.id, queryClient);
+    void runFailedMissionCheck(user.id, queryClient);
   }, [user]);
 }
 
-async function checkAndMarkFailed(userId: string, queryClient: any) {
-  const today = new Date().toISOString().split('T')[0];
+export async function runFailedMissionCheck(userId: string, queryClient: any) {
+  try {
+    await checkAndMarkFailed(userId, queryClient);
+  } catch (error) {
+    console.error('[FailedMissions] erro ao validar missões fracassadas:', error);
+  }
+}
 
+async function checkAndMarkFailed(userId: string, queryClient: any) {
   // Check up to 30 days back for unchecked failures
   const { data: missions } = await supabase
     .from('missions')
@@ -34,10 +48,12 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   let totalHpPenalty = 0;
   let totalMpPenalty = 0;
   const failedList: any[] = [];
+  const startOfToday = getStartOfLocalDay();
 
   for (let daysBack = 1; daysBack <= 30; daysBack++) {
-    const pastDate = new Date(Date.now() - daysBack * 86400000);
-    const pastDateStr = pastDate.toISOString().split('T')[0];
+    const pastDate = new Date(startOfToday);
+    pastDate.setDate(pastDate.getDate() - daysBack);
+    const pastDateStr = getLocalDateString(pastDate);
     const pastDayIndex = pastDate.getDay();
     const pastDayName = DAYS_NAMES[pastDayIndex];
 
@@ -290,7 +306,7 @@ export function useMarkFailedAsDone() {
     mutationFn: async (mission: any) => {
       if (!user) throw new Error('Não autenticado');
 
-      const today = new Date().toISOString().split('T')[0];
+      const startOfDayLocalIso = getStartOfLocalDay().toISOString();
 
       // Verificar quantas recuperações já foram feitas hoje
       const { data: todayRecoveries } = await supabase
@@ -298,7 +314,7 @@ export function useMarkFailedAsDone() {
         .select('id')
         .eq('user_id', user.id)
         .eq('action', 'mission_failed_recovered')
-        .gte('created_at', today + 'T00:00:00');
+        .gte('created_at', startOfDayLocalIso);
 
       const recoveryCount = todayRecoveries?.length ?? 0;
       if (recoveryCount >= 2) {
@@ -355,16 +371,17 @@ export function useMarkFailedAsDone() {
 
 export function useTodayRecoveryCount() {
   const { user } = useAuth();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   return useQuery({
     queryKey: ['today-recoveries', user?.id, today],
     queryFn: async () => {
+      const startOfDayLocalIso = getStartOfLocalDay().toISOString();
       const { data } = await supabase
         .from('activity_log')
         .select('id')
         .eq('user_id', user!.id)
         .eq('action', 'mission_failed_recovered')
-        .gte('created_at', today + 'T00:00:00');
+        .gte('created_at', startOfDayLocalIso);
       return data?.length ?? 0;
     },
     enabled: !!user,
@@ -395,7 +412,7 @@ export function useWelcomeBackCheck() {
       const diffDays = Math.floor((now.getTime() - lastActivity.getTime()) / 86400000);
       
       if (diffDays >= 2) {
-        const sessionKey = `welcome_back_${userId}_${now.toISOString().split('T')[0]}`;
+        const sessionKey = `welcome_back_${userId}_${getLocalDateString(now)}`;
         if (!sessionStorage.getItem(sessionKey)) {
           setDaysAway(diffDays);
           setShowWelcomeBack(true);

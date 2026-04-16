@@ -18,7 +18,7 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 
 export default function ShortRestTimer({
   defaultMinutes = 15,
-  minMinutes = 1,
+  minMinutes = 15,
   maxMinutes = 60,
   className = '',
   onRestComplete,

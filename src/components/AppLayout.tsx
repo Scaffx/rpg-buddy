@@ -7,11 +7,19 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
 
+const DAILY_RESET_EVENT = 'daily-reset-processed';
+
+function getDailyResetStorageKey(userId: string): string {
+  return `daily_reset_last_processed_${userId}`;
+}
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   useMidnightReset();
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
+  const [showDailyResetNotice, setShowDailyResetNotice] = useState(false);
+  const [dailyResetMessage, setDailyResetMessage] = useState('');
 
   useEffect(() => {
     if (!user?.id) {
@@ -44,6 +52,49 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return formatSeconds(headerSeconds);
   }, [headerSeconds]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      setShowDailyResetNotice(false);
+      return;
+    }
+
+    const today = new Date().toLocaleDateString('en-CA');
+    const raw = localStorage.getItem(getDailyResetStorageKey(user.id));
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { date?: string; processedAtMs?: number };
+        if (parsed.date === today && typeof parsed.processedAtMs === 'number') {
+          const elapsedMs = Date.now() - parsed.processedAtMs;
+          if (elapsedMs >= 0 && elapsedMs <= 5 * 60 * 1000) {
+            setDailyResetMessage('Virada diária processada: missões, refeições, água e timers foram atualizados.');
+            setShowDailyResetNotice(true);
+          }
+        }
+      } catch {
+        // ignore malformed storage
+      }
+    }
+
+    const onDailyReset = (event: Event) => {
+      const customEvent = event as CustomEvent<{ date?: string }>;
+      const dateLabel = customEvent.detail?.date || today;
+      setDailyResetMessage(`Virada diária processada (${dateLabel}). Missões, refeições, água e timers atualizados.`);
+      setShowDailyResetNotice(true);
+    };
+
+    window.addEventListener(DAILY_RESET_EVENT, onDailyReset as EventListener);
+
+    return () => {
+      window.removeEventListener(DAILY_RESET_EVENT, onDailyReset as EventListener);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!showDailyResetNotice) return;
+    const hideTimer = window.setTimeout(() => setShowDailyResetNotice(false), 12000);
+    return () => window.clearTimeout(hideTimer);
+  }, [showDailyResetNotice]);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -63,6 +114,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               )}
             </button>
           </header>
+          {showDailyResetNotice && (
+            <div className="mx-2 mt-2 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-300">
+              {dailyResetMessage}
+            </div>
+          )}
           <main className="flex-1 p-4 md:p-6 overflow-auto">
             {children}
           </main>
@@ -80,7 +136,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </button>
               <ShortRestTimer
                 defaultMinutes={15}
-                minMinutes={1}
+                minMinutes={15}
                 maxMinutes={60}
                 onRestComplete={() => {
                   // Mantém aberto depois de completo para mostrar mensagem

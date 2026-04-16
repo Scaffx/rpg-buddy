@@ -10,7 +10,7 @@ import { deriveMissionCategory, resolveMissionTalentEffects, type MissionTalentR
 const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
 function toDateString(d: Date): string {
-  return d.toISOString().split('T')[0];
+  return d.toLocaleDateString('en-CA');
 }
 
 function subtractDays(dateStr: string, days: number): string {
@@ -501,7 +501,7 @@ export const useCompleteMission = () => {
       xpReward: number; 
       secondaryAttributeIds?: string[];
     }) => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = toDateString(new Date());
 
       // Buscar perfil para XP scaling baseado no nível
       const { data: currentProfile } = await supabase
@@ -1418,7 +1418,7 @@ export function useAwardHealthXP() {
   return useMutation({
     mutationFn: async () => {
       const XP_REWARD = 50;
-      const today = new Date().toISOString().split('T')[0];
+      const startOfDayLocal = getStartOfLocalDay();
 
       // Verificar se já ganhou o bônus hoje
       const { data: existingLog } = await supabase
@@ -1426,7 +1426,7 @@ export function useAwardHealthXP() {
         .select('id')
         .eq('user_id', user!.id)
         .eq('action', 'health_challenge_complete')
-        .gte('created_at', today)
+        .gte('created_at', startOfDayLocal.toISOString())
         .limit(1);
 
       if (existingLog && existingLog.length > 0) {
