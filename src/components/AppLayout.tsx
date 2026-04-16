@@ -5,9 +5,11 @@ import ShortRestTimer from '@/components/ShortRestTimer';
 import { Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState } from '@/lib/shortRestState';
+import { useMidnightReset } from '@/hooks/useMidnightReset';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  useMidnightReset();
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
 
