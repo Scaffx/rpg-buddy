@@ -2,7 +2,7 @@ export type MissionPriority = 'baixa' | 'media' | 'alta';
 
 export type MissionStatus = 'pendente' | 'em_andamento' | 'concluida' | 'arquivada';
 
-export type Weekday = 'Dom' | 'Seg' | 'Ter' | 'Qua' | 'Qui' | 'Sex' | 'Sab';
+export type Weekday = 'Dom' | 'Seg' | 'Ter' | 'Qua' | 'Qui' | 'Sex' | 'Sab' | 'Sáb';
 
 export type MissionDailyState = 'pending' | 'completed' | 'failed' | 'skipped';
 

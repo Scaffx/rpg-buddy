@@ -711,10 +711,10 @@ export default function ProfilePage() {
       console.debug("[logMeal] Refeição inserida:", data);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["meal_log"] });
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["meal_log"] });
-      }, 0);
+      const today = new Date().toLocaleDateString('en-CA');
+      await queryClient.invalidateQueries({ queryKey: ["meal_log", user?.id, today] });
+      queryClient.invalidateQueries({ queryKey: ["mealHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["dailyTracking"] });
       toast.success("Refeição registrada! 🍖");
     },
     onError: (err) => {
@@ -741,10 +741,9 @@ export default function ProfilePage() {
       console.debug("[logWater] Água inserida:", data);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["water_log"] });
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["water_log"] });
-      }, 0);
+      const today = new Date().toLocaleDateString('en-CA');
+      await queryClient.invalidateQueries({ queryKey: ["water_log", user?.id, today] });
+      queryClient.invalidateQueries({ queryKey: ["dailyTracking"] });
       toast.success("Água registrada! 💧");
     },
     onError: (err) => {
