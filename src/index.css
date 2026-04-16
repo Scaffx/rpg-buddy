@@ -137,14 +137,6 @@
     animation: float 3s ease-in-out infinite;
   }
 
-  @keyframes streak-shake {
-    0%, 100% { transform: translateX(0); }
-    20% { transform: translateX(-1px); }
-    40% { transform: translateX(1px); }
-    60% { transform: translateX(-1px); }
-    80% { transform: translateX(1px); }
-  }
-
   @keyframes fire-aura {
     0%, 100% {
       box-shadow:
@@ -160,12 +152,8 @@
     }
   }
 
-  .animate-streak-shake {
-    animation: streak-shake 0.32s linear infinite;
-  }
-
   .streak-fire-aura {
-    animation: fire-aura 1.15s ease-in-out infinite, streak-shake 0.32s linear infinite;
+    animation: fire-aura 1.15s ease-in-out infinite;
   }
 
   .hero-header-sprite {

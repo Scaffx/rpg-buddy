@@ -13,8 +13,43 @@ import { toast } from "sonner";
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+type DashboardMission = {
+  completed?: boolean | null;
+  completed_at?: string | null;
+  created_at?: string | null;
+  days_of_week?: string[] | null;
+  daily_status?: Record<string, string> | null;
+  failed_date?: string | null;
+  is_failed?: boolean | null;
+};
+
 function getLocalDateString(date: Date = new Date()): string {
   return date.toLocaleDateString('en-CA');
+}
+
+function getDateDaysAgo(daysAgo: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d;
+}
+
+function getMissionStateForDate(mission: DashboardMission, dateStr: string): string | null {
+  const dailyStatus = mission.daily_status || {};
+  const state = dailyStatus[dateStr];
+
+  if (state) {
+    return state;
+  }
+
+  if (mission.is_failed && mission.failed_date === dateStr) {
+    return 'failed';
+  }
+
+  if (mission.completed && String(mission.completed_at || '').startsWith(dateStr)) {
+    return 'completed';
+  }
+
+  return null;
 }
 
 // Importado de @/lib/attributes
@@ -115,10 +150,64 @@ export default function Dashboard() {
     };
   }, [allMissions, todayDay, todayDate]);
 
-  const streakActive =
-    todayMissionMetrics.required > 0 &&
-    todayMissionMetrics.failed === 0 &&
-    (todayMissionMetrics.completed > 0 || todayMissionMetrics.pending > 0);
+  const missionStreak = useMemo(() => {
+    if (!allMissions || allMissions.length === 0) {
+      return {
+        days: 0,
+        lastCompletedDate: null as string | null,
+        todayRequired: todayMissionMetrics.required,
+        todayCompleted: todayMissionMetrics.completed,
+        todayPending: todayMissionMetrics.pending,
+      };
+    }
+
+    let consecutiveDays = 0;
+    let lastCompletedDate: string | null = null;
+
+    for (let daysBack = 0; daysBack < 365; daysBack++) {
+      const date = getDateDaysAgo(daysBack);
+      const dateStr = getLocalDateString(date);
+      const dayName = DAYS_MAP[date.getDay()];
+
+      const requiredMissions = allMissions.filter((mission: DashboardMission) => {
+        const daysOfWeek: string[] = mission.days_of_week || [];
+        if (!(daysOfWeek.length > 0 && daysOfWeek.includes(dayName))) return false;
+
+        const createdAt = String(mission.created_at || '').slice(0, 10);
+        if (createdAt && createdAt > dateStr) return false;
+
+        return true;
+      });
+
+      if (requiredMissions.length === 0) {
+        continue;
+      }
+
+      const completedAll = requiredMissions.every((mission: DashboardMission) => {
+        const state = getMissionStateForDate(mission, dateStr);
+        return state === 'completed' || state === 'protected';
+      });
+
+      if (!completedAll) {
+        break;
+      }
+
+      consecutiveDays += 1;
+      if (!lastCompletedDate) {
+        lastCompletedDate = dateStr;
+      }
+    }
+
+    return {
+      days: consecutiveDays,
+      lastCompletedDate,
+      todayRequired: todayMissionMetrics.required,
+      todayCompleted: todayMissionMetrics.completed,
+      todayPending: todayMissionMetrics.pending,
+    };
+  }, [allMissions, todayMissionMetrics.required, todayMissionMetrics.completed, todayMissionMetrics.pending]);
+
+  const streakActive = missionStreak.days > 0;
 
   useEffect(() => {
     const tryWeeklyProtectorReset = async () => {
@@ -178,12 +267,6 @@ export default function Dashboard() {
       '"Somos o que repetidamente fazemos. A excelencia, portanto, nao e um ato, mas um habito." - Aristoteles',
       '"A disciplina e a ponte entre metas e realizacoes." - Jim Rohn',
     ];
-
-    const getDateDaysAgo = (daysAgo: number) => {
-      const d = new Date();
-      d.setDate(d.getDate() - daysAgo);
-      return d;
-    };
 
     const isCriticalFailureDay = (date: Date): boolean => {
       const dateStr = getLocalDateString(date);
@@ -269,11 +352,11 @@ export default function Dashboard() {
           <p className="text-muted-foreground text-sm mt-1">Sua jornada continua. Continue evoluindo!</p>
 
           {streakActive && (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-500/60 bg-red-500/15 px-3 py-1.5 text-red-200 animate-streak-shake streak-fire-aura">
+            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-500/60 bg-red-500/15 px-3 py-1.5 text-red-200 streak-fire-aura">
               <Flame className="w-4 h-4 text-red-400" />
-              <span className="text-sm font-bold">STREAK DE MISSOES ATIVA</span>
+              <span className="text-sm font-bold">STREAK DE MISSOES</span>
               <span className="text-xs text-red-300">
-                {todayMissionMetrics.completed}/{todayMissionMetrics.required} hoje
+                {missionStreak.days} dia{missionStreak.days === 1 ? '' : 's'} completos
               </span>
             </div>
           )}
