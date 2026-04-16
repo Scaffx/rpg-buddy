@@ -913,7 +913,7 @@ export function useFightBoss() {
       // 🔑 Verificar chaves
       const { data: profile } = await supabase
         .from("profiles")
-        .select("level, total_xp, boss_keys, inspired_available")
+        .select("level, total_xp, boss_keys")
         .eq("user_id", user!.id)
         .single();
 

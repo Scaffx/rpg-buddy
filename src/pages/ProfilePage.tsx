@@ -711,10 +711,10 @@ export default function ProfilePage() {
       console.debug("[logMeal] Refeição inserida:", data);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["meal_log"] });
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["meal_log"] });
-      }, 0);
+      const today = new Date().toLocaleDateString('en-CA');
+      await queryClient.invalidateQueries({ queryKey: ["meal_log", user?.id, today] });
+      queryClient.invalidateQueries({ queryKey: ["mealHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["dailyTracking"] });
       toast.success("Refeição registrada! 🍖");
     },
     onError: (err) => {
@@ -741,10 +741,9 @@ export default function ProfilePage() {
       console.debug("[logWater] Água inserida:", data);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["water_log"] });
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["water_log"] });
-      }, 0);
+      const today = new Date().toLocaleDateString('en-CA');
+      await queryClient.invalidateQueries({ queryKey: ["water_log", user?.id, today] });
+      queryClient.invalidateQueries({ queryKey: ["dailyTracking"] });
       toast.success("Água registrada! 💧");
     },
     onError: (err) => {
@@ -1304,29 +1303,59 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-bold text-foreground">🎒 INVENTÁRIO</h3>
               </div>
 
-              {inventory.length === 0 ? (
-                <div className="text-center py-8 space-y-4">
-                  <p className="text-lg text-muted-foreground mb-2">Inventário vazio</p>
-                  <p className="text-sm text-muted-foreground">Clique abaixo para receber seu kit inicial!</p>
-                  {(profile as any)?.starter_kit_claimed ? (
-                    <p className="text-xs text-muted-foreground/60 italic">Kit inicial já resgatado. Derrote bosses para conseguir novos itens!</p>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        const cls = (profile as any)?.starter_class
-                          || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null)
-                          || 'novato';
-                        claimStarterKit.mutate(cls, {
-                          onSuccess: () => toast.success('🎁 Kit inicial resgatado! Confira seu inventário.'),
-                          onError: (err: any) => toast.error(err.message || 'Erro ao resgatar kit'),
-                        });
-                      }}
-                      disabled={claimStarterKit.isPending}
-                      className="px-6 py-3 rounded-xl font-bold text-sm text-foreground transition-all hover:scale-105 disabled:opacity-50"
-                      style={{ background: 'linear-gradient(135deg, hsl(25 95% 53%), hsl(270 60% 55%))' }}
-                    >
-                      {claimStarterKit.isPending ? '⏳ Resgatando...' : '🎁 Resgatar Kit Inicial'}
-                    </button>
+              {inventory.length === 0 || !(profile as any)?.starter_kit_claimed ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    {(profile as any)?.starter_kit_claimed
+                      ? 'Kit inicial já resgatado. Derrote bosses para conseguir novos itens!'
+                      : 'Escolha sua classe para receber seu kit inicial!'}
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {RESPEC_CLASSES.map((cls) => {
+                      const isClaimed = (profile as any)?.starter_kit_claimed;
+                      const currentClass = (profile as any)?.starter_class
+                        || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null)
+                        || 'novato';
+                      const isSelected = currentClass === cls.id;
+                      const isDisabled = isClaimed && !isSelected;
+
+                      return (
+                        <button
+                          key={cls.id}
+                          onClick={() => {
+                            if (isClaimed) return;
+                            claimStarterKit.mutate(cls.id, {
+                              onSuccess: () => {
+                                localStorage.setItem(`starter_class_v1_${user?.id}`, cls.id);
+                                toast.success(`🎁 Kit de ${cls.label} resgatado!`);
+                              },
+                              onError: (err: any) => toast.error(err.message || 'Erro ao resgatar kit'),
+                            });
+                          }}
+                          disabled={isDisabled || claimStarterKit.isPending}
+                          className={`p-4 rounded-xl border-2 text-center transition-all ${
+                            isSelected && isClaimed
+                              ? 'bg-blue-500/20 border-yellow-500 ring-2 ring-yellow-500/50 shadow-lg shadow-yellow-500/10'
+                              : isDisabled
+                                ? 'bg-muted/20 border-border opacity-40 cursor-not-allowed grayscale'
+                                : 'bg-card border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer'
+                          }`}
+                        >
+                          <p className="text-2xl mb-1">
+                            {cls.id === 'guerreiro' ? '⚔️' : cls.id === 'mago' ? '📖' : cls.id === 'gatuno' ? '🌙' : cls.id === 'ferreiro' ? '🔨' : cls.id === 'clerico' ? '✝️' : '🏹'}
+                          </p>
+                          <p className={`text-sm font-bold ${isSelected && isClaimed ? 'text-yellow-400' : isDisabled ? 'text-muted-foreground' : 'text-foreground'}`}>
+                            {cls.label}
+                          </p>
+                          {isSelected && isClaimed && (
+                            <span className="text-[10px] text-blue-400 font-semibold mt-1 block">✓ Selecionado</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {claimStarterKit.isPending && (
+                    <p className="text-xs text-center text-muted-foreground animate-pulse">⏳ Resgatando kit...</p>
                   )}
                 </div>
               ) : (
