@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttributes, useProfile } from '@/hooks/useProfile';
+import { useClaimStarterKit } from '@/hooks/useInventory';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -181,6 +182,7 @@ export default function Onboarding() {
   const [selectedMissions, setSelectedMissions] = useState<Set<number>>(new Set([0, 1, 2]));
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const claimStarterKit = useClaimStarterKit();
 
   // Redireciona usuários não autenticados
   useEffect(() => {
@@ -243,13 +245,20 @@ export default function Onboarding() {
       await supabase.from('profiles').update({
         onboarding_completed: true,
         region: selectedRegion,
+        starter_class: selectedClass.id,
+        starter_item: selectedClass.starterItem,
       } as any).eq('user_id', user.id).then(() => {});
 
-      // Concede itens iniciais da classe (ignora erro se função não existir)
-      await (supabase.rpc as any)('grant_starter_items', {
-        p_user_id: user.id,
-        p_class: selectedClass.id,
-      }).then(() => {});
+      // Concede arma e armadura da classe via frontend (mais confiável que RPC)
+      try {
+        await claimStarterKit.mutateAsync(selectedClass.id);
+      } catch {
+        // Fallback: tenta RPC caso o frontend falhe (ex: itens já concedidos)
+        await (supabase.rpc as any)('grant_starter_items', {
+          p_user_id: user.id,
+          p_class: selectedClass.id,
+        }).then(() => {});
+      }
 
       // Salva no localStorage (sempre funciona)
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedClass.id);

@@ -141,6 +141,10 @@ export default function ClassesPage() {
   }, []);
 
   const handleSelect = async (classId: string, className: string) => {
+    if (profile?.current_class_id) {
+      toast({ title: '🔒 Classe bloqueada', description: 'Sua classe já foi selecionada e não pode ser alterada.', variant: 'destructive' });
+      return;
+    }
     setSelecting(classId);
     try {
       await selectClass.mutateAsync(classId);
@@ -386,6 +390,10 @@ export default function ClassesPage() {
                 ) : profile?.current_class_id === selectedDetail.id ? (
                   <div className="flex items-center justify-center gap-1 text-sm text-primary font-bold py-2">
                     <Check className="w-4 h-4" /> Classe Atual
+                  </div>
+                ) : profile?.current_class_id ? (
+                  <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground py-2">
+                    <Lock className="w-4 h-4" /> Classe selecionada — não é possível trocar
                   </div>
                 ) : userLevel >= selectedDetail.level_min ? (
                   <Button

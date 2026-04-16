@@ -694,7 +694,7 @@ export default function ProfilePage() {
 
   const logMeal = useMutation({
     mutationFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString('en-CA');
       if (!user) {
         console.error("[logMeal] Usuário não autenticado");
         throw new Error("Usuário não autenticado");
@@ -724,7 +724,7 @@ export default function ProfilePage() {
 
   const logWater = useMutation({
     mutationFn: async (amount: number) => {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString('en-CA');
       if (!user) {
         console.error("[logWater] Usuário não autenticado");
         throw new Error("Usuário não autenticado");
@@ -1086,41 +1086,11 @@ export default function ProfilePage() {
                 <p className="text-muted-foreground mt-1">Magia nesta temporada esta mais fraca por design. Builds hibridas com atributos fisicos e taticos tendem a render melhor.</p>
               </div>
 
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Respec de Classe</p>
-                    <p className="text-xs text-muted-foreground">Troque de classe, receba novo item inicial e altere seu kit Novato + skills únicas.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Seu ouro</p>
-                    <p className="text-lg font-bold text-yellow-400">{currentGold} 🪙</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col md:flex-row gap-2 md:items-center">
-                  <select
-                    value={selectedRespecClass}
-                    onChange={(e) => setSelectedRespecClass(e.target.value)}
-                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                  >
-                    {RESPEC_CLASSES.map((cls) => (
-                      <option key={cls.id} value={cls.id}>{cls.label}</option>
-                    ))}
-                  </select>
-
-                  <button
-                    onClick={() => respecClass.mutate()}
-                    disabled={respecClass.isPending}
-                    className="h-10 px-4 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-semibold"
-                  >
-                    <Coins className="w-4 h-4" />
-                    {respecClass.isPending
-                      ? "Aplicando..."
-                      : !localStorage.getItem(`respec_used_${user?.id}`)
-                        ? "Respec (Grátis 1ª vez)"
-                        : `Respec (${RESPEC_COST} 🪙)`}
-                  </button>
+              <div className="bg-muted/20 border border-border rounded-lg p-4 flex items-center gap-3">
+                <span className="text-xl">🔒</span>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Classe Permanente</p>
+                  <p className="text-xs text-muted-foreground">Sua classe inicial é permanente e não pode ser alterada após a seleção.</p>
                 </div>
               </div>
 
