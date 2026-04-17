@@ -327,6 +327,7 @@ export default function CombatArena({
     setCritParticles([]);
     setConfetti([]);
     setShowVictory(false);
+    setShowDefeat(false);
     setTurn('player');
   };
 
@@ -363,6 +364,7 @@ export default function CombatArena({
       setTurn('player');
       setIsRolling(true);
       setRollValue(null);
+      sfx.diceRoll();
       await wait(700);
 
       setIsRolling(false);
@@ -394,6 +396,7 @@ export default function CombatArena({
       setTurn('boss');
       setIsRolling(true);
       setRollValue(null);
+      sfx.diceRoll();
       await wait(700);
 
       if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
@@ -418,6 +421,7 @@ export default function CombatArena({
       }
 
       if (turnResult.status === 'derrota') {
+        launchDefeatCinematic();
         setTurn('finished');
         return;
       }
