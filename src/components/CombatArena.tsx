@@ -676,7 +676,7 @@ export default function CombatArena({
         </div>
       )}
 
-
+      <footer className="mt-8 flex flex-col items-center gap-3">
         {winnerLabel ? <p className="text-lg font-bold text-amber-200">{winnerLabel}</p> : null}
 
         {lootDrop && bossHp <= 0 && (
