@@ -359,7 +359,10 @@ export default function CombatArena({
       : null;
 
   return (
-    <section className="mx-auto w-full max-w-4xl rounded-2xl border border-zinc-700/60 bg-zinc-900/70 p-6 text-zinc-100 shadow-xl backdrop-blur-sm">
+    <section className="relative mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-900/70 p-6 text-zinc-100 shadow-xl backdrop-blur-sm">
+      {screenFlash && (
+        <div className="pointer-events-none absolute inset-0 z-30 rounded-2xl bg-rose-500/70 mix-blend-screen animate-hit-flash" />
+      )}
       <header className="mb-6 flex items-center justify-between gap-4">
         <h2 className="text-xl font-bold tracking-wide">Combat Arena</h2>
         <div
