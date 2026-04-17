@@ -50,92 +50,162 @@ CREATE INDEX IF NOT EXISTS idx_combat_turn_logs_combate_created
 ON public.combat_turn_logs (combate_id, created_at DESC);
 
 -- Seed default structured skills for bosses that still have empty skills.
-UPDATE public.bosses
-SET skills = jsonb_build_array(
-  jsonb_build_object(
-    'name', 'Golpe Brutal',
-    'desc', 'Ataque pesado e direto.',
-    'damage_multiplier', 1.15,
-    'effects', jsonb_build_array()
-  ),
-  jsonb_build_object(
-    'name', 'Açoite Lento',
-    'desc', 'Ataque que reduz ritmo do inimigo.',
-    'damage_multiplier', 0.95,
-    'effects', jsonb_build_array('slow')
-  ),
-  jsonb_build_object(
-    'name', 'Postura de Pedra',
-    'desc', 'Mitiga parte do dano no turno.',
-    'damage_multiplier', 0.9,
-    'effects', jsonb_build_array('damage_reduction')
-  )
-)
-WHERE skills IS NULL
-   OR skills = '[]'::jsonb;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'bosses'
+      AND column_name = 'skills'
+  ) THEN
+    UPDATE public.bosses
+    SET skills = jsonb_build_array(
+      jsonb_build_object(
+        'name', 'Golpe Brutal',
+        'desc', 'Ataque pesado e direto.',
+        'damage_multiplier', 1.15,
+        'effects', jsonb_build_array()
+      ),
+      jsonb_build_object(
+        'name', 'Açoite Lento',
+        'desc', 'Ataque que reduz ritmo do inimigo.',
+        'damage_multiplier', 0.95,
+        'effects', jsonb_build_array('slow')
+      ),
+      jsonb_build_object(
+        'name', 'Postura de Pedra',
+        'desc', 'Mitiga parte do dano no turno.',
+        'damage_multiplier', 0.9,
+        'effects', jsonb_build_array('damage_reduction')
+      )
+    )
+    WHERE skills IS NULL
+       OR skills = '[]'::jsonb;
+  END IF;
+END
+$$;
 
 -- Signature item logic for themed bosses.
-UPDATE public.bosses
-SET signature_item_name = 'Espada de Pedra'
-WHERE lower(coalesce(name, '')) LIKE '%golem%'
-  AND (signature_item_name IS NULL OR signature_item_name = '');
+DO $$
+DECLARE
+  boss_name_col text := null;
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'bosses'
+      AND column_name = 'name'
+  ) THEN
+    boss_name_col := 'name';
+  ELSIF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'bosses'
+      AND column_name = 'nome'
+  ) THEN
+    boss_name_col := 'nome';
+  END IF;
+
+  IF boss_name_col IS NOT NULL THEN
+    EXECUTE format(
+      'UPDATE public.bosses
+       SET signature_item_name = ''Espada de Pedra''
+       WHERE lower(coalesce(%I, '''')) LIKE ''%%golem%%''
+         AND (signature_item_name IS NULL OR signature_item_name = '''')',
+      boss_name_col
+    );
+  END IF;
+END
+$$;
 
 -- Ensure there is a themed drop for stone golems.
-INSERT INTO public.game_items (
-  name,
-  description,
-  icon,
-  category,
-  rarity,
-  stat_label,
-  atk_bonus,
-  def_bonus,
-  hp_bonus,
-  level_required,
-  boss_drop_level,
-  required_attribute,
-  required_attribute_level,
-  requer_sintonizacao
-)
-SELECT
-  'Espada de Pedra',
-  'Lamina mineral pesada usada por guardioes de pedra.',
-  '🪨',
-  'weapon',
-  'raro',
-  '+18 ATK, +6 DEF',
-  18,
-  6,
-  0,
-  8,
-  8,
-  'forca',
-  8,
-  false
-WHERE NOT EXISTS (
-  SELECT 1
-  FROM public.game_items gi
-  WHERE gi.name = 'Espada de Pedra'
-);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'game_items'
+  ) THEN
+    INSERT INTO public.game_items (
+      name,
+      description,
+      icon,
+      category,
+      rarity,
+      stat_label,
+      atk_bonus,
+      def_bonus,
+      hp_bonus,
+      level_required,
+      boss_drop_level,
+      required_attribute,
+      required_attribute_level,
+      requer_sintonizacao
+    )
+    SELECT
+      'Espada de Pedra',
+      'Lamina mineral pesada usada por guardioes de pedra.',
+      '🪨',
+      'weapon',
+      'raro',
+      '+18 ATK, +6 DEF',
+      18,
+      6,
+      0,
+      8,
+      8,
+      'forca',
+      8,
+      false
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM public.game_items gi
+      WHERE gi.name = 'Espada de Pedra'
+    );
+  END IF;
+END
+$$;
 
 -- Add requirement hints to key boss drops if still unset.
-UPDATE public.game_items
-SET required_attribute = 'forca',
-    required_attribute_level = GREATEST(1, level_required)
-WHERE category = 'weapon'
-  AND boss_drop_level IS NOT NULL
-  AND required_attribute IS NULL;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'game_items'
+      AND column_name = 'required_attribute'
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'game_items'
+      AND column_name = 'required_attribute_level'
+  ) THEN
+    UPDATE public.game_items
+    SET required_attribute = 'forca',
+        required_attribute_level = GREATEST(1, level_required)
+    WHERE category = 'weapon'
+      AND boss_drop_level IS NOT NULL
+      AND required_attribute IS NULL;
 
-UPDATE public.game_items
-SET required_attribute = 'resiliencia',
-    required_attribute_level = GREATEST(1, level_required)
-WHERE category = 'armor'
-  AND boss_drop_level IS NOT NULL
-  AND required_attribute IS NULL;
+    UPDATE public.game_items
+    SET required_attribute = 'resiliencia',
+        required_attribute_level = GREATEST(1, level_required)
+    WHERE category = 'armor'
+      AND boss_drop_level IS NOT NULL
+      AND required_attribute IS NULL;
 
-UPDATE public.game_items
-SET required_attribute = 'agilidade',
-    required_attribute_level = GREATEST(1, level_required)
-WHERE category = 'accessory'
-  AND boss_drop_level IS NOT NULL
-  AND required_attribute IS NULL;
+    UPDATE public.game_items
+    SET required_attribute = 'agilidade',
+        required_attribute_level = GREATEST(1, level_required)
+    WHERE category = 'accessory'
+      AND boss_drop_level IS NOT NULL
+      AND required_attribute IS NULL;
+  END IF;
+END
+$$;

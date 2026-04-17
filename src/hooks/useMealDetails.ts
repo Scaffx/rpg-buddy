@@ -42,6 +42,7 @@ export function useMealHistory() {
 export function useAddMealDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const today = new Date().toLocaleDateString('en-CA');
 
   return useMutation({
     mutationFn: async ({
@@ -72,8 +73,8 @@ export function useAddMealDetail() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mealHistory'] });
-      queryClient.invalidateQueries({ queryKey: ['meal_log'] });
+      queryClient.invalidateQueries({ queryKey: ['mealHistory', user?.id, today] });
+      queryClient.invalidateQueries({ queryKey: ['meal_log', user?.id] });
     },
   });
 }
@@ -81,6 +82,7 @@ export function useAddMealDetail() {
 export function useDeleteMealRecord() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const today = new Date().toLocaleDateString('en-CA');
 
   return useMutation({
     mutationFn: async (recordId: string) => {
@@ -95,7 +97,8 @@ export function useDeleteMealRecord() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mealHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['mealHistory', user?.id, today] });
+      queryClient.invalidateQueries({ queryKey: ['meal_log', user?.id] });
     },
   });
 }
@@ -103,6 +106,7 @@ export function useDeleteMealRecord() {
 export function useUpdateMealRecord() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const today = new Date().toLocaleDateString('en-CA');
 
   return useMutation({
     mutationFn: async ({
@@ -133,7 +137,8 @@ export function useUpdateMealRecord() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mealHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['mealHistory', user?.id, today] });
+      queryClient.invalidateQueries({ queryKey: ['meal_log', user?.id] });
     },
   });
 }

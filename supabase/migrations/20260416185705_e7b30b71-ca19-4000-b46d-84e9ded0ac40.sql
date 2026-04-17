@@ -24,10 +24,61 @@ ALTER TABLE public.bosses
   ADD COLUMN IF NOT EXISTS ataque_base INTEGER,
   ADD COLUMN IF NOT EXISTS defesa_base INTEGER;
 
-UPDATE public.bosses
-SET hp_max = COALESCE(hp_max, hp),
-    ataque_base = COALESCE(ataque_base, COALESCE(damage_base, 10)::INTEGER),
-    defesa_base = COALESCE(defesa_base, COALESCE(defense, 5)::INTEGER);
+DO $$
+DECLARE
+  hp_expr text := '100';
+  atk_expr text := '10';
+  def_expr text := '5';
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'bosses'
+      AND column_name = 'hp'
+  ) THEN
+    hp_expr := 'hp';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'bosses'
+      AND column_name = 'damage_base'
+  ) THEN
+    atk_expr := 'damage_base';
+  ELSIF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'bosses'
+      AND column_name = 'attack'
+  ) THEN
+    atk_expr := 'attack';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'bosses'
+      AND column_name = 'defense'
+  ) THEN
+    def_expr := 'defense';
+  END IF;
+
+  EXECUTE format(
+    'UPDATE public.bosses
+     SET hp_max = COALESCE(hp_max, %s::integer),
+         ataque_base = COALESCE(ataque_base, %s::integer),
+         defesa_base = COALESCE(defesa_base, %s::integer)',
+    hp_expr,
+    atk_expr,
+    def_expr
+  );
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS public.combates_ativos (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,

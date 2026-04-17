@@ -1,5 +1,14 @@
--- Add comprehensive mechanics documentation to system update logs
-INSERT INTO public.system_update_logs (version_tag, title, summary, details, is_highlighted) VALUES
+-- Add comprehensive mechanics documentation to system update logs.
+-- Some remote environments can miss the table due to schema drift.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'system_update_logs'
+  ) THEN
+    INSERT INTO public.system_update_logs (version_tag, title, summary, details, is_highlighted) VALUES
   (
     'v0.9.0',
     'Documentação Completa de Mecânicas',
@@ -84,4 +93,7 @@ INSERT INTO public.system_update_logs (version_tag, title, summary, details, is_
     'Frequência: Uma vez a cada 24h. Recompensa: +15 XP + 5 🪙. Locação: Dashboard → Botão "Coletar". Visualizar countdown para próximo bônus.',
     false
   )
-ON CONFLICT DO NOTHING;
+    ON CONFLICT DO NOTHING;
+  END IF;
+END;
+$$;

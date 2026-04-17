@@ -783,10 +783,12 @@ export default function ProfilePage() {
       console.debug("[logMeal] Refeição inserida:", data);
     },
     onSuccess: async () => {
-      const today = new Date().toLocaleDateString('en-CA');
-      await queryClient.invalidateQueries({ queryKey: ["meal_log", user?.id, today] });
-      queryClient.invalidateQueries({ queryKey: ["mealHistory"] });
-      queryClient.invalidateQueries({ queryKey: ["dailyTracking"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["meal_log", user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ["mealHistory", user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ["dailyTracking", user?.id] }),
+      ]);
+      await queryClient.refetchQueries({ queryKey: ["meal_log", user?.id], type: "active" });
       toast.success("Refeição registrada! 🍖");
     },
     onError: (err) => {
@@ -813,9 +815,11 @@ export default function ProfilePage() {
       console.debug("[logWater] Água inserida:", data);
     },
     onSuccess: async () => {
-      const today = new Date().toLocaleDateString('en-CA');
-      await queryClient.invalidateQueries({ queryKey: ["water_log", user?.id, today] });
-      queryClient.invalidateQueries({ queryKey: ["dailyTracking"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["water_log", user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ["dailyTracking", user?.id] }),
+      ]);
+      await queryClient.refetchQueries({ queryKey: ["water_log", user?.id], type: "active" });
       toast.success("Água registrada! 💧");
     },
     onError: (err) => {

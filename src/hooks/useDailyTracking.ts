@@ -72,7 +72,7 @@ export function useUpdateTracking() {
     },
     onSuccess: () => {
       // Atualiza a tela instantaneamente
-      queryClient.invalidateQueries({ queryKey: ['dailyTracking'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyTracking', user?.id] });
     },
   });
 }
