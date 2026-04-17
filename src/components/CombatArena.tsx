@@ -586,6 +586,53 @@ export default function CombatArena({
         </div>
       </div>
 
+      {showVictory && (
+        <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden animate-victory-overlay">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/30 via-purple-900/40 to-rose-600/30" />
+          <div
+            className="absolute left-1/2 top-1/2 h-[140vmax] w-[140vmax] animate-victory-rays"
+            style={{
+              background:
+                'conic-gradient(from 0deg, transparent 0deg, hsl(43 96% 60% / 0.35) 12deg, transparent 24deg, transparent 60deg, hsl(43 96% 60% / 0.25) 72deg, transparent 84deg, transparent 120deg, hsl(43 96% 60% / 0.3) 132deg, transparent 144deg, transparent 180deg, hsl(43 96% 60% / 0.22) 192deg, transparent 204deg, transparent 240deg, hsl(43 96% 60% / 0.28) 252deg, transparent 264deg, transparent 300deg, hsl(43 96% 60% / 0.2) 312deg, transparent 324deg)',
+              maskImage: 'radial-gradient(circle, black 30%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(circle, black 30%, transparent 70%)',
+            }}
+          />
+          {confetti.map((c) => (
+            <span
+              key={`confetti-${c.id}`}
+              className="absolute top-0 animate-confetti rounded-sm"
+              style={{
+                left: `${c.cx}vw`,
+                width: `${c.size}px`,
+                height: `${c.size * 1.6}px`,
+                background: c.color,
+                ['--cdx' as never]: `${c.cdx}px`,
+                ['--cdur' as never]: `${c.duration}s`,
+                animationDelay: `${c.delay}s`,
+                animationDuration: `${c.duration}s`,
+                boxShadow: `0 0 8px ${c.color}`,
+              }}
+            />
+          ))}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
+            <p className="font-cinzel text-7xl md:text-9xl font-black text-amber-300 drop-shadow-[0_0_30px_hsl(43_96%_60%/0.9)] animate-victory-title">
+              VICTORY!
+            </p>
+            <p className="text-lg md:text-2xl font-semibold text-amber-100/90 tracking-widest uppercase animate-victory-subtitle">
+              Boss derrotado
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowVictory(false)}
+              className="pointer-events-auto mt-4 rounded-lg bg-amber-400 px-6 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300 animate-victory-subtitle"
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
       <footer className="mt-8 flex flex-col items-center gap-3">
         {winnerLabel ? <p className="text-lg font-bold text-amber-200">{winnerLabel}</p> : null}
 
