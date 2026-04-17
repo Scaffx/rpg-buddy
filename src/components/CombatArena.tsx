@@ -374,6 +374,7 @@ export default function CombatArena({
         if (turnResult.loot_drop) {
           setLootDrop(turnResult.loot_drop);
         }
+        launchVictoryCinematic();
         setTurn('finished');
         return;
       }
