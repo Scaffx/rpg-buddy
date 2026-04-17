@@ -289,16 +289,14 @@ export default function CombatArena({
     const colors = ['hsl(var(--primary))', 'hsl(43 96% 56%)', 'hsl(var(--accent))', 'hsl(142 70% 55%)', 'hsl(0 80% 60%)'];
     const pieces: Confetti[] = Array.from({ length: 60 }).map((_, i) => ({
       id: Date.now() + i,
-      cx: (Math.random() * 100) + 'vw' as unknown as number, // placeholder, will set in style
+      cx: Math.random() * 100,
       cdx: (Math.random() - 0.5) * 200,
       duration: 2.5 + Math.random() * 2.5,
       delay: Math.random() * 0.6,
       color: colors[i % colors.length],
       size: 6 + Math.random() * 8,
     }));
-    // Replace cx with proper vw value
-    const corrected = pieces.map((p, i) => ({ ...p, cx: Math.random() * 100 }));
-    setConfetti(corrected);
+    setConfetti(pieces);
     setShowVictory(true);
   };
 
