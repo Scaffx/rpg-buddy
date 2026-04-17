@@ -390,7 +390,7 @@ export default function CombatArena({
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 md:items-center">
+      <div className={`grid gap-6 md:grid-cols-3 md:items-center ${arenaShake ? 'animate-combat-shake' : ''}`}>
         <div className="relative rounded-xl border border-zinc-700/60 bg-zinc-800/70 p-4 text-center">
           <p className="text-sm text-zinc-400">Player HP</p>
           <p className="mt-2 text-3xl font-black text-emerald-300">{playerHp}</p>
