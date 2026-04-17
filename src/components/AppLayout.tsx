@@ -2,6 +2,8 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import ShortRestTimer from '@/components/ShortRestTimer';
+import SoundToggleButton from '@/components/SoundToggleButton';
+import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { Clock, Flame, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState } from '@/lib/shortRestState';
