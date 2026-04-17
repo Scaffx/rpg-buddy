@@ -649,7 +649,34 @@ export default function CombatArena({
         </div>
       )}
 
-      <footer className="mt-8 flex flex-col items-center gap-3">
+      {showDefeat && (
+        <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden animate-defeat-overlay">
+          <div className="absolute inset-0 bg-black/85" />
+          <div
+            className="absolute inset-0 animate-defeat-vignette"
+            style={{
+              background: 'radial-gradient(ellipse at center, transparent 25%, hsl(0 70% 12% / 0.7) 65%, hsl(0 80% 6% / 0.95) 100%)',
+            }}
+          />
+          <div className="absolute inset-0 animate-defeat-shake flex flex-col items-center justify-center gap-4 text-center">
+            <p className="font-cinzel text-7xl md:text-9xl font-black text-rose-500 drop-shadow-[0_0_40px_hsl(0_80%_45%/0.95)] animate-defeat-title">
+              DEFEAT
+            </p>
+            <p className="text-base md:text-xl font-semibold text-rose-200/80 tracking-[0.4em] uppercase animate-victory-subtitle">
+              Voce foi derrotado pelo boss
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowDefeat(false)}
+              className="pointer-events-auto mt-6 rounded-lg border border-rose-500/60 bg-rose-900/40 px-6 py-2.5 font-bold text-rose-100 hover:bg-rose-800/60 transition animate-victory-subtitle"
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
+
         {winnerLabel ? <p className="text-lg font-bold text-amber-200">{winnerLabel}</p> : null}
 
         {lootDrop && bossHp <= 0 && (
