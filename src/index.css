@@ -287,4 +287,71 @@
     100% { opacity: 0; transform: translate(-50%, -50%) scale(3.2); border-width: 1px; }
   }
   .animate-shockwave { animation: shockwave-ring 1.2s ease-out forwards; }
+
+  /* ===== Defeat cinematic ===== */
+  @keyframes defeat-overlay-in {
+    0%   { opacity: 0; backdrop-filter: blur(0); }
+    100% { opacity: 1; backdrop-filter: blur(8px) grayscale(0.6); }
+  }
+  .animate-defeat-overlay { animation: defeat-overlay-in 0.8s ease-out forwards; }
+
+  @keyframes defeat-shake-intense {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-12px, 6px) rotate(-1deg); }
+    20% { transform: translate(14px, -5px) rotate(1.2deg); }
+    30% { transform: translate(-10px, 8px) rotate(-1deg); }
+    40% { transform: translate(12px, -6px) rotate(0.8deg); }
+    50% { transform: translate(-8px, 5px) rotate(-0.6deg); }
+    60% { transform: translate(10px, -4px) rotate(0.5deg); }
+    70% { transform: translate(-6px, 3px) rotate(-0.4deg); }
+    80% { transform: translate(5px, -2px) rotate(0.3deg); }
+    90% { transform: translate(-3px, 1px) rotate(0deg); }
+  }
+  .animate-defeat-shake { animation: defeat-shake-intense 1.2s cubic-bezier(.36,.07,.19,.97) both; }
+
+  @keyframes defeat-title {
+    0%   { opacity: 0; transform: translateY(-30px) scale(1.6); letter-spacing: 0.4em; filter: blur(12px); }
+    40%  { opacity: 1; transform: translateY(0) scale(1.05); letter-spacing: 0.18em; filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0) scale(1); letter-spacing: 0.14em; filter: blur(0); }
+  }
+  .animate-defeat-title { animation: defeat-title 1.4s cubic-bezier(.2,.8,.2,1) forwards; }
+
+  @keyframes defeat-vignette {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  .animate-defeat-vignette { animation: defeat-vignette 1.6s ease-out forwards; }
+
+  /* ===== Level Up cinematic ===== */
+  @keyframes levelup-beam {
+    0%   { opacity: 0; transform: translateX(-50%) scaleY(0.4); }
+    20%  { opacity: 1; transform: translateX(-50%) scaleY(1); }
+    80%  { opacity: 1; transform: translateX(-50%) scaleY(1.05); }
+    100% { opacity: 0; transform: translateX(-50%) scaleY(1); }
+  }
+  .animate-levelup-beam { animation: levelup-beam 4s ease-out forwards; transform-origin: top center; }
+
+  @keyframes levelup-spark {
+    0%   { opacity: 0; transform: translateY(0) scale(0.6); }
+    20%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-90vh) scale(1.2); }
+  }
+  .animate-levelup-spark { animation-name: levelup-spark; animation-timing-function: ease-out; animation-fill-mode: forwards; animation-iteration-count: 1; }
+
+  @keyframes levelup-title {
+    0%   { opacity: 0; transform: translateY(40px) scale(0.5); filter: blur(10px); }
+    30%  { opacity: 1; transform: translateY(-8px) scale(1.2); filter: blur(0); }
+    60%  { transform: translateY(0) scale(1); }
+    85%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-20px) scale(1.05); }
+  }
+  .animate-levelup-title { animation: levelup-title 4s cubic-bezier(.2,.8,.2,1) forwards; }
+
+  @keyframes levelup-subtitle {
+    0%   { opacity: 0; transform: translateY(20px); }
+    25%  { opacity: 1; transform: translateY(0); }
+    85%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .animate-levelup-subtitle { animation: levelup-subtitle 4s ease-out 0.4s forwards; opacity: 0; }
 }
