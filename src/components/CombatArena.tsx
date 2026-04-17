@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { sfx } from '@/lib/sfx';
 
 type Turn = 'idle' | 'player' | 'boss' | 'finished';
 
@@ -178,6 +179,7 @@ export default function CombatArena({
   const [critParticles, setCritParticles] = useState<CritParticle[]>([]);
   const [confetti, setConfetti] = useState<Confetti[]>([]);
   const [showVictory, setShowVictory] = useState(false);
+  const [showDefeat, setShowDefeat] = useState(false);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
   const currentBattleTokenRef = useRef(0);
