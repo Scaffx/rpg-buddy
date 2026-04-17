@@ -216,12 +216,21 @@ export default function CombatArena({
     ].slice(0, 12));
   };
 
-  const pushDamage = (target: 'boss' | 'player', value: number) => {
-    const popupId = Date.now() + Math.floor(Math.random() * 1000);
-    setDamagePopups((prev) => [...prev, { id: popupId, value, target }]);
+  const pushDamage = (target: 'boss' | 'player', value: number, roll?: number) => {
+    const baseId = Date.now() + Math.floor(Math.random() * 1000);
+    const isCrit = (roll ?? 0) >= 18 || value >= 25;
+    setDamagePopups((prev) => [...prev, { id: baseId, value, target, crit: isCrit }]);
+    setHitEffects((prev) => [...prev, { id: baseId + 1, target }]);
+    setArenaShake(true);
+    if (target === 'player') {
+      setScreenFlash(true);
+      window.setTimeout(() => setScreenFlash(false), 550);
+    }
+    window.setTimeout(() => setArenaShake(false), 500);
     window.setTimeout(() => {
-      setDamagePopups((prev) => prev.filter((item) => item.id !== popupId));
-    }, 850);
+      setDamagePopups((prev) => prev.filter((item) => item.id !== baseId));
+      setHitEffects((prev) => prev.filter((item) => item.id !== baseId + 1));
+    }, 1100);
   };
 
   const startBattle = () => {
@@ -231,6 +240,9 @@ export default function CombatArena({
     setPlayerHp(initialPlayerHp);
     setRollValue(null);
     setDamagePopups([]);
+    setHitEffects([]);
+    setArenaShake(false);
+    setScreenFlash(false);
     setLootDrop(null);
     setBattleLog([]);
     setTurn('player');
