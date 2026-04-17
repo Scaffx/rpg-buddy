@@ -185,6 +185,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
+              <SoundToggleButton />
+
               <div
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${
                   isProtectorRisk
