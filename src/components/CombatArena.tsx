@@ -563,6 +563,26 @@ export default function CombatArena({
                 </span>
               ))}
           </AnimatePresence>
+          {critParticles
+            .filter((p) => p.target === 'boss')
+            .map((p) => (
+              <span
+                key={`particle-${p.id}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 rounded-full animate-particle-burst"
+                style={{
+                  width: `${p.size}px`,
+                  height: `${p.size}px`,
+                  background: `radial-gradient(circle, hsl(${p.hue} 95% 65%) 0%, hsl(${p.hue} 85% 40% / 0.85) 55%, transparent 100%)`,
+                  boxShadow: `0 0 14px hsl(${p.hue} 95% 55% / 0.9)`,
+                  ['--px-end' as never]: `${p.pxEnd}px`,
+                  ['--py-end' as never]: `${p.pyEnd}px`,
+                  animationDuration: `${p.duration}ms`,
+                }}
+              />
+            ))}
+          {critParticles.some((p) => p.target === 'boss') && (
+            <span className="pointer-events-none absolute left-1/2 top-1/2 h-12 w-12 rounded-full border-4 border-rose-400/80 animate-shockwave" />
+          )}
         </div>
       </div>
 
