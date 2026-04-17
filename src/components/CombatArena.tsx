@@ -279,6 +279,10 @@ export default function CombatArena({
     }
     if (isCrit) {
       spawnCritParticles(target);
+      sfx.crit();
+    } else {
+      sfx.slash();
+      window.setTimeout(() => sfx.hit(), 80);
     }
     window.setTimeout(() => setArenaShake(false), 500);
     window.setTimeout(() => {
@@ -300,6 +304,12 @@ export default function CombatArena({
     }));
     setConfetti(pieces);
     setShowVictory(true);
+    sfx.victory();
+  };
+
+  const launchDefeatCinematic = () => {
+    setShowDefeat(true);
+    sfx.defeat();
   };
 
   const startBattle = () => {
