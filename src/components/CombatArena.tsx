@@ -46,6 +46,27 @@ type HitEffect = {
   target: 'boss' | 'player';
 };
 
+type CritParticle = {
+  id: number;
+  target: 'boss' | 'player';
+  variant: 'blood' | 'energy';
+  pxEnd: number;
+  pyEnd: number;
+  size: number;
+  hue: number;
+  duration: number;
+};
+
+type Confetti = {
+  id: number;
+  cx: number;
+  cdx: number;
+  duration: number;
+  delay: number;
+  color: string;
+  size: number;
+};
+
 type CombatArenaProps = {
   combateId?: string;
   initialBossHp?: number;
