@@ -391,23 +391,34 @@ export default function CombatArena({
       </div>
 
       <div className={`grid gap-6 md:grid-cols-3 md:items-center ${arenaShake ? 'animate-combat-shake' : ''}`}>
-        <div className="relative rounded-xl border border-zinc-700/60 bg-zinc-800/70 p-4 text-center">
+        <div
+          className={`relative rounded-xl border border-zinc-700/60 bg-zinc-800/70 p-4 text-center transition-shadow ${
+            hitEffects.some((h) => h.target === 'player') ? 'animate-target-hit ring-2 ring-rose-500/70 shadow-[0_0_30px_hsl(0_72%_51%/0.55)]' : ''
+          }`}
+        >
           <p className="text-sm text-zinc-400">Player HP</p>
           <p className="mt-2 text-3xl font-black text-emerald-300">{playerHp}</p>
+          {hitEffects
+            .filter((h) => h.target === 'player')
+            .map((h) => (
+              <span
+                key={`slash-${h.id}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-rose-300 to-transparent animate-slash"
+              />
+            ))}
           <AnimatePresence>
             {damagePopups
               .filter((popup) => popup.target === 'player')
               .map((popup) => (
-                <motion.span
+                <span
                   key={popup.id}
-                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                  animate={{ opacity: 1, y: -24, scale: 1 }}
-                  exit={{ opacity: 0, y: -42, scale: 1.05 }}
-                  transition={{ duration: 0.45 }}
-                  className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-xl font-extrabold text-rose-400"
+                  className={`pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 font-extrabold animate-damage-float drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                    popup.crit ? 'text-3xl text-amber-300' : 'text-2xl text-rose-400'
+                  }`}
                 >
+                  {popup.crit && <span className="mr-1 text-xs uppercase tracking-widest text-amber-200">CRIT!</span>}
                   -{popup.value}
-                </motion.span>
+                </span>
               ))}
           </AnimatePresence>
         </div>
