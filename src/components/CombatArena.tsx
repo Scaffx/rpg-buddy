@@ -240,6 +240,31 @@ export default function CombatArena({
     ].slice(0, 12));
   };
 
+  const spawnCritParticles = (target: 'boss' | 'player') => {
+    // Boss takes blood (rose/red), Player takes energy (cyan/violet)
+    const variant: 'blood' | 'energy' = target === 'boss' ? 'blood' : 'energy';
+    const count = 14;
+    const baseId = Date.now() + Math.floor(Math.random() * 10000);
+    const particles: CritParticle[] = Array.from({ length: count }).map((_, i) => {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+      const distance = 60 + Math.random() * 60;
+      return {
+        id: baseId + i,
+        target,
+        variant,
+        pxEnd: Math.cos(angle) * distance,
+        pyEnd: Math.sin(angle) * distance,
+        size: 6 + Math.random() * 8,
+        hue: variant === 'blood' ? 350 + Math.random() * 15 : 190 + Math.random() * 80,
+        duration: 700 + Math.random() * 500,
+      };
+    });
+    setCritParticles((prev) => [...prev, ...particles]);
+    window.setTimeout(() => {
+      setCritParticles((prev) => prev.filter((p) => !particles.some((np) => np.id === p.id)));
+    }, 1300);
+  };
+
   const pushDamage = (target: 'boss' | 'player', value: number, roll?: number) => {
     const baseId = Date.now() + Math.floor(Math.random() * 1000);
     const isCrit = (roll ?? 0) >= 18 || value >= 25;
@@ -250,11 +275,31 @@ export default function CombatArena({
       setScreenFlash(true);
       window.setTimeout(() => setScreenFlash(false), 550);
     }
+    if (isCrit) {
+      spawnCritParticles(target);
+    }
     window.setTimeout(() => setArenaShake(false), 500);
     window.setTimeout(() => {
       setDamagePopups((prev) => prev.filter((item) => item.id !== baseId));
       setHitEffects((prev) => prev.filter((item) => item.id !== baseId + 1));
     }, 1100);
+  };
+
+  const launchVictoryCinematic = () => {
+    const colors = ['hsl(var(--primary))', 'hsl(43 96% 56%)', 'hsl(var(--accent))', 'hsl(142 70% 55%)', 'hsl(0 80% 60%)'];
+    const pieces: Confetti[] = Array.from({ length: 60 }).map((_, i) => ({
+      id: Date.now() + i,
+      cx: (Math.random() * 100) + 'vw' as unknown as number, // placeholder, will set in style
+      cdx: (Math.random() - 0.5) * 200,
+      duration: 2.5 + Math.random() * 2.5,
+      delay: Math.random() * 0.6,
+      color: colors[i % colors.length],
+      size: 6 + Math.random() * 8,
+    }));
+    // Replace cx with proper vw value
+    const corrected = pieces.map((p, i) => ({ ...p, cx: Math.random() * 100 }));
+    setConfetti(corrected);
+    setShowVictory(true);
   };
 
   const startBattle = () => {
@@ -269,6 +314,9 @@ export default function CombatArena({
     setScreenFlash(false);
     setLootDrop(null);
     setBattleLog([]);
+    setCritParticles([]);
+    setConfetti([]);
+    setShowVictory(false);
     setTurn('player');
   };
 
