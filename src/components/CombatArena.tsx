@@ -38,6 +38,12 @@ type DamagePopup = {
   id: number;
   value: number;
   target: 'boss' | 'player';
+  crit?: boolean;
+};
+
+type HitEffect = {
+  id: number;
+  target: 'boss' | 'player';
 };
 
 type CombatArenaProps = {
