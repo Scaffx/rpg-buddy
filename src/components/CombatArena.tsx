@@ -175,6 +175,9 @@ export default function CombatArena({
   const [lootDrop, setLootDrop] = useState<{ name: string; icon: string; rarity: string } | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<CombatSkill[]>([]);
   const [battleLog, setBattleLog] = useState<BattleLogEntry[]>([]);
+  const [critParticles, setCritParticles] = useState<CritParticle[]>([]);
+  const [confetti, setConfetti] = useState<Confetti[]>([]);
+  const [showVictory, setShowVictory] = useState(false);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
   const currentBattleTokenRef = useRef(0);
