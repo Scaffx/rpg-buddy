@@ -286,7 +286,7 @@ export default function CombatArena({
       setIsRolling(false);
       setRollValue(turnResult.dado_player);
       setBossHp(turnResult.hp_boss_restante);
-      pushDamage('boss', turnResult.dano_player);
+      pushDamage('boss', turnResult.dano_player, turnResult.dado_player);
       appendBattleLog({
         actor: 'player',
         skill: turnResult.habilidade_player || chosenSkill?.name || 'Ataque Basico',
