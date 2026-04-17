@@ -46,6 +46,27 @@ type HitEffect = {
   target: 'boss' | 'player';
 };
 
+type CritParticle = {
+  id: number;
+  target: 'boss' | 'player';
+  variant: 'blood' | 'energy';
+  pxEnd: number;
+  pyEnd: number;
+  size: number;
+  hue: number;
+  duration: number;
+};
+
+type Confetti = {
+  id: number;
+  cx: number;
+  cdx: number;
+  duration: number;
+  delay: number;
+  color: string;
+  size: number;
+};
+
 type CombatArenaProps = {
   combateId?: string;
   initialBossHp?: number;
@@ -154,6 +175,9 @@ export default function CombatArena({
   const [lootDrop, setLootDrop] = useState<{ name: string; icon: string; rarity: string } | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<CombatSkill[]>([]);
   const [battleLog, setBattleLog] = useState<BattleLogEntry[]>([]);
+  const [critParticles, setCritParticles] = useState<CritParticle[]>([]);
+  const [confetti, setConfetti] = useState<Confetti[]>([]);
+  const [showVictory, setShowVictory] = useState(false);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
   const currentBattleTokenRef = useRef(0);
@@ -216,6 +240,31 @@ export default function CombatArena({
     ].slice(0, 12));
   };
 
+  const spawnCritParticles = (target: 'boss' | 'player') => {
+    // Boss takes blood (rose/red), Player takes energy (cyan/violet)
+    const variant: 'blood' | 'energy' = target === 'boss' ? 'blood' : 'energy';
+    const count = 14;
+    const baseId = Date.now() + Math.floor(Math.random() * 10000);
+    const particles: CritParticle[] = Array.from({ length: count }).map((_, i) => {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+      const distance = 60 + Math.random() * 60;
+      return {
+        id: baseId + i,
+        target,
+        variant,
+        pxEnd: Math.cos(angle) * distance,
+        pyEnd: Math.sin(angle) * distance,
+        size: 6 + Math.random() * 8,
+        hue: variant === 'blood' ? 350 + Math.random() * 15 : 190 + Math.random() * 80,
+        duration: 700 + Math.random() * 500,
+      };
+    });
+    setCritParticles((prev) => [...prev, ...particles]);
+    window.setTimeout(() => {
+      setCritParticles((prev) => prev.filter((p) => !particles.some((np) => np.id === p.id)));
+    }, 1300);
+  };
+
   const pushDamage = (target: 'boss' | 'player', value: number, roll?: number) => {
     const baseId = Date.now() + Math.floor(Math.random() * 1000);
     const isCrit = (roll ?? 0) >= 18 || value >= 25;
@@ -226,11 +275,29 @@ export default function CombatArena({
       setScreenFlash(true);
       window.setTimeout(() => setScreenFlash(false), 550);
     }
+    if (isCrit) {
+      spawnCritParticles(target);
+    }
     window.setTimeout(() => setArenaShake(false), 500);
     window.setTimeout(() => {
       setDamagePopups((prev) => prev.filter((item) => item.id !== baseId));
       setHitEffects((prev) => prev.filter((item) => item.id !== baseId + 1));
     }, 1100);
+  };
+
+  const launchVictoryCinematic = () => {
+    const colors = ['hsl(var(--primary))', 'hsl(43 96% 56%)', 'hsl(var(--accent))', 'hsl(142 70% 55%)', 'hsl(0 80% 60%)'];
+    const pieces: Confetti[] = Array.from({ length: 60 }).map((_, i) => ({
+      id: Date.now() + i,
+      cx: Math.random() * 100,
+      cdx: (Math.random() - 0.5) * 200,
+      duration: 2.5 + Math.random() * 2.5,
+      delay: Math.random() * 0.6,
+      color: colors[i % colors.length],
+      size: 6 + Math.random() * 8,
+    }));
+    setConfetti(pieces);
+    setShowVictory(true);
   };
 
   const startBattle = () => {
@@ -245,6 +312,9 @@ export default function CombatArena({
     setScreenFlash(false);
     setLootDrop(null);
     setBattleLog([]);
+    setCritParticles([]);
+    setConfetti([]);
+    setShowVictory(false);
     setTurn('player');
   };
 
@@ -304,6 +374,7 @@ export default function CombatArena({
         if (turnResult.loot_drop) {
           setLootDrop(turnResult.loot_drop);
         }
+        launchVictoryCinematic();
         setTurn('finished');
         return;
       }
@@ -421,6 +492,26 @@ export default function CombatArena({
                 </span>
               ))}
           </AnimatePresence>
+          {critParticles
+            .filter((p) => p.target === 'player')
+            .map((p) => (
+              <span
+                key={`particle-${p.id}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 rounded-full animate-particle-burst"
+                style={{
+                  width: `${p.size}px`,
+                  height: `${p.size}px`,
+                  background: `radial-gradient(circle, hsl(${p.hue} 95% 65%) 0%, hsl(${p.hue} 90% 45% / 0.85) 60%, transparent 100%)`,
+                  boxShadow: `0 0 12px hsl(${p.hue} 95% 60% / 0.9)`,
+                  ['--px-end' as never]: `${p.pxEnd}px`,
+                  ['--py-end' as never]: `${p.pyEnd}px`,
+                  animationDuration: `${p.duration}ms`,
+                }}
+              />
+            ))}
+          {critParticles.some((p) => p.target === 'player') && (
+            <span className="pointer-events-none absolute left-1/2 top-1/2 h-12 w-12 rounded-full border-4 border-cyan-300/80 animate-shockwave" />
+          )}
         </div>
 
         <div className="flex flex-col items-center justify-center gap-3">
@@ -472,8 +563,75 @@ export default function CombatArena({
                 </span>
               ))}
           </AnimatePresence>
+          {critParticles
+            .filter((p) => p.target === 'boss')
+            .map((p) => (
+              <span
+                key={`particle-${p.id}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 rounded-full animate-particle-burst"
+                style={{
+                  width: `${p.size}px`,
+                  height: `${p.size}px`,
+                  background: `radial-gradient(circle, hsl(${p.hue} 95% 65%) 0%, hsl(${p.hue} 85% 40% / 0.85) 55%, transparent 100%)`,
+                  boxShadow: `0 0 14px hsl(${p.hue} 95% 55% / 0.9)`,
+                  ['--px-end' as never]: `${p.pxEnd}px`,
+                  ['--py-end' as never]: `${p.pyEnd}px`,
+                  animationDuration: `${p.duration}ms`,
+                }}
+              />
+            ))}
+          {critParticles.some((p) => p.target === 'boss') && (
+            <span className="pointer-events-none absolute left-1/2 top-1/2 h-12 w-12 rounded-full border-4 border-rose-400/80 animate-shockwave" />
+          )}
         </div>
       </div>
+
+      {showVictory && (
+        <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden animate-victory-overlay">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/30 via-purple-900/40 to-rose-600/30" />
+          <div
+            className="absolute left-1/2 top-1/2 h-[140vmax] w-[140vmax] animate-victory-rays"
+            style={{
+              background:
+                'conic-gradient(from 0deg, transparent 0deg, hsl(43 96% 60% / 0.35) 12deg, transparent 24deg, transparent 60deg, hsl(43 96% 60% / 0.25) 72deg, transparent 84deg, transparent 120deg, hsl(43 96% 60% / 0.3) 132deg, transparent 144deg, transparent 180deg, hsl(43 96% 60% / 0.22) 192deg, transparent 204deg, transparent 240deg, hsl(43 96% 60% / 0.28) 252deg, transparent 264deg, transparent 300deg, hsl(43 96% 60% / 0.2) 312deg, transparent 324deg)',
+              maskImage: 'radial-gradient(circle, black 30%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(circle, black 30%, transparent 70%)',
+            }}
+          />
+          {confetti.map((c) => (
+            <span
+              key={`confetti-${c.id}`}
+              className="absolute top-0 animate-confetti rounded-sm"
+              style={{
+                left: `${c.cx}vw`,
+                width: `${c.size}px`,
+                height: `${c.size * 1.6}px`,
+                background: c.color,
+                ['--cdx' as never]: `${c.cdx}px`,
+                ['--cdur' as never]: `${c.duration}s`,
+                animationDelay: `${c.delay}s`,
+                animationDuration: `${c.duration}s`,
+                boxShadow: `0 0 8px ${c.color}`,
+              }}
+            />
+          ))}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
+            <p className="font-cinzel text-7xl md:text-9xl font-black text-amber-300 drop-shadow-[0_0_30px_hsl(43_96%_60%/0.9)] animate-victory-title">
+              VICTORY!
+            </p>
+            <p className="text-lg md:text-2xl font-semibold text-amber-100/90 tracking-widest uppercase animate-victory-subtitle">
+              Boss derrotado
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowVictory(false)}
+              className="pointer-events-auto mt-4 rounded-lg bg-amber-400 px-6 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300 animate-victory-subtitle"
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
 
       <footer className="mt-8 flex flex-col items-center gap-3">
         {winnerLabel ? <p className="text-lg font-bold text-amber-200">{winnerLabel}</p> : null}
