@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { sfx } from '@/lib/sfx';
 
 type Turn = 'idle' | 'player' | 'boss' | 'finished';
 
@@ -178,6 +179,7 @@ export default function CombatArena({
   const [critParticles, setCritParticles] = useState<CritParticle[]>([]);
   const [confetti, setConfetti] = useState<Confetti[]>([]);
   const [showVictory, setShowVictory] = useState(false);
+  const [showDefeat, setShowDefeat] = useState(false);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
   const currentBattleTokenRef = useRef(0);
@@ -277,6 +279,10 @@ export default function CombatArena({
     }
     if (isCrit) {
       spawnCritParticles(target);
+      sfx.crit();
+    } else {
+      sfx.slash();
+      window.setTimeout(() => sfx.hit(), 80);
     }
     window.setTimeout(() => setArenaShake(false), 500);
     window.setTimeout(() => {
@@ -298,6 +304,12 @@ export default function CombatArena({
     }));
     setConfetti(pieces);
     setShowVictory(true);
+    sfx.victory();
+  };
+
+  const launchDefeatCinematic = () => {
+    setShowDefeat(true);
+    sfx.defeat();
   };
 
   const startBattle = () => {
@@ -315,6 +327,7 @@ export default function CombatArena({
     setCritParticles([]);
     setConfetti([]);
     setShowVictory(false);
+    setShowDefeat(false);
     setTurn('player');
   };
 
@@ -351,6 +364,7 @@ export default function CombatArena({
       setTurn('player');
       setIsRolling(true);
       setRollValue(null);
+      sfx.diceRoll();
       await wait(700);
 
       setIsRolling(false);
@@ -382,6 +396,7 @@ export default function CombatArena({
       setTurn('boss');
       setIsRolling(true);
       setRollValue(null);
+      sfx.diceRoll();
       await wait(700);
 
       if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
@@ -406,6 +421,7 @@ export default function CombatArena({
       }
 
       if (turnResult.status === 'derrota') {
+        launchDefeatCinematic();
         setTurn('finished');
         return;
       }
@@ -626,6 +642,33 @@ export default function CombatArena({
               type="button"
               onClick={() => setShowVictory(false)}
               className="pointer-events-auto mt-4 rounded-lg bg-amber-400 px-6 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300 animate-victory-subtitle"
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showDefeat && (
+        <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden animate-defeat-overlay">
+          <div className="absolute inset-0 bg-black/85" />
+          <div
+            className="absolute inset-0 animate-defeat-vignette"
+            style={{
+              background: 'radial-gradient(ellipse at center, transparent 25%, hsl(0 70% 12% / 0.7) 65%, hsl(0 80% 6% / 0.95) 100%)',
+            }}
+          />
+          <div className="absolute inset-0 animate-defeat-shake flex flex-col items-center justify-center gap-4 text-center">
+            <p className="font-cinzel text-7xl md:text-9xl font-black text-rose-500 drop-shadow-[0_0_40px_hsl(0_80%_45%/0.95)] animate-defeat-title">
+              DEFEAT
+            </p>
+            <p className="text-base md:text-xl font-semibold text-rose-200/80 tracking-[0.4em] uppercase animate-victory-subtitle">
+              Voce foi derrotado pelo boss
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowDefeat(false)}
+              className="pointer-events-auto mt-6 rounded-lg border border-rose-500/60 bg-rose-900/40 px-6 py-2.5 font-bold text-rose-100 hover:bg-rose-800/60 transition animate-victory-subtitle"
             >
               Continuar
             </button>

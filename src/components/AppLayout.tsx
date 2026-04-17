@@ -2,6 +2,8 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import ShortRestTimer from '@/components/ShortRestTimer';
+import SoundToggleButton from '@/components/SoundToggleButton';
+import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { Clock, Flame, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState } from '@/lib/shortRestState';
@@ -183,6 +185,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
+              <SoundToggleButton />
+
               <div
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${
                   isProtectorRisk
@@ -248,6 +252,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
         )}
+
+        <LevelUpCinematic />
       </div>
     </SidebarProvider>
   );
