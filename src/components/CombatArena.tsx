@@ -320,7 +320,7 @@ export default function CombatArena({
       setIsRolling(false);
       setRollValue(turnResult.dado_boss);
       setPlayerHp(turnResult.hp_player_restante);
-      pushDamage('player', turnResult.dano_boss);
+      pushDamage('player', turnResult.dano_boss, turnResult.dado_boss);
       appendBattleLog({
         actor: 'boss',
         skill: turnResult.habilidade_boss || 'Golpe Selvagem',
