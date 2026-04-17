@@ -148,6 +148,9 @@ export default function CombatArena({
   const [bossHp, setBossHp] = useState(initialBossHp);
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
+  const [hitEffects, setHitEffects] = useState<HitEffect[]>([]);
+  const [arenaShake, setArenaShake] = useState(false);
+  const [screenFlash, setScreenFlash] = useState(false);
   const [lootDrop, setLootDrop] = useState<{ name: string; icon: string; rarity: string } | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<CombatSkill[]>([]);
   const [battleLog, setBattleLog] = useState<BattleLogEntry[]>([]);
