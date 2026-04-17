@@ -193,4 +193,49 @@
       background-position: calc(var(--frame-width) * var(--frame-count) * -1) calc(var(--row-index) * var(--frame-height) * -1);
     }
   }
+
+  /* ===== Combat animations ===== */
+  @keyframes combat-shake {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    10% { transform: translate(-6px, -3px) rotate(-0.6deg); }
+    20% { transform: translate(7px, 2px) rotate(0.7deg); }
+    30% { transform: translate(-5px, 4px) rotate(-0.5deg); }
+    40% { transform: translate(6px, -3px) rotate(0.4deg); }
+    50% { transform: translate(-4px, 3px) rotate(-0.3deg); }
+    60% { transform: translate(5px, -2px) rotate(0.3deg); }
+    70% { transform: translate(-3px, 2px) rotate(-0.2deg); }
+    80% { transform: translate(3px, -1px) rotate(0.1deg); }
+    90% { transform: translate(-2px, 1px) rotate(0deg); }
+  }
+  .animate-combat-shake { animation: combat-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+
+  @keyframes hit-flash {
+    0% { opacity: 0; }
+    20% { opacity: 0.85; }
+    100% { opacity: 0; }
+  }
+  .animate-hit-flash { animation: hit-flash 0.55s ease-out forwards; }
+
+  @keyframes target-hit-pulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    25% { transform: scale(1.05); filter: brightness(1.6) saturate(1.4); }
+    60% { transform: scale(0.97); filter: brightness(0.9); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+  .animate-target-hit { animation: target-hit-pulse 0.55s ease-out; }
+
+  @keyframes damage-float {
+    0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.6) rotate(-6deg); }
+    18%  { opacity: 1; transform: translate(-50%, -8px) scale(1.25) rotate(2deg); }
+    60%  { opacity: 1; transform: translate(-50%, -34px) scale(1.05) rotate(-1deg); }
+    100% { opacity: 0; transform: translate(-50%, -68px) scale(0.95) rotate(0deg); }
+  }
+  .animate-damage-float { animation: damage-float 1.05s cubic-bezier(.2,.7,.3,1) forwards; }
+
+  @keyframes slash-streak {
+    0% { opacity: 0; transform: translate(-50%, -50%) rotate(-25deg) scaleX(0.2); }
+    35% { opacity: 1; transform: translate(-50%, -50%) rotate(-25deg) scaleX(1.05); }
+    100% { opacity: 0; transform: translate(-50%, -50%) rotate(-25deg) scaleX(1.15); }
+  }
+  .animate-slash { animation: slash-streak 0.45s ease-out forwards; }
 }

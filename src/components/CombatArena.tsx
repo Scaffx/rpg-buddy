@@ -38,6 +38,12 @@ type DamagePopup = {
   id: number;
   value: number;
   target: 'boss' | 'player';
+  crit?: boolean;
+};
+
+type HitEffect = {
+  id: number;
+  target: 'boss' | 'player';
 };
 
 type CombatArenaProps = {
@@ -142,6 +148,9 @@ export default function CombatArena({
   const [bossHp, setBossHp] = useState(initialBossHp);
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
+  const [hitEffects, setHitEffects] = useState<HitEffect[]>([]);
+  const [arenaShake, setArenaShake] = useState(false);
+  const [screenFlash, setScreenFlash] = useState(false);
   const [lootDrop, setLootDrop] = useState<{ name: string; icon: string; rarity: string } | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<CombatSkill[]>([]);
   const [battleLog, setBattleLog] = useState<BattleLogEntry[]>([]);
@@ -207,12 +216,21 @@ export default function CombatArena({
     ].slice(0, 12));
   };
 
-  const pushDamage = (target: 'boss' | 'player', value: number) => {
-    const popupId = Date.now() + Math.floor(Math.random() * 1000);
-    setDamagePopups((prev) => [...prev, { id: popupId, value, target }]);
+  const pushDamage = (target: 'boss' | 'player', value: number, roll?: number) => {
+    const baseId = Date.now() + Math.floor(Math.random() * 1000);
+    const isCrit = (roll ?? 0) >= 18 || value >= 25;
+    setDamagePopups((prev) => [...prev, { id: baseId, value, target, crit: isCrit }]);
+    setHitEffects((prev) => [...prev, { id: baseId + 1, target }]);
+    setArenaShake(true);
+    if (target === 'player') {
+      setScreenFlash(true);
+      window.setTimeout(() => setScreenFlash(false), 550);
+    }
+    window.setTimeout(() => setArenaShake(false), 500);
     window.setTimeout(() => {
-      setDamagePopups((prev) => prev.filter((item) => item.id !== popupId));
-    }, 850);
+      setDamagePopups((prev) => prev.filter((item) => item.id !== baseId));
+      setHitEffects((prev) => prev.filter((item) => item.id !== baseId + 1));
+    }, 1100);
   };
 
   const startBattle = () => {
@@ -222,6 +240,9 @@ export default function CombatArena({
     setPlayerHp(initialPlayerHp);
     setRollValue(null);
     setDamagePopups([]);
+    setHitEffects([]);
+    setArenaShake(false);
+    setScreenFlash(false);
     setLootDrop(null);
     setBattleLog([]);
     setTurn('player');
@@ -265,7 +286,7 @@ export default function CombatArena({
       setIsRolling(false);
       setRollValue(turnResult.dado_player);
       setBossHp(turnResult.hp_boss_restante);
-      pushDamage('boss', turnResult.dano_player);
+      pushDamage('boss', turnResult.dano_player, turnResult.dado_player);
       appendBattleLog({
         actor: 'player',
         skill: turnResult.habilidade_player || chosenSkill?.name || 'Ataque Basico',
@@ -299,7 +320,7 @@ export default function CombatArena({
       setIsRolling(false);
       setRollValue(turnResult.dado_boss);
       setPlayerHp(turnResult.hp_player_restante);
-      pushDamage('player', turnResult.dano_boss);
+      pushDamage('player', turnResult.dano_boss, turnResult.dado_boss);
       appendBattleLog({
         actor: 'boss',
         skill: turnResult.habilidade_boss || 'Golpe Selvagem',
@@ -338,7 +359,10 @@ export default function CombatArena({
       : null;
 
   return (
-    <section className="mx-auto w-full max-w-4xl rounded-2xl border border-zinc-700/60 bg-zinc-900/70 p-6 text-zinc-100 shadow-xl backdrop-blur-sm">
+    <section className="relative mx-auto w-full max-w-4xl overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-900/70 p-6 text-zinc-100 shadow-xl backdrop-blur-sm">
+      {screenFlash && (
+        <div className="pointer-events-none absolute inset-0 z-30 rounded-2xl bg-rose-500/70 mix-blend-screen animate-hit-flash" />
+      )}
       <header className="mb-6 flex items-center justify-between gap-4">
         <h2 className="text-xl font-bold tracking-wide">Combat Arena</h2>
         <div
@@ -366,24 +390,35 @@ export default function CombatArena({
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 md:items-center">
-        <div className="relative rounded-xl border border-zinc-700/60 bg-zinc-800/70 p-4 text-center">
+      <div className={`grid gap-6 md:grid-cols-3 md:items-center ${arenaShake ? 'animate-combat-shake' : ''}`}>
+        <div
+          className={`relative rounded-xl border border-zinc-700/60 bg-zinc-800/70 p-4 text-center transition-shadow ${
+            hitEffects.some((h) => h.target === 'player') ? 'animate-target-hit ring-2 ring-rose-500/70 shadow-[0_0_30px_hsl(0_72%_51%/0.55)]' : ''
+          }`}
+        >
           <p className="text-sm text-zinc-400">Player HP</p>
           <p className="mt-2 text-3xl font-black text-emerald-300">{playerHp}</p>
+          {hitEffects
+            .filter((h) => h.target === 'player')
+            .map((h) => (
+              <span
+                key={`slash-${h.id}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-rose-300 to-transparent animate-slash"
+              />
+            ))}
           <AnimatePresence>
             {damagePopups
               .filter((popup) => popup.target === 'player')
               .map((popup) => (
-                <motion.span
+                <span
                   key={popup.id}
-                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                  animate={{ opacity: 1, y: -24, scale: 1 }}
-                  exit={{ opacity: 0, y: -42, scale: 1.05 }}
-                  transition={{ duration: 0.45 }}
-                  className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-xl font-extrabold text-rose-400"
+                  className={`pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 font-extrabold animate-damage-float drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                    popup.crit ? 'text-3xl text-amber-300' : 'text-2xl text-rose-400'
+                  }`}
                 >
+                  {popup.crit && <span className="mr-1 text-xs uppercase tracking-widest text-amber-200">CRIT!</span>}
                   -{popup.value}
-                </motion.span>
+                </span>
               ))}
           </AnimatePresence>
         </div>
@@ -407,23 +442,34 @@ export default function CombatArena({
           </div>
         </div>
 
-        <div className="relative rounded-xl border border-zinc-700/60 bg-zinc-800/70 p-4 text-center">
+        <div
+          className={`relative rounded-xl border border-zinc-700/60 bg-zinc-800/70 p-4 text-center transition-shadow ${
+            hitEffects.some((h) => h.target === 'boss') ? 'animate-target-hit ring-2 ring-amber-400/70 shadow-[0_0_30px_hsl(43_96%_56%/0.55)]' : ''
+          }`}
+        >
           <p className="text-sm text-zinc-400">Boss HP</p>
           <p className="mt-2 text-3xl font-black text-rose-300">{bossHp}</p>
+          {hitEffects
+            .filter((h) => h.target === 'boss')
+            .map((h) => (
+              <span
+                key={`slash-${h.id}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-amber-200 to-transparent animate-slash"
+              />
+            ))}
           <AnimatePresence>
             {damagePopups
               .filter((popup) => popup.target === 'boss')
               .map((popup) => (
-                <motion.span
+                <span
                   key={popup.id}
-                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                  animate={{ opacity: 1, y: -24, scale: 1 }}
-                  exit={{ opacity: 0, y: -42, scale: 1.05 }}
-                  transition={{ duration: 0.45 }}
-                  className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-xl font-extrabold text-rose-400"
+                  className={`pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 font-extrabold animate-damage-float drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                    popup.crit ? 'text-3xl text-amber-300' : 'text-2xl text-rose-400'
+                  }`}
                 >
+                  {popup.crit && <span className="mr-1 text-xs uppercase tracking-widest text-amber-200">CRIT!</span>}
                   -{popup.value}
-                </motion.span>
+                </span>
               ))}
           </AnimatePresence>
         </div>
