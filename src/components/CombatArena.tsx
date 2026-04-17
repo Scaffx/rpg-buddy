@@ -492,6 +492,26 @@ export default function CombatArena({
                 </span>
               ))}
           </AnimatePresence>
+          {critParticles
+            .filter((p) => p.target === 'player')
+            .map((p) => (
+              <span
+                key={`particle-${p.id}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 rounded-full animate-particle-burst"
+                style={{
+                  width: `${p.size}px`,
+                  height: `${p.size}px`,
+                  background: `radial-gradient(circle, hsl(${p.hue} 95% 65%) 0%, hsl(${p.hue} 90% 45% / 0.85) 60%, transparent 100%)`,
+                  boxShadow: `0 0 12px hsl(${p.hue} 95% 60% / 0.9)`,
+                  ['--px-end' as never]: `${p.pxEnd}px`,
+                  ['--py-end' as never]: `${p.pyEnd}px`,
+                  animationDuration: `${p.duration}ms`,
+                }}
+              />
+            ))}
+          {critParticles.some((p) => p.target === 'player') && (
+            <span className="pointer-events-none absolute left-1/2 top-1/2 h-12 w-12 rounded-full border-4 border-cyan-300/80 animate-shockwave" />
+          )}
         </div>
 
         <div className="flex flex-col items-center justify-center gap-3">
