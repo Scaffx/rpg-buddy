@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
@@ -274,35 +273,17 @@ export default function ShortRestTimer({
       <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-b from-amber-500/10 via-orange-500/10 to-rose-500/5 p-5">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_80%,rgba(251,146,60,0.25),transparent_60%)]" />
 
-        <div className="relative mx-auto h-40 w-40">
-          <motion.div
-            className="absolute left-1/2 top-8 h-24 w-16 -translate-x-1/2 rounded-full bg-orange-400/25 blur-2xl"
-            animate={{ opacity: [0.45, 0.7, 0.45], scale: [0.95, 1.05, 0.95] }}
-            transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+        <div className="relative mx-auto h-44 w-full max-w-xs overflow-hidden rounded-lg border border-amber-200/20 bg-black/30">
+          <video
+            className="h-full w-full object-cover"
+            src="/videos/short-rest-knight.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
           />
-
-          <motion.div
-            className="absolute left-1/2 bottom-8 h-14 w-10 -translate-x-1/2 rounded-full bg-orange-500"
-            animate={{ scaleY: [1, 1.25, 1], scaleX: [1, 0.9, 1], opacity: [0.8, 1, 0.8] }}
-            transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
-          />
-
-          <motion.div
-            className="absolute left-1/2 bottom-10 h-11 w-8 -translate-x-1/2 rounded-full bg-yellow-300"
-            animate={{ scaleY: [1, 1.2, 1], opacity: [0.8, 1, 0.75] }}
-            transition={{ repeat: Infinity, duration: 1.1, ease: 'easeInOut' }}
-          />
-
-          <motion.div
-            className="absolute left-[43%] bottom-5 h-2 w-10 rounded-full bg-stone-500/70"
-            animate={{ rotate: [-3, 3, -3] }}
-            transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-          />
-          <motion.div
-            className="absolute left-[47%] bottom-4 h-2 w-10 rounded-full bg-stone-600/75"
-            animate={{ rotate: [3, -3, 3] }}
-            transition={{ repeat: Infinity, duration: 3.8, ease: 'easeInOut' }}
-          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
         </div>
 
         <div className="relative text-center">
