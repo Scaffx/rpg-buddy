@@ -208,7 +208,7 @@ export function useToggleEquip() {
 
       const { data: itemRow, error: itemError } = await db
         .from('user_inventory')
-        .select('id, user_id, equipped, sintonizado, game_items(rarity, requer_sintonizacao)')
+        .select('id, user_id, equipped, sintonizado, game_items(rarity)')
         .eq('id', inventoryId)
         .eq('user_id', user.id)
         .maybeSingle();
@@ -217,7 +217,7 @@ export function useToggleEquip() {
       if (!itemRow) throw new Error('Item não encontrado no inventário.');
 
       const rarity = String(itemRow?.game_items?.rarity || '').toLowerCase();
-      const requiresAttunement = Boolean(itemRow?.game_items?.requer_sintonizacao) || ['epico', 'lendario'].includes(rarity);
+      const requiresAttunement = ['epico', 'lendario'].includes(rarity);
 
       if (requiresAttunement && !itemRow.sintonizado) {
         const { count: attunedCount, error: countError } = await db
@@ -262,7 +262,7 @@ export function useToggleAttunement() {
 
       const { data: itemRow, error: itemError } = await db
         .from('user_inventory')
-        .select('id, sintonizado, game_items(rarity, requer_sintonizacao)')
+        .select('id, sintonizado, game_items(rarity)')
         .eq('id', inventoryId)
         .eq('user_id', user.id)
         .maybeSingle();
@@ -271,7 +271,7 @@ export function useToggleAttunement() {
       if (!itemRow) throw new Error('Item não encontrado no inventário.');
 
       const rarity = String(itemRow?.game_items?.rarity || '').toLowerCase();
-      const requiresAttunement = Boolean(itemRow?.game_items?.requer_sintonizacao) || ['epico', 'lendario'].includes(rarity);
+      const requiresAttunement = ['epico', 'lendario'].includes(rarity);
 
       if (!requiresAttunement) {
         throw new Error('Este item não exige sintonização.');
@@ -315,7 +315,8 @@ export function useConsumeItem() {
 
       const itemEffect = String(inventoryRow?.game_items?.effect || '');
       const itemName = String(inventoryRow?.game_items?.name || '');
-      const isConsumable = Boolean(inventoryRow?.game_items?.is_consumable);
+      // Consider consumable if is_consumable flag is set OR if effect is defined (for older items)
+      const isConsumable = Boolean(inventoryRow?.game_items?.is_consumable) || !!itemEffect;
 
       const { data: talents } = await (supabase as any)
         .from('talentos_jogador')

@@ -73,6 +73,8 @@ type CombatArenaProps = {
   initialBossHp?: number;
   initialPlayerHp?: number;
   provider?: CombatDataProvider;
+  onVictory?: () => void;
+  onDefeat?: () => void;
 };
 
 type CombatSkill = {
@@ -139,6 +141,9 @@ const mockProvider: CombatDataProvider = {
     const danoBoss = Math.max(1, Math.floor(dadoBoss * 1.3));
     const hpPlayerRestante = Math.max(currentPlayerHp - danoBoss, 0);
 
+    const bossSkillPool = ['Golpe Selvagem', 'Açoite Pesado', 'Pressão Brutal', 'Investida'];
+    const habilidade_boss = bossSkillPool[Math.floor(Math.random() * bossSkillPool.length)];
+
     return {
       dado_player: dadoPlayer,
       dano_player: danoPlayer,
@@ -148,7 +153,7 @@ const mockProvider: CombatDataProvider = {
       hp_player_restante: hpPlayerRestante,
       status: hpPlayerRestante <= 0 ? 'derrota' : 'em_andamento',
       habilidade_player: skillName || 'Ataque Basico',
-      habilidade_boss: 'Golpe Selvagem',
+      habilidade_boss,
       efeitos_player: [],
       efeitos_boss: [],
     };
@@ -160,6 +165,8 @@ export default function CombatArena({
   initialBossHp = 160,
   initialPlayerHp = 120,
   provider,
+  onVictory,
+  onDefeat,
 }: CombatArenaProps) {
   const { user } = useAuth();
   const dataProvider = useMemo(() => provider ?? mockProvider, [provider]);
@@ -209,26 +216,31 @@ export default function CombatArena({
         return;
       }
 
-      const { data } = await supabase
-        .from('profiles')
-        .select('combat_skill_loadout')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('combat_skill_loadout')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      const row = data as ProfileLoadoutRow | null;
-      const raw = Array.isArray(row?.combat_skill_loadout) ? row.combat_skill_loadout : [];
-      const parsed = raw
-        .map((entry: unknown) => {
-          const safeEntry = typeof entry === 'object' && entry ? (entry as Record<string, unknown>) : {};
-          return {
-            id: String(safeEntry.id || ''),
-            name: String(safeEntry.name || 'Ataque Basico'),
-            power: Number(safeEntry.power || 0),
-          };
-        })
-        .filter((skill: CombatSkill) => skill.id);
+        const row = data as ProfileLoadoutRow | null;
+        const raw = Array.isArray(row?.combat_skill_loadout) ? row.combat_skill_loadout : [];
+        const parsed = raw
+          .map((entry: unknown) => {
+            const safeEntry = typeof entry === 'object' && entry ? (entry as Record<string, unknown>) : {};
+            return {
+              id: String(safeEntry.id || ''),
+              name: String(safeEntry.name || 'Ataque Basico'),
+              power: Number(safeEntry.power || 0),
+            };
+          })
+          .filter((skill: CombatSkill) => skill.id);
 
-      setSelectedSkills(parsed.slice(0, 4));
+        setSelectedSkills(parsed.slice(0, 4));
+      } catch {
+        // Column may not exist yet — silently use default (Ataque Basico)
+        setSelectedSkills([]);
+      }
     };
 
     loadCombatSkills();
@@ -305,11 +317,13 @@ export default function CombatArena({
     setConfetti(pieces);
     setShowVictory(true);
     sfx.victory();
+    onVictory?.();
   };
 
   const launchDefeatCinematic = () => {
     setShowDefeat(true);
     sfx.defeat();
+    onDefeat?.();
   };
 
   const startBattle = () => {

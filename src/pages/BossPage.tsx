@@ -7,7 +7,7 @@ import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown } from 'lucide-react
 import { useToast } from '@/hooks/use-toast';
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CombatArena from '@/components/CombatArena';
 import HeroStatusBar from '@/components/HeroStatusBar';
 
@@ -41,12 +41,24 @@ export default function BossPage() {
   const { data: attributes } = useAttributes();
   const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossHp: number; playerHp: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
   const [rankingRegion, setRankingRegion] = useState<string | null>(null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(rankingRegion);
   const attrLevels = getAttributeLevels(attributes as any[]);
   const playerStats = getPlayerCombatStats(profile?.level || 1, attrLevels);
+
+  const handleCombatVictory = () => {
+    queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
+    queryClient.invalidateQueries({ queryKey: ['profile'] });
+    queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+    setActiveCombat(null);
+  };
+
+  const handleCombatDefeat = () => {
+    setActiveCombat(null);
+  };
 
   const dungeons = [
     {
@@ -215,6 +227,8 @@ export default function BossPage() {
                       combateId={activeCombat.id}
                       initialBossHp={activeCombat.bossHp}
                       initialPlayerHp={activeCombat.playerHp}
+                      onVictory={handleCombatVictory}
+                      onDefeat={handleCombatDefeat}
                     />
                   </div>
                 )}
