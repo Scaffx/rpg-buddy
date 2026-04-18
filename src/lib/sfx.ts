@@ -2,7 +2,9 @@
 // Sounds are synthesized procedurally so we don't need any audio assets.
 
 const STORAGE_KEY = 'lifeonrpg-sfx-muted';
+const VOLUME_KEY = 'lifeonrpg-sfx-volume';
 const MUTE_EVENT = 'lifeonrpg-sfx-mute-changed';
+const VOLUME_EVENT = 'lifeonrpg-sfx-volume-changed';
 
 let ctx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
@@ -14,7 +16,9 @@ function ensureContext(): AudioContext | null {
     if (!Ctor) return null;
     ctx = new Ctor();
     masterGain = ctx.createGain();
-    masterGain.gain.value = isMuted() ? 0 : 0.6;
+    const volume = getVolume();
+    const isMuted = window.localStorage.getItem(STORAGE_KEY) === '1';
+    masterGain.gain.value = isMuted ? 0 : (volume / 100) * 0.6;
     masterGain.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') {
@@ -28,12 +32,30 @@ export function isMuted(): boolean {
   return window.localStorage.getItem(STORAGE_KEY) === '1';
 }
 
+export function getVolume(): number {
+  if (typeof window === 'undefined') return 100;
+  return parseInt(window.localStorage.getItem(VOLUME_KEY) || '100', 10);
+}
+
+export function setVolume(volume: number) {
+  if (typeof window === 'undefined') return;
+  const clamped = Math.max(0, Math.min(100, volume));
+  window.localStorage.setItem(VOLUME_KEY, String(clamped));
+  if (masterGain && ctx) {
+    const isMuted = window.localStorage.getItem(STORAGE_KEY) === '1';
+    masterGain.gain.cancelScheduledValues(ctx.currentTime);
+    masterGain.gain.setTargetAtTime(isMuted ? 0 : (clamped / 100) * 0.6, ctx.currentTime, 0.05);
+  }
+  window.dispatchEvent(new CustomEvent(VOLUME_EVENT, { detail: { volume: clamped } }));
+}
+
 export function setMuted(muted: boolean) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(STORAGE_KEY, muted ? '1' : '0');
   if (masterGain && ctx) {
+    const volume = getVolume();
     masterGain.gain.cancelScheduledValues(ctx.currentTime);
-    masterGain.gain.setTargetAtTime(muted ? 0 : 0.6, ctx.currentTime, 0.05);
+    masterGain.gain.setTargetAtTime(muted ? 0 : (volume / 100) * 0.6, ctx.currentTime, 0.05);
   }
   window.dispatchEvent(new CustomEvent(MUTE_EVENT, { detail: { muted } }));
 }
@@ -52,6 +74,16 @@ export function subscribeMute(listener: (muted: boolean) => void): () => void {
   };
   window.addEventListener(MUTE_EVENT, handler as EventListener);
   return () => window.removeEventListener(MUTE_EVENT, handler as EventListener);
+}
+
+export function subscribeVolume(listener: (volume: number) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const handler = (event: Event) => {
+    const detail = (event as CustomEvent<{ volume: number }>).detail;
+    listener(detail?.volume ?? 100);
+  };
+  window.addEventListener(VOLUME_EVENT, handler as EventListener);
+  return () => window.removeEventListener(VOLUME_EVENT, handler as EventListener);
 }
 
 type EnvelopeOptions = {
@@ -128,6 +160,31 @@ function playNoiseBurst(opts: { duration: number; peak?: number; filterFreq?: nu
 }
 
 export const sfx = {
+  click() {
+    // Short, bright beep for UI clicks
+    playTone({ freqStart: 800, freqEnd: 600, duration: 0.08, type: 'sine', envelope: { peak: 0.25, attack: 0.001, release: 0.04 } });
+  },
+  campfire() {
+    // Crackling fire sound for meditation/rest - ambient, longer duration
+    // Layer 1: Low frequency rumble (wood)
+    for (let i = 0; i < 8; i++) {
+      playNoiseBurst({ 
+        duration: 0.3 + Math.random() * 0.2, 
+        peak: 0.15 + Math.random() * 0.1, 
+        filterFreq: 200 + Math.random() * 200, 
+        delay: i * 0.25 
+      });
+    }
+    // Layer 2: High frequency crackle
+    for (let i = 0; i < 12; i++) {
+      playNoiseBurst({ 
+        duration: 0.15 + Math.random() * 0.1, 
+        peak: 0.12 + Math.random() * 0.08, 
+        filterFreq: 2000 + Math.random() * 1500, 
+        delay: i * 0.15 + 0.1 
+      });
+    }
+  },
   slash() {
     playNoiseBurst({ duration: 0.18, peak: 0.35, filterFreq: 3200 });
     playTone({ freqStart: 900, freqEnd: 200, duration: 0.16, type: 'sawtooth', envelope: { peak: 0.18, attack: 0.003, release: 0.04 } });

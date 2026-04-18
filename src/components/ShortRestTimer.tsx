@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { sfx } from '@/lib/sfx';
 import { useShortRestAvailability, useShortRestRecovery } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState, type ShortRestPersistentState } from '@/lib/shortRestState';
@@ -53,6 +54,9 @@ export default function ShortRestTimer({
     completedRef.current = true;
 
     try {
+      // Play campfire sound while resting
+      sfx.campfire();
+      
       const result = await shortRestRecovery.mutateAsync();
       setLastRecoverySummary(`+${result.hpRecovered} HP e +${result.mpRecovered} MP`);
       toast.success(`Descanso curto completo: +${result.hpRecovered} HP e +${result.mpRecovered} MP`);

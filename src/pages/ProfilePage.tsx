@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName } from "@/hooks/useProfile";
 import { useGoldBalance } from "@/hooks/useGold";
 import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
+import { setVolume } from "@/lib/sfx";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
@@ -15,6 +17,7 @@ import {
   Swords, Sparkles, BookOpen, Users, Star, Palette,
   ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull, Coins,
   Calendar, Upload, Trash2, ChevronLeft, ChevronRight, Pencil, Check, X as XIcon,
+  Moon, Sun,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
@@ -546,6 +549,40 @@ function EvolutionChart({ measurements }: { measurements: any[] }) {
   );
 }
 
+function ThemeToggleSettings() {
+  const { theme, setTheme } = useTheme();
+  
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground mb-2 block">🎨 Tema</label>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setTheme('dark')}
+          className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-lg border-2 transition-all ${
+            theme === 'dark'
+              ? 'border-primary bg-primary/10'
+              : 'border-border bg-muted/20 hover:border-border/80'
+          }`}
+        >
+          <Moon className="w-4 h-4" />
+          <span className="text-sm font-medium">Escuro</span>
+        </button>
+        <button
+          onClick={() => setTheme('light')}
+          className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-lg border-2 transition-all ${
+            theme === 'light'
+              ? 'border-primary bg-primary/10'
+              : 'border-border bg-muted/20 hover:border-border/80'
+          }`}
+        >
+          <Sun className="w-4 h-4" />
+          <span className="text-sm font-medium">Claro</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
@@ -569,6 +606,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"perfil" | "habilidades" | "inventario">("perfil");
   const [weight, setWeight] = useState(70);
   const [mealsTarget, setMealsTarget] = useState(3);
+  const [volume, setVolume] = useState(100);
   const [xpAwarded, setXpAwarded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
@@ -587,6 +625,17 @@ export default function ProfilePage() {
       setMealsTarget(healthStats.meals_target || 3);
     }
   }, [healthStats]);
+
+  // Load volume setting
+  useEffect(() => {
+    const savedVolume = parseInt(localStorage.getItem('lifeonrpg-sfx-volume') || '100', 10);
+    setVolume(savedVolume);
+  }, []);
+
+  // Update volume when changed
+  useEffect(() => {
+    setVolume(volume);
+  }, [volume]);
 
   // Reset XP Award flag diariamente após 23:59
   useEffect(() => {
@@ -1010,8 +1059,38 @@ export default function ProfilePage() {
                 <p className="text-[10px] text-muted-foreground mt-1">Mínimo {Math.ceil(mealsTarget / 2)}x para não perder HP</p>
               </div>
             </div>
+            
+            {/* Volume Control */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-2 block flex items-center gap-2">
+                🔊 Volume de Som
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={volume}
+                  onChange={(e) => {
+                    const newVolume = Number(e.target.value);
+                    setVolume(newVolume);
+                    setVolume(newVolume);
+                  }}
+                  className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <span className="text-sm font-bold text-foreground w-12 text-right">{volume}%</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">Sons de clique, descanso e combate</p>
+            </div>
+
+            {/* Theme Toggle */}
+            <ThemeToggleSettings />
+
             <button
-              onClick={() => saveSettings.mutate()}
+              onClick={() => {
+                saveSettings.mutate();
+                setVolume(volume);
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
             >
               <Save className="w-4 h-4" /> Salvar

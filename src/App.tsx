@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useClickSound } from "@/hooks/useClickSound";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Missions from "./pages/Missions";
@@ -58,34 +60,44 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AppRoutes() {
+  useClickSound();
+
+  return (
+    <Routes>
+      <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+      <Route path="/boss" element={<ProtectedRoute><BossPage /></ProtectedRoute>} />
+      <Route path="/health" element={<ProtectedRoute><HealthPage /></ProtectedRoute>} />
+      <Route path="/feats" element={<ProtectedRoute><FeatsTree /></ProtectedRoute>} />
+      <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
+      <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
+      <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
+      <Route path="/npc" element={<ProtectedRoute><NpcPage /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/prioridade" element={<ProtectedRoute><PrioridadePage /></ProtectedRoute>} />
+      <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
-            <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-            <Route path="/boss" element={<ProtectedRoute><BossPage /></ProtectedRoute>} />
-            <Route path="/health" element={<ProtectedRoute><HealthPage /></ProtectedRoute>} />
-            <Route path="/feats" element={<ProtectedRoute><FeatsTree /></ProtectedRoute>} />
-            <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
-            <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
-            <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
-            <Route path="/npc" element={<ProtectedRoute><NpcPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/prioridade" element={<ProtectedRoute><PrioridadePage /></ProtectedRoute>} />
-            <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
