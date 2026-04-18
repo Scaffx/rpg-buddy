@@ -43,6 +43,7 @@ export default function ShortRestTimer({
   const [finished, setFinished] = useState(false);
   const [lastRecoverySummary, setLastRecoverySummary] = useState<string | null>(null);
   const completedRef = useRef(false);
+  const initializedRef = useRef(false);
 
   const shortRestAvailability = useShortRestAvailability();
   const shortRestRecovery = useShortRestRecovery();
@@ -126,7 +127,8 @@ export default function ShortRestTimer({
   }, [minutes, secondsLeft, isRunning, endAtMs, needsApply, user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || initializedRef.current) return;
+    initializedRef.current = true;
 
     const saved = readShortRestState(user.id);
     if (!saved) return;
@@ -146,7 +148,7 @@ export default function ShortRestTimer({
       setNeedsApply(false);
       void handleRestComplete();
     }
-  }, [user, minMinutes, maxMinutes]);
+  }, [user]);
 
   useEffect(() => {
     if (!isRunning || !endAtMs) return;
@@ -160,14 +162,19 @@ export default function ShortRestTimer({
         setIsRunning(false);
         setFinished(true);
         setEndAtMs(null);
-        if (needsApply) {
-          void handleRestComplete();
-        }
       }
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [isRunning, endAtMs, needsApply]);
+  }, [isRunning, endAtMs]);
+
+  useEffect(() => {
+    if (!isRunning || !finished || !needsApply) return;
+    if (completedRef.current) return;
+    
+    completedRef.current = true;
+    void handleRestComplete();
+  }, [isRunning, finished, needsApply]);
 
   useEffect(() => {
     if (isRunning) return;
