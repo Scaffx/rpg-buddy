@@ -7,7 +7,7 @@ import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { CharacterSprite } from '@/components/CharacterSprite';
 import { Clock, Flame, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { formatSeconds, getRemainingSeconds, readShortRestState } from '@/lib/shortRestState';
+import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,6 +77,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const isProtectorRisk = protectorCharges <= 0;
 
   const closeRestTimer = () => {
+    if (user?.id) {
+      const saved = readShortRestState(user.id);
+      if (saved?.isRunning) {
+        const remaining = getRemainingSeconds(saved);
+        writeShortRestState(user.id, {
+          ...saved,
+          secondsLeft: remaining,
+          isRunning: false,
+          endAtMs: null,
+          needsApply: false,
+          updatedAtMs: Date.now(),
+        });
+      }
+    }
+
     setShowRestTimer(false);
   };
 
