@@ -44,6 +44,7 @@ export default function ShortRestTimer({
   const [lastRecoverySummary, setLastRecoverySummary] = useState<string | null>(null);
   const completedRef = useRef(false);
   const initializedRef = useRef(false);
+  const campfireIntervalRef = useRef<number | null>(null);
 
   const shortRestAvailability = useShortRestAvailability();
   const shortRestRecovery = useShortRestRecovery();
@@ -55,8 +56,9 @@ export default function ShortRestTimer({
     completedRef.current = true;
 
     try {
-      // Play campfire sound while resting
-      sfx.campfire();
+      // Play campfire sound for the duration of the rest (in seconds)
+      const durationSecs = minutes * 60;
+      campfireIntervalRef.current = sfx.campfire(durationSecs) as unknown as number;
       
       const result = await shortRestRecovery.mutateAsync();
       setLastRecoverySummary(`+${result.hpRecovered} HP e +${result.mpRecovered} MP`);
@@ -92,6 +94,12 @@ export default function ShortRestTimer({
   };
 
   const handleCancel = () => {
+    // Stop campfire sound if it's playing
+    if (campfireIntervalRef.current !== null) {
+      window.clearInterval(campfireIntervalRef.current);
+      campfireIntervalRef.current = null;
+    }
+
     setIsRunning(false);
     setFinished(false);
     completedRef.current = false;
@@ -103,6 +111,12 @@ export default function ShortRestTimer({
   };
 
   const handleReset = () => {
+    // Stop campfire sound if it's playing
+    if (campfireIntervalRef.current !== null) {
+      window.clearInterval(campfireIntervalRef.current);
+      campfireIntervalRef.current = null;
+    }
+
     setIsRunning(false);
     setFinished(false);
     completedRef.current = false;
@@ -182,6 +196,15 @@ export default function ShortRestTimer({
 
     setSecondsLeft(minutes * 60);
   }, [minutes, isRunning, finished]);
+
+  // Cleanup campfire sound on unmount
+  useEffect(() => {
+    return () => {
+      if (campfireIntervalRef.current !== null) {
+        window.clearInterval(campfireIntervalRef.current);
+      }
+    };
+  }, []);
 
   const canStartRest =
     !isRunning &&

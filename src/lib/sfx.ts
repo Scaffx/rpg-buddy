@@ -164,26 +164,70 @@ export const sfx = {
     // Short, bright beep for UI clicks
     playTone({ freqStart: 800, freqEnd: 600, duration: 0.08, type: 'sine', envelope: { peak: 0.25, attack: 0.001, release: 0.04 } });
   },
-  campfire() {
+  campfire(durationSeconds?: number) {
     // Crackling fire sound for meditation/rest - ambient, longer duration
-    // Layer 1: Low frequency rumble (wood)
-    for (let i = 0; i < 8; i++) {
-      playNoiseBurst({ 
-        duration: 0.3 + Math.random() * 0.2, 
-        peak: 0.15 + Math.random() * 0.1, 
-        filterFreq: 200 + Math.random() * 200, 
-        delay: i * 0.25 
-      });
+    // If durationSeconds is provided, loops the campfire sound throughout the rest
+    
+    if (!durationSeconds) {
+      // One-shot campfire sound (for backwards compatibility)
+      const playSingleBurst = () => {
+        for (let i = 0; i < 8; i++) {
+          playNoiseBurst({ 
+            duration: 0.3 + Math.random() * 0.2, 
+            peak: 0.15 + Math.random() * 0.1, 
+            filterFreq: 200 + Math.random() * 200, 
+            delay: i * 0.25 
+          });
+        }
+        for (let i = 0; i < 12; i++) {
+          playNoiseBurst({ 
+            duration: 0.15 + Math.random() * 0.1, 
+            peak: 0.12 + Math.random() * 0.08, 
+            filterFreq: 2000 + Math.random() * 1500, 
+            delay: i * 0.15 + 0.1 
+          });
+        }
+      };
+      playSingleBurst();
+      return;
     }
-    // Layer 2: High frequency crackle
-    for (let i = 0; i < 12; i++) {
-      playNoiseBurst({ 
-        duration: 0.15 + Math.random() * 0.1, 
-        peak: 0.12 + Math.random() * 0.08, 
-        filterFreq: 2000 + Math.random() * 1500, 
-        delay: i * 0.15 + 0.1 
-      });
-    }
+
+    // Looping campfire sound for the specified duration
+    const playSingleBurst = () => {
+      for (let i = 0; i < 8; i++) {
+        playNoiseBurst({ 
+          duration: 0.3 + Math.random() * 0.2, 
+          peak: 0.15 + Math.random() * 0.1, 
+          filterFreq: 200 + Math.random() * 200, 
+          delay: i * 0.25 
+        });
+      }
+      for (let i = 0; i < 12; i++) {
+        playNoiseBurst({ 
+          duration: 0.15 + Math.random() * 0.1, 
+          peak: 0.12 + Math.random() * 0.08, 
+          filterFreq: 2000 + Math.random() * 1500, 
+          delay: i * 0.15 + 0.1 
+        });
+      }
+    };
+
+    // Play first burst immediately
+    playSingleBurst();
+
+    // Calculate interval: each burst takes ~3 seconds, so play every 3-4 seconds
+    const intervalMs = 3500;
+    const endTimeMs = Date.now() + durationSeconds * 1000;
+
+    const intervalId = window.setInterval(() => {
+      if (Date.now() >= endTimeMs) {
+        window.clearInterval(intervalId);
+        return;
+      }
+      playSingleBurst();
+    }, intervalMs);
+
+    return intervalId;
   },
   slash() {
     playNoiseBurst({ duration: 0.18, peak: 0.35, filterFreq: 3200 });
