@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useClickSound } from "@/hooks/useClickSound";
+import { ShortRestStatusProvider } from "@/hooks/useShortRestStatus";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Missions from "./pages/Missions";
@@ -93,7 +94,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
+            <ShortRestStatusProvider>
+              <AppRoutes />
+            </ShortRestStatusProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

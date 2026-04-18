@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import ShortRestTimer from '@/components/ShortRestTimer';
 import SoundToggleButton from '@/components/SoundToggleButton';
 import LevelUpCinematic from '@/components/LevelUpCinematic';
+import { CharacterSprite } from '@/components/CharacterSprite';
 import { Clock, Flame, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState } from '@/lib/shortRestState';
@@ -177,11 +178,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <SidebarTrigger />
 
             <div className="hidden md:flex items-center justify-center flex-1 h-full overflow-hidden pointer-events-none px-4">
-              <div
-                className={`hero-header-sprite ${showRestTimer ? 'is-rest' : 'is-attack'}`}
-                aria-label={showRestTimer ? 'Heroi descansando na fogueira' : 'Heroi lutando contra orcs'}
-                role="img"
-              />
+              <CharacterSprite />
             </div>
 
             <div className="flex items-center gap-2">
