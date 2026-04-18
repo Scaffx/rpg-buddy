@@ -27,6 +27,7 @@ type ShortRestAvailability = {
 };
 
 const SHORT_REST_ACTION = 'short_rest_complete';
+const SHORT_REST_STARTED_ACTION = 'short_rest_started';
 
 function getStartOfLocalDay(base: Date = new Date()): Date {
   return new Date(base.getFullYear(), base.getMonth(), base.getDate());
@@ -59,6 +60,22 @@ async function getShortRestUsageToday(userId: string): Promise<string | null> {
   return (data as any)?.created_at ?? null;
 }
 
+async function getShortRestStartOrCompletionUsageToday(userId: string): Promise<string | null> {
+  const startOfDayLocal = getStartOfLocalDay();
+  const { data, error } = await supabase
+    .from('activity_log')
+    .select('created_at')
+    .eq('user_id', userId)
+    .in('action', [SHORT_REST_STARTED_ACTION, SHORT_REST_ACTION])
+    .gte('created_at', startOfDayLocal.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as any)?.created_at ?? null;
+}
+
 export function useShortRestAvailability() {
   const { user } = useAuth();
 
@@ -68,7 +85,7 @@ export function useShortRestAvailability() {
     queryFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
-      const usedAt = await getShortRestUsageToday(user.id);
+      const usedAt = await getShortRestStartOrCompletionUsageToday(user.id);
       if (!usedAt) {
         return {
           canRest: true,
@@ -85,6 +102,36 @@ export function useShortRestAvailability() {
         nextAvailableAt: nextAvailableDate.toISOString(),
         lastRestAt: usedAt,
       };
+    },
+  });
+}
+
+export function useShortRestStart() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Não autenticado');
+
+      const usedAt = await getShortRestStartOrCompletionUsageToday(user.id);
+      if (usedAt) {
+        const nextAvailableDate = getStartOfNextLocalDay();
+        throw new Error(`Você já iniciou um descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
+      }
+
+      const { error: logError } = await supabase.from('activity_log').insert({
+        user_id: user.id,
+        action: SHORT_REST_STARTED_ACTION,
+        description: 'Descanso curto iniciado',
+        xp_gained: 0,
+      });
+
+      if (logError) throw logError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['short_rest_status', user?.id] });
     },
   });
 }

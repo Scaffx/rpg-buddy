@@ -23,7 +23,7 @@ const SPRITES: Record<SpriteMode, SpriteDefinition> = {
     alt: 'Heroi em movimento',
     columns: 16,
     rows: 16,
-    frameOrder: Array.from({ length: 32 }, (_, index) => index),
+    frameOrder: [0],
     frameDurationMs: 70,
     label: 'Explorando',
     fallbackLabel: 'Sprite de movimento indisponivel',

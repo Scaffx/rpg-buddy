@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
-import { useShortRestAvailability, useShortRestRecovery } from '@/hooks/useProfile';
+import { useShortRestAvailability, useShortRestRecovery, useShortRestStart } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState, type ShortRestPersistentState } from '@/lib/shortRestState';
 
@@ -47,6 +47,7 @@ export default function ShortRestTimer({
 
   const shortRestAvailability = useShortRestAvailability();
   const shortRestRecovery = useShortRestRecovery();
+  const shortRestStart = useShortRestStart();
 
   const formatted = useMemo(() => formatSeconds(secondsLeft), [secondsLeft]);
 
@@ -74,7 +75,7 @@ export default function ShortRestTimer({
     }
   }, [shortRestRecovery, onRestComplete]);
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (shortRestAvailability.isLoading) {
       toast.info('Verificando disponibilidade do descanso breve...');
       return;
@@ -82,6 +83,21 @@ export default function ShortRestTimer({
 
     if (shortRestAvailability.data && !shortRestAvailability.data.canRest) {
       toast.warning(shortRestAvailability.data.message);
+      return;
+    }
+
+    const accepted = window.confirm(
+      'Ao iniciar este descanso, você ficará comprometido com este layout até o fim do timer.\n\nAtenção: este descanso só pode ser iniciado 1 vez por dia.\n\nDeseja continuar?',
+    );
+
+    if (!accepted) {
+      return;
+    }
+
+    try {
+      await shortRestStart.mutateAsync();
+    } catch (error: any) {
+      toast.warning(error?.message || 'Não foi possível iniciar o descanso agora.');
       return;
     }
 
@@ -237,6 +253,7 @@ export default function ShortRestTimer({
 
   const canStartRest =
     !isRunning &&
+    !shortRestStart.isPending &&
     !shortRestRecovery.isPending &&
     !shortRestAvailability.isLoading &&
     Boolean(shortRestAvailability.data?.canRest ?? true);
@@ -270,25 +287,24 @@ export default function ShortRestTimer({
         </label>
       </div>
 
-      <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-b from-amber-500/10 via-orange-500/10 to-rose-500/5 p-5">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_80%,rgba(251,146,60,0.25),transparent_60%)]" />
+      <div className="relative mx-auto h-64 w-full max-w-md overflow-hidden rounded-xl border border-primary/30">
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          src="/videos/short-rest-knight.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/40" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_78%,rgba(245,158,11,0.16),transparent_52%)]" />
 
-        <div className="relative mx-auto h-44 w-full max-w-xs overflow-hidden rounded-lg border border-amber-200/20 bg-black/30">
-          <video
-            className="h-full w-full object-cover"
-            src="/videos/short-rest-knight.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-black/10" />
-        </div>
-
-        <div className="relative text-center">
-          <p className="text-4xl font-extrabold tracking-wide text-foreground">{formatted}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Respire, desacelere e recupere o foco.</p>
+        <div className="relative flex h-full flex-col items-center justify-end pb-6 text-center">
+          <p className="text-5xl font-black leading-none tracking-wide text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">{formatted}</p>
+          <p className="mt-2 text-sm font-medium text-white/80 drop-shadow-[0_1px_8px_rgba(0,0,0,0.7)]">
+            Respire, desacelere e recupere o foco.
+          </p>
         </div>
       </div>
 
@@ -323,6 +339,10 @@ export default function ShortRestTimer({
 
       {shortRestAvailability.isLoading && (
         <p className="text-xs text-muted-foreground">Verificando se o descanso breve está disponível...</p>
+      )}
+
+      {shortRestStart.isPending && (
+        <p className="text-xs text-muted-foreground">Registrando início do descanso...</p>
       )}
 
       {!shortRestAvailability.isLoading && shortRestAvailability.data?.canRest && (
