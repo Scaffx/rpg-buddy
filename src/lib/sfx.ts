@@ -8,6 +8,7 @@ const VOLUME_EVENT = 'lifeonrpg-sfx-volume-changed';
 
 let ctx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
+let campfireAudioElement: HTMLAudioElement | null = null;
 
 function ensureContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -170,54 +171,62 @@ export const sfx = {
     playTone({ freqStart: 800, freqEnd: 600, duration: 0.08, type: 'sine', envelope: { peak: 0.25, attack: 0.001, release: 0.04 } });
   },
   campfire(durationSeconds?: number) {
-    // Crackling fire sound for meditation/rest - ambient, longer duration
-    // If durationSeconds is provided, loops the campfire sound throughout the rest
+    // Crackling fire sound for meditation/rest - uses real audio file
     console.log(`[SFX] campfire() called with duration: ${durationSeconds} seconds`);
     
-    const playSingleBurst = () => {
-      console.log('[SFX] Playing campfire burst');
-      for (let i = 0; i < 8; i++) {
-        playNoiseBurst({ 
-          duration: 0.3 + Math.random() * 0.2, 
-          peak: 0.15 + Math.random() * 0.1, 
-          filterFreq: 200 + Math.random() * 200, 
-          delay: i * 0.25 
-        });
-      }
-      for (let i = 0; i < 12; i++) {
-        playNoiseBurst({ 
-          duration: 0.15 + Math.random() * 0.1, 
-          peak: 0.12 + Math.random() * 0.08, 
-          filterFreq: 2000 + Math.random() * 1500, 
-          delay: i * 0.15 + 0.1 
-        });
-      }
-    };
-
     if (!durationSeconds) {
-      playSingleBurst();
+      // One-shot: play once and return
+      if (typeof window === 'undefined') return 0;
+      
+      if (!campfireAudioElement) {
+        campfireAudioElement = new Audio('/sounds/campfire.mp3');
+        campfireAudioElement.volume = (getVolume() / 100) * 0.6;
+      }
+      campfireAudioElement.currentTime = 0;
+      campfireAudioElement.play().catch(err => console.error('[SFX] Failed to play campfire:', err));
       return 0;
     }
 
     // Looping campfire sound for the specified duration
-    // Play first burst immediately
-    playSingleBurst();
+    if (typeof window === 'undefined') return 0;
 
-    // Calculate interval: each burst takes ~3 seconds, so play every 3-4 seconds
-    const intervalMs = 3500;
+    if (!campfireAudioElement) {
+      campfireAudioElement = new Audio('/sounds/campfire.mp3');
+    }
+
+    // Set volume based on current settings
+    const volume = getVolume();
+    const isMuted = isMuted();
+    campfireAudioElement.volume = isMuted ? 0 : (volume / 100) * 0.6;
+    campfireAudioElement.loop = true;
+    campfireAudioElement.currentTime = 0;
+
+    console.log(`[SFX] Starting looped campfire for ${durationSeconds}s, volume: ${campfireAudioElement.volume}`);
+    
+    campfireAudioElement.play().catch(err => console.error('[SFX] Failed to play looped campfire:', err));
+
     const endTimeMs = Date.now() + durationSeconds * 1000;
-    console.log(`[SFX] Starting campfire loop for ${durationSeconds}s`);
-
     const intervalId = window.setInterval(() => {
       if (Date.now() >= endTimeMs) {
-        console.log('[SFX] Campfire loop finished');
+        console.log('[SFX] Campfire loop finished - stopping');
+        if (campfireAudioElement) {
+          campfireAudioElement.pause();
+          campfireAudioElement.currentTime = 0;
+        }
         window.clearInterval(intervalId);
         return;
       }
-      playSingleBurst();
-    }, intervalMs);
+    }, 1000);
 
     return intervalId;
+  },
+  stopCampfire() {
+    console.log('[SFX] Stopping campfire sound');
+    if (campfireAudioElement) {
+      campfireAudioElement.pause();
+      campfireAudioElement.currentTime = 0;
+      campfireAudioElement.loop = false;
+    }
   },
   slash() {
     playNoiseBurst({ duration: 0.18, peak: 0.35, filterFreq: 3200 });

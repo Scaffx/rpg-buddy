@@ -57,6 +57,7 @@ export default function ShortRestTimer({
 
     try {
       // Stop campfire sound when rest completes
+      sfx.stopCampfire();
       if (campfireIntervalRef.current !== null) {
         window.clearInterval(campfireIntervalRef.current);
         campfireIntervalRef.current = null;
@@ -102,6 +103,7 @@ export default function ShortRestTimer({
 
   const handleCancel = () => {
     // Stop campfire sound if it's playing
+    sfx.stopCampfire();
     if (campfireIntervalRef.current !== null) {
       window.clearInterval(campfireIntervalRef.current);
       campfireIntervalRef.current = null;
@@ -119,6 +121,7 @@ export default function ShortRestTimer({
 
   const handleReset = () => {
     // Stop campfire sound if it's playing
+    sfx.stopCampfire();
     if (campfireIntervalRef.current !== null) {
       window.clearInterval(campfireIntervalRef.current);
       campfireIntervalRef.current = null;
@@ -207,6 +210,7 @@ export default function ShortRestTimer({
   // Cleanup campfire sound on unmount
   useEffect(() => {
     return () => {
+      sfx.stopCampfire();
       if (campfireIntervalRef.current !== null) {
         window.clearInterval(campfireIntervalRef.current);
       }
