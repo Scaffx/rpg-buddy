@@ -177,7 +177,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <header className="h-16 overflow-hidden flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 px-2">
             <SidebarTrigger />
 
-            <div className="hidden md:flex items-center justify-center flex-1 h-full overflow-hidden pointer-events-none px-4">
+            <div className="hidden md:flex items-center justify-center flex-1 h-full overflow-visible pointer-events-none px-4 pt-1">
               <CharacterSprite />
             </div>
 
