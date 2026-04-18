@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { sfx } from '@/lib/sfx';
+import { sfx, resumeAudioContext } from '@/lib/sfx';
 import { useShortRestAvailability, useShortRestRecovery } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState, type ShortRestPersistentState } from '@/lib/shortRestState';
@@ -86,6 +86,13 @@ export default function ShortRestTimer({
       return;
     }
 
+    // Stop any existing campfire sound before starting
+    sfx.stopCampfire();
+    if (campfireIntervalRef.current !== null) {
+      window.clearInterval(campfireIntervalRef.current);
+      campfireIntervalRef.current = null;
+    }
+
     const baseSeconds = secondsLeft > 0 ? secondsLeft : minutes * 60;
     setSecondsLeft(baseSeconds);
     setEndAtMs(Date.now() + baseSeconds * 1000);
@@ -98,6 +105,10 @@ export default function ShortRestTimer({
     // Start campfire sound when rest begins
     console.log(`[ShortRestTimer] handleStart - starting campfire for ${baseSeconds}s (${Math.ceil(baseSeconds / 60)} minutes)`);
     const durationSecs = baseSeconds;
+    
+    // Ensure audio context is active (may be suspended on first user interaction)
+    resumeAudioContext();
+    
     campfireIntervalRef.current = sfx.campfire(durationSecs) as unknown as number;
   };
 

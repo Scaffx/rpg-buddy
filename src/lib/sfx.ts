@@ -10,6 +10,8 @@ let ctx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 let campfireAudioElement: HTMLAudioElement | null = null;
 let levelupAudioElement: HTMLAudioElement | null = null;
+let campfireTimeoutId: number | null = null;
+let campfireIntervalId: number | null = null;
 
 function ensureContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -19,14 +21,21 @@ function ensureContext(): AudioContext | null {
     ctx = new Ctor();
     masterGain = ctx.createGain();
     const volume = getVolume();
-    const isMuted = window.localStorage.getItem(STORAGE_KEY) === '1';
-    masterGain.gain.value = isMuted ? 0 : (volume / 100) * 0.6;
+    const muted = isMuted();
+    masterGain.gain.value = muted ? 0 : (volume / 100) * 0.6;
     masterGain.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
   }
   return ctx;
+}
+
+export function resumeAudioContext() {
+  const ctx = ensureContext();
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(err => console.error('[SFX] Failed to resume audio context:', err));
+  }
 }
 
 export function isMuted(): boolean {
@@ -175,16 +184,42 @@ export const sfx = {
     // Crackling fire sound for meditation/rest - uses real audio file
     console.log(`[SFX] campfire() called with duration: ${durationSeconds} seconds`);
     
+    // Stop any existing campfire sound and intervals
+    if (campfireAudioElement) {
+      campfireAudioElement.pause();
+      campfireAudioElement.currentTime = 0;
+    }
+    if (campfireTimeoutId !== null) {
+      window.clearTimeout(campfireTimeoutId);
+      campfireTimeoutId = null;
+    }
+    if (campfireIntervalId !== null) {
+      window.clearInterval(campfireIntervalId);
+      campfireIntervalId = null;
+    }
+    
     if (!durationSeconds) {
       // One-shot: play once and return
       if (typeof window === 'undefined') return 0;
       
       if (!campfireAudioElement) {
         campfireAudioElement = new Audio('/sounds/campfire.mp3');
-        campfireAudioElement.volume = (getVolume() / 100) * 0.6;
+        campfireAudioElement.crossOrigin = 'anonymous';
       }
+      
+      const volume = getVolume();
+      const muted = isMuted();
+      campfireAudioElement.volume = muted ? 0 : (volume / 100) * 0.6;
+      campfireAudioElement.loop = false;
       campfireAudioElement.currentTime = 0;
-      campfireAudioElement.play().catch(err => console.error('[SFX] Failed to play campfire:', err));
+      
+      console.log(`[SFX] Playing one-shot campfire, volume: ${campfireAudioElement.volume}`);
+      const playPromise = campfireAudioElement.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => console.log('[SFX] Campfire one-shot started'))
+          .catch(err => console.error('[SFX] Failed to play campfire:', err));
+      }
       return 0;
     }
 
@@ -193,18 +228,24 @@ export const sfx = {
 
     if (!campfireAudioElement) {
       campfireAudioElement = new Audio('/sounds/campfire.mp3');
+      campfireAudioElement.crossOrigin = 'anonymous';
     }
 
     // Set volume based on current settings
     const volume = getVolume();
-    const isMuted = isMuted();
-    campfireAudioElement.volume = isMuted ? 0 : (volume / 100) * 0.6;
+    const muted = isMuted();
+    campfireAudioElement.volume = muted ? 0 : (volume / 100) * 0.6;
     campfireAudioElement.loop = true;
     campfireAudioElement.currentTime = 0;
 
-    console.log(`[SFX] Starting looped campfire for ${durationSeconds}s, volume: ${campfireAudioElement.volume}`);
+    console.log(`[SFX] Starting looped campfire for ${durationSeconds}s, volume: ${campfireAudioElement.volume}, muted: ${muted}`);
     
-    campfireAudioElement.play().catch(err => console.error('[SFX] Failed to play looped campfire:', err));
+    const playPromise = campfireAudioElement.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => console.log('[SFX] Campfire started successfully'))
+        .catch(err => console.error('[SFX] Failed to play looped campfire:', err));
+    }
 
     const endTimeMs = Date.now() + durationSeconds * 1000;
     const intervalId = window.setInterval(() => {
@@ -214,11 +255,15 @@ export const sfx = {
           campfireAudioElement.pause();
           campfireAudioElement.currentTime = 0;
         }
-        window.clearInterval(intervalId);
+        if (campfireIntervalId !== null) {
+          window.clearInterval(campfireIntervalId);
+          campfireIntervalId = null;
+        }
         return;
       }
     }, 1000);
 
+    campfireIntervalId = intervalId;
     return intervalId;
   },
   stopCampfire() {
@@ -227,6 +272,14 @@ export const sfx = {
       campfireAudioElement.pause();
       campfireAudioElement.currentTime = 0;
       campfireAudioElement.loop = false;
+    }
+    if (campfireTimeoutId !== null) {
+      window.clearTimeout(campfireTimeoutId);
+      campfireTimeoutId = null;
+    }
+    if (campfireIntervalId !== null) {
+      window.clearInterval(campfireIntervalId);
+      campfireIntervalId = null;
     }
   },
   slash() {
