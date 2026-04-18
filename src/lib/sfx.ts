@@ -29,12 +29,16 @@ function ensureContext(): AudioContext | null {
 
 export function isMuted(): boolean {
   if (typeof window === 'undefined') return false;
-  return window.localStorage.getItem(STORAGE_KEY) === '1';
+  const muted = window.localStorage.getItem(STORAGE_KEY) === '1';
+  console.log(`[SFX] isMuted() = ${muted}`);
+  return muted;
 }
 
 export function getVolume(): number {
   if (typeof window === 'undefined') return 100;
-  return parseInt(window.localStorage.getItem(VOLUME_KEY) || '100', 10);
+  const volume = parseInt(window.localStorage.getItem(VOLUME_KEY) || '100', 10);
+  console.log(`[SFX] getVolume() = ${volume}`);
+  return volume;
 }
 
 export function setVolume(volume: number) {
@@ -258,5 +262,13 @@ export const sfx = {
     });
     playTone({ freqStart: 1568, duration: 0.9, type: 'triangle', envelope: { peak: 0.4, attack: 0.01, release: 0.6 }, delay: 0.5 });
     playNoiseBurst({ duration: 0.4, peak: 0.18, filterFreq: 4500, delay: 0.45 });
+  },
+  testSound() {
+    // Test sound to verify audio system is working
+    console.log('[SFX] Test sound - click + small tone');
+    this.click();
+    setTimeout(() => {
+      playTone({ freqStart: 440, freqEnd: 440, duration: 0.5, type: 'sine', envelope: { peak: 0.3, attack: 0.1, release: 0.2 } });
+    }, 150);
   },
 };
