@@ -1535,9 +1535,9 @@ export function useShortRestRecovery() {
       if (healthError) throw healthError;
 
       const maxHp = Number(healthStats?.max_hp ?? 100);
-      const currentHp = Number(healthStats?.current_hp ?? maxHp);
+      const currentHp = Number(healthStats?.current_hp ?? 0);
       const maxMp = Number(healthStats?.max_mp ?? 10);
-      const currentMp = Number(healthStats?.current_mp ?? maxMp);
+      const currentMp = Number(healthStats?.current_mp ?? 0);
 
       const hpGain = Math.max(1, Math.ceil(maxHp * 0.3));
       const mpGain = Math.max(1, Math.ceil(maxMp * 0.3));
@@ -1587,9 +1587,9 @@ export function useShortRestRecovery() {
       };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['activity'] });
-      queryClient.invalidateQueries({ queryKey: ['short_rest_status'] });
+      queryClient.invalidateQueries({ queryKey: ['health_stats', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['activity', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['short_rest_status', user?.id] });
     },
   });
 }
