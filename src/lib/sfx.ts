@@ -9,6 +9,7 @@ const VOLUME_EVENT = 'lifeonrpg-sfx-volume-changed';
 let ctx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 let campfireAudioElement: HTMLAudioElement | null = null;
+let levelupAudioElement: HTMLAudioElement | null = null;
 
 function ensureContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -264,13 +265,21 @@ export const sfx = {
     playNoiseBurst({ duration: 1.4, peak: 0.18, filterFreq: 200, delay: 0.3 });
   },
   levelUp() {
-    // Ascending arpeggio
-    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
-    notes.forEach((freq, i) => {
-      playTone({ freqStart: freq, duration: 0.18, type: 'triangle', envelope: { peak: 0.35, attack: 0.003, release: 0.12 }, delay: i * 0.08 });
-    });
-    playTone({ freqStart: 1568, duration: 0.9, type: 'triangle', envelope: { peak: 0.4, attack: 0.01, release: 0.6 }, delay: 0.5 });
-    playNoiseBurst({ duration: 0.4, peak: 0.18, filterFreq: 4500, delay: 0.45 });
+    // Play level up sound from audio file
+    console.log('[SFX] levelUp() called');
+    if (typeof window === 'undefined') return;
+
+    if (!levelupAudioElement) {
+      levelupAudioElement = new Audio('/sounds/levelup.mp3');
+    }
+
+    // Set volume based on current settings
+    const volume = getVolume();
+    const muted = isMuted();
+    levelupAudioElement.volume = muted ? 0 : (volume / 100) * 0.6;
+    levelupAudioElement.currentTime = 0;
+
+    levelupAudioElement.play().catch(err => console.error('[SFX] Failed to play levelup:', err));
   },
   testSound() {
     // Test sound to verify audio system is working
