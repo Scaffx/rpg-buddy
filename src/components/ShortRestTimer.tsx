@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -51,7 +51,7 @@ export default function ShortRestTimer({
 
   const formatted = useMemo(() => formatSeconds(secondsLeft), [secondsLeft]);
 
-  const handleRestComplete = async () => {
+  const handleRestComplete = useCallback(async () => {
     if (completedRef.current) return;
     completedRef.current = true;
 
@@ -73,7 +73,7 @@ export default function ShortRestTimer({
       setLastRecoverySummary(null);
       toast.error(error?.message || 'Não foi possível aplicar a recuperação do descanso curto.');
     }
-  };
+  }, [shortRestRecovery, onRestComplete]);
 
   const handleStart = () => {
     if (shortRestAvailability.isLoading) {
@@ -166,13 +166,21 @@ export default function ShortRestTimer({
     setEndAtMs(saved.endAtMs);
     setNeedsApply(Boolean(saved.needsApply));
 
+    // If rest was running when app closed, resume campfire sound
+    if (shouldRun && saved.needsApply) {
+      console.log(`[ShortRestTimer] ✅ RESUMING rest: ${resumedSeconds}s remaining (${Math.ceil(resumedSeconds / 60)} min)`);
+      campfireIntervalRef.current = sfx.campfire(resumedSeconds) as unknown as number;
+    } else if (saved.isRunning) {
+      console.log(`[ShortRestTimer] ℹ️  Rest was running but time expired or no time remaining`);
+    }
+
     if (saved.isRunning && resumedSeconds <= 0 && saved.needsApply) {
       setIsRunning(false);
       setFinished(true);
       setNeedsApply(false);
       void handleRestComplete();
     }
-  }, [user]);
+  }, [user, handleRestComplete]);
 
   useEffect(() => {
     if (!isRunning || !endAtMs) return;
