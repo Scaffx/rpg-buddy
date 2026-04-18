@@ -56,10 +56,11 @@ export default function ShortRestTimer({
     completedRef.current = true;
 
     try {
-      // Play campfire sound for the duration of the rest (in seconds)
-      const durationSecs = minutes * 60;
-      console.log(`[ShortRestTimer] handleRestComplete - playing campfire for ${durationSecs}s (${minutes} minutes)`);
-      campfireIntervalRef.current = sfx.campfire(durationSecs) as unknown as number;
+      // Stop campfire sound when rest completes
+      if (campfireIntervalRef.current !== null) {
+        window.clearInterval(campfireIntervalRef.current);
+        campfireIntervalRef.current = null;
+      }
       
       const result = await shortRestRecovery.mutateAsync();
       setLastRecoverySummary(`+${result.hpRecovered} HP e +${result.mpRecovered} MP`);
@@ -92,6 +93,11 @@ export default function ShortRestTimer({
     setNeedsApply(true);
     setLastRecoverySummary(null);
     completedRef.current = false;
+
+    // Start campfire sound when rest begins
+    console.log(`[ShortRestTimer] handleStart - starting campfire for ${baseSeconds}s (${Math.ceil(baseSeconds / 60)} minutes)`);
+    const durationSecs = baseSeconds;
+    campfireIntervalRef.current = sfx.campfire(durationSecs) as unknown as number;
   };
 
   const handleCancel = () => {
