@@ -58,6 +58,7 @@ export default function ShortRestTimer({
     try {
       // Play campfire sound for the duration of the rest (in seconds)
       const durationSecs = minutes * 60;
+      console.log(`[ShortRestTimer] handleRestComplete - playing campfire for ${durationSecs}s (${minutes} minutes)`);
       campfireIntervalRef.current = sfx.campfire(durationSecs) as unknown as number;
       
       const result = await shortRestRecovery.mutateAsync();

@@ -162,38 +162,16 @@ function playNoiseBurst(opts: { duration: number; peak?: number; filterFreq?: nu
 export const sfx = {
   click() {
     // Short, bright beep for UI clicks
+    console.log('[SFX] click() called');
     playTone({ freqStart: 800, freqEnd: 600, duration: 0.08, type: 'sine', envelope: { peak: 0.25, attack: 0.001, release: 0.04 } });
   },
   campfire(durationSeconds?: number) {
     // Crackling fire sound for meditation/rest - ambient, longer duration
     // If durationSeconds is provided, loops the campfire sound throughout the rest
+    console.log(`[SFX] campfire() called with duration: ${durationSeconds} seconds`);
     
-    if (!durationSeconds) {
-      // One-shot campfire sound (for backwards compatibility)
-      const playSingleBurst = () => {
-        for (let i = 0; i < 8; i++) {
-          playNoiseBurst({ 
-            duration: 0.3 + Math.random() * 0.2, 
-            peak: 0.15 + Math.random() * 0.1, 
-            filterFreq: 200 + Math.random() * 200, 
-            delay: i * 0.25 
-          });
-        }
-        for (let i = 0; i < 12; i++) {
-          playNoiseBurst({ 
-            duration: 0.15 + Math.random() * 0.1, 
-            peak: 0.12 + Math.random() * 0.08, 
-            filterFreq: 2000 + Math.random() * 1500, 
-            delay: i * 0.15 + 0.1 
-          });
-        }
-      };
-      playSingleBurst();
-      return;
-    }
-
-    // Looping campfire sound for the specified duration
     const playSingleBurst = () => {
+      console.log('[SFX] Playing campfire burst');
       for (let i = 0; i < 8; i++) {
         playNoiseBurst({ 
           duration: 0.3 + Math.random() * 0.2, 
@@ -212,15 +190,23 @@ export const sfx = {
       }
     };
 
+    if (!durationSeconds) {
+      playSingleBurst();
+      return 0;
+    }
+
+    // Looping campfire sound for the specified duration
     // Play first burst immediately
     playSingleBurst();
 
     // Calculate interval: each burst takes ~3 seconds, so play every 3-4 seconds
     const intervalMs = 3500;
     const endTimeMs = Date.now() + durationSeconds * 1000;
+    console.log(`[SFX] Starting campfire loop for ${durationSeconds}s`);
 
     const intervalId = window.setInterval(() => {
       if (Date.now() >= endTimeMs) {
+        console.log('[SFX] Campfire loop finished');
         window.clearInterval(intervalId);
         return;
       }
