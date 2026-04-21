@@ -85,7 +85,10 @@ export function useShortRestAvailability() {
     queryFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
-      const usedAt = await getShortRestStartOrCompletionUsageToday(user.id);
+      // Só bloqueia quando o timer foi concluído completamente (short_rest_complete).
+      // Iniciar e cancelar não conta — o usuário pode recomeçar quantas vezes quiser
+      // até esgotar o tempo de uma vez só.
+      const usedAt = await getShortRestUsageToday(user.id);
       if (!usedAt) {
         return {
           canRest: true,
@@ -98,7 +101,7 @@ export function useShortRestAvailability() {
       const nextAvailableDate = getStartOfNextLocalDay();
       return {
         canRest: false,
-        message: `Descanso breve em recarga. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`,
+        message: `Descanso breve concluído hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`,
         nextAvailableAt: nextAvailableDate.toISOString(),
         lastRestAt: usedAt,
       };
@@ -114,20 +117,21 @@ export function useShortRestStart() {
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
-      const usedAt = await getShortRestStartOrCompletionUsageToday(user.id);
-      if (usedAt) {
+      // Só bloqueia se o descanso já foi concluído hoje (timer esgotado).
+      // Iniciar e cancelar não bloqueia — o usuário pode tentar de novo.
+      const completedAt = await getShortRestUsageToday(user.id);
+      if (completedAt) {
         const nextAvailableDate = getStartOfNextLocalDay();
-        throw new Error(`Você já iniciou um descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
+        throw new Error(`Você já concluiu seu descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
       }
 
-      const { error: logError } = await supabase.from('activity_log').insert({
+      // Log para analytics (não bloqueia disponibilidade).
+      await supabase.from('activity_log').insert({
         user_id: user.id,
         action: SHORT_REST_STARTED_ACTION,
         description: 'Descanso curto iniciado',
         xp_gained: 0,
       });
-
-      if (logError) throw logError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity', user?.id] });
@@ -1555,6 +1559,24 @@ export function useAwardHealthXP() {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
       queryClient.invalidateQueries({ queryKey: ['health_stats'] });
+    },
+  });
+}
+
+/** Retorna os valores atuais de HP/MP do banco (current_hp, current_mp, max_hp, max_mp). */
+export function useHealthStats() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['health_stats', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('user_health_stats')
+        .select('current_hp, current_mp, max_hp, max_mp')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { current_hp: number; current_mp: number; max_hp: number; max_mp: number } | null;
     },
   });
 }

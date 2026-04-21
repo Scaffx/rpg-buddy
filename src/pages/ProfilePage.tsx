@@ -872,24 +872,100 @@ export default function ProfilePage() {
         console.error("[logWater] Usuário não autenticado");
         throw new Error("Usuário não autenticado");
       }
+
+      // Insere o registro de água
       const payload = { user_id: user.id, log_date: today, amount_ml: amount };
       console.debug("[logWater] Inserindo água:", payload);
-      const { error, data } = await supabase
-        .from("water_log" as any)
-        .insert(payload);
+      const { error } = await supabase.from("water_log" as any).insert(payload);
       if (error) {
         console.error("[logWater] Erro ao inserir água:", error);
         throw error;
       }
-      console.debug("[logWater] Água inserida:", data);
+
+      // Calcula o novo total de água do dia
+      const { data: allToday } = await supabase
+        .from("water_log" as any)
+        .select("amount_ml")
+        .eq("user_id", user.id)
+        .eq("log_date", today);
+      const newTotal = (allToday || []).reduce((s: number, w: any) => s + (w.amount_ml || 0), 0);
+
+      // Busca meta de água e stats de saúde
+      const { data: hStats } = await (supabase as any)
+        .from("user_health_stats")
+        .select("max_mp, current_mp, water_target_ml, weight_kg")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const weightKg = Number(hStats?.weight_kg ?? 70);
+      const target = Number(hStats?.water_target_ml ?? Math.round(weightKg * 35));
+      const halfTarget = target / 2;
+      const maxMp = Number(hStats?.max_mp ?? 40);
+      const currentMp = Number(hStats?.current_mp ?? 0);
+
+      if (!hStats || target <= 0) return { milestone: null };
+
+      // Verifica recompensas já concedidas hoje
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const { data: existingRewards } = await supabase
+        .from("activity_log")
+        .select("action")
+        .eq("user_id", user.id)
+        .in("action", ["water_mp_reward_half", "water_mp_reward_full"])
+        .gte("created_at", startOfDay.toISOString());
+      const rewarded = new Set((existingRewards || []).map((r: any) => r.action));
+
+      // Marco 100%: beber tudo → MP 100%
+      if (newTotal >= target && !rewarded.has("water_mp_reward_full")) {
+        await (supabase as any)
+          .from("user_health_stats")
+          .update({ current_mp: maxMp })
+          .eq("user_id", user.id);
+        await supabase.from("activity_log").insert({
+          user_id: user.id,
+          action: "water_mp_reward_full",
+          description: "💧 Meta de hidratação completa! MP totalmente restaurado.",
+          xp_gained: 0,
+        });
+        return { milestone: "full", mpRestored: maxMp - currentMp };
+      }
+
+      // Marco 50%: beber metade → MP 50% (não reduz se já tiver mais)
+      if (newTotal >= halfTarget && !rewarded.has("water_mp_reward_half") && !rewarded.has("water_mp_reward_full")) {
+        const halfMp = Math.ceil(maxMp * 0.5);
+        const newMp = Math.max(currentMp, halfMp);
+        await (supabase as any)
+          .from("user_health_stats")
+          .update({ current_mp: newMp })
+          .eq("user_id", user.id);
+        await supabase.from("activity_log").insert({
+          user_id: user.id,
+          action: "water_mp_reward_half",
+          description: "💧 Metade da meta de hidratação atingida! +50% MP restaurado.",
+          xp_gained: 0,
+        });
+        return { milestone: "half", mpRestored: newMp - currentMp };
+      }
+
+      return { milestone: null };
     },
-    onSuccess: async () => {
+    onSuccess: async (result: any) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["water_log", user?.id] }),
         queryClient.invalidateQueries({ queryKey: ["dailyTracking", user?.id] }),
       ]);
       await queryClient.refetchQueries({ queryKey: ["water_log", user?.id], type: "active" });
-      toast.success("Água registrada! 💧");
+
+      if (result?.milestone === "full") {
+        queryClient.invalidateQueries({ queryKey: ["health_stats"] });
+        toast.success("💧 Meta de hidratação completa! MP totalmente restaurado!");
+      } else if (result?.milestone === "half") {
+        queryClient.invalidateQueries({ queryKey: ["health_stats"] });
+        toast.success("💧 Metade da meta de água atingida! MP restaurado a 50%!");
+      } else {
+        toast.success("Água registrada! 💧");
+      }
     },
     onError: (err) => {
       toast.error("Erro ao registrar água: " + (err?.message || err));

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat } from '@/hooks/useProfile';
+import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown } from 'lucide-react';
@@ -39,6 +39,7 @@ export default function BossPage() {
   const { data: battles } = useBossBattles();
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
+  const { data: healthStats } = useHealthStats();
   const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -125,15 +126,28 @@ export default function BossPage() {
   const handleStartArenaCombat = async (boss: any) => {
     try {
       const combat = await startActiveCombat.mutateAsync({ bossId: boss.id });
+
+      // Usa HP/MP atuais do banco (refletindo hidratação, short rest, etc.)
+      // Fallback para os valores calculados por nível/atributos se o banco não tiver registro.
+      const currentHp = healthStats?.current_hp != null
+        ? Number(healthStats.current_hp)
+        : Number(combat.hp_atual_personagem ?? playerStats.hp ?? 120);
+      const currentMp = healthStats?.current_mp != null
+        ? Number(healthStats.current_mp)
+        : Number((playerStats as any).mp ?? 40);
+      const maxMp = healthStats?.max_mp != null
+        ? Number(healthStats.max_mp)
+        : Number((playerStats as any).mp ?? 40);
+
       setActiveCombat({
         id: combat.id,
         bossName: boss.name,
         bossIcon: boss.icon,
         bossElement: boss.element ?? null,
         bossHp: Number(combat.hp_atual_boss ?? boss.hp_max ?? boss.hp ?? 100),
-        playerHp: Number(combat.hp_atual_personagem ?? playerStats.hp ?? 120),
-        playerMp: Number((playerStats as any).mp ?? 40),
-        playerMaxMp: Number((playerStats as any).mp ?? 40),
+        playerHp: currentHp,
+        playerMp: currentMp,
+        playerMaxMp: maxMp,
       });
       toast({ title: '⚔️ Combate iniciado', description: `Arena aberta contra ${boss.name}.` });
     } catch (err: any) {
