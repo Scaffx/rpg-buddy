@@ -406,4 +406,43 @@
     100% { opacity: 0; }
   }
   .animate-levelup-subtitle { animation: levelup-subtitle 4s ease-out 0.4s forwards; opacity: 0; }
+
+  /* ============ Hero pixel walking animations ============ */
+  @keyframes hero-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-2px); }
+  }
+  .animate-hero-bob { animation: hero-bob 0.6s ease-in-out infinite; }
+
+  @keyframes hero-leg-l {
+    0%, 100% { transform: rotate(20deg); }
+    50%      { transform: rotate(-20deg); }
+  }
+  .animate-hero-leg-l { animation: hero-leg-l 0.6s ease-in-out infinite; }
+
+  @keyframes hero-leg-r {
+    0%, 100% { transform: rotate(-20deg); }
+    50%      { transform: rotate(20deg); }
+  }
+  .animate-hero-leg-r { animation: hero-leg-r 0.6s ease-in-out infinite; }
+
+  @keyframes hero-arm-l {
+    0%, 100% { transform: rotate(-15deg); }
+    50%      { transform: rotate(15deg); }
+  }
+  .animate-hero-arm-l { animation: hero-arm-l 0.6s ease-in-out infinite; }
+
+  @keyframes hero-arm-r {
+    0%, 100% { transform: rotate(15deg); }
+    50%      { transform: rotate(-15deg); }
+  }
+  .animate-hero-arm-r { animation: hero-arm-r 0.6s ease-in-out infinite; }
+
+  @keyframes hero-fire {
+    0%, 100% { transform: translateX(-50%) scaleY(1) scaleX(1); }
+    25%      { transform: translateX(-50%) scaleY(1.15) scaleX(0.9); }
+    50%      { transform: translateX(-50%) scaleY(0.95) scaleX(1.1); }
+    75%      { transform: translateX(-50%) scaleY(1.1) scaleX(0.95); }
+  }
+  .animate-hero-fire { animation: hero-fire 0.45s ease-in-out infinite; }
 }
