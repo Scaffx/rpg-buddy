@@ -405,8 +405,9 @@ export function useConsumeItem() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['health_stats', user?.id] });
+      queryClient.refetchQueries({ queryKey: ['health_stats', user?.id], type: 'active' });
     },
   });
 }
