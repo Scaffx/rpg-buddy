@@ -682,6 +682,25 @@ export default function CombatArena({
         >
           <p className="text-sm text-zinc-400">Boss HP</p>
           <p className="mt-2 text-3xl font-black text-rose-300">{bossHp}</p>
+          {/* Barra de recurso do boss (Mana ou Estamina) */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
+              <span className={bossResourceType === 'mana' ? 'text-violet-300/80' : 'text-lime-300/80'}>
+                {bossResourceType === 'mana' ? '🔮 Mana' : '⚡ Stamina'}
+              </span>
+              <span className="font-mono text-zinc-300">{bossResource}/{bossResourceMax}</span>
+            </div>
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  bossResourceType === 'mana'
+                    ? 'bg-gradient-to-r from-violet-400 to-fuchsia-500'
+                    : 'bg-gradient-to-r from-lime-400 to-emerald-500'
+                }`}
+                style={{ width: `${bossResourceMax > 0 ? Math.round((bossResource / bossResourceMax) * 100) : 0}%` }}
+              />
+            </div>
+          </div>
           {hitEffects
             .filter((h) => h.target === 'boss')
             .map((h) => (
