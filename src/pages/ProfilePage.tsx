@@ -737,8 +737,10 @@ export default function ProfilePage() {
       mealPenalty = Math.round((mealHalf - mealsToday) * 0.05 * maxHp);
       penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
     }
-    // Água: 10% do MP máximo se não atingiu meta
-    if (totalWaterToday < waterTargetMl) {
+    // Água: penalidade de 10% MP apenas se não atingiu nem metade da meta diária.
+    // (Se bebeu >= 50%, o sistema de recompensa já gerencia o MP via DB.)
+    const halfWaterTarget = waterTargetMl / 2;
+    if (totalWaterToday < halfWaterTarget) {
       waterPenalty = Math.round(0.10 * maxMp);
       penaltyMessages.push(`⚠️ Você perdeu ${waterPenalty} MP por não beber água suficiente!`);
     }
@@ -954,14 +956,16 @@ export default function ProfilePage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["water_log", user?.id] }),
         queryClient.invalidateQueries({ queryKey: ["dailyTracking", user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ["health_stats", user?.id] }),
       ]);
-      await queryClient.refetchQueries({ queryKey: ["water_log", user?.id], type: "active" });
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["water_log", user?.id], type: "active" }),
+        queryClient.refetchQueries({ queryKey: ["health_stats", user?.id], type: "active" }),
+      ]);
 
       if (result?.milestone === "full") {
-        queryClient.invalidateQueries({ queryKey: ["health_stats"] });
         toast.success("💧 Meta de hidratação completa! MP totalmente restaurado!");
       } else if (result?.milestone === "half") {
-        queryClient.invalidateQueries({ queryKey: ["health_stats"] });
         toast.success("💧 Metade da meta de água atingida! MP restaurado a 50%!");
       } else {
         toast.success("Água registrada! 💧");
