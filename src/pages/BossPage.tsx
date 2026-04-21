@@ -235,8 +235,13 @@ export default function BossPage() {
                       combateId={activeCombat.id}
                       initialBossHp={activeCombat.bossHp}
                       initialPlayerHp={activeCombat.playerHp}
+                      initialPlayerMp={activeCombat.playerMp}
+                      initialPlayerMaxMp={activeCombat.playerMaxMp}
+                      bossName={activeCombat.bossName}
+                      bossElement={activeCombat.bossElement}
                       onVictory={handleCombatVictory}
                       onDefeat={handleCombatDefeat}
+                      onClose={handleCombatClose}
                     />
                   </div>
                 )}
