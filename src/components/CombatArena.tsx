@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { sfx } from '@/lib/sfx';
+import { sfx, resumeAudioContext } from '@/lib/sfx';
 
 type Turn = 'idle' | 'player' | 'boss' | 'finished';
 
@@ -387,6 +387,8 @@ export default function CombatArena({
   };
 
   const startBattle = () => {
+    // Resume the WebAudio context from a user gesture so SFX play reliably.
+    resumeAudioContext();
     currentBattleTokenRef.current += 1;
     skillCursorRef.current = 0;
     setBossHp(initialBossHp);
@@ -615,18 +617,33 @@ export default function CombatArena({
           <p className="text-sm text-zinc-400">Player HP</p>
           <p className="mt-2 text-3xl font-black text-emerald-300">{playerHp}</p>
           {/* Barra de MP do jogador */}
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-cyan-300/80">
-              <span>MP</span>
-              <span className="font-mono">{playerMp}/{initialPlayerMaxMp}</span>
-            </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70">
-              <div
-                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500"
-                style={{ width: `${initialPlayerMaxMp > 0 ? Math.round((playerMp / initialPlayerMaxMp) * 100) : 0}%` }}
-              />
-            </div>
-          </div>
+          {(() => {
+            const mpPct = initialPlayerMaxMp > 0 ? (playerMp / initialPlayerMaxMp) * 100 : 0;
+            const isLow = mpPct <= 25;
+            const isCritical = mpPct <= 10;
+            return (
+              <div className={`mt-3 ${isLow ? 'animate-low-resource' : ''}`}>
+                <div className={`flex items-center justify-between text-[10px] uppercase tracking-widest ${
+                  isCritical ? 'text-rose-300 font-bold' : isLow ? 'text-amber-300' : 'text-cyan-300/80'
+                }`}>
+                  <span>MP {isCritical && '⚠️'}</span>
+                  <span className="font-mono">{playerMp}/{initialPlayerMaxMp}</span>
+                </div>
+                <div className={`mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70 ${isCritical ? 'animate-low-resource-pulse' : ''}`}>
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      isCritical
+                        ? 'bg-gradient-to-r from-rose-500 to-rose-700'
+                        : isLow
+                          ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                          : 'bg-gradient-to-r from-cyan-400 to-blue-500'
+                    }`}
+                    style={{ width: `${mpPct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
           {hitEffects
             .filter((h) => h.target === 'player')
             .map((h) => (
@@ -699,24 +716,36 @@ export default function CombatArena({
           <p className="text-sm text-zinc-400">Boss HP</p>
           <p className="mt-2 text-3xl font-black text-rose-300">{bossHp}</p>
           {/* Barra de recurso do boss (Mana ou Estamina) */}
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
-              <span className={bossResourceType === 'mana' ? 'text-violet-300/80' : 'text-lime-300/80'}>
-                {bossResourceType === 'mana' ? '🔮 Mana' : '⚡ Stamina'}
-              </span>
-              <span className="font-mono text-zinc-300">{bossResource}/{bossResourceMax}</span>
-            </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70">
-              <div
-                className={`h-full transition-all duration-500 ${
-                  bossResourceType === 'mana'
-                    ? 'bg-gradient-to-r from-violet-400 to-fuchsia-500'
-                    : 'bg-gradient-to-r from-lime-400 to-emerald-500'
-                }`}
-                style={{ width: `${bossResourceMax > 0 ? Math.round((bossResource / bossResourceMax) * 100) : 0}%` }}
-              />
-            </div>
-          </div>
+          {(() => {
+            const resPct = bossResourceMax > 0 ? (bossResource / bossResourceMax) * 100 : 0;
+            const isLow = resPct <= 25;
+            const isCritical = resPct <= 10;
+            const baseColor = bossResourceType === 'mana' ? 'text-violet-300/80' : 'text-lime-300/80';
+            return (
+              <div className={`mt-3 ${isLow ? 'animate-low-resource' : ''}`}>
+                <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
+                  <span className={isCritical ? 'text-rose-300 font-bold' : isLow ? 'text-amber-300' : baseColor}>
+                    {bossResourceType === 'mana' ? '🔮 Mana' : '⚡ Stamina'} {isCritical && '⚠️'}
+                  </span>
+                  <span className="font-mono text-zinc-300">{bossResource}/{bossResourceMax}</span>
+                </div>
+                <div className={`mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70 ${isCritical ? 'animate-low-resource-pulse' : ''}`}>
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      isCritical
+                        ? 'bg-gradient-to-r from-rose-500 to-rose-700'
+                        : isLow
+                          ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                          : bossResourceType === 'mana'
+                            ? 'bg-gradient-to-r from-violet-400 to-fuchsia-500'
+                            : 'bg-gradient-to-r from-lime-400 to-emerald-500'
+                    }`}
+                    style={{ width: `${resPct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
           {hitEffects
             .filter((h) => h.target === 'boss')
             .map((h) => (
