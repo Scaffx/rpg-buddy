@@ -42,7 +42,7 @@ export default function BossPage() {
   const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossHp: number; playerHp: number } | null>(null);
+  const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
   const [rankingRegion, setRankingRegion] = useState<string | null>(null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(rankingRegion);
