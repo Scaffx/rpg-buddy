@@ -42,7 +42,7 @@ export default function BossPage() {
   const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossHp: number; playerHp: number } | null>(null);
+  const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
   const [rankingRegion, setRankingRegion] = useState<string | null>(null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(rankingRegion);
@@ -53,10 +53,15 @@ export default function BossPage() {
     queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
     queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-    setActiveCombat(null);
+    // Não fechar a arena automaticamente — usuário fecha pelo botão "Sair da Arena".
   };
 
   const handleCombatDefeat = () => {
+    queryClient.invalidateQueries({ queryKey: ['profile'] });
+    // Não fechar a arena automaticamente — usuário fecha pelo botão "Sair da Arena".
+  };
+
+  const handleCombatClose = () => {
     setActiveCombat(null);
   };
 
@@ -124,8 +129,11 @@ export default function BossPage() {
         id: combat.id,
         bossName: boss.name,
         bossIcon: boss.icon,
+        bossElement: boss.element ?? null,
         bossHp: Number(combat.hp_atual_boss ?? boss.hp_max ?? boss.hp ?? 100),
         playerHp: Number(combat.hp_atual_personagem ?? playerStats.hp ?? 120),
+        playerMp: Number((playerStats as any).mp ?? 40),
+        playerMaxMp: Number((playerStats as any).mp ?? 40),
       });
       toast({ title: '⚔️ Combate iniciado', description: `Arena aberta contra ${boss.name}.` });
     } catch (err: any) {
@@ -227,8 +235,13 @@ export default function BossPage() {
                       combateId={activeCombat.id}
                       initialBossHp={activeCombat.bossHp}
                       initialPlayerHp={activeCombat.playerHp}
+                      initialPlayerMp={activeCombat.playerMp}
+                      initialPlayerMaxMp={activeCombat.playerMaxMp}
+                      bossName={activeCombat.bossName}
+                      bossElement={activeCombat.bossElement}
                       onVictory={handleCombatVictory}
                       onDefeat={handleCombatDefeat}
+                      onClose={handleCombatClose}
                     />
                   </div>
                 )}

@@ -72,9 +72,14 @@ type CombatArenaProps = {
   combateId?: string;
   initialBossHp?: number;
   initialPlayerHp?: number;
+  initialPlayerMp?: number;
+  initialPlayerMaxMp?: number;
+  bossName?: string;
+  bossElement?: string | null;
   provider?: CombatDataProvider;
   onVictory?: () => void;
   onDefeat?: () => void;
+  onClose?: () => void;
 };
 
 type CombatSkill = {
@@ -95,6 +100,29 @@ type BattleLogEntry = {
 type ProfileLoadoutRow = {
   combat_skill_loadout?: unknown;
 };
+
+type BossResource = 'mana' | 'stamina';
+
+// Determina se o boss usa Mana (criaturas mágicas) ou Estamina (criaturas físicas).
+function getBossResourceType(name?: string, element?: string | null): BossResource {
+  const text = `${name || ''} ${element || ''}`.toLowerCase();
+  const magicKeywords = [
+    'mago', 'feiticeir', 'bruxo', 'necro', 'arcan', 'fenix', 'phoenix', 'sereia',
+    'dragão', 'dragao', 'wyvern', 'lich', 'espectro', 'fantasma', 'lord daemon',
+    'lorde daemon', 'demon', 'cavaleiro do vazio', 'sphinx', 'esfinge', 'chronos',
+    'leviata', 'hidra', 'quimera', 'guerreiro imortal',
+  ];
+  const magicElements = ['sagrado', 'escuridão', 'escuridao', 'demônio', 'demonio', 'morto-vivo', 'raio', 'água', 'agua', 'gelo'];
+  if (magicKeywords.some((k) => text.includes(k))) return 'mana';
+  if (magicElements.some((k) => text.includes(k))) return 'mana';
+  return 'stamina';
+}
+
+// Custo de MP de uma habilidade do jogador, derivado do "power".
+function getSkillMpCost(power: number): number {
+  if (!power || power <= 0) return 0;
+  return Math.max(1, Math.min(8, Math.ceil(power / 30)));
+}
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -164,18 +192,31 @@ export default function CombatArena({
   combateId,
   initialBossHp = 160,
   initialPlayerHp = 120,
+  initialPlayerMp = 40,
+  initialPlayerMaxMp = 40,
+  bossName,
+  bossElement,
   provider,
   onVictory,
   onDefeat,
+  onClose,
 }: CombatArenaProps) {
   const { user } = useAuth();
   const dataProvider = useMemo(() => provider ?? mockProvider, [provider]);
+
+  const bossResourceType: BossResource = useMemo(
+    () => getBossResourceType(bossName, bossElement),
+    [bossName, bossElement],
+  );
+  const bossResourceMax = useMemo(() => Math.max(40, Math.round(initialBossHp * 0.5)), [initialBossHp]);
 
   const [turn, setTurn] = useState<Turn>('idle');
   const [isRolling, setIsRolling] = useState(false);
   const [rollValue, setRollValue] = useState<number | null>(null);
   const [bossHp, setBossHp] = useState(initialBossHp);
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
+  const [playerMp, setPlayerMp] = useState(initialPlayerMp);
+  const [bossResource, setBossResource] = useState(bossResourceMax);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
   const [hitEffects, setHitEffects] = useState<HitEffect[]>([]);
   const [arenaShake, setArenaShake] = useState(false);
@@ -187,8 +228,11 @@ export default function CombatArena({
   const [confetti, setConfetti] = useState<Confetti[]>([]);
   const [showVictory, setShowVictory] = useState(false);
   const [showDefeat, setShowDefeat] = useState(false);
+  const [insufficientResourceWarning, setInsufficientResourceWarning] = useState<string | null>(null);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
+  const playerMpRef = useRef(playerMp);
+  const bossResourceRef = useRef(bossResource);
   const currentBattleTokenRef = useRef(0);
   const mountedRef = useRef(true);
   const skillCursorRef = useRef(0);
@@ -200,6 +244,14 @@ export default function CombatArena({
   useEffect(() => {
     playerHpRef.current = playerHp;
   }, [playerHp]);
+
+  useEffect(() => {
+    playerMpRef.current = playerMp;
+  }, [playerMp]);
+
+  useEffect(() => {
+    bossResourceRef.current = bossResource;
+  }, [bossResource]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -245,6 +297,14 @@ export default function CombatArena({
 
     loadCombatSkills();
   }, [user]);
+
+  // Auto-inicia o combate quando a arena recebe um combateId (após cliques de "Enfrentar boss").
+  useEffect(() => {
+    if (combateId && turn === 'idle') {
+      startBattle();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [combateId]);
 
   const appendBattleLog = (entry: Omit<BattleLogEntry, 'id'>) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -331,6 +391,8 @@ export default function CombatArena({
     skillCursorRef.current = 0;
     setBossHp(initialBossHp);
     setPlayerHp(initialPlayerHp);
+    setPlayerMp(initialPlayerMp);
+    setBossResource(bossResourceMax);
     setRollValue(null);
     setDamagePopups([]);
     setHitEffects([]);
@@ -342,7 +404,34 @@ export default function CombatArena({
     setConfetti([]);
     setShowVictory(false);
     setShowDefeat(false);
+    setInsufficientResourceWarning(null);
     setTurn('player');
+  };
+
+  // Encontra a próxima skill que o jogador pode pagar com MP atual.
+  // Se nenhuma puder ser usada, retorna null (jogador faz Ataque Básico, sem custo).
+  const pickAffordableSkill = (currentMp: number): { skill: CombatSkill | null; warning: string | null } => {
+    if (selectedSkills.length === 0) return { skill: null, warning: null };
+
+    const start = skillCursorRef.current % selectedSkills.length;
+    let skippedHigh: CombatSkill | null = null;
+
+    for (let i = 0; i < selectedSkills.length; i += 1) {
+      const idx = (start + i) % selectedSkills.length;
+      const candidate = selectedSkills[idx];
+      const cost = getSkillMpCost(candidate.power);
+      if (cost <= currentMp) {
+        skillCursorRef.current = idx + 1;
+        return { skill: candidate, warning: null };
+      }
+      if (!skippedHigh) skippedHigh = candidate;
+    }
+
+    skillCursorRef.current += 1;
+    const warning = skippedHigh
+      ? `MP insuficiente para "${skippedHigh.name}" (custa ${getSkillMpCost(skippedHigh.power)} MP). Usando Ataque Básico.`
+      : null;
+    return { skill: null, warning };
   };
 
   useEffect(() => {
@@ -356,10 +445,10 @@ export default function CombatArena({
       }
 
       const battleToken = currentBattleTokenRef.current;
-      const chosenSkill = selectedSkills.length > 0 ? selectedSkills[skillCursorRef.current % selectedSkills.length] : null;
-      if (selectedSkills.length > 0) {
-        skillCursorRef.current += 1;
-      }
+      const { skill: chosenSkill, warning } = pickAffordableSkill(playerMpRef.current);
+      setInsufficientResourceWarning(warning);
+
+      const skillCost = chosenSkill ? getSkillMpCost(chosenSkill.power) : 0;
 
       const turnResult = await dataProvider.processTurn({
         combateId,
@@ -373,6 +462,11 @@ export default function CombatArena({
 
       if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
         return;
+      }
+
+      // Deduz MP do jogador apenas se a skill foi usada com sucesso.
+      if (skillCost > 0) {
+        setPlayerMp((prev) => Math.max(0, prev - skillCost));
       }
 
       setTurn('player');
@@ -417,6 +511,16 @@ export default function CombatArena({
         return;
       }
 
+      // Boss consome seu recurso (mana ou stamina) ao atacar.
+      // Custo aleatório 4-9, regenera 2 se ficou sem.
+      const bossCost = 4 + Math.floor(Math.random() * 6);
+      let nextBossResource = bossResourceRef.current - bossCost;
+      if (nextBossResource < 0) {
+        // Boss exausto: recupera um pouco e ataca enfraquecido (efeito visual já existe via dano normal).
+        nextBossResource = Math.min(bossResourceMax, bossResourceRef.current + 2);
+      }
+      setBossResource(Math.max(0, Math.min(bossResourceMax, nextBossResource)));
+
       setIsRolling(false);
       setRollValue(turnResult.dado_boss);
       setPlayerHp(turnResult.hp_player_restante);
@@ -439,6 +543,9 @@ export default function CombatArena({
         setTurn('finished');
         return;
       }
+
+      // Jogador regenera 1 MP por turno (não em vitória/derrota)
+      setPlayerMp((prev) => Math.min(initialPlayerMaxMp, prev + 1));
 
       setTurn('player');
     };
@@ -486,10 +593,18 @@ export default function CombatArena({
         <p className="text-xs uppercase tracking-wide text-zinc-400">Loadout (max 4)</p>
         <p className="mt-1 text-sm text-zinc-300">
           {selectedSkills.length > 0
-            ? selectedSkills.map((skill) => skill.name).join(' | ')
+            ? selectedSkills
+                .map((skill) => `${skill.name} (${getSkillMpCost(skill.power)} MP)`)
+                .join(' | ')
             : 'Nenhuma habilidade equipada na aba de Habilidades. Usando Ataque Basico.'}
         </p>
       </div>
+
+      {insufficientResourceWarning && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          ⚠️ {insufficientResourceWarning}
+        </div>
+      )}
 
       <div className={`grid gap-6 md:grid-cols-3 md:items-center ${arenaShake ? 'animate-combat-shake' : ''}`}>
         <div
@@ -499,6 +614,19 @@ export default function CombatArena({
         >
           <p className="text-sm text-zinc-400">Player HP</p>
           <p className="mt-2 text-3xl font-black text-emerald-300">{playerHp}</p>
+          {/* Barra de MP do jogador */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-cyan-300/80">
+              <span>MP</span>
+              <span className="font-mono">{playerMp}/{initialPlayerMaxMp}</span>
+            </div>
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70">
+              <div
+                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500"
+                style={{ width: `${initialPlayerMaxMp > 0 ? Math.round((playerMp / initialPlayerMaxMp) * 100) : 0}%` }}
+              />
+            </div>
+          </div>
           {hitEffects
             .filter((h) => h.target === 'player')
             .map((h) => (
@@ -570,6 +698,25 @@ export default function CombatArena({
         >
           <p className="text-sm text-zinc-400">Boss HP</p>
           <p className="mt-2 text-3xl font-black text-rose-300">{bossHp}</p>
+          {/* Barra de recurso do boss (Mana ou Estamina) */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
+              <span className={bossResourceType === 'mana' ? 'text-violet-300/80' : 'text-lime-300/80'}>
+                {bossResourceType === 'mana' ? '🔮 Mana' : '⚡ Stamina'}
+              </span>
+              <span className="font-mono text-zinc-300">{bossResource}/{bossResourceMax}</span>
+            </div>
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  bossResourceType === 'mana'
+                    ? 'bg-gradient-to-r from-violet-400 to-fuchsia-500'
+                    : 'bg-gradient-to-r from-lime-400 to-emerald-500'
+                }`}
+                style={{ width: `${bossResourceMax > 0 ? Math.round((bossResource / bossResourceMax) * 100) : 0}%` }}
+              />
+            </div>
+          </div>
           {hitEffects
             .filter((h) => h.target === 'boss')
             .map((h) => (
@@ -706,18 +853,30 @@ export default function CombatArena({
             <p className="text-[10px] text-muted-foreground">Vá ao seu Inventário para equipar!</p>
           </motion.div>
         )}
-        <button
-          type="button"
-          onClick={startBattle}
-          disabled={isRolling}
-          className="rounded-lg bg-amber-400 px-5 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {turn === 'idle' ? 'Start Combat' : 'Restart Combat'}
-        </button>
+        {turn === 'finished' ? (
+          <button
+            type="button"
+            onClick={() => onClose?.()}
+            className="rounded-lg bg-amber-400 px-5 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300"
+          >
+            Sair da Arena
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={startBattle}
+            disabled={isRolling || turn === 'player' || turn === 'boss'}
+            className="rounded-lg bg-amber-400 px-5 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {turn === 'idle' ? 'Iniciar Combate' : 'Combate em andamento...'}
+          </button>
+        )}
 
-        <p className="text-xs text-zinc-400">
-          Com combate_id preenchido, os valores vem da Edge Function processar_turno no Supabase.
-        </p>
+        {turn === 'finished' && (
+          <p className="text-xs text-zinc-400 text-center">
+            ⚔️ Combate finalizado. Este boss foi {bossHp <= 0 ? 'derrotado' : 'vitorioso'} — não é possível recombater agora.
+          </p>
+        )}
       </footer>
 
       <div className="mt-6 rounded-xl border border-zinc-700/60 bg-zinc-950/50 p-4">

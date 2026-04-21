@@ -1,207 +1,101 @@
-import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { useShortRestStatus } from '@/hooks/useShortRestStatus';
 
-type SpriteMode = 'active' | 'rest';
-
-type SpriteDefinition = {
-  src: string;
-  alt: string;
-  columns: number;
-  rows: number;
-  frameOrder: number[];
-  frameDurationMs: number;
-  label: string;
-  fallbackLabel: string;
-  renderScale: number;
-  detectNonEmptyFrames?: boolean;
-  maxDetectedFrames?: number;
-};
-
-const SPRITES: Record<SpriteMode, SpriteDefinition> = {
-  active: {
-    src: '/sprites/Movement.png',
-    alt: 'Heroi em movimento',
-    columns: 16,
-    rows: 16,
-    frameOrder: [0],
-    frameDurationMs: 70,
-    label: 'Explorando',
-    fallbackLabel: 'Sprite de movimento indisponivel',
-    renderScale: 3,
-    detectNonEmptyFrames: true,
-    maxDetectedFrames: 32,
-  },
-  rest: {
-    src: '/sprites/Rest_fire.png',
-    alt: 'Heroi descansando na fogueira',
-    columns: 4,
-    rows: 4,
-    frameOrder: [8, 9, 10, 11, 12, 13, 14, 15],
-    frameDurationMs: 180,
-    label: 'Descansando',
-    fallbackLabel: 'Sprite de descanso indisponivel',
-    renderScale: 0.8,
-  },
-};
-
-function detectNonEmptyFrames(
-  image: HTMLImageElement,
-  columns: number,
-  rows: number,
-): number[] {
-  const frameWidth = Math.floor(image.naturalWidth / columns);
-  const frameHeight = Math.floor(image.naturalHeight / rows);
-
-  if (frameWidth <= 0 || frameHeight <= 0) return [];
-
-  const canvas = document.createElement('canvas');
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight;
-
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) return [];
-
-  context.drawImage(image, 0, 0);
-
-  const filledFrames: number[] = [];
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < columns; col += 1) {
-      const x = col * frameWidth;
-      const y = row * frameHeight;
-
-      const data = context.getImageData(x, y, frameWidth, frameHeight).data;
-      let hasVisiblePixel = false;
-
-      for (let index = 3; index < data.length; index += 4) {
-        if (data[index] > 8) {
-          hasVisiblePixel = true;
-          break;
-        }
-      }
-
-      if (hasVisiblePixel) {
-        filledFrames.push(row * columns + col);
-      }
-    }
-  }
-
-  return filledFrames;
-}
-
-function SpriteSheet({ mode }: { mode: SpriteMode }) {
-  const sprite = SPRITES[mode];
-  const [frame, setFrame] = useState(0);
-  const [hasError, setHasError] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [frameOrder, setFrameOrder] = useState<number[]>(sprite.frameOrder);
-  const [sheetWidth, setSheetWidth] = useState(0);
-  const [sheetHeight, setSheetHeight] = useState(0);
-
-  useEffect(() => {
-    setFrame(0);
-    setHasError(false);
-    setIsLoaded(false);
-    setFrameOrder(sprite.frameOrder);
-    setSheetWidth(0);
-    setSheetHeight(0);
-  }, [mode]);
-
-  useEffect(() => {
-    const image = new window.Image();
-
-    image.onload = () => {
-      setSheetWidth(image.naturalWidth);
-      setSheetHeight(image.naturalHeight);
-
-      if (sprite.detectNonEmptyFrames) {
-        const detectedFrames = detectNonEmptyFrames(image, sprite.columns, sprite.rows);
-        const selectedFrames = sprite.maxDetectedFrames
-          ? detectedFrames.slice(0, sprite.maxDetectedFrames)
-          : detectedFrames;
-
-        if (selectedFrames.length > 0) {
-          setFrameOrder(selectedFrames);
-        }
-      }
-
-      setHasError(false);
-      setIsLoaded(true);
-    };
-
-    image.onerror = () => {
-      setHasError(true);
-      setIsLoaded(false);
-    };
-
-    image.src = sprite.src;
-  }, [sprite.src]);
-
-  useEffect(() => {
-    if (hasError || !isLoaded) return;
-
-    const intervalId = window.setInterval(() => {
-      setFrame((currentFrame) => (currentFrame + 1) % frameOrder.length);
-    }, sprite.frameDurationMs);
-
-    return () => window.clearInterval(intervalId);
-  }, [frameOrder.length, hasError, isLoaded, sprite.frameDurationMs]);
-
-  const currentFrameIndex = frameOrder[frame] ?? frameOrder[0] ?? 0;
-  const currentColumn = currentFrameIndex % sprite.columns;
-  const currentRow = Math.floor(currentFrameIndex / sprite.columns);
-
-  const spriteStyle = useMemo<CSSProperties>(() => {
-    const frameWidth = sheetWidth > 0 ? Math.floor(sheetWidth / sprite.columns) : 0;
-    const frameHeight = sheetHeight > 0 ? Math.floor(sheetHeight / sprite.rows) : 0;
-
-    const width = Math.max(1, Math.round(frameWidth * sprite.renderScale));
-    const height = Math.max(1, Math.round(frameHeight * sprite.renderScale));
-
-    return {
-      width: `${width}px`,
-      height: `${height}px`,
-      backgroundImage: `url(${sprite.src})`,
-      backgroundPosition: `${-currentColumn * width / sprite.renderScale}px ${-currentRow * height / sprite.renderScale}px`,
-      backgroundRepeat: 'no-repeat',
-      backgroundSize: `${sheetWidth * sprite.renderScale}px ${sheetHeight * sprite.renderScale}px`,
-      imageRendering: 'pixelated',
-    };
-  }, [currentColumn, currentRow, sheetHeight, sheetWidth, sprite.columns, sprite.renderScale, sprite.rows, sprite.src]);
-
-  if (hasError) {
-    return (
-      <div className="flex h-[92px] w-[92px] items-center justify-center rounded-2xl border border-dashed border-primary/30 bg-background/60 px-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:h-[108px] md:w-[108px]">
-        {sprite.fallbackLabel}
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return <div className="h-[96px] w-[96px] animate-pulse rounded-xl bg-primary/10 md:h-[108px] md:w-[108px]" />;
-  }
-
+/**
+ * Personagem 2D em pixel-art puramente CSS.
+ * - Caminha em loop quando ativo (pernas alternam, braços balançam, leve bob no corpo).
+ * - Senta perto da fogueira quando descansando.
+ * Sem dependências de imagens externas.
+ */
+function PixelHero({ resting }: { resting: boolean }) {
+  // Paleta retro: capacete dourado, túnica azul/roxa, espada prateada
   return (
     <div
-      role="img"
-      aria-label={sprite.alt}
-      className="select-none"
-      style={spriteStyle}
-    />
+      className={`relative h-16 w-16 ${resting ? '' : 'animate-hero-bob'}`}
+      style={{ imageRendering: 'pixelated' }}
+      aria-hidden="true"
+    >
+      {/* Cabelo / capacete */}
+      <div className="absolute left-1/2 top-1 h-3 w-6 -translate-x-1/2 rounded-sm bg-amber-400 shadow-[0_0_4px_hsl(43_96%_60%/0.7)]" />
+      {/* Penacho */}
+      <div className="absolute left-1/2 top-0 h-1 w-2 -translate-x-1/2 bg-rose-500" />
+      {/* Rosto */}
+      <div className="absolute left-1/2 top-[16px] h-2 w-5 -translate-x-1/2 bg-[hsl(30_60%_72%)]" />
+      {/* Olhos */}
+      <div className="absolute left-[22px] top-[17px] h-[2px] w-[2px] bg-zinc-900" />
+      <div className="absolute left-[28px] top-[17px] h-[2px] w-[2px] bg-zinc-900" />
+
+      {/* Tronco / túnica */}
+      <div className="absolute left-1/2 top-[22px] h-4 w-7 -translate-x-1/2 rounded-sm bg-indigo-500 border-y border-indigo-300/60" />
+      {/* Cinto */}
+      <div className="absolute left-1/2 top-[26px] h-[2px] w-7 -translate-x-1/2 bg-amber-700" />
+
+      {/* Braços */}
+      <div
+        className={`absolute left-[10px] top-[23px] h-3 w-[4px] origin-top rounded-sm bg-indigo-400 ${resting ? '' : 'animate-hero-arm-l'}`}
+      />
+      <div
+        className={`absolute right-[10px] top-[23px] h-3 w-[4px] origin-top rounded-sm bg-indigo-400 ${resting ? '' : 'animate-hero-arm-r'}`}
+      />
+
+      {/* Espada na mão direita */}
+      {!resting && (
+        <>
+          <div className="absolute right-[6px] top-[21px] h-[2px] w-[6px] bg-amber-600" />
+          <div className="absolute right-[2px] top-[12px] h-[10px] w-[3px] bg-zinc-200 shadow-[0_0_4px_hsl(0_0%_100%/0.6)]" />
+        </>
+      )}
+
+      {/* Pernas (caminhando) */}
+      {!resting ? (
+        <>
+          <div className="absolute left-[24px] top-[40px] h-3 w-[4px] origin-top rounded-sm bg-zinc-800 animate-hero-leg-l" />
+          <div className="absolute left-[36px] top-[40px] h-3 w-[4px] origin-top rounded-sm bg-zinc-800 animate-hero-leg-r" />
+          {/* Botas */}
+          <div className="absolute left-[22px] top-[51px] h-[3px] w-[6px] rounded-sm bg-amber-700 animate-hero-leg-l" />
+          <div className="absolute left-[34px] top-[51px] h-[3px] w-[6px] rounded-sm bg-amber-700 animate-hero-leg-r" />
+        </>
+      ) : (
+        <>
+          {/* Pernas cruzadas (sentado) */}
+          <div className="absolute left-[20px] top-[42px] h-[3px] w-4 rounded-sm bg-zinc-800" />
+          <div className="absolute right-[20px] top-[44px] h-[3px] w-4 rounded-sm bg-zinc-800" />
+        </>
+      )}
+
+      {/* Sombra no chão */}
+      <div className="absolute left-1/2 top-[58px] h-1 w-10 -translate-x-1/2 rounded-full bg-black/40 blur-[2px]" />
+    </div>
+  );
+}
+
+function Campfire() {
+  return (
+    <div className="relative h-12 w-10 self-end" aria-hidden="true">
+      {/* Lenha */}
+      <div className="absolute bottom-0 left-1/2 h-[3px] w-8 -translate-x-1/2 rotate-12 bg-amber-800" />
+      <div className="absolute bottom-0 left-1/2 h-[3px] w-8 -translate-x-1/2 -rotate-12 bg-amber-900" />
+      {/* Chamas */}
+      <div className="absolute bottom-2 left-1/2 h-6 w-4 -translate-x-1/2 animate-hero-fire">
+        <div className="absolute inset-0 rounded-t-full bg-orange-500 shadow-[0_0_12px_hsl(20_95%_55%/0.85)]" />
+        <div className="absolute inset-x-1 bottom-0 top-1 rounded-t-full bg-amber-300" />
+        <div className="absolute inset-x-[6px] bottom-0 top-2 rounded-t-full bg-yellow-100" />
+      </div>
+    </div>
   );
 }
 
 export function CharacterSprite() {
   const { isResting } = useShortRestStatus();
-  const mode: SpriteMode = isResting ? 'rest' : 'active';
-  const sprite = SPRITES[mode];
 
   return (
-    <div className="flex h-full min-w-[148px] items-center justify-center self-center -translate-y-2 md:min-w-[180px] md:-translate-y-3">
-      <div className="pointer-events-none flex flex-col items-center justify-center leading-none">
-        <SpriteSheet mode={mode} />
-        <span className="mt-[-8px] text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80 md:mt-[-12px]">
-          {sprite.label}
+    <div className="pointer-events-none flex h-full items-center justify-center gap-2">
+      <div className="flex flex-col items-center justify-center leading-none">
+        <div className="flex items-end gap-1">
+          {isResting && <Campfire />}
+          <PixelHero resting={isResting} />
+        </div>
+        <span className="-mt-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-primary/80">
+          {isResting ? 'Descansando' : 'Explorando'}
         </span>
       </div>
     </div>
