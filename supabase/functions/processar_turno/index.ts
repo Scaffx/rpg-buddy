@@ -12,6 +12,14 @@ type ProcessarTurnoBody = {
   skill_id?: string;
   skill_name?: string;
   skill_power?: number;
+  current_mp?: number;
+};
+
+// Custo de MP de uma habilidade do jogador, derivado do "power".
+// Mantido em sincronia com src/components/CombatArena.tsx -> getSkillMpCost.
+const getSkillMpCost = (power: number): number => {
+  if (!power || power <= 0) return 0;
+  return Math.max(1, Math.min(8, Math.ceil(power / 30)));
 };
 
 type CombatRow = {
@@ -212,6 +220,27 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Server-side validation: bloquear habilidades pagas com custo de MP maior que o MP atual.
+    // O cliente envia current_mp; se ausente, assumimos custo 0 (Ataque Básico).
+    const requestedSkillPower = Math.max(0, toNumber(body.skill_power, 0));
+    const requestedSkillCost = getSkillMpCost(requestedSkillPower);
+    const currentMp = Math.max(0, toNumber(body.current_mp, 0));
+
+    if (requestedSkillCost > 0 && requestedSkillCost > currentMp) {
+      return new Response(
+        JSON.stringify({
+          error: 'insufficient_mp',
+          message: `MP insuficiente para "${body.skill_name || 'habilidade'}": custa ${requestedSkillCost} MP, jogador tem ${currentMp}.`,
+          required_mp: requestedSkillCost,
+          current_mp: currentMp,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     const { data: combat, error: combatError } = await supabase
