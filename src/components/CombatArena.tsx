@@ -585,10 +585,18 @@ export default function CombatArena({
         <p className="text-xs uppercase tracking-wide text-zinc-400">Loadout (max 4)</p>
         <p className="mt-1 text-sm text-zinc-300">
           {selectedSkills.length > 0
-            ? selectedSkills.map((skill) => skill.name).join(' | ')
+            ? selectedSkills
+                .map((skill) => `${skill.name} (${getSkillMpCost(skill.power)} MP)`)
+                .join(' | ')
             : 'Nenhuma habilidade equipada na aba de Habilidades. Usando Ataque Basico.'}
         </p>
       </div>
+
+      {insufficientResourceWarning && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          ⚠️ {insufficientResourceWarning}
+        </div>
+      )}
 
       <div className={`grid gap-6 md:grid-cols-3 md:items-center ${arenaShake ? 'animate-combat-shake' : ''}`}>
         <div
