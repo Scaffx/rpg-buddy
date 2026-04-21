@@ -192,18 +192,31 @@ export default function CombatArena({
   combateId,
   initialBossHp = 160,
   initialPlayerHp = 120,
+  initialPlayerMp = 40,
+  initialPlayerMaxMp = 40,
+  bossName,
+  bossElement,
   provider,
   onVictory,
   onDefeat,
+  onClose,
 }: CombatArenaProps) {
   const { user } = useAuth();
   const dataProvider = useMemo(() => provider ?? mockProvider, [provider]);
+
+  const bossResourceType: BossResource = useMemo(
+    () => getBossResourceType(bossName, bossElement),
+    [bossName, bossElement],
+  );
+  const bossResourceMax = useMemo(() => Math.max(40, Math.round(initialBossHp * 0.5)), [initialBossHp]);
 
   const [turn, setTurn] = useState<Turn>('idle');
   const [isRolling, setIsRolling] = useState(false);
   const [rollValue, setRollValue] = useState<number | null>(null);
   const [bossHp, setBossHp] = useState(initialBossHp);
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
+  const [playerMp, setPlayerMp] = useState(initialPlayerMp);
+  const [bossResource, setBossResource] = useState(bossResourceMax);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
   const [hitEffects, setHitEffects] = useState<HitEffect[]>([]);
   const [arenaShake, setArenaShake] = useState(false);
@@ -215,8 +228,11 @@ export default function CombatArena({
   const [confetti, setConfetti] = useState<Confetti[]>([]);
   const [showVictory, setShowVictory] = useState(false);
   const [showDefeat, setShowDefeat] = useState(false);
+  const [insufficientResourceWarning, setInsufficientResourceWarning] = useState<string | null>(null);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
+  const playerMpRef = useRef(playerMp);
+  const bossResourceRef = useRef(bossResource);
   const currentBattleTokenRef = useRef(0);
   const mountedRef = useRef(true);
   const skillCursorRef = useRef(0);
