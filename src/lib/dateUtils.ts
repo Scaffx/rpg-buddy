@@ -1,0 +1,55 @@
+// ============================================================
+// Helpers de data — evita 'en-CA' espalhado pelo código.
+// ============================================================
+
+/**
+ * Retorna a data de hoje no formato YYYY-MM-DD (fuso local).
+ * Equivalente a `new Date().toLocaleDateString('en-CA')`.
+ */
+export function today(): string {
+  return new Date().toLocaleDateString('en-CA');
+}
+
+/**
+ * Formata uma data no padrão YYYY-MM-DD.
+ */
+export function toDateString(date: Date): string {
+  return date.toLocaleDateString('en-CA');
+}
+
+/**
+ * Retorna o nome do dia da semana abreviado em pt-BR.
+ * Índice: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
+ */
+const DAYS_PT: readonly string[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+export function dayNamePt(date: Date = new Date()): string {
+  return DAYS_PT[date.getDay()];
+}
+
+/**
+ * Converte uma string YYYY-MM-DD em objeto Date (meia-noite local).
+ * Evita off-by-one do `new Date('2026-04-21')` que usa UTC.
+ */
+export function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/**
+ * Retorna true se a string representar o dia de hoje.
+ */
+export function isToday(dateStr: string): boolean {
+  return dateStr === today();
+}
+
+/**
+ * Retorna o token da semana atual (data da segunda-feira) em YYYY-MM-DD.
+ * Útil para streak protector, refresh semanal de NPCs etc.
+ */
+export function currentWeekToken(date: Date = new Date()): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
+}

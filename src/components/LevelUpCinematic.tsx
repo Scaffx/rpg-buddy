@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { sfx } from '@/lib/sfx';
@@ -14,29 +14,34 @@ export default function LevelUpCinematic() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const [event, setEvent] = useState<LevelUpData | null>(null);
-  const initializedRef = useRef(false);
 
   useEffect(() => {
     if (!user?.id || !profile) return;
+
     const level = Number((profile as any).level ?? 1);
+    // Dado inválido ou corrompido – ignora
+    if (!Number.isFinite(level) || level < 1) return;
+
     const storageKey = `${STORAGE_PREFIX}${user.id}`;
     const stored = window.localStorage.getItem(storageKey);
-    const parsedStored = stored ? Number(stored) : NaN;
+    const parsedStored = stored !== null ? Number(stored) : NaN;
 
-    if (!initializedRef.current) {
-      // First read: just record current level so we don't replay on refresh
+    if (!Number.isFinite(parsedStored)) {
+      // Primeira vez neste dispositivo/usuário – apenas inicializa sem animar
       window.localStorage.setItem(storageKey, String(level));
-      initializedRef.current = true;
       return;
     }
 
-    if (Number.isFinite(parsedStored) && level > parsedStored) {
+    if (level > parsedStored) {
+      // Nível realmente subiu: anima e persiste o novo valor
       setEvent({ from: parsedStored, to: level });
       sfx.levelUp();
       window.localStorage.setItem(storageKey, String(level));
-    } else if (level !== parsedStored) {
-      window.localStorage.setItem(storageKey, String(level));
     }
+    // Não sincronizamos para baixo intencionalmente:
+    // dados em cache stale podem reportar um nível anterior ao real,
+    // o que sobrescreveria o valor correto e dispararia a animação
+    // falsamente na próxima atualização fresh.
   }, [user?.id, profile]);
 
   useEffect(() => {

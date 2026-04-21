@@ -446,15 +446,16 @@
   }
   .animate-hero-fire { animation: hero-fire 0.45s ease-in-out infinite; }
 
-  /* Caminhada horizontal do herói no header (vai e volta) */
+  /* Caminhada horizontal do herói no header (vai e volta).
+     Amplitude de ±32px garante que o sprite nunca saia do container (w-24/sm:w-32) com overflow-hidden. */
   @keyframes hero-walk-track {
-    0%   { transform: translateX(-46px); }
-    49%  { transform: translateX(46px); }
-    50%  { transform: translateX(46px); }
-    99%  { transform: translateX(-46px); }
-    100% { transform: translateX(-46px); }
+    0%   { transform: translateX(-32px); }
+    49%  { transform: translateX(32px); }
+    50%  { transform: translateX(32px); }
+    99%  { transform: translateX(-32px); }
+    100% { transform: translateX(-32px); }
   }
-  .animate-hero-walk-track { animation: hero-walk-track 5s ease-in-out infinite; }
+  .animate-hero-walk-track { animation: hero-walk-track 4.5s ease-in-out infinite; }
 
   /* Vira o sprite ao trocar de direção (sincronizado com a caminhada) */
   @keyframes hero-face-flip {

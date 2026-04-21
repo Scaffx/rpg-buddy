@@ -89,8 +89,8 @@ export function CharacterSprite() {
   return (
     <div className="pointer-events-none flex h-full w-full items-center justify-center">
       <div className="flex flex-col items-center justify-center leading-none">
-        {/* Pista de caminhada: o pai oscila L<->R, o filho vira de lado. */}
-        <div className="relative h-10 w-32 overflow-visible">
+        {/* Pista de caminhada: overflow-hidden garante que o sprite nunca escape do layout. */}
+        <div className="relative h-10 w-24 sm:w-32 overflow-hidden">
           {isResting ? (
             <div className="flex h-full items-end justify-center gap-1">
               <Campfire />

@@ -4,6 +4,7 @@ import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
+import { useToast } from '@/hooks/use-toast';
 
 type Turn = 'idle' | 'player' | 'boss' | 'finished';
 
@@ -21,6 +22,9 @@ type TurnSummary = {
   efeitos_player?: string[];
   efeitos_boss?: string[];
   log_id?: string | null;
+  /** Preenchido pelo servidor quando a habilidade foi bloqueada por MP insuficiente. */
+  skill_blocked?: boolean;
+  skill_blocked_reason?: string;
 };
 
 type CombatDataProvider = {
@@ -204,6 +208,7 @@ export default function CombatArena({
   onClose,
 }: CombatArenaProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const dataProvider = useMemo(() => provider ?? mockProvider, [provider]);
 
   const bossResourceType: BossResource = useMemo(
@@ -454,16 +459,46 @@ export default function CombatArena({
 
       const skillCost = chosenSkill ? getSkillMpCost(chosenSkill.power) : 0;
 
-      const turnResult = await dataProvider.processTurn({
-        combateId,
-        currentBossHp: bossHpRef.current,
-        currentPlayerHp: playerHpRef.current,
-        currentPlayerMp: playerMpRef.current,
-        acaoEscolhida: 'atacar',
-        skillId: chosenSkill?.id,
-        skillName: chosenSkill?.name,
-        skillPower: chosenSkill?.power,
+      // Toast de início de turno: mostra MP atual e aviso se alguma skill foi bloqueada.
+      toast({
+        title: '⚔️ Seu Turno',
+        description: warning
+          ? `MP: ${playerMpRef.current}/${initialPlayerMaxMp} — ${warning}`
+          : `MP: ${playerMpRef.current}/${initialPlayerMaxMp}${chosenSkill ? ` • Usando ${chosenSkill.name}` : ' • Ataque Básico'}`,
+        duration: 2800,
       });
+
+      let turnResult: TurnSummary;
+      try {
+        turnResult = await dataProvider.processTurn({
+          combateId,
+          currentBossHp: bossHpRef.current,
+          currentPlayerHp: playerHpRef.current,
+          currentPlayerMp: playerMpRef.current,
+          acaoEscolhida: 'atacar',
+          skillId: chosenSkill?.id,
+          skillName: chosenSkill?.name,
+          skillPower: chosenSkill?.power,
+        });
+      } catch (err: unknown) {
+        if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
+        const msg = err instanceof Error ? err.message : String(err);
+        const isMpError = /mp|mana|stamina|recurso|insuffi/i.test(msg);
+        toast({
+          title: isMpError ? '⚠️ Habilidade bloqueada pelo servidor' : '❌ Erro ao processar turno',
+          description: isMpError
+            ? `Servidor rejeitou a habilidade por recursos insuficientes. O turno foi cancelado.`
+            : `Falha: ${msg}`,
+          variant: 'destructive',
+          duration: 4500,
+        });
+        setInsufficientResourceWarning(
+          isMpError ? 'Servidor bloqueou a habilidade por MP insuficiente.' : `Erro: ${msg}`,
+        );
+        setTurn('finished');
+        setIsRolling(false);
+        return;
+      }
 
       if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
         return;
@@ -473,6 +508,8 @@ export default function CombatArena({
       if (skillCost > 0) {
         setPlayerMp((prev) => Math.max(0, prev - skillCost));
       }
+
+      const mpAfterTurn = Math.max(0, playerMpRef.current - skillCost);
 
       setTurn('player');
       setIsRolling(true);
@@ -490,6 +527,17 @@ export default function CombatArena({
         damage: turnResult.dano_player,
         roll: turnResult.dado_player,
         effects: turnResult.efeitos_player || [],
+      });
+
+      // Toast de fim do turno: mostra MP restante e se o servidor bloqueou alguma habilidade.
+      const serverBlocked = turnResult.skill_blocked;
+      toast({
+        title: serverBlocked ? '⚠️ Habilidade bloqueada (servidor)' : `✅ Dano: ${turnResult.dano_player}`,
+        description: serverBlocked
+          ? `${turnResult.skill_blocked_reason || 'MP insuficiente'} — MP restante: ${mpAfterTurn}/${initialPlayerMaxMp}`
+          : `D20: ${turnResult.dado_player} • MP restante: ${mpAfterTurn}/${initialPlayerMaxMp}`,
+        duration: 2800,
+        ...(serverBlocked ? { variant: 'destructive' as const } : {}),
       });
 
       await wait(950);
@@ -596,13 +644,39 @@ export default function CombatArena({
 
       <div className="mb-4 rounded-xl border border-zinc-700/60 bg-zinc-800/60 p-3">
         <p className="text-xs uppercase tracking-wide text-zinc-400">Loadout (max 4)</p>
-        <p className="mt-1 text-sm text-zinc-300">
-          {selectedSkills.length > 0
-            ? selectedSkills
-                .map((skill) => `${skill.name} (${getSkillMpCost(skill.power)} MP)`)
-                .join(' | ')
-            : 'Nenhuma habilidade equipada na aba de Habilidades. Usando Ataque Basico.'}
-        </p>
+        {selectedSkills.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {selectedSkills.map((skill) => {
+              const cost = getSkillMpCost(skill.power);
+              const canAfford = playerMp >= cost || turn === 'idle';
+              return (
+                <span
+                  key={skill.id}
+                  title={
+                    canAfford
+                      ? `Custo: ${cost} MP`
+                      : `MP insuficiente — necessário ${cost}, disponível ${playerMp}`
+                  }
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-all select-none ${
+                    canAfford
+                      ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200'
+                      : 'border-zinc-600/40 bg-zinc-700/20 text-zinc-500 opacity-50 cursor-not-allowed line-through'
+                  }`}
+                >
+                  {!canAfford && <span className="text-[10px] not-italic no-underline line-through-none">⚠️</span>}
+                  {skill.name}
+                  <span className={`text-[10px] font-mono ${canAfford ? 'text-cyan-400/80' : 'text-zinc-500'}`}>
+                    {cost} MP
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="mt-1 text-sm text-zinc-300">
+            Nenhuma habilidade equipada na aba de Habilidades. Usando Ataque Basico.
+          </p>
+        )}
       </div>
 
       {insufficientResourceWarning && (

@@ -3,6 +3,15 @@ import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName } from "@/hooks/useProfile";
+import {
+  useFriends,
+  usePendingRequests,
+  useSearchProfile,
+  useSendFriendRequest,
+  useRespondFriendRequest,
+  useRemoveFriend,
+} from "@/hooks/useFriends";
+import { useUserAchievements, useAllAchievements } from "@/hooks/useAchievements";
 import { useGoldBalance } from "@/hooks/useGold";
 import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +26,7 @@ import {
   Swords, Sparkles, BookOpen, Users, Star, Palette,
   ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull, Coins,
   Calendar, Upload, Trash2, ChevronLeft, ChevronRight, Pencil, Check, X as XIcon,
-  Moon, Sun,
+  Moon, Sun, UserPlus, UserCheck, UserX, Search, Trophy, Lock,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
@@ -602,8 +611,19 @@ export default function ProfilePage() {
   const updateDisplayName = useUpdateDisplayName();
   const queryClient = useQueryClient();
 
+  // Amigos e conquistas
+  const { data: friends = [] } = useFriends();
+  const { data: pendingRequests = [] } = usePendingRequests();
+  const { data: userAchievements = [] } = useUserAchievements();
+  const { data: allAchievements = [] } = useAllAchievements();
+  const sendFriendRequest = useSendFriendRequest();
+  const respondFriendRequest = useRespondFriendRequest();
+  const removeFriend = useRemoveFriend();
+  const [friendSearch, setFriendSearch] = useState("");
+  const { data: searchResults = [], isFetching: isSearching } = useSearchProfile(friendSearch);
+
   const [showSettings, setShowSettings] = useState(false);
-  const [activeTab, setActiveTab] = useState<"perfil" | "habilidades" | "inventario">("perfil");
+  const [activeTab, setActiveTab] = useState<"perfil" | "habilidades" | "inventario" | "amigos" | "conquistas">("perfil");
   const [weight, setWeight] = useState(70);
   const [mealsTarget, setMealsTarget] = useState(3);
   const [volume, setVolume] = useState(100);
@@ -1017,20 +1037,27 @@ export default function ProfilePage() {
         {/* Tabs */}
         <div className="flex gap-1 sm:gap-2 border-b border-border overflow-x-auto">
           {[
-            { id: "perfil", label: "📊 Perfil", icon: "👤" },
-            { id: "habilidades", label: "🌟 Habilidades", icon: "⭐" },
-            { id: "inventario", label: "🎒 Inventário", icon: "📦" },
+            { id: "perfil",      label: "📊 Perfil" },
+            { id: "habilidades", label: "🌟 Habilidades" },
+            { id: "inventario",  label: "🎒 Inventário" },
+            { id: "amigos",      label: "🤝 Amigos", badge: pendingRequests.length > 0 ? pendingRequests.length : undefined },
+            { id: "conquistas",  label: "🏆 Conquistas", badge: userAchievements.length > 0 ? userAchievements.length : undefined },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3 sm:px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+              className={`relative px-3 sm:px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab.label}
+              {tab.badge ? (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white">
+                  {tab.badge}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
@@ -1733,6 +1760,234 @@ export default function ProfilePage() {
               <div className="bg-muted/30 border border-border/50 rounded-lg p-3 text-xs text-muted-foreground">
                 💡 Dica: Derrote bosses para ganhar equipamentos raros! O item marcado como "MELHOR" tem status superiores na categoria.
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======== ABA: AMIGOS ======== */}
+        {activeTab === "amigos" && (
+          <div className="space-y-5">
+            {/* Buscar amigo */}
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <UserPlus className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Adicionar Amigo</h3>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={friendSearch}
+                  onChange={(e) => setFriendSearch(e.target.value)}
+                  placeholder="Buscar por nome de herói..."
+                  className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-primary/50 outline-none"
+                />
+                {isSearching && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+              {searchResults.length > 0 && (
+                <div className="space-y-2">
+                  {searchResults.map((profile) => {
+                    const alreadyFriend = friends.some(
+                      (f) => f.other_profile?.user_id === profile.user_id,
+                    );
+                    return (
+                      <div
+                        key={profile.user_id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{profile.display_name || 'Aventureiro'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Nível {profile.level} • {profile.starter_class || 'Novato'}
+                          </p>
+                        </div>
+                        {alreadyFriend ? (
+                          <span className="text-xs text-emerald-400 flex items-center gap-1"><UserCheck className="w-3.5 h-3.5" />Amigo</span>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              sendFriendRequest.mutate(profile.user_id, {
+                                onSuccess: () => { toast.success(`Solicitação enviada para ${profile.display_name}!`); setFriendSearch(""); },
+                                onError: (err: any) => toast.error(err.message || 'Erro ao enviar solicitação'),
+                              })
+                            }
+                            disabled={sendFriendRequest.isPending}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-medium hover:bg-primary/30 transition-colors disabled:opacity-50"
+                          >
+                            <UserPlus className="w-3 h-3" /> Adicionar
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {friendSearch.length >= 2 && !isSearching && searchResults.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-2">Nenhum herói encontrado com este nome.</p>
+              )}
+            </div>
+
+            {/* Solicitações pendentes */}
+            {pendingRequests.length > 0 && (
+              <div className="bg-card border border-amber-500/30 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-400 text-sm font-bold">⏳ Solicitações Recebidas ({pendingRequests.length})</span>
+                </div>
+                <div className="space-y-2">
+                  {pendingRequests.map((req) => (
+                    <div key={req.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{req.other_profile?.display_name || 'Aventureiro'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Nível {req.other_profile?.level || '?'} • {req.other_profile?.starter_class || 'Novato'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() =>
+                            respondFriendRequest.mutate({ requestId: req.id, accept: true }, {
+                              onSuccess: () => toast.success('Amizade aceita! 🤝'),
+                              onError: (err: any) => toast.error(err.message),
+                            })
+                          }
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"
+                        >
+                          <UserCheck className="w-3 h-3" /> Aceitar
+                        </button>
+                        <button
+                          onClick={() =>
+                            respondFriendRequest.mutate({ requestId: req.id, accept: false }, {
+                              onSuccess: () => toast.info('Solicitação rejeitada.'),
+                              onError: (err: any) => toast.error(err.message),
+                            })
+                          }
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium hover:bg-rose-500/30 transition-colors"
+                        >
+                          <UserX className="w-3 h-3" /> Rejeitar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Lista de amigos */}
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">Meus Amigos</h3>
+                </div>
+                <span className="text-xs text-muted-foreground">{friends.length}/50</span>
+              </div>
+
+              {friends.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Você ainda não tem amigos.</p>
+                  <p className="text-xs mt-1">Busque por nome acima para adicionar!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {friends.map((friend) => {
+                    const p = friend.other_profile;
+                    const classEmoji: Record<string, string> = {
+                      guerreiro: '⚔️', mago: '📖', gatuno: '🌙',
+                      ferreiro: '🔨', clerico: '✝️', arqueiro: '🏹',
+                    };
+                    return (
+                      <div key={friend.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 p-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-xl shrink-0">
+                          {p?.avatar_url ? (
+                            <img src={p.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                          ) : (
+                            classEmoji[p?.starter_class || ''] || '🧙'
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate">{p?.display_name || 'Aventureiro'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Nível {p?.level || 1} • {p?.starter_class || 'Novato'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() =>
+                            removeFriend.mutate(friend.id, {
+                              onSuccess: () => toast.info('Amigo removido.'),
+                              onError: (err: any) => toast.error(err.message),
+                            })
+                          }
+                          className="p-1.5 text-muted-foreground hover:text-rose-400 transition-colors rounded-lg hover:bg-rose-500/10"
+                          title="Remover amigo"
+                        >
+                          <UserX className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ======== ABA: CONQUISTAS ======== */}
+        {activeTab === "conquistas" && (
+          <div className="space-y-5">
+            {/* Resumo */}
+            <div className="bg-card border border-primary/20 rounded-xl p-4 flex items-center gap-4">
+              <Trophy className="w-10 h-10 text-primary shrink-0" />
+              <div>
+                <p className="text-lg font-black text-primary">{userAchievements.length}/{allAchievements.length}</p>
+                <p className="text-xs text-muted-foreground">Conquistas desbloqueadas</p>
+              </div>
+              <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-amber-300 rounded-full transition-all duration-700"
+                  style={{ width: `${allAchievements.length > 0 ? (userAchievements.length / allAchievements.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Grid de conquistas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {allAchievements.map((ach) => {
+                const unlocked = userAchievements.find((ua) => ua.achievement_id === ach.id);
+                return (
+                  <div
+                    key={ach.id}
+                    className={`rounded-xl border p-4 flex items-start gap-3 transition-all ${
+                      unlocked
+                        ? 'border-primary/30 bg-primary/5'
+                        : 'border-border bg-muted/20 opacity-60 grayscale'
+                    }`}
+                  >
+                    <span className={`text-3xl shrink-0 ${unlocked ? '' : 'opacity-40'}`}>
+                      {unlocked ? ach.icon : '🔒'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold ${unlocked ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {ach.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{ach.description}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-xp/20 text-primary border border-primary/20 font-bold">
+                          +{ach.xp_reward} XP
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">
+                          +{ach.gold_reward} 🪙
+                        </span>
+                        {unlocked && (
+                          <span className="text-[10px] text-emerald-400 font-semibold">✓ Desbloqueada</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

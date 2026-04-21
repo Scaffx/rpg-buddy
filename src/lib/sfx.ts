@@ -109,6 +109,11 @@ type EnvelopeOptions = {
   peak?: number;
 };
 
+/** Aplica variação aleatória a um valor dentro de ±range (ex: range=0.12 = ±12%). */
+function jitter(value: number, range: number): number {
+  return value * (1 + (Math.random() * 2 - 1) * range);
+}
+
 function playTone(opts: {
   freqStart: number;
   freqEnd?: number;
@@ -283,17 +288,20 @@ export const sfx = {
     }
   },
   slash() {
-    playNoiseBurst({ duration: 0.18, peak: 0.35, filterFreq: 3200 });
-    playTone({ freqStart: 900, freqEnd: 200, duration: 0.16, type: 'sawtooth', envelope: { peak: 0.18, attack: 0.003, release: 0.04 } });
+    // Variação de ±15% no filtro e ±20% no pico para reduzir repetição
+    playNoiseBurst({ duration: jitter(0.18, 0.1), peak: jitter(0.35, 0.2), filterFreq: jitter(3200, 0.15) });
+    playTone({ freqStart: jitter(900, 0.12), freqEnd: jitter(200, 0.12), duration: 0.16, type: 'sawtooth', envelope: { peak: jitter(0.18, 0.2), attack: 0.003, release: 0.04 } });
   },
   hit() {
-    playTone({ freqStart: 180, freqEnd: 60, duration: 0.18, type: 'square', envelope: { peak: 0.38, attack: 0.002, release: 0.08 } });
-    playNoiseBurst({ duration: 0.12, peak: 0.22, filterFreq: 600 });
+    // Variação de ±10% na frequência base e ±15% no pico
+    playTone({ freqStart: jitter(180, 0.1), freqEnd: jitter(60, 0.1), duration: jitter(0.18, 0.08), type: 'square', envelope: { peak: jitter(0.38, 0.15), attack: 0.002, release: jitter(0.08, 0.1) } });
+    playNoiseBurst({ duration: 0.12, peak: jitter(0.22, 0.15), filterFreq: jitter(600, 0.12) });
   },
   crit() {
-    playTone({ freqStart: 320, freqEnd: 90, duration: 0.22, type: 'sawtooth', envelope: { peak: 0.45, attack: 0.002, release: 0.1 } });
-    playNoiseBurst({ duration: 0.25, peak: 0.35, filterFreq: 2400 });
-    playTone({ freqStart: 1400, freqEnd: 700, duration: 0.18, type: 'triangle', envelope: { peak: 0.3, attack: 0.002, release: 0.1 }, delay: 0.05 });
+    // Variação de ±10% em todas as freqs e ±15% nos picos para crits únicos
+    playTone({ freqStart: jitter(320, 0.1), freqEnd: jitter(90, 0.1), duration: 0.22, type: 'sawtooth', envelope: { peak: jitter(0.45, 0.15), attack: 0.002, release: 0.1 } });
+    playNoiseBurst({ duration: jitter(0.25, 0.1), peak: jitter(0.35, 0.15), filterFreq: jitter(2400, 0.12) });
+    playTone({ freqStart: jitter(1400, 0.1), freqEnd: jitter(700, 0.1), duration: 0.18, type: 'triangle', envelope: { peak: jitter(0.3, 0.15), attack: 0.002, release: 0.1 }, delay: jitter(0.05, 0.1) });
   },
   diceRoll() {
     for (let i = 0; i < 5; i++) {
@@ -301,13 +309,14 @@ export const sfx = {
     }
   },
   victory() {
-    // Triumphant fanfare: C - E - G - C
+    // Fanfarra triunfal: C - E - G - C com leve variação de timing e amplitude
     const notes = [523.25, 659.25, 783.99, 1046.5];
     notes.forEach((freq, i) => {
-      playTone({ freqStart: freq, duration: 0.28, type: 'triangle', envelope: { peak: 0.32, attack: 0.005, release: 0.18 }, delay: i * 0.14 });
-      playTone({ freqStart: freq / 2, duration: 0.28, type: 'sine', envelope: { peak: 0.18, attack: 0.005, release: 0.18 }, delay: i * 0.14 });
+      const delay = i * 0.14 + jitter(0, 0.04);
+      playTone({ freqStart: jitter(freq, 0.02), duration: 0.28, type: 'triangle', envelope: { peak: jitter(0.32, 0.1), attack: 0.005, release: 0.18 }, delay });
+      playTone({ freqStart: jitter(freq / 2, 0.02), duration: 0.28, type: 'sine', envelope: { peak: jitter(0.18, 0.1), attack: 0.005, release: 0.18 }, delay });
     });
-    playTone({ freqStart: 1046.5, duration: 0.85, type: 'triangle', envelope: { peak: 0.4, attack: 0.01, release: 0.5 }, delay: 0.6 });
+    playTone({ freqStart: jitter(1046.5, 0.02), duration: 0.85, type: 'triangle', envelope: { peak: jitter(0.4, 0.1), attack: 0.01, release: 0.5 }, delay: jitter(0.6, 0.04) });
   },
   defeat() {
     // Descending dirge

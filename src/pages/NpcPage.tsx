@@ -4,8 +4,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap } from 'lucide-react';
+import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { currentWeekToken } from '@/lib/dateUtils';
+import { NPC_XP_REWARD, NPC_GOLD_REWARD } from '@/lib/constants';
 
 interface NpcChallenge {
   id: string;
@@ -88,39 +93,88 @@ const INITIAL_NPCS: Npc[] = [
   },
 ];
 
-function getStoredProgress(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem('npc_challenges') || '{}');
-  } catch { return {}; }
-}
-
-function saveProgress(progress: Record<string, boolean>) {
-  localStorage.setItem('npc_challenges', JSON.stringify(progress));
-}
-
 export default function NpcPage() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const weekToken = currentWeekToken();
   const [selectedNpc, setSelectedNpc] = useState<Npc | null>(null);
-  const [progress, setProgress] = useState<Record<string, boolean>>(getStoredProgress);
+
+  // Completions this week from Supabase
+  const { data: completions = [], isLoading: loadingCompletions } = useQuery<{ npc_id: string; challenge_id: string }[]>({
+    queryKey: ['npc_completions', user?.id, weekToken],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('npc_challenge_completions' as any)
+        .select('npc_id, challenge_id')
+        .eq('user_id', user!.id)
+        .eq('week_token', weekToken);
+      if (error) throw error;
+      return (data || []) as { npc_id: string; challenge_id: string }[];
+    },
+  });
+
+  const completedSet = new Set(completions.map((c) => `${c.npc_id}|${c.challenge_id}`));
+
+  const isCompleted = (npcId: string, challengeId: string) =>
+    completedSet.has(`${npcId}|${challengeId}`);
+
+  // Toggle (complete or uncomplete) a challenge via Supabase
+  const toggleChallenge = useMutation({
+    mutationFn: async ({ npcId, challengeId }: { npcId: string; challengeId: string }) => {
+      if (!user) throw new Error('Não autenticado');
+      const key = `${npcId}|${challengeId}`;
+      const alreadyDone = completedSet.has(key);
+
+      if (alreadyDone) {
+        // Undo
+        const { error } = await supabase
+          .from('npc_challenge_completions' as any)
+          .delete()
+          .eq('user_id', user.id)
+          .eq('npc_id', npcId)
+          .eq('challenge_id', challengeId)
+          .eq('week_token', weekToken);
+        if (error) throw error;
+      } else {
+        // Complete + award XP/gold in a single transaction-like sequence
+        const { error } = await supabase
+          .from('npc_challenge_completions' as any)
+          .insert({
+            user_id: user.id,
+            npc_id: npcId,
+            challenge_id: challengeId,
+            week_token: weekToken,
+            xp_earned: NPC_XP_REWARD,
+            gold_earned: NPC_GOLD_REWARD,
+          } as any);
+        if (error) {
+          if (error.code === '23505') throw new Error('Desafio já concluído esta semana.');
+          throw error;
+        }
+        // Award XP via RPC (use existing award mechanism)
+        await supabase.rpc('add_xp_to_user' as any, { p_user_id: user.id, p_xp: NPC_XP_REWARD });
+        // Award gold via profiles update
+        await supabase.rpc('add_gold_to_user' as any, { p_user_id: user.id, p_gold: NPC_GOLD_REWARD });
+      }
+
+      return { wasCompleted: alreadyDone };
+    },
+    onSuccess: ({ wasCompleted }, { npcId, challengeId }) => {
+      qc.invalidateQueries({ queryKey: ['npc_completions', user?.id, weekToken] });
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      qc.invalidateQueries({ queryKey: ['gold'] });
+      if (!wasCompleted) {
+        toast.success(`Desafio concluído! +${NPC_XP_REWARD} XP, +${NPC_GOLD_REWARD} 🪙`, {
+          description: 'Continue assim, aventureiro!',
+        });
+      }
+    },
+    onError: (err: any) => toast.error(err.message || 'Erro ao registrar desafio'),
+  });
 
   const totalChallenges = INITIAL_NPCS.reduce((sum, npc) => sum + npc.challenges.length, 0);
-  const completedChallenges = Object.values(progress).filter(Boolean).length;
-
-  const toggleChallenge = (challengeId: string) => {
-    const updated = { ...progress, [challengeId]: !progress[challengeId] };
-    setProgress(updated);
-    saveProgress(updated);
-  };
-
-  const handleRegister = () => {
-    if (!selectedNpc) return;
-    const npcCompleted = selectedNpc.challenges.filter(c => progress[c.id]).length;
-    toast.success(`${npcCompleted} desafio(s) de ${selectedNpc.name} registrado(s)!`, {
-      description: 'Seus dados foram salvos para análise futura pela IA.',
-    });
-    setSelectedNpc(null);
-  };
-
-  const npcCompletedCount = (npc: Npc) => npc.challenges.filter(c => progress[c.id]).length;
+  const completedChallenges = completedSet.size;
 
   return (
     <AppLayout>
@@ -134,15 +188,15 @@ export default function NpcPage() {
               <p className="text-sm text-muted-foreground">Desafios fora da zona de conforto</p>
             </div>
           </div>
-          <Button size="sm" className="gap-2">
-            <Sparkles className="w-4 h-4" /> Novo Desafio
+          <Button size="sm" className="gap-2" disabled>
+            <Sparkles className="w-4 h-4" /> Semana {weekToken}
           </Button>
         </div>
 
         {/* NPC Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {INITIAL_NPCS.map((npc) => {
-            const done = npcCompletedCount(npc);
+            const done = npc.challenges.filter((c) => isCompleted(npc.id, c.id)).length;
             const total = npc.challenges.length;
             return (
               <Card
@@ -213,31 +267,39 @@ export default function NpcPage() {
               </DialogHeader>
 
               <div className="space-y-3 py-2">
-                <p className="text-sm font-semibold text-foreground">⚔️ Desafios Diários</p>
-                {selectedNpc.challenges.map((challenge) => (
-                  <label
-                    key={challenge.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      progress[challenge.id]
-                        ? 'bg-primary/10 border-primary/30'
-                        : 'bg-card border-border hover:border-primary/20'
-                    }`}
-                  >
-                    <Checkbox
-                      checked={!!progress[challenge.id]}
-                      onCheckedChange={() => toggleChallenge(challenge.id)}
-                      className="mt-0.5"
-                    />
-                    <span className={`text-sm leading-relaxed ${progress[challenge.id] ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                      {challenge.text}
-                    </span>
-                  </label>
-                ))}
+                <p className="text-sm font-semibold text-foreground">⚔️ Desafios Semanais</p>
+                <p className="text-xs text-muted-foreground">+{NPC_XP_REWARD} XP e +{NPC_GOLD_REWARD} 🪙 por desafio</p>
+                {selectedNpc.challenges.map((challenge) => {
+                  const done = isCompleted(selectedNpc.id, challenge.id);
+                  const isLoading = toggleChallenge.isPending;
+                  return (
+                    <label
+                      key={challenge.id}
+                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        done
+                          ? 'bg-primary/10 border-primary/30'
+                          : 'bg-card border-border hover:border-primary/20'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={done}
+                        onCheckedChange={() =>
+                          toggleChallenge.mutate({ npcId: selectedNpc.id, challengeId: challenge.id })
+                        }
+                        disabled={isLoading}
+                        className="mt-0.5"
+                      />
+                      <span className={`text-sm leading-relaxed ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        {challenge.text}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
 
               <DialogFooter>
-                <Button onClick={handleRegister} className="w-full gap-2">
-                  <Sparkles className="w-4 h-4" /> Registrar Progresso
+                <Button onClick={() => setSelectedNpc(null)} className="w-full gap-2">
+                  <Sparkles className="w-4 h-4" /> Fechar
                 </Button>
               </DialogFooter>
             </>
