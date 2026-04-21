@@ -28,6 +28,7 @@ type CombatDataProvider = {
     combateId?: string;
     currentBossHp: number;
     currentPlayerHp: number;
+    currentPlayerMp?: number;
     acaoEscolhida: 'atacar';
     skillId?: string;
     skillName?: string;
@@ -128,7 +129,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Default provider with Supabase integration and local mock fallback.
 const mockProvider: CombatDataProvider = {
-  async processTurn({ combateId, currentBossHp, currentPlayerHp, acaoEscolhida, skillId, skillName, skillPower }) {
+  async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower }) {
     if (combateId) {
       const { data, error } = await supabase.functions.invoke('processar_turno', {
         body: {
@@ -137,6 +138,7 @@ const mockProvider: CombatDataProvider = {
           skill_id: skillId,
           skill_name: skillName,
           skill_power: skillPower,
+          current_mp: currentPlayerMp,
         },
       });
 
@@ -456,6 +458,7 @@ export default function CombatArena({
         combateId,
         currentBossHp: bossHpRef.current,
         currentPlayerHp: playerHpRef.current,
+        currentPlayerMp: playerMpRef.current,
         acaoEscolhida: 'atacar',
         skillId: chosenSkill?.id,
         skillName: chosenSkill?.name,
