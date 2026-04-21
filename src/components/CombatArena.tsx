@@ -72,9 +72,14 @@ type CombatArenaProps = {
   combateId?: string;
   initialBossHp?: number;
   initialPlayerHp?: number;
+  initialPlayerMp?: number;
+  initialPlayerMaxMp?: number;
+  bossName?: string;
+  bossElement?: string | null;
   provider?: CombatDataProvider;
   onVictory?: () => void;
   onDefeat?: () => void;
+  onClose?: () => void;
 };
 
 type CombatSkill = {
@@ -95,6 +100,29 @@ type BattleLogEntry = {
 type ProfileLoadoutRow = {
   combat_skill_loadout?: unknown;
 };
+
+type BossResource = 'mana' | 'stamina';
+
+// Determina se o boss usa Mana (criaturas mágicas) ou Estamina (criaturas físicas).
+function getBossResourceType(name?: string, element?: string | null): BossResource {
+  const text = `${name || ''} ${element || ''}`.toLowerCase();
+  const magicKeywords = [
+    'mago', 'feiticeir', 'bruxo', 'necro', 'arcan', 'fenix', 'phoenix', 'sereia',
+    'dragão', 'dragao', 'wyvern', 'lich', 'espectro', 'fantasma', 'lord daemon',
+    'lorde daemon', 'demon', 'cavaleiro do vazio', 'sphinx', 'esfinge', 'chronos',
+    'leviata', 'hidra', 'quimera', 'guerreiro imortal',
+  ];
+  const magicElements = ['sagrado', 'escuridão', 'escuridao', 'demônio', 'demonio', 'morto-vivo', 'raio', 'água', 'agua', 'gelo'];
+  if (magicKeywords.some((k) => text.includes(k))) return 'mana';
+  if (magicElements.some((k) => text.includes(k))) return 'mana';
+  return 'stamina';
+}
+
+// Custo de MP de uma habilidade do jogador, derivado do "power".
+function getSkillMpCost(power: number): number {
+  if (!power || power <= 0) return 0;
+  return Math.max(1, Math.min(8, Math.ceil(power / 30)));
+}
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
