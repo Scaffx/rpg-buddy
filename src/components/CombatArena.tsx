@@ -598,6 +598,19 @@ export default function CombatArena({
         >
           <p className="text-sm text-zinc-400">Player HP</p>
           <p className="mt-2 text-3xl font-black text-emerald-300">{playerHp}</p>
+          {/* Barra de MP do jogador */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-cyan-300/80">
+              <span>MP</span>
+              <span className="font-mono">{playerMp}/{initialPlayerMaxMp}</span>
+            </div>
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70">
+              <div
+                className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500"
+                style={{ width: `${initialPlayerMaxMp > 0 ? Math.round((playerMp / initialPlayerMaxMp) * 100) : 0}%` }}
+              />
+            </div>
+          </div>
           {hitEffects
             .filter((h) => h.target === 'player')
             .map((h) => (
