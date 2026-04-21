@@ -246,6 +246,14 @@ export default function CombatArena({
   }, [playerHp]);
 
   useEffect(() => {
+    playerMpRef.current = playerMp;
+  }, [playerMp]);
+
+  useEffect(() => {
+    bossResourceRef.current = bossResource;
+  }, [bossResource]);
+
+  useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
