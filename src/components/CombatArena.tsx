@@ -383,6 +383,8 @@ export default function CombatArena({
     skillCursorRef.current = 0;
     setBossHp(initialBossHp);
     setPlayerHp(initialPlayerHp);
+    setPlayerMp(initialPlayerMp);
+    setBossResource(bossResourceMax);
     setRollValue(null);
     setDamagePopups([]);
     setHitEffects([]);
@@ -394,7 +396,34 @@ export default function CombatArena({
     setConfetti([]);
     setShowVictory(false);
     setShowDefeat(false);
+    setInsufficientResourceWarning(null);
     setTurn('player');
+  };
+
+  // Encontra a próxima skill que o jogador pode pagar com MP atual.
+  // Se nenhuma puder ser usada, retorna null (jogador faz Ataque Básico, sem custo).
+  const pickAffordableSkill = (currentMp: number): { skill: CombatSkill | null; warning: string | null } => {
+    if (selectedSkills.length === 0) return { skill: null, warning: null };
+
+    const start = skillCursorRef.current % selectedSkills.length;
+    let skippedHigh: CombatSkill | null = null;
+
+    for (let i = 0; i < selectedSkills.length; i += 1) {
+      const idx = (start + i) % selectedSkills.length;
+      const candidate = selectedSkills[idx];
+      const cost = getSkillMpCost(candidate.power);
+      if (cost <= currentMp) {
+        skillCursorRef.current = idx + 1;
+        return { skill: candidate, warning: null };
+      }
+      if (!skippedHigh) skippedHigh = candidate;
+    }
+
+    skillCursorRef.current += 1;
+    const warning = skippedHigh
+      ? `MP insuficiente para "${skippedHigh.name}" (custa ${getSkillMpCost(skippedHigh.power)} MP). Usando Ataque Básico.`
+      : null;
+    return { skill: null, warning };
   };
 
   useEffect(() => {
