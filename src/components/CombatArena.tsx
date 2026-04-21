@@ -837,18 +837,30 @@ export default function CombatArena({
             <p className="text-[10px] text-muted-foreground">Vá ao seu Inventário para equipar!</p>
           </motion.div>
         )}
-        <button
-          type="button"
-          onClick={startBattle}
-          disabled={isRolling}
-          className="rounded-lg bg-amber-400 px-5 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {turn === 'idle' ? 'Start Combat' : 'Restart Combat'}
-        </button>
+        {turn === 'finished' ? (
+          <button
+            type="button"
+            onClick={() => onClose?.()}
+            className="rounded-lg bg-amber-400 px-5 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300"
+          >
+            Sair da Arena
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={startBattle}
+            disabled={isRolling || turn === 'player' || turn === 'boss'}
+            className="rounded-lg bg-amber-400 px-5 py-2.5 font-bold text-zinc-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {turn === 'idle' ? 'Iniciar Combate' : 'Combate em andamento...'}
+          </button>
+        )}
 
-        <p className="text-xs text-zinc-400">
-          Com combate_id preenchido, os valores vem da Edge Function processar_turno no Supabase.
-        </p>
+        {turn === 'finished' && (
+          <p className="text-xs text-zinc-400 text-center">
+            ⚔️ Combate finalizado. Este boss foi {bossHp <= 0 ? 'derrotado' : 'vitorioso'} — não é possível recombater agora.
+          </p>
+        )}
       </footer>
 
       <div className="mt-6 rounded-xl border border-zinc-700/60 bg-zinc-950/50 p-4">
