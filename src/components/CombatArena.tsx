@@ -298,6 +298,14 @@ export default function CombatArena({
     loadCombatSkills();
   }, [user]);
 
+  // Auto-inicia o combate quando a arena recebe um combateId (após cliques de "Enfrentar boss").
+  useEffect(() => {
+    if (combateId && turn === 'idle') {
+      startBattle();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [combateId]);
+
   const appendBattleLog = (entry: Omit<BattleLogEntry, 'id'>) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
     setBattleLog((prev) => [
