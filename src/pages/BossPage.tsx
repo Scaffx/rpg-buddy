@@ -124,8 +124,11 @@ export default function BossPage() {
         id: combat.id,
         bossName: boss.name,
         bossIcon: boss.icon,
+        bossElement: boss.element ?? null,
         bossHp: Number(combat.hp_atual_boss ?? boss.hp_max ?? boss.hp ?? 100),
         playerHp: Number(combat.hp_atual_personagem ?? playerStats.hp ?? 120),
+        playerMp: Number((playerStats as any).mp ?? 40),
+        playerMaxMp: Number((playerStats as any).mp ?? 40),
       });
       toast({ title: '⚔️ Combate iniciado', description: `Arena aberta contra ${boss.name}.` });
     } catch (err: any) {
