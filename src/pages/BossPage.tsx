@@ -53,10 +53,15 @@ export default function BossPage() {
     queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
     queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-    setActiveCombat(null);
+    // Não fechar a arena automaticamente — usuário fecha pelo botão "Sair da Arena".
   };
 
   const handleCombatDefeat = () => {
+    queryClient.invalidateQueries({ queryKey: ['profile'] });
+    // Não fechar a arena automaticamente — usuário fecha pelo botão "Sair da Arena".
+  };
+
+  const handleCombatClose = () => {
     setActiveCombat(null);
   };
 
