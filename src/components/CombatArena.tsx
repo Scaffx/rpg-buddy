@@ -437,10 +437,10 @@ export default function CombatArena({
       }
 
       const battleToken = currentBattleTokenRef.current;
-      const chosenSkill = selectedSkills.length > 0 ? selectedSkills[skillCursorRef.current % selectedSkills.length] : null;
-      if (selectedSkills.length > 0) {
-        skillCursorRef.current += 1;
-      }
+      const { skill: chosenSkill, warning } = pickAffordableSkill(playerMpRef.current);
+      setInsufficientResourceWarning(warning);
+
+      const skillCost = chosenSkill ? getSkillMpCost(chosenSkill.power) : 0;
 
       const turnResult = await dataProvider.processTurn({
         combateId,
@@ -454,6 +454,11 @@ export default function CombatArena({
 
       if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) {
         return;
+      }
+
+      // Deduz MP do jogador apenas se a skill foi usada com sucesso.
+      if (skillCost > 0) {
+        setPlayerMp((prev) => Math.max(0, prev - skillCost));
       }
 
       setTurn('player');
@@ -498,6 +503,16 @@ export default function CombatArena({
         return;
       }
 
+      // Boss consome seu recurso (mana ou stamina) ao atacar.
+      // Custo aleatório 4-9, regenera 2 se ficou sem.
+      const bossCost = 4 + Math.floor(Math.random() * 6);
+      let nextBossResource = bossResourceRef.current - bossCost;
+      if (nextBossResource < 0) {
+        // Boss exausto: recupera um pouco e ataca enfraquecido (efeito visual já existe via dano normal).
+        nextBossResource = Math.min(bossResourceMax, bossResourceRef.current + 2);
+      }
+      setBossResource(Math.max(0, Math.min(bossResourceMax, nextBossResource)));
+
       setIsRolling(false);
       setRollValue(turnResult.dado_boss);
       setPlayerHp(turnResult.hp_player_restante);
@@ -520,6 +535,9 @@ export default function CombatArena({
         setTurn('finished');
         return;
       }
+
+      // Jogador regenera 1 MP por turno (não em vitória/derrota)
+      setPlayerMp((prev) => Math.min(initialPlayerMaxMp, prev + 1));
 
       setTurn('player');
     };
