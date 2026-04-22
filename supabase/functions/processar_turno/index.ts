@@ -455,17 +455,58 @@ Deno.serve(async (req) => {
     // Update health stats
     const { data: currentHealth } = await supabase
       .from('user_health_stats')
-      .select('id, max_hp')
+      .select('id, max_hp, fatigue')
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (currentHealth) {
       const maxHp = Number(currentHealth.max_hp ?? hpPlayerRestante);
+      const updatePayload: Record<string, unknown> = {
+        current_hp: Math.max(0, Math.min(maxHp, hpPlayerRestante)),
+      };
+
+      // Apply fatigue only when combat ends (vitoria or derrota)
+      if (status === 'vitoria' || status === 'derrota') {
+        const bossLevel = toNumber(combat.bosses?.level, 1);
+        const heroLevel = toNumber(combat.personagens?.nivel, 1);
+        const levelDiff = bossLevel - heroLevel;
+
+        // 1. Base by level difference — always guarantees some fatigue
+        //    Boss harder than hero = more exhaustion; even an easy boss tires you
+        const baseFatigue =
+          levelDiff >= 4 ? 25 :
+          levelDiff >= 2 ? 20 :
+          levelDiff >= 1 ? 15 :
+          levelDiff === 0 ? 12 :
+          levelDiff === -1 ? 10 :
+          8; // weaker boss still costs at least 8
+
+        // 2. HP lost factor — how battered you are (0% to 18%)
+        const hpLostFraction = maxHp > 0 ? Math.max(0, 1 - hpPlayerRestante / maxHp) : 1;
+        const damageFatigue = Math.round(hpLostFraction * 18);
+
+        // 3. Turn factor — every 2 turns beyond the first add +1 fatigue (cap +10)
+        //    rodada already holds the current turn count (1-indexed)
+        const turnFatigue = Math.min(10, Math.floor(Math.max(0, rodada - 1) / 2));
+
+        // 4. Defeat penalty — being knocked out is especially exhausting
+        const defeatPenalty = status === 'derrota' ? 12 : 0;
+
+        const fatigueGain = baseFatigue + damageFatigue + turnFatigue + defeatPenalty;
+        // Hard cap per fight: 50, so a single brutal fight can't max out fatigue alone
+        const cappedGain = Math.min(50, fatigueGain);
+        const currentFatigue = toNumber(currentHealth.fatigue, 0);
+        updatePayload.fatigue = Math.min(100, currentFatigue + cappedGain);
+      } else {
+        // Mid-combat: accumulate small fatigue each turn (1 per turn, cap at current+5)
+        const currentFatigue = toNumber(currentHealth.fatigue, 0);
+        const midCombatGain = 1;
+        updatePayload.fatigue = Math.min(100, currentFatigue + midCombatGain);
+      }
+
       await supabase
         .from('user_health_stats')
-        .update({
-          current_hp: Math.max(0, Math.min(maxHp, hpPlayerRestante)),
-        })
+        .update(updatePayload)
         .eq('user_id', user.id);
     } else {
       await supabase
@@ -474,6 +515,7 @@ Deno.serve(async (req) => {
           user_id: user.id,
           max_hp: Math.max(1, hpPlayerRestante),
           current_hp: Math.max(0, hpPlayerRestante),
+          fatigue: 0,
         });
     }
 

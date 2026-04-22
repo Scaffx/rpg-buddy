@@ -1219,19 +1219,12 @@ export function useStartActiveCombat() {
       const hpAtualPersistido = Number((healthStats as any)?.current_hp ?? hpMaxPersonagem);
       const hpInicialPersonagem = Math.max(1, Math.min(hpMaxPersonagem, hpAtualPersistido));
 
-      const bossLevel = Math.max(1, Number((boss as any).level ?? level));
-      const levelDiff = bossLevel - level;
-      const fatigueGain = levelDiff >= 2 ? 20 : levelDiff >= 1 ? 15 : levelDiff === 0 ? 10 : levelDiff <= -2 ? 4 : 6;
-      const fatigueAtual = Number((healthStats as any)?.fatigue ?? 0);
-      const fatigueFinal = Math.min(100, Math.max(0, fatigueAtual + fatigueGain));
-
       if (healthStats) {
         const { error: updateHealthError } = await (supabase as any)
           .from('user_health_stats')
           .update({
             max_hp: hpMaxPersonagem,
             current_hp: hpInicialPersonagem,
-            fatigue: fatigueFinal,
           })
           .eq('user_id', user.id);
 
@@ -1243,7 +1236,7 @@ export function useStartActiveCombat() {
             user_id: user.id,
             max_hp: hpMaxPersonagem,
             current_hp: hpInicialPersonagem,
-            fatigue: fatigueFinal,
+            fatigue: 0,
           });
 
         if (insertHealthError) throw insertHealthError;
