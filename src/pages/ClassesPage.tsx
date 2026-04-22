@@ -49,6 +49,11 @@ const STARTER_TO_CLASS_NAME: Record<string, string> = {
   ferreiro: 'Mercador',
 };
 
+// Reverse map: class name in the tree → starter_class id
+const CLASS_NAME_TO_STARTER: Record<string, string> = Object.fromEntries(
+  Object.entries(STARTER_TO_CLASS_NAME).map(([k, v]) => [v, k])
+);
+
 export default function ClassesPage() {
   const { data: profile, isLoading: pLoading } = useProfile();
   const { data: classes, isLoading: cLoading } = useClasses();
@@ -147,7 +152,18 @@ export default function ClassesPage() {
     }
     setSelecting(classId);
     try {
-      await selectClass.mutateAsync(classId);
+      // Resolve the starter_class id by walking up to the tier-2 ancestor
+      const classMap = new Map<string, any>();
+      (classes || []).forEach((c: any) => classMap.set(c.id, c));
+      let node = classMap.get(classId);
+      while (node && node.column_index > 2) {
+        node = node.parent_class_id ? classMap.get(node.parent_class_id) : null;
+      }
+      const starterClass = node?.column_index === 2
+        ? CLASS_NAME_TO_STARTER[node.name]
+        : undefined;
+
+      await selectClass.mutateAsync({ classId, starterClass });
       toast({ title: `🎉 Classe selecionada: ${className}!` });
       setSelectedDetail(null);
     } catch {

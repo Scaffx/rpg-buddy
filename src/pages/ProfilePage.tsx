@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useClasses } from "@/hooks/useProfile";
 import {
   useFriends,
   usePendingRequests,
@@ -44,6 +44,16 @@ const ATTRIBUTE_ICONS: Record<string, any> = {
 
 const RESPEC_COST = 120;
 const MAX_COMBAT_SKILLS = 4;
+
+// Maps tier-2 class name (in the progression tree) → StarterClassId
+const CLASS_NAME_TO_STARTER: Record<string, string> = {
+  Espadachim: 'guerreiro',
+  Mago: 'mago',
+  Gatuno: 'gatuno',
+  Noviço: 'clerico',
+  Arqueiro: 'arqueiro',
+  Mercador: 'ferreiro',
+};
 
 const RESPEC_CLASSES = [
   { id: "guerreiro", label: "Guerreiro" },
@@ -595,6 +605,7 @@ function ThemeToggleSettings() {
 export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: classes } = useClasses();
   const { data: attributes } = useAttributes();
   const { data: goldBalance } = useGoldBalance();
   const { data: bosses } = useBosses();
@@ -680,10 +691,22 @@ export default function ProfilePage() {
   const totalWaterToday = (todayWater || []).reduce((s: number, w: any) => s + (w.amount_ml || 0), 0);
   const mealsToday = (todayMeals || []).length;
   const attributeLevels = useMemo(() => getAttributeLevels(attributes as any[]), [attributes]);
-  const starterClass = useMemo(
-    () => (profile as any)?.starter_class || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null) || "novato",
-    [user, profile],
-  );
+  const starterClass = useMemo(() => {
+    // Priority 1: resolve from current_class_id in the class progression tree
+    const currentClassId = (profile as any)?.current_class_id;
+    if (currentClassId && classes) {
+      const classMap = new Map<string, any>();
+      (classes as any[]).forEach((c) => classMap.set(c.id, c));
+      let node = classMap.get(currentClassId);
+      while (node && node.column_index > 2) {
+        node = node.parent_class_id ? classMap.get(node.parent_class_id) : null;
+      }
+      const resolved = node?.column_index === 2 ? CLASS_NAME_TO_STARTER[node.name] : null;
+      if (resolved) return resolved;
+    }
+    // Priority 2: stored starter_class from onboarding / respec
+    return (profile as any)?.starter_class || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null) || 'novato';
+  }, [user, profile, classes]);
   const starterItem = useMemo(
     () => (profile as any)?.starter_item || (user ? localStorage.getItem(`starter_item_v1_${user.id}`) : null) || "Adaga de Treino",
     [user, profile],

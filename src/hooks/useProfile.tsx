@@ -1291,10 +1291,12 @@ export function useSelectClass() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (classId: string) => {
+    mutationFn: async ({ classId, starterClass }: { classId: string; starterClass?: string }) => {
+      const updates: Record<string, unknown> = { current_class_id: classId };
+      if (starterClass) updates.starter_class = starterClass;
       const { error } = await supabase
         .from("profiles")
-        .update({ current_class_id: classId } as any)
+        .update(updates as any)
         .eq("user_id", user!.id);
       if (error) throw error;
     },
