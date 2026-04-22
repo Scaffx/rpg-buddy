@@ -204,6 +204,7 @@ export type Database = {
           level: number
           mechanic: string | null
           name: string
+          signature_item_name: string | null
           skills: Json | null
           xp_reward: number
         }
@@ -226,6 +227,7 @@ export type Database = {
           level?: number
           mechanic?: string | null
           name: string
+          signature_item_name?: string | null
           skills?: Json | null
           xp_reward?: number
         }
@@ -248,6 +250,7 @@ export type Database = {
           level?: number
           mechanic?: string | null
           name?: string
+          signature_item_name?: string | null
           skills?: Json | null
           xp_reward?: number
         }
@@ -334,6 +337,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      combat_turn_logs: {
+        Row: {
+          combate_id: string
+          created_at: string
+          dado_boss: number | null
+          dado_player: number | null
+          dano_boss: number | null
+          dano_player: number | null
+          efeitos_boss: Json | null
+          efeitos_player: Json | null
+          habilidade_boss: string | null
+          habilidade_player: string | null
+          hp_boss_apos: number | null
+          hp_player_apos: number | null
+          id: string
+          rodada: number
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          combate_id: string
+          created_at?: string
+          dado_boss?: number | null
+          dado_player?: number | null
+          dano_boss?: number | null
+          dano_player?: number | null
+          efeitos_boss?: Json | null
+          efeitos_player?: Json | null
+          habilidade_boss?: string | null
+          habilidade_player?: string | null
+          hp_boss_apos?: number | null
+          hp_player_apos?: number | null
+          id?: string
+          rodada: number
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          combate_id?: string
+          created_at?: string
+          dado_boss?: number | null
+          dado_player?: number | null
+          dano_boss?: number | null
+          dano_player?: number | null
+          efeitos_boss?: Json | null
+          efeitos_player?: Json | null
+          habilidade_boss?: string | null
+          habilidade_player?: string | null
+          hp_boss_apos?: number | null
+          hp_player_apos?: number | null
+          id?: string
+          rodada?: number
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       combates_ativos: {
         Row: {
@@ -430,9 +490,12 @@ export type Database = {
           is_consumable: boolean
           is_starter: boolean
           level_required: number
+          matk_bonus: number
           mp_bonus: number
           name: string
           rarity: string
+          required_attribute: string | null
+          required_attribute_level: number | null
           shop_price: number | null
           stackable: boolean
           starter_class: string | null
@@ -454,9 +517,12 @@ export type Database = {
           is_consumable?: boolean
           is_starter?: boolean
           level_required?: number
+          matk_bonus?: number
           mp_bonus?: number
           name: string
           rarity?: string
+          required_attribute?: string | null
+          required_attribute_level?: number | null
           shop_price?: number | null
           stackable?: boolean
           starter_class?: string | null
@@ -478,9 +544,12 @@ export type Database = {
           is_consumable?: boolean
           is_starter?: boolean
           level_required?: number
+          matk_bonus?: number
           mp_bonus?: number
           name?: string
           rarity?: string
+          required_attribute?: string | null
+          required_attribute_level?: number | null
           shop_price?: number | null
           stackable?: boolean
           starter_class?: string | null
@@ -775,6 +844,8 @@ export type Database = {
           current_class_id: string | null
           display_name: string | null
           id: string
+          inspired_available: boolean
+          inspired_earned_at: string | null
           level: number
           missions_completed: number
           onboarding_completed: boolean
@@ -792,6 +863,8 @@ export type Database = {
           current_class_id?: string | null
           display_name?: string | null
           id?: string
+          inspired_available?: boolean
+          inspired_earned_at?: string | null
           level?: number
           missions_completed?: number
           onboarding_completed?: boolean
@@ -809,6 +882,8 @@ export type Database = {
           current_class_id?: string | null
           display_name?: string | null
           id?: string
+          inspired_available?: boolean
+          inspired_earned_at?: string | null
           level?: number
           missions_completed?: number
           onboarding_completed?: boolean
