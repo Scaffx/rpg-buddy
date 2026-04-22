@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile, useClasses, useSelectClass } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { useAddGold } from '@/hooks/useGold';
+import { useClaimClassKit } from '@/hooks/useInventory';
 import AppLayout from '@/components/AppLayout';
 import { Loader2, Lock, Check, Swords, ChevronDown, ChevronRight, ArrowDown, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ export default function ClassesPage() {
   const { data: profile, isLoading: pLoading } = useProfile();
   const { data: classes, isLoading: cLoading } = useClasses();
   const selectClass = useSelectClass();
+  const claimClassKit = useClaimClassKit();
   const { user } = useAuth();
   const addGold = useAddGold();
   const { toast } = useToast();
@@ -164,7 +166,15 @@ export default function ClassesPage() {
         : undefined;
 
       await selectClass.mutateAsync({ classId, starterClass });
-      toast({ title: `🎉 Classe selecionada: ${className}!` });
+
+      // Grant class equipment kit if a valid starter class was resolved
+      if (starterClass) {
+        await claimClassKit.mutateAsync(starterClass);
+        toast({ title: `🎁 Kit de ${className} recebido!`, description: 'Verifique seu inventário para equipar seus novos itens.' });
+      } else {
+        toast({ title: `🎉 Classe selecionada: ${className}!` });
+      }
+
       setSelectedDetail(null);
     } catch {
       toast({ title: 'Erro ao selecionar classe', variant: 'destructive' });

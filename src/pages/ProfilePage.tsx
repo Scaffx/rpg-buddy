@@ -1613,60 +1613,36 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-bold text-foreground">🎒 INVENTÁRIO</h3>
               </div>
 
-              {inventory.length === 0 || !(profile as any)?.starter_kit_claimed ? (
+              {!(profile as any)?.starter_kit_claimed ? (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground text-center">
-                    {(profile as any)?.starter_kit_claimed
-                      ? 'Kit inicial já resgatado. Derrote bosses para conseguir novos itens!'
-                      : 'Escolha sua classe para receber seu kit inicial!'}
-                  </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {RESPEC_CLASSES.map((cls) => {
-                      const isClaimed = (profile as any)?.starter_kit_claimed;
-                      const currentClass = (profile as any)?.starter_class
-                        || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null)
-                        || 'novato';
-                      const isSelected = currentClass === cls.id;
-                      const isDisabled = isClaimed && !isSelected;
-
-                      return (
-                        <button
-                          key={cls.id}
-                          onClick={() => {
-                            if (isClaimed) return;
-                            claimStarterKit.mutate(cls.id, {
-                              onSuccess: () => {
-                                localStorage.setItem(`starter_class_v1_${user?.id}`, cls.id);
-                                toast.success(`🎁 Kit de ${cls.label} resgatado!`);
-                              },
-                              onError: (err: any) => toast.error(err.message || 'Erro ao resgatar kit'),
-                            });
-                          }}
-                          disabled={isDisabled || claimStarterKit.isPending}
-                          className={`p-4 rounded-xl border-2 text-center transition-all ${
-                            isSelected && isClaimed
-                              ? 'bg-blue-500/20 border-yellow-500 ring-2 ring-yellow-500/50 shadow-lg shadow-yellow-500/10'
-                              : isDisabled
-                                ? 'bg-muted/20 border-border opacity-40 cursor-not-allowed grayscale'
-                                : 'bg-card border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer'
-                          }`}
-                        >
-                          <p className="text-2xl mb-1">
-                            {cls.id === 'guerreiro' ? '⚔️' : cls.id === 'mago' ? '📖' : cls.id === 'gatuno' ? '🌙' : cls.id === 'ferreiro' ? '🔨' : cls.id === 'clerico' ? '✝️' : '🏹'}
-                          </p>
-                          <p className={`text-sm font-bold ${isSelected && isClaimed ? 'text-yellow-400' : isDisabled ? 'text-muted-foreground' : 'text-foreground'}`}>
-                            {cls.label}
-                          </p>
-                          {isSelected && isClaimed && (
-                            <span className="text-[10px] text-blue-400 font-semibold mt-1 block">✓ Selecionado</span>
-                          )}
-                        </button>
-                      );
-                    })}
+                  <div className="text-center space-y-2">
+                    <p className="text-4xl">🥚</p>
+                    <p className="text-sm font-bold text-foreground">Kit de Novato disponível!</p>
+                    <p className="text-xs text-muted-foreground">
+                      Receba seus primeiros equipamentos para começar a aventura (lv1–4).
+                    </p>
+                    <button
+                      onClick={() => {
+                        claimStarterKit.mutate(undefined, {
+                          onSuccess: () => toast.success('🎁 Kit de Novato recebido! Verifique seu inventário.'),
+                          onError: (err: any) => toast.error(err.message || 'Erro ao resgatar kit'),
+                        });
+                      }}
+                      disabled={claimStarterKit.isPending}
+                      className="px-6 py-2 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {claimStarterKit.isPending ? '⏳ Resgatando...' : '📦 Resgatar Kit de Novato'}
+                    </button>
                   </div>
-                  {claimStarterKit.isPending && (
-                    <p className="text-xs text-center text-muted-foreground animate-pulse">⏳ Resgatando kit...</p>
-                  )}
+                </div>
+              ) : inventory.length === 0 ? (
+                <div className="space-y-2 text-center">
+                  <p className="text-4xl">🛡️</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(profile as any)?.class_kit_claimed
+                      ? 'Derrote bosses para conseguir novos itens!'
+                      : 'Alcance o nível 5 e selecione sua classe em “Classes” para receber seu kit de classe!'}
+                  </p>
                 </div>
               ) : (
                 <>

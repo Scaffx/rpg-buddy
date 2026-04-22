@@ -417,7 +417,7 @@ export function useClaimStarterKit() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (starterClass: string) => {
+    mutationFn: async (_starterClass?: string) => {
       if (!user) throw new Error('Não autenticado');
 
       // Check if already claimed
@@ -431,37 +431,98 @@ export function useClaimStarterKit() {
         throw new Error('Kit inicial já foi resgatado!');
       }
 
-      // Get starter items for class + consumables
-      const { data: starterItems, error: itemsErr } = await db
+      // Always give the novato kit (4 basic items)
+      const { data: noviceItems, error: itemsErr } = await db
         .from('game_items')
         .select('*')
         .eq('is_starter', true)
-        .or(`starter_class.eq.${starterClass},starter_class.is.null`);
+        .eq('starter_class', 'novato');
 
       if (itemsErr) throw itemsErr;
 
-      // Filter: class-specific items + consumable starters
-      const classItems = (starterItems || []).filter((i: any) =>
-        i.starter_class === starterClass || (i.is_consumable && i.is_starter)
-      );
-
-      for (const item of classItems) {
-        const isConsumable = item.category === 'consumable';
+      for (const item of (noviceItems || [])) {
         await db.from('user_inventory').upsert({
           user_id: user.id,
           item_id: item.id,
-          quantity: isConsumable ? 3 : 1,
-          equipped: !isConsumable,
+          quantity: 1,
+          equipped: true,
         }, { onConflict: 'user_id,item_id' });
       }
 
-      // Mark as claimed
+      // Also give starter consumables (potions)
+      const { data: potions } = await db
+        .from('game_items')
+        .select('*')
+        .eq('is_starter', true)
+        .eq('is_consumable', true);
+
+      for (const potion of (potions || [])) {
+        await db.from('user_inventory').upsert({
+          user_id: user.id,
+          item_id: potion.id,
+          quantity: 2,
+          equipped: false,
+        }, { onConflict: 'user_id,item_id' });
+      }
+
+      // Mark novato kit as claimed
       await supabase.from('profiles').update({ starter_kit_claimed: true } as any).eq('user_id', user.id);
+
+      return noviceItems;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+/** Concede o kit de equipamentos da classe escolhida (chamado ao selecionar classe no lv5) */
+export function useClaimClassKit() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (starterClass: string) => {
+      if (!user) throw new Error('Não autenticado');
+
+      // Check if already claimed
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('class_kit_claimed')
+        .eq('user_id', user.id)
+        .single();
+
+      if ((profile as any)?.class_kit_claimed) {
+        return []; // silently skip
+      }
+
+      // Get class-specific gear (weapon + armor only — no novato, no consumables)
+      const { data: classItems, error: itemsErr } = await db
+        .from('game_items')
+        .select('*')
+        .eq('is_starter', true)
+        .eq('starter_class', starterClass)
+        .eq('is_consumable', false);
+
+      if (itemsErr) throw itemsErr;
+
+      for (const item of (classItems || [])) {
+        await db.from('user_inventory').upsert({
+          user_id: user.id,
+          item_id: item.id,
+          quantity: 1,
+          equipped: false, // player equips manually
+        }, { onConflict: 'user_id,item_id' });
+      }
+
+      // Mark class kit as claimed
+      await supabase.from('profiles').update({ class_kit_claimed: true } as any).eq('user_id', user.id);
 
       return classItems;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
   });

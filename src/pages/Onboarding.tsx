@@ -249,15 +249,11 @@ export default function Onboarding() {
         starter_item: selectedClass.starterItem,
       } as any).eq('user_id', user.id).then(() => {});
 
-      // Concede arma e armadura da classe via frontend (mais confiável que RPC)
+      // Concede kit de novato (equipamentos simples de lv1-4)
       try {
-        await claimStarterKit.mutateAsync(selectedClass.id);
+        await claimStarterKit.mutateAsync('novato');
       } catch {
-        // Fallback: tenta RPC caso o frontend falhe (ex: itens já concedidos)
-        await (supabase.rpc as any)('grant_starter_items', {
-          p_user_id: user.id,
-          p_class: selectedClass.id,
-        }).then(() => {});
+        // Kit pode já ter sido concedido — ignora erro
       }
 
       // Salva no localStorage (sempre funciona)
