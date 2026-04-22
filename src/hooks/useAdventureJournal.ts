@@ -29,7 +29,7 @@ export function useJournalEntries() {
         .order('entry_date', { ascending: false })
         .limit(90);
       if (error) throw error;
-      return (data || []) as JournalEntry[];
+      return ((data || []) as unknown) as JournalEntry[];
     },
     staleTime: 30_000,
   });
@@ -49,7 +49,7 @@ export function useJournalEntry(dateStr: string) {
         .eq('entry_date', dateStr)
         .maybeSingle();
       if (error) throw error;
-      return (data as JournalEntry) || null;
+      return ((data as unknown) as JournalEntry) || null;
     },
     staleTime: 10_000,
   });

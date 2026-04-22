@@ -32,7 +32,7 @@ export function useAllAchievements() {
         .select('*')
         .order('condition_type');
       if (error) throw error;
-      return (data || []) as Achievement[];
+      return ((data || []) as unknown) as Achievement[];
     },
     staleTime: 5 * 60_000,
   });
@@ -51,7 +51,7 @@ export function useUserAchievements() {
         .eq('user_id', user!.id)
         .order('unlocked_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as UserAchievement[];
+      return ((data || []) as unknown) as UserAchievement[];
     },
     staleTime: 30_000,
   });
@@ -98,11 +98,11 @@ export function useCheckAchievements() {
         loadout_full:    context.loadoutSize,
       };
 
-      const toUnlock = (allAchievements || []).filter((a: any) => {
+      const toUnlock = ((allAchievements || []).filter((a: any) => {
         if (unlockedIds.has(a.id)) return false;
         const current = conditionMap[a.condition_type];
         return current !== undefined && current >= a.condition_value;
-      }) as Achievement[];
+      }) as unknown) as Achievement[];
 
       if (toUnlock.length === 0) return [];
 

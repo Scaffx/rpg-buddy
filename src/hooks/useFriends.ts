@@ -34,7 +34,7 @@ export function useFriends() {
         .order('updated_at', { ascending: false });
       if (error) throw error;
 
-      const rows = (data || []) as FriendRequest[];
+      const rows = ((data || []) as unknown) as FriendRequest[];
       const otherIds = rows.map((r) =>
         r.requester_id === user!.id ? r.receiver_id : r.requester_id,
       );
@@ -74,7 +74,7 @@ export function usePendingRequests() {
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      const rows = (data || []) as FriendRequest[];
+      const rows = ((data || []) as unknown) as FriendRequest[];
       const requesterIds = rows.map((r) => r.requester_id);
       if (requesterIds.length === 0) return rows;
 
