@@ -1,7 +1,13 @@
+// XP acumulado necessário para alcançar cada nível (índice = nível - 1)
+// Incremento por nível:
+//   Lv 1-10 : 80 → 205 XP  (progressão suave)
+//   Lv 10→11: 215 | 11→12: 225 | 12→13: 240  (conforme design)
+//   Acima do 13: aumenta ~15-50 XP a cada nível
 export const XP_TABLE = [
-  0, 200, 350, 500, 700, 950, 1250, 1600, 2000, 2450, 2950, 3500, 4100, 4750,
-  5450, 6200, 7000, 7850, 8750, 9700, 10700, 11750, 12850, 14000, 15200, 16450,
-  17750, 19100, 20500, 21950, 23450, 25000,
+     0,   80,  180,  300,  440,  600,  775,  960, 1155, 1360,  // Níveis 1-10
+  1575, 1800, 2040, 2295, 2565, 2855, 3165, 3495, 3850, 4230,  // Níveis 11-20
+  4640, 5080, 5555, 6065, 6615, 7205, 7840, 8520, 9250,10035,  // Níveis 21-30
+ 10875,11775,                                                   // Níveis 31-32
 ] as const;
 
 export function getLevelFromXp(totalXp: number): number {

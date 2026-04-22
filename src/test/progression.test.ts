@@ -33,8 +33,8 @@ describe('getLevelFromXp', () => {
   });
 
   it('funciona com XP fracionado (trunca)', () => {
-    // XP_TABLE[1] = 200. 200.9 deve ser tratado como 200
-    expect(getLevelFromXp(200.9)).toBe(2);
+    // XP fracionado deve ser truncado antes da comparação
+    expect(getLevelFromXp(XP_TABLE[1] + 0.9)).toBe(2);
   });
 
   it('XP_TABLE é monotonicamente crescente', () => {
