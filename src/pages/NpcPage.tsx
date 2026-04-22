@@ -110,7 +110,7 @@ export default function NpcPage() {
         .eq('user_id', user!.id)
         .eq('week_token', weekToken);
       if (error) throw error;
-      return (data || []) as { npc_id: string; challenge_id: string }[];
+      return ((data || []) as unknown) as { npc_id: string; challenge_id: string }[];
     },
   });
 
