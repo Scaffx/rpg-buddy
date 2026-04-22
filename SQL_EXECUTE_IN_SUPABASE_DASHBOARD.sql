@@ -4,7 +4,46 @@
 -- Acesse: https://app.supabase.com/project/jshauyvknqgxhzmslnoc/sql
 -- ============================================
 
--- CRÍTICO: Reload do cache do PostgREST (resolve "column sintonizado does not exist")
+-- ============================================================
+-- PASSO 1: Adiciona colunas ausentes (idempotente - IF NOT EXISTS)
+-- Resolve: "combat_skill_loadout column not found in schema cache"
+-- Resolve: "column user_inventory.sintonizado does not exist"
+-- ============================================================
+
+-- 1a. profiles: loadout de habilidades de combate
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS combat_skill_loadout jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+-- 1b. user_inventory: flag de sintonização de itens mágicos
+ALTER TABLE public.user_inventory
+  ADD COLUMN IF NOT EXISTS sintonizado boolean NOT NULL DEFAULT false;
+
+-- 1c. game_items: flag de item que exige sintonização
+ALTER TABLE public.game_items
+  ADD COLUMN IF NOT EXISTS requer_sintonizacao boolean NOT NULL DEFAULT false;
+
+-- Marca épicos/lendários como exigindo sintonização
+UPDATE public.game_items
+SET requer_sintonizacao = true
+WHERE lower(coalesce(rarity, '')) IN ('epico', 'lendario')
+  AND requer_sintonizacao = false;
+
+-- Índice para consultas de sintonização por usuário
+CREATE INDEX IF NOT EXISTS idx_user_inventory_user_sintonizado
+  ON public.user_inventory (user_id, sintonizado)
+  WHERE sintonizado = true;
+
+-- ============================================================
+-- PASSO 2: Garante permissões nas tabelas alteradas
+-- ============================================================
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles        TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_inventory  TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.game_items      TO anon, authenticated;
+
+-- ============================================================
+-- PASSO 3: Recarrega o cache do PostgREST
+-- (obrigatório após ALTER TABLE para as colunas ficarem visíveis)
+-- ============================================================
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================
