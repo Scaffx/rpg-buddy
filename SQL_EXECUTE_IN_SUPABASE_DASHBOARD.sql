@@ -46,6 +46,98 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.game_items      TO anon, authenti
 -- ============================================================
 NOTIFY pgrst, 'reload schema';
 
+-- ============================================================
+-- PASSO 4: Cria tabelas de talentos ausentes no banco
+-- Resolve: talentos_disponiveis e talentos_jogador não existem
+-- ============================================================
+
+-- Ponto de talento no perfil
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS pontos_talento integer NOT NULL DEFAULT 0;
+
+-- Catálogo de talentos disponíveis
+CREATE TABLE IF NOT EXISTS public.talentos_disponiveis (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome text NOT NULL UNIQUE,
+  descricao text NOT NULL,
+  efeito text NOT NULL UNIQUE,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Talentos adquiridos por cada jogador
+CREATE TABLE IF NOT EXISTS public.talentos_jogador (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  personagem_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  talento_id uuid NOT NULL REFERENCES public.talentos_disponiveis(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (personagem_id, talento_id)
+);
+
+ALTER TABLE public.talentos_disponiveis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.talentos_jogador ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='talentos_disponiveis' AND policyname='Anyone can view talentos disponiveis') THEN
+    CREATE POLICY "Anyone can view talentos disponiveis" ON public.talentos_disponiveis FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='talentos_jogador' AND policyname='Users can view own talentos') THEN
+    CREATE POLICY "Users can view own talentos" ON public.talentos_jogador FOR SELECT TO authenticated USING (auth.uid() = personagem_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='talentos_jogador' AND policyname='Users can insert own talentos') THEN
+    CREATE POLICY "Users can insert own talentos" ON public.talentos_jogador FOR INSERT TO authenticated WITH CHECK (auth.uid() = personagem_id);
+  END IF;
+END $$;
+
+-- Seed: talentos base
+INSERT INTO public.talentos_disponiveis (nome, descricao, efeito) VALUES
+  ('Madrugador',          '+15% XP antes das 8h.',                             'madrugador'),
+  ('Foco Inabalavel',     'Combo dura ate 48h entre conclusoes.',               'foco_inabalavel'),
+  ('Mestre Mercador',     '10% de desconto na loja.',                           'mestre_mercador'),
+  ('Rato de Biblioteca',  'Bonus de XP em tarefas de estudo e leitura.',        'rato_biblioteca'),
+  ('Corpo de Ferro',      'Aumenta resistencia para rotinas fisicas intensas.',  'corpo_de_ferro'),
+  ('Sorte de Principiante','Pequena chance de recompensa extra em missoes.',     'sorte_de_principiante'),
+  ('Cacador de Titas',    'Melhora desempenho contra desafios de alto nivel.',   'cacador_de_titas'),
+  ('Pele de Pedra',       'Aumenta defesa base em situacoes de risco.',          'pele_de_pedra'),
+  ('Sifao de Mana',       'Recupera uma porcao de MP ao concluir tarefas.',      'sifao_de_mana'),
+  ('Investidor Anjo',     'Aumenta ganho de ouro em conclusoes consistentes.',   'investidor_anjo'),
+  ('Alquimista Amador',   'Melhora efeitos de consumiveis e buffs.',             'alquimista_amador'),
+  ('Pulmoes de Aco',      'Eleva desempenho em atividades de resistencia.',      'pulmoes_de_aco'),
+  ('Ordem no Caos',       'Bonus quando ha varias tarefas em paralelo.',         'ordem_no_caos'),
+  ('Estado de Fluxo',     'Aumenta eficiencia em sequencias de foco.',           'estado_de_fluxo'),
+  ('Presenca Inspiradora','Fortalece bonus de suporte e motivacao.',             'presenca_inspiradora'),
+  ('Fotossintese',        'Recuperacao leve passiva de energia ao longo do dia.','fotossintese')
+ON CONFLICT (efeito) DO UPDATE SET nome = EXCLUDED.nome, descricao = EXCLUDED.descricao;
+
+-- Trigger para ganhar pontos de talento ao subir de nível
+CREATE OR REPLACE FUNCTION public.sync_talent_points_on_level_change()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  old_chunks integer;
+  new_chunks integer;
+  gain integer;
+BEGIN
+  old_chunks := floor(COALESCE(OLD.level, 1) / 5.0);
+  new_chunks := floor(COALESCE(NEW.level, 1) / 5.0);
+  gain := GREATEST(0, new_chunks - old_chunks);
+  NEW.pontos_talento := COALESCE(NEW.pontos_talento, 0) + gain;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS sync_talent_points_on_level_change_trigger ON public.profiles;
+CREATE TRIGGER sync_talent_points_on_level_change_trigger
+BEFORE UPDATE OF level ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.sync_talent_points_on_level_change();
+
+-- Backfill de pontos para usuários existentes
+UPDATE public.profiles
+SET pontos_talento = GREATEST(COALESCE(pontos_talento, 0), floor(COALESCE(level, 1) / 5.0));
+
+-- Permissões
+GRANT SELECT ON public.talentos_disponiveis TO anon, authenticated;
+GRANT SELECT, INSERT, DELETE ON public.talentos_jogador TO authenticated;
+
 -- ============================================
 
 -- Add comprehensive mechanics documentation to system update logs
