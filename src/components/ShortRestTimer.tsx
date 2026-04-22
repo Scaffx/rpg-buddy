@@ -227,7 +227,7 @@ export default function ShortRestTimer({
   }, [isRunning, endAtMs]);
 
   useEffect(() => {
-    if (!isRunning || !finished || !needsApply) return;
+    if (isRunning || !finished || !needsApply) return;
     if (completedRef.current) return;
     
     completedRef.current = true;
