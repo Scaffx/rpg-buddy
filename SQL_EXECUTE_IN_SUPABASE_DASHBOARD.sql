@@ -1,6 +1,12 @@
 -- ============================================
 -- Copie e cole este SQL no Supabase Dashboard
--- Acesse: supabase.com → seu-projeto → SQL Editor → New Query
+-- Projeto: jshauyvknqgxhzmslnoc
+-- Acesse: https://app.supabase.com/project/jshauyvknqgxhzmslnoc/sql
+-- ============================================
+
+-- CRÍTICO: Reload do cache do PostgREST (resolve "column sintonizado does not exist")
+NOTIFY pgrst, 'reload schema';
+
 -- ============================================
 
 -- Add comprehensive mechanics documentation to system update logs
