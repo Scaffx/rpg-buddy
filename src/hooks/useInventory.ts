@@ -208,13 +208,34 @@ export function useToggleEquip() {
 
       const { data: itemRow, error: itemError } = await db
         .from('user_inventory')
-        .select('id, user_id, equipped, sintonizado, game_items(rarity)')
+        .select('id, user_id, equipped, sintonizado, game_items(rarity, category)')
         .eq('id', inventoryId)
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (itemError) throw itemError;
       if (!itemRow) throw new Error('Item não encontrado no inventário.');
+
+      // --- Limites por categoria ---
+      const category = String(itemRow?.game_items?.category || '').toLowerCase();
+      const SLOT_LIMITS: Record<string, number> = { armor: 1, weapon: 2, accessory: 3 };
+      const limit = SLOT_LIMITS[category];
+      if (limit !== undefined) {
+        const { count: equippedCount, error: countError } = await db
+          .from('user_inventory')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('equipped', true)
+          .filter('game_items.category', 'eq', category);
+
+        if (countError) throw countError;
+        if ((equippedCount || 0) >= limit) {
+          const labels: Record<string, string> = { armor: 'armadura', weapon: 'arma', accessory: 'acessório' };
+          throw new Error(
+            `Limite de ${labels[category] ?? category} atingido (${limit}/${limit}). Desequipe um item antes de equipar outro.`,
+          );
+        }
+      }
 
       const rarity = String(itemRow?.game_items?.rarity || '').toLowerCase();
       const requiresAttunement = ['epico', 'lendario'].includes(rarity);

@@ -1667,6 +1667,8 @@ export default function ProfilePage() {
                       accessory: '💍 Acessórios',
                     };
 
+                    const SLOT_LIMITS: Record<string, number> = { armor: 1, weapon: 2, accessory: 3 };
+
                     return Object.entries(byCategory).map(([cat, items]) => {
                       // Sort: equipped first, then by power score desc
                       const sorted = [...items].sort((a, b) => {
@@ -1677,10 +1679,20 @@ export default function ProfilePage() {
 
                       // Find best item in category (highest score)
                       const bestItem = [...items].sort((a, b) => compareItems(b.game_items, a.game_items))[0];
+                      const equippedCount = items.filter(i => i.equipped).length;
+                      const slotLimit = SLOT_LIMITS[cat];
+                      const slotsAtLimit = slotLimit !== undefined && equippedCount >= slotLimit;
 
                       return (
                         <div key={cat} className="space-y-3">
-                          <h4 className="text-sm font-semibold text-foreground">{categoryLabels[cat] || cat}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-foreground">{categoryLabels[cat] || cat}</h4>
+                            {slotLimit !== undefined && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded border font-bold ${slotsAtLimit ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-muted/40 text-muted-foreground border-border'}`}>
+                                {equippedCount}/{slotLimit}
+                              </span>
+                            )}
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {sorted.map((inv) => {
                               const item = inv.game_items;
@@ -1746,6 +1758,7 @@ export default function ProfilePage() {
                                     </div>
                                     <div className="flex flex-col gap-1 shrink-0 ml-2">
                                       <button
+                                        disabled={!inv.equipped && slotsAtLimit}
                                         onClick={() => {
                                           toggleEquip.mutate(
                                             { inventoryId: inv.id, equipped: !inv.equipped },
@@ -1755,7 +1768,9 @@ export default function ProfilePage() {
                                         className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
                                           inv.equipped
                                             ? 'bg-primary/30 text-primary border border-primary/40'
-                                            : 'bg-muted/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                                            : slotsAtLimit
+                                              ? 'opacity-40 cursor-not-allowed bg-muted/50 text-muted-foreground'
+                                              : 'bg-muted/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
                                         }`}
                                       >
                                         {inv.equipped ? '✓ Equipado' : 'Equipar'}
