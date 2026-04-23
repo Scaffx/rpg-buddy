@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
-import { useShortRestAvailability, useShortRestRecovery, useShortRestStart } from '@/hooks/useProfile';
+import { useAttributes, useProfile, useShortRestAvailability, useShortRestRecovery, useShortRestStart } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
+import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState, type ShortRestPersistentState } from '@/lib/shortRestState';
 
 type ShortRestTimerProps = {
@@ -48,6 +49,14 @@ export default function ShortRestTimer({
   const shortRestAvailability = useShortRestAvailability();
   const shortRestRecovery = useShortRestRecovery();
   const shortRestStart = useShortRestStart();
+  const { data: profile } = useProfile();
+  const { data: attributes } = useAttributes();
+
+  const computedMaxes = useMemo(() => {
+    const levels = getAttributeLevels(attributes as any[]);
+    const stats = getPlayerCombatStats(profile?.level || 1, levels);
+    return { hp: stats.hp, mp: stats.mp };
+  }, [profile?.level, attributes]);
 
   const formatted = useMemo(() => formatSeconds(secondsLeft), [secondsLeft]);
 
@@ -63,9 +72,13 @@ export default function ShortRestTimer({
         campfireIntervalRef.current = null;
       }
       
-      const result = await shortRestRecovery.mutateAsync();
-      setLastRecoverySummary(`+${result.hpRecovered} HP e +${result.mpRecovered} MP`);
-      toast.success(`Descanso curto completo: +${result.hpRecovered} HP e +${result.mpRecovered} MP`);
+      const result = await shortRestRecovery.mutateAsync({
+        computedMaxHp: computedMaxes.hp,
+        computedMaxMp: computedMaxes.mp,
+      });
+      const fatiguePart = result.fatigueRecovered > 0 ? `, -${result.fatigueRecovered} fadiga` : '';
+      setLastRecoverySummary(`+${result.hpRecovered} HP, +${result.mpRecovered} MP${fatiguePart}`);
+      toast.success(`Descanso curto completo: +${result.hpRecovered} HP, +${result.mpRecovered} MP${fatiguePart}`);
       onRestComplete?.();
       setNeedsApply(false);
     } catch (error: any) {
@@ -73,7 +86,7 @@ export default function ShortRestTimer({
       setLastRecoverySummary(null);
       toast.error(error?.message || 'Não foi possível aplicar a recuperação do descanso curto.');
     }
-  }, [shortRestRecovery, onRestComplete]);
+  }, [shortRestRecovery, onRestComplete, computedMaxes.hp, computedMaxes.mp]);
 
   const handleStart = async () => {
     if (shortRestAvailability.isLoading) {
