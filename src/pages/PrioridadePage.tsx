@@ -72,20 +72,57 @@ export default function PrioridadePage() {
     });
   }
 
+  const TEMPLATES = [
+    { title: "Viagem dos Sonhos", description: "Juntar dinheiro para uma viagem inesquecível.", target_value: 5000, hint: "💰 valor em R$" },
+    { title: "Comprar PC Gamer", description: "Economizar para o setup ideal.", target_value: 8000, hint: "💰 valor em R$" },
+    { title: "Ler 12 livros no ano", description: "Cultivar o hábito de leitura.", target_value: 12, hint: "📚 livros" },
+    { title: "100h de Estudo", description: "Dominar uma nova habilidade ou idioma.", target_value: 100, hint: "⏱️ horas" },
+    { title: "Perder 10kg", description: "Meta de transformação física.", target_value: 10, hint: "⚖️ kg" },
+    { title: "Correr 100km", description: "Distância acumulada de corridas.", target_value: 100, hint: "🏃 km" },
+  ];
+
+  function applyTemplate(t: typeof TEMPLATES[number]) {
+    setForm((f) => ({ ...f, title: t.title, description: t.description, target_value: t.target_value }));
+  }
+
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-display font-bold text-primary">Planos & Metas</h1>
         <Button onClick={() => setModalOpen(true)}>Novo Plano/Meta</Button>
       </div>
 
+      <div className="mb-6 p-4 rounded-lg bg-muted/30 border border-border/40">
+        <p className="text-sm text-foreground font-semibold mb-1">🎯 Como funciona?</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Crie metas de longo prazo (viagem, curso, peso ideal, etc.) e <span className="text-primary font-medium">vincule missões diárias</span> que vão somar progresso automaticamente cada vez que você concluir uma delas. Defina um <span className="text-primary font-medium">valor-meta</span> (R$, horas, kg, livros — você escolhe a unidade) e quanto cada conclusão de missão contribui.
+        </p>
+      </div>
+
       {/* Modal de criação */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="bg-gradient-to-br from-background via-secondary/60 to-background border border-border/60 shadow-2xl">
+        <DialogContent className="bg-gradient-to-br from-background via-secondary/60 to-background border border-border/60 shadow-2xl max-h-[90vh] overflow-y-auto">
           <form className="space-y-4" onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle className="text-2xl font-extrabold text-primary drop-shadow">Novo Plano/Meta</DialogTitle>
             </DialogHeader>
+
+            <div className="space-y-2">
+              <Label className="text-xs">⚡ Modelos rápidos (opcional)</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {TEMPLATES.map((t) => (
+                  <button
+                    key={t.title}
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className="text-[11px] px-2 py-1 rounded-md bg-muted/50 border border-border/60 hover:bg-primary/10 hover:border-primary/40 transition-colors"
+                    title={t.description}
+                  >
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="plan-title">Título</Label>
               <Input
