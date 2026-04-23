@@ -1581,7 +1581,7 @@ export function useShortRestRecovery() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (params?: { computedMaxHp?: number; computedMaxMp?: number }) => {
       if (!user) throw new Error('Não autenticado');
 
       const usedAt = await getShortRestUsageToday(user.id);
@@ -1592,68 +1592,138 @@ export function useShortRestRecovery() {
 
       const { data: healthStats, error: healthError } = await (supabase as any)
         .from('user_health_stats')
-        .select('max_hp, current_hp, max_mp, current_mp')
+        .select('max_hp, current_hp, max_mp, current_mp, fatigue')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (healthError) throw healthError;
 
-      const maxHp = Number(healthStats?.max_hp ?? 100);
-      const currentHp = Number(healthStats?.current_hp ?? 0);
-      const maxMp = Number(healthStats?.max_mp ?? 10);
-      const currentMp = Number(healthStats?.current_mp ?? 0);
+      // Use computed maxes (passed from UI) so recovery is meaningful even when
+      // DB max_hp/max_mp lag behind level/attribute progression.
+      const dbMaxHp = Number(healthStats?.max_hp ?? 100);
+      const dbMaxMp = Number(healthStats?.max_mp ?? 10);
+      const effectiveMaxHp = Math.max(dbMaxHp, Number(params?.computedMaxHp ?? 0));
+      const effectiveMaxMp = Math.max(dbMaxMp, Number(params?.computedMaxMp ?? 0));
 
-      const hpGain = Math.max(1, Math.ceil(maxHp * 0.3));
-      const mpGain = Math.max(1, Math.ceil(maxMp * 0.3));
+      const currentHp = Number(healthStats?.current_hp ?? effectiveMaxHp);
+      const currentMp = Number(healthStats?.current_mp ?? effectiveMaxMp);
+      const fatigue = Number(healthStats?.fatigue ?? 0);
 
-      const newHp = Math.min(maxHp, currentHp + hpGain);
-      const newMp = Math.min(maxMp, currentMp + mpGain);
+      const hpGain = Math.max(1, Math.ceil(effectiveMaxHp * 0.3));
+      const mpGain = Math.max(1, Math.ceil(effectiveMaxMp * 0.3));
+      const fatigueRelief = Math.max(0, Math.ceil(fatigue * 0.3));
+
+      const newHp = Math.min(effectiveMaxHp, currentHp + hpGain);
+      const newMp = Math.min(effectiveMaxMp, currentMp + mpGain);
+      const newFatigue = Math.max(0, fatigue - fatigueRelief);
+
+      const payload: Record<string, any> = {
+        max_hp: effectiveMaxHp,
+        current_hp: newHp,
+        max_mp: effectiveMaxMp,
+        current_mp: newMp,
+        fatigue: newFatigue,
+      };
 
       if (healthStats) {
         const { error: updateError } = await (supabase as any)
           .from('user_health_stats')
-          .update({
-            current_hp: newHp,
-            current_mp: newMp,
-          })
+          .update(payload)
           .eq('user_id', user.id);
 
         if (updateError) throw updateError;
       } else {
         const { error: insertError } = await (supabase as any)
           .from('user_health_stats')
-          .insert({
-            user_id: user.id,
-            max_hp: maxHp,
-            current_hp: newHp,
-            max_mp: maxMp,
-            current_mp: newMp,
-            fatigue: 0,
-          });
+          .insert({ user_id: user.id, ...payload });
 
         if (insertError) throw insertError;
       }
 
+      const hpRecovered = newHp - currentHp;
+      const mpRecovered = newMp - currentMp;
+      const fatigueRecovered = fatigue - newFatigue;
+
       const { error: logError } = await supabase.from('activity_log').insert({
         user_id: user.id,
         action: SHORT_REST_ACTION,
-        description: `Descanso curto concluído: +${newHp - currentHp} HP e +${newMp - currentMp} MP`,
+        description: `Descanso curto concluído: +${hpRecovered} HP, +${mpRecovered} MP, -${fatigueRecovered} fadiga`,
         xp_gained: 0,
       });
 
       if (logError) throw logError;
 
       return {
-        hpRecovered: newHp - currentHp,
-        mpRecovered: newMp - currentMp,
+        hpRecovered,
+        mpRecovered,
+        fatigueRecovered,
         currentHp: newHp,
         currentMp: newMp,
+        fatigue: newFatigue,
       };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['health_stats', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
       queryClient.invalidateQueries({ queryKey: ['activity', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['short_rest_status', user?.id] });
+    },
+  });
+}
+
+/**
+ * Sincroniza max_hp/max_mp no banco com os valores calculados a partir do nível
+ * e atributos. Necessário porque potions, water rewards, short rest e long rest
+ * leem max_* do banco — sem sync, o cap fica preso em valores antigos (10/100).
+ */
+export function useSyncHealthMaxes() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { computedMaxHp: number; computedMaxMp: number }) => {
+      if (!user) return;
+      const { computedMaxHp, computedMaxMp } = params;
+
+      const { data: stats } = await (supabase as any)
+        .from('user_health_stats')
+        .select('max_hp, max_mp, current_hp, current_mp')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const currentMaxHp = Number(stats?.max_hp ?? 0);
+      const currentMaxMp = Number(stats?.max_mp ?? 0);
+
+      // Só atualiza se o computado for maior (evita "downgrade" se algum buff temporário existir)
+      const needsUpdate = computedMaxHp > currentMaxHp || computedMaxMp > currentMaxMp;
+      if (!needsUpdate) return;
+
+      const newMaxHp = Math.max(currentMaxHp, computedMaxHp);
+      const newMaxMp = Math.max(currentMaxMp, computedMaxMp);
+
+      // Se current_hp/mp ainda não foram registrados, inicializa cheio.
+      const currentHp = stats?.current_hp ?? newMaxHp;
+      const currentMp = stats?.current_mp ?? newMaxMp;
+
+      if (stats) {
+        await (supabase as any)
+          .from('user_health_stats')
+          .update({ max_hp: newMaxHp, max_mp: newMaxMp })
+          .eq('user_id', user.id);
+      } else {
+        await (supabase as any).from('user_health_stats').insert({
+          user_id: user.id,
+          max_hp: newMaxHp,
+          max_mp: newMaxMp,
+          current_hp: currentHp,
+          current_mp: currentMp,
+          fatigue: 0,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['health_stats', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
     },
   });
 }
