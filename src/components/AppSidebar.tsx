@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
+import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfile, useClasses } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
 import ActiveTalentsBadge from '@/components/ActiveTalentsBadge';
 import {
@@ -53,11 +54,18 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { signOut, user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: classes } = useClasses();
   const { data: goldBalance } = useGoldBalance();
   const location = useLocation();
   const currentGold = (goldBalance as any)?.gold ?? 100;
 
-  const currentClass = profile?.current_class_id ? 'Aprendiz' : 'Aprendiz';
+  const currentClass = useMemo(() => {
+    const id = (profile as any)?.current_class_id;
+    if (!id || !classes) return 'Aprendiz';
+    const found = (classes as any[]).find((c) => c.id === id);
+    if (!found) return 'Aprendiz';
+    return `${found.icon || ''} ${found.name}`.trim();
+  }, [profile, classes]);
   const xpForLevel = 200;
   const currentXp = profile ? profile.total_xp % xpForLevel : 0;
 
