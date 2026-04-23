@@ -24,6 +24,7 @@ import NotFound from "./pages/NotFound";
 import PrioridadePage from "./pages/PrioridadePage";
 import Onboarding from "./pages/Onboarding";
 import SystemInfoPage from "./pages/SystemInfoPage";
+import VirtuesPage from "./pages/VirtuesPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -81,6 +82,7 @@ function AppRoutes() {
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/prioridade" element={<ProtectedRoute><PrioridadePage /></ProtectedRoute>} />
       <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
+      <Route path="/virtues" element={<ProtectedRoute><VirtuesPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
