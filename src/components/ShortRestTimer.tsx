@@ -276,7 +276,7 @@ export default function ShortRestTimer({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-bold">Short Rest</h3>
-          <p className="text-xs text-muted-foreground">Conclua o timer para recuperar 30% de HP/MP.</p>
+          <p className="text-xs text-muted-foreground">Conclua o timer para recuperar 30% de HP, MP e reduzir 30% da fadiga.</p>
         </div>
 
         <label className="text-xs text-muted-foreground flex items-center gap-2">
