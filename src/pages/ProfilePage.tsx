@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useClasses } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useClasses, useSyncHealthMaxes } from "@/hooks/useProfile";
 import {
   useFriends,
   usePendingRequests,
