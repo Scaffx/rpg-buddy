@@ -494,6 +494,7 @@ export type Database = {
           mp_bonus: number
           name: string
           rarity: string
+          requer_sintonizacao: boolean
           required_attribute: string | null
           required_attribute_level: number | null
           shop_price: number | null
@@ -521,6 +522,7 @@ export type Database = {
           mp_bonus?: number
           name: string
           rarity?: string
+          requer_sintonizacao?: boolean
           required_attribute?: string | null
           required_attribute_level?: number | null
           shop_price?: number | null
@@ -548,6 +550,7 @@ export type Database = {
           mp_bonus?: number
           name?: string
           rarity?: string
+          requer_sintonizacao?: boolean
           required_attribute?: string | null
           required_attribute_level?: number | null
           shop_price?: number | null
@@ -840,6 +843,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           boss_keys: number
+          combat_skill_loadout: Json
           created_at: string
           current_class_id: string | null
           display_name: string | null
@@ -849,6 +853,7 @@ export type Database = {
           level: number
           missions_completed: number
           onboarding_completed: boolean
+          pontos_talento: number
           region: string | null
           starter_kit_claimed: boolean
           total_xp: number
@@ -859,6 +864,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           boss_keys?: number
+          combat_skill_loadout?: Json
           created_at?: string
           current_class_id?: string | null
           display_name?: string | null
@@ -868,6 +874,7 @@ export type Database = {
           level?: number
           missions_completed?: number
           onboarding_completed?: boolean
+          pontos_talento?: number
           region?: string | null
           starter_kit_claimed?: boolean
           total_xp?: number
@@ -878,6 +885,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           boss_keys?: number
+          combat_skill_loadout?: Json
           created_at?: string
           current_class_id?: string | null
           display_name?: string | null
@@ -887,6 +895,7 @@ export type Database = {
           level?: number
           missions_completed?: number
           onboarding_completed?: boolean
+          pontos_talento?: number
           region?: string | null
           starter_kit_claimed?: boolean
           total_xp?: number
@@ -939,6 +948,59 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      talentos_disponiveis: {
+        Row: {
+          created_at: string
+          descricao: string
+          efeito: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          efeito: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          efeito?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      talentos_jogador: {
+        Row: {
+          created_at: string
+          id: string
+          personagem_id: string
+          talento_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          personagem_id: string
+          talento_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          personagem_id?: string
+          talento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "talentos_jogador_talento_id_fkey"
+            columns: ["talento_id"]
+            isOneToOne: false
+            referencedRelation: "talentos_disponiveis"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_balance: {
         Row: {
@@ -1087,6 +1149,7 @@ export type Database = {
           item_id: string
           obtained_at: string
           quantity: number
+          sintonizado: boolean
           user_id: string
         }
         Insert: {
@@ -1095,6 +1158,7 @@ export type Database = {
           item_id: string
           obtained_at?: string
           quantity?: number
+          sintonizado?: boolean
           user_id: string
         }
         Update: {
@@ -1103,6 +1167,7 @@ export type Database = {
           item_id?: string
           obtained_at?: string
           quantity?: number
+          sintonizado?: boolean
           user_id?: string
         }
         Relationships: [
