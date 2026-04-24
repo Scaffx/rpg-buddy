@@ -9,6 +9,7 @@ import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
+import { useSleepWakeAlerts } from '@/hooks/useSleepWakeAlerts';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
