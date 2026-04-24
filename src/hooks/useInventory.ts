@@ -221,14 +221,17 @@ export function useToggleEquip() {
       const SLOT_LIMITS: Record<string, number> = { armor: 1, weapon: 2, accessory: 3 };
       const limit = SLOT_LIMITS[category];
       if (limit !== undefined) {
-        const { count: equippedCount, error: countError } = await db
+        const { data: equippedRows, error: countError } = await db
           .from('user_inventory')
-          .select('id', { count: 'exact', head: true })
+          .select('id, game_items!inner(category)')
           .eq('user_id', user.id)
           .eq('equipped', true)
-          .filter('game_items.category', 'eq', category);
+          .neq('id', inventoryId);
 
         if (countError) throw countError;
+        const equippedCount = (equippedRows || []).filter(
+          (row: any) => String(row?.game_items?.category || '').toLowerCase() === category,
+        ).length;
         if ((equippedCount || 0) >= limit) {
           const labels: Record<string, string> = { armor: 'armadura', weapon: 'arma', accessory: 'acessório' };
           throw new Error(

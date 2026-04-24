@@ -85,10 +85,28 @@ function useHealthStats() {
         return d;
       }
 
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+
+      const { data: yesterdayWater, error: waterError } = await supabase
+        .from("water_log" as any)
+        .select("amount_ml")
+        .eq("user_id", user!.id)
+        .eq("log_date", yesterdayStr);
+
+      if (waterError) throw waterError;
+
+      const targetWater = Number(d.water_target_ml ?? Math.round(Number(d.weight_kg ?? 70) * 35));
+      const halfTarget = targetWater / 2;
+      const yesterdayTotal = (yesterdayWater || []).reduce((sum: number, row: any) => sum + Number(row.amount_ml || 0), 0);
+      const shouldAddFatigue = targetWater > 0 && yesterdayTotal < halfTarget;
+      const fatigueGain = shouldAddFatigue ? 35 : 0;
+      const nextFatigue = Math.min(100, Number(d.fatigue ?? 0) + fatigueGain);
+
       const resetPayload = {
         current_hp: Number(d.max_hp ?? 100),
-        current_mp: Number(d.max_mp ?? 10),
-        fatigue: 0,
+        fatigue: nextFatigue,
         last_reset_date: today,
       };
 
@@ -752,20 +770,12 @@ export default function ProfilePage() {
   const maxMp = playerCombatStats.mp;
   // Penalidades dinâmicas após LV 15
   let mealPenalty = 0;
-  let waterPenalty = 0;
   let penaltyMessages: string[] = [];
   if ((profile?.level || 1) > 15) {
     // Refeições: 5% do HP máximo por refeição faltante
     if (mealsToday < mealHalf) {
       mealPenalty = Math.round((mealHalf - mealsToday) * 0.05 * maxHp);
       penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
-    }
-    // Água: penalidade de 10% MP apenas se não atingiu nem metade da meta diária.
-    // (Se bebeu >= 50%, o sistema de recompensa já gerencia o MP via DB.)
-    const halfWaterTarget = waterTargetMl / 2;
-    if (totalWaterToday < halfWaterTarget) {
-      waterPenalty = Math.round(0.10 * maxMp);
-      penaltyMessages.push(`⚠️ Você perdeu ${waterPenalty} MP por não beber água suficiente!`);
     }
   } else {
     // Penalidade antiga para refeições (antes do LV 16)
@@ -777,7 +787,7 @@ export default function ProfilePage() {
   const persistedHp = Number(healthStats?.current_hp ?? maxHp);
   const persistedMp = Number(healthStats?.current_mp ?? maxMp);
   const currentHp = Math.max(0, Math.min(maxHp, persistedHp) - mealPenalty);
-  const currentMp = Math.max(0, Math.min(maxMp, persistedMp) - waterPenalty);
+  const currentMp = Math.max(0, Math.min(maxMp, persistedMp));
   const fatigue = healthStats?.fatigue ?? 0;
   const fatigueStatus =
     fatigue >= 75
@@ -906,76 +916,8 @@ export default function ProfilePage() {
         console.error("[logWater] Erro ao inserir água:", error);
         throw error;
       }
-
-      // Calcula o novo total de água do dia
-      const { data: allToday } = await supabase
-        .from("water_log" as any)
-        .select("amount_ml")
-        .eq("user_id", user.id)
-        .eq("log_date", today);
-      const newTotal = (allToday || []).reduce((s: number, w: any) => s + (w.amount_ml || 0), 0);
-
-      // Busca meta de água e stats de saúde
-      const { data: hStats } = await (supabase as any)
-        .from("user_health_stats")
-        .select("max_mp, current_mp, water_target_ml, weight_kg")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      const weightKg = Number(hStats?.weight_kg ?? 70);
-      const target = Number(hStats?.water_target_ml ?? Math.round(weightKg * 35));
-      const halfTarget = target / 2;
-      const maxMp = Number(hStats?.max_mp ?? 40);
-      const currentMp = Number(hStats?.current_mp ?? 0);
-
-      if (!hStats || target <= 0) return { milestone: null };
-
-      // Verifica recompensas já concedidas hoje
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const { data: existingRewards } = await supabase
-        .from("activity_log")
-        .select("action")
-        .eq("user_id", user.id)
-        .in("action", ["water_mp_reward_half", "water_mp_reward_full"])
-        .gte("created_at", startOfDay.toISOString());
-      const rewarded = new Set((existingRewards || []).map((r: any) => r.action));
-
-      // Marco 100%: beber tudo → MP 100%
-      if (newTotal >= target && !rewarded.has("water_mp_reward_full")) {
-        await (supabase as any)
-          .from("user_health_stats")
-          .update({ current_mp: maxMp })
-          .eq("user_id", user.id);
-        await supabase.from("activity_log").insert({
-          user_id: user.id,
-          action: "water_mp_reward_full",
-          description: "💧 Meta de hidratação completa! MP totalmente restaurado.",
-          xp_gained: 0,
-        });
-        return { milestone: "full", mpRestored: maxMp - currentMp };
-      }
-
-      // Marco 50%: beber metade → MP 50% (não reduz se já tiver mais)
-      if (newTotal >= halfTarget && !rewarded.has("water_mp_reward_half") && !rewarded.has("water_mp_reward_full")) {
-        const halfMp = Math.ceil(maxMp * 0.5);
-        const newMp = Math.max(currentMp, halfMp);
-        await (supabase as any)
-          .from("user_health_stats")
-          .update({ current_mp: newMp })
-          .eq("user_id", user.id);
-        await supabase.from("activity_log").insert({
-          user_id: user.id,
-          action: "water_mp_reward_half",
-          description: "💧 Metade da meta de hidratação atingida! +50% MP restaurado.",
-          xp_gained: 0,
-        });
-        return { milestone: "half", mpRestored: newMp - currentMp };
-      }
-
-      return { milestone: null };
     },
-    onSuccess: async (result: any) => {
+    onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["water_log", user?.id] }),
         queryClient.invalidateQueries({ queryKey: ["dailyTracking", user?.id] }),
@@ -986,13 +928,7 @@ export default function ProfilePage() {
         queryClient.refetchQueries({ queryKey: ["health_stats", user?.id], type: "active" }),
       ]);
 
-      if (result?.milestone === "full") {
-        toast.success("💧 Meta de hidratação completa! MP totalmente restaurado!");
-      } else if (result?.milestone === "half") {
-        toast.success("💧 Metade da meta de água atingida! MP restaurado a 50%!");
-      } else {
-        toast.success("Água registrada! 💧");
-      }
+      toast.success("Água registrada! 💧");
     },
     onError: (err) => {
       toast.error("Erro ao registrar água: " + (err?.message || err));
@@ -1340,7 +1276,7 @@ export default function ProfilePage() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground text-center">Base: {weight}kg × 35ml = {waterTargetMl}ml</p>
+                <p className="text-[10px] text-muted-foreground text-center">Base: {weight}kg × 35ml = {waterTargetMl}ml. Se ficar abaixo de 50% no dia, ganha +35 de fadiga.</p>
               </div>
             </div>
 

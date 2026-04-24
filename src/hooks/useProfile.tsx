@@ -1210,11 +1210,82 @@ export function useStartActiveCombat() {
 
       const { data: healthStats, error: healthStatsError } = await (supabase as any)
         .from('user_health_stats')
-        .select('id, current_hp, max_hp, fatigue')
+        .select('id, current_hp, max_hp, fatigue, water_target_ml, weight_kg, last_reset_date')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (healthStatsError) throw healthStatsError;
+
+      let fatigue = Number((healthStats as any)?.fatigue ?? 0);
+      const today = new Date().toLocaleDateString('en-CA');
+      const shouldApplyDailyHydrationCheck = Boolean(healthStats) && String((healthStats as any)?.last_reset_date || '') !== today;
+
+      if (shouldApplyDailyHydrationCheck) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+
+        const { data: yesterdayWater, error: waterError } = await (supabase as any)
+          .from('water_log')
+          .select('amount_ml')
+          .eq('user_id', user.id)
+          .eq('log_date', yesterdayStr);
+
+        if (waterError) throw waterError;
+
+        const waterTarget = Number((healthStats as any)?.water_target_ml ?? Math.round(Number((healthStats as any)?.weight_kg ?? 70) * 35));
+        const halfTarget = waterTarget / 2;
+        const yesterdayTotal = (yesterdayWater || []).reduce((sum: number, row: any) => sum + Number(row.amount_ml || 0), 0);
+        const hydrationFailed = waterTarget > 0 && yesterdayTotal < halfTarget;
+
+        if (hydrationFailed) {
+          fatigue = Math.min(100, fatigue + 35);
+        }
+
+        const { error: daySyncError } = await (supabase as any)
+          .from('user_health_stats')
+          .update({ fatigue, last_reset_date: today })
+          .eq('user_id', user.id);
+
+        if (daySyncError) throw daySyncError;
+      }
+
+      const { data: fatigueLockState, error: fatigueLockError } = await supabase
+        .from('activity_log')
+        .select('action')
+        .eq('user_id', user.id)
+        .in('action', ['fatigue_lock_on', 'fatigue_lock_off'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fatigueLockError) throw fatigueLockError;
+
+      let fatigueLocked = String((fatigueLockState as any)?.action || '') === 'fatigue_lock_on';
+
+      if (fatigue >= 100 && !fatigueLocked) {
+        await supabase.from('activity_log').insert({
+          user_id: user.id,
+          action: 'fatigue_lock_on',
+          description: 'Fadiga chegou a 100: bloqueio de boss ativado ate voltar para 50 ou menos.',
+          xp_gained: 0,
+        });
+        fatigueLocked = true;
+      }
+
+      if (fatigueLocked && fatigue <= 50) {
+        await supabase.from('activity_log').insert({
+          user_id: user.id,
+          action: 'fatigue_lock_off',
+          description: 'Fadiga voltou para 50 ou menos: bloqueio de boss removido.',
+          xp_gained: 0,
+        });
+        fatigueLocked = false;
+      }
+
+      if (fatigueLocked) {
+        throw new Error('Fadiga alta: boss bloqueado. Reduza a fadiga para 50 ou menos com Short Rest para voltar a lutar.');
+      }
 
       const hpAtualPersistido = Number((healthStats as any)?.current_hp ?? hpMaxPersonagem);
       const hpInicialPersonagem = Math.max(1, Math.min(hpMaxPersonagem, hpAtualPersistido));
@@ -1518,7 +1589,7 @@ export function useAwardHealthXP() {
         if (updateError) throw updateError;
       }
 
-      // Descanso Longo: cumprir desafio de saúde restaura HP/MP totalmente
+      // Cumprir desafio de saúde restaura HP (mana nao e restaurada aqui).
       const { data: healthStats } = await (supabase as any)
         .from('user_health_stats')
         .select('id, max_hp, max_mp')
@@ -1530,7 +1601,6 @@ export function useAwardHealthXP() {
           .from('user_health_stats')
           .update({
             current_hp: Number(healthStats.max_hp ?? 100),
-            current_mp: Number(healthStats.max_mp ?? 40),
             fatigue: 0,
           })
           .eq('user_id', user!.id);
