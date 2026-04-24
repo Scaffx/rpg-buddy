@@ -64,6 +64,35 @@ const RESPEC_CLASSES = [
   { id: "arqueiro", label: "Arqueiro" },
 ] as const;
 
+// Returns "HH:MM" -> minutes from midnight (default fallbacks)
+function timeStringToMinutes(value: string | null | undefined, fallback: number): number {
+  if (!value || typeof value !== 'string') return fallback;
+  const match = value.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return fallback;
+  const h = Math.min(23, Math.max(0, parseInt(match[1], 10)));
+  const m = Math.min(59, Math.max(0, parseInt(match[2], 10)));
+  return h * 60 + m;
+}
+
+function getCurrentMinutes(): number {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+/**
+ * Whether the hero is currently considered "awake".
+ * If wake <= sleep (e.g. wake 07:00, sleep 23:00) → awake when wake <= now < sleep.
+ * If wake > sleep (e.g. siesta-like inverted) → awake outside the sleep window.
+ */
+function isHeroAwake(sleepTime: string | null | undefined, wakeTime: string | null | undefined): boolean {
+  const wake = timeStringToMinutes(wakeTime, 7 * 60);
+  const sleep = timeStringToMinutes(sleepTime, 23 * 60);
+  const now = getCurrentMinutes();
+  if (wake === sleep) return true;
+  if (wake < sleep) return now >= wake && now < sleep;
+  return now >= wake || now < sleep;
+}
+
 function useHealthStats() {
   const { user } = useAuth();
   return useQuery({
@@ -78,8 +107,38 @@ function useHealthStats() {
       if (error) throw error;
 
       if (!data) return null;
-      const d = data as any;
+      let d = data as any;
 
+      // ===== Wake-up recovery =====
+      // When the local time crosses the user's wake_time, restore HP/MP to full
+      // and clear fatigue completely. Only run once per day.
+      const wakeMinutes = timeStringToMinutes(d.wake_time, 7 * 60);
+      const nowMinutes = getCurrentMinutes();
+      const alreadyRecoveredToday = d.last_wake_recovery_date === today;
+      const shouldRecoverOnWake = !alreadyRecoveredToday && nowMinutes >= wakeMinutes;
+
+      if (shouldRecoverOnWake) {
+        const fullHp = Number(d.max_hp ?? 100);
+        const fullMp = Number(d.max_mp ?? 10);
+        const wakePayload = {
+          current_hp: fullHp,
+          current_mp: fullMp,
+          fatigue: 0,
+          last_wake_recovery_date: today,
+        };
+
+        const { data: wakeData, error: wakeError } = await supabase
+          .from("user_health_stats" as any)
+          .update(wakePayload as any)
+          .eq("user_id", user!.id)
+          .select('*')
+          .single();
+
+        if (wakeError) throw wakeError;
+        d = wakeData as any;
+      }
+
+      // ===== Daily hydration check (penalty for previous day) =====
       const shouldReset = d.last_reset_date !== today;
       if (!shouldReset) {
         return d;
@@ -121,6 +180,8 @@ function useHealthStats() {
       return resetData as any;
     },
     enabled: !!user,
+    // Re-poll every minute so the wake-up moment fires even if the user keeps the page open.
+    refetchInterval: 60_000,
   });
 }
 
