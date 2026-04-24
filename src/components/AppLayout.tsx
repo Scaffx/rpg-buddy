@@ -5,7 +5,7 @@ import ShortRestTimer from '@/components/ShortRestTimer';
 import SoundToggleButton from '@/components/SoundToggleButton';
 import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { CharacterSprite } from '@/components/CharacterSprite';
-import { Flame, ShieldAlert, Trophy } from 'lucide-react';
+import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
