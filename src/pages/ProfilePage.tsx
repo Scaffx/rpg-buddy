@@ -64,6 +64,35 @@ const RESPEC_CLASSES = [
   { id: "arqueiro", label: "Arqueiro" },
 ] as const;
 
+// Returns "HH:MM" -> minutes from midnight (default fallbacks)
+function timeStringToMinutes(value: string | null | undefined, fallback: number): number {
+  if (!value || typeof value !== 'string') return fallback;
+  const match = value.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return fallback;
+  const h = Math.min(23, Math.max(0, parseInt(match[1], 10)));
+  const m = Math.min(59, Math.max(0, parseInt(match[2], 10)));
+  return h * 60 + m;
+}
+
+function getCurrentMinutes(): number {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+/**
+ * Whether the hero is currently considered "awake".
+ * If wake <= sleep (e.g. wake 07:00, sleep 23:00) → awake when wake <= now < sleep.
+ * If wake > sleep (e.g. siesta-like inverted) → awake outside the sleep window.
+ */
+function isHeroAwake(sleepTime: string | null | undefined, wakeTime: string | null | undefined): boolean {
+  const wake = timeStringToMinutes(wakeTime, 7 * 60);
+  const sleep = timeStringToMinutes(sleepTime, 23 * 60);
+  const now = getCurrentMinutes();
+  if (wake === sleep) return true;
+  if (wake < sleep) return now >= wake && now < sleep;
+  return now >= wake || now < sleep;
+}
+
 function useHealthStats() {
   const { user } = useAuth();
   return useQuery({
@@ -78,8 +107,38 @@ function useHealthStats() {
       if (error) throw error;
 
       if (!data) return null;
-      const d = data as any;
+      let d = data as any;
 
+      // ===== Wake-up recovery =====
+      // When the local time crosses the user's wake_time, restore HP/MP to full
+      // and clear fatigue completely. Only run once per day.
+      const wakeMinutes = timeStringToMinutes(d.wake_time, 7 * 60);
+      const nowMinutes = getCurrentMinutes();
+      const alreadyRecoveredToday = d.last_wake_recovery_date === today;
+      const shouldRecoverOnWake = !alreadyRecoveredToday && nowMinutes >= wakeMinutes;
+
+      if (shouldRecoverOnWake) {
+        const fullHp = Number(d.max_hp ?? 100);
+        const fullMp = Number(d.max_mp ?? 10);
+        const wakePayload = {
+          current_hp: fullHp,
+          current_mp: fullMp,
+          fatigue: 0,
+          last_wake_recovery_date: today,
+        };
+
+        const { data: wakeData, error: wakeError } = await supabase
+          .from("user_health_stats" as any)
+          .update(wakePayload as any)
+          .eq("user_id", user!.id)
+          .select('*')
+          .single();
+
+        if (wakeError) throw wakeError;
+        d = wakeData as any;
+      }
+
+      // ===== Daily hydration check (penalty for previous day) =====
       const shouldReset = d.last_reset_date !== today;
       if (!shouldReset) {
         return d;
@@ -121,6 +180,8 @@ function useHealthStats() {
       return resetData as any;
     },
     enabled: !!user,
+    // Re-poll every minute so the wake-up moment fires even if the user keeps the page open.
+    refetchInterval: 60_000,
   });
 }
 
@@ -655,6 +716,8 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"perfil" | "habilidades" | "inventario" | "amigos" | "conquistas">("perfil");
   const [weight, setWeight] = useState(70);
   const [mealsTarget, setMealsTarget] = useState(3);
+  const [sleepTime, setSleepTime] = useState('23:00');
+  const [wakeTime, setWakeTime] = useState('07:00');
   const [volume, setVolume] = useState(100);
   const [xpAwarded, setXpAwarded] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -672,6 +735,10 @@ export default function ProfilePage() {
     if (healthStats) {
       setWeight(Number(healthStats.weight_kg) || 70);
       setMealsTarget(healthStats.meals_target || 3);
+      const rawSleep = String((healthStats as any).sleep_time || '23:00');
+      const rawWake = String((healthStats as any).wake_time || '07:00');
+      setSleepTime(rawSleep.slice(0, 5));
+      setWakeTime(rawWake.slice(0, 5));
     }
   }, [healthStats]);
 
@@ -768,27 +835,47 @@ export default function ProfilePage() {
   const mealHalf = Math.ceil(mealsTarget / 2);
   const maxHp = playerCombatStats.hp;
   const maxMp = playerCombatStats.mp;
-  // Penalidades dinâmicas após LV 15
+
+  // Hero is "asleep" between sleep_time and wake_time. While asleep, he doesn't
+  // suffer hunger penalties — he wakes up at full HP/MP and only then starts
+  // accumulating the day's effects.
+  const heroAwake = useMemo(
+    () => isHeroAwake(
+      (healthStats as any)?.sleep_time,
+      (healthStats as any)?.wake_time,
+    ),
+    [healthStats],
+  );
+
+  // Penalidades dinâmicas após LV 15 (somente quando acordado)
   let mealPenalty = 0;
   let penaltyMessages: string[] = [];
-  if ((profile?.level || 1) > 15) {
-    // Refeições: 5% do HP máximo por refeição faltante
-    if (mealsToday < mealHalf) {
-      mealPenalty = Math.round((mealHalf - mealsToday) * 0.05 * maxHp);
-      penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
-    }
-  } else {
-    // Penalidade antiga para refeições (antes do LV 16)
-    if (mealsToday < mealHalf) {
-      mealPenalty = (mealHalf - mealsToday) * 10;
-      penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+  if (heroAwake) {
+    if ((profile?.level || 1) > 15) {
+      // Refeições: 5% do HP máximo por refeição faltante
+      if (mealsToday < mealHalf) {
+        mealPenalty = Math.round((mealHalf - mealsToday) * 0.05 * maxHp);
+        penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+      }
+    } else {
+      // Penalidade antiga para refeições (antes do LV 16)
+      if (mealsToday < mealHalf) {
+        mealPenalty = (mealHalf - mealsToday) * 10;
+        penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+      }
     }
   }
+
   const persistedHp = Number(healthStats?.current_hp ?? maxHp);
   const persistedMp = Number(healthStats?.current_mp ?? maxMp);
-  const currentHp = Math.max(0, Math.min(maxHp, persistedHp) - mealPenalty);
-  const currentMp = Math.max(0, Math.min(maxMp, persistedMp));
-  const fatigue = healthStats?.fatigue ?? 0;
+  // While asleep, exibimos HP/MP cheios (regeneração noturna).
+  const currentHp = heroAwake
+    ? Math.max(0, Math.min(maxHp, persistedHp) - mealPenalty)
+    : maxHp;
+  const currentMp = heroAwake
+    ? Math.max(0, Math.min(maxMp, persistedMp))
+    : maxMp;
+  const fatigue = heroAwake ? (healthStats?.fatigue ?? 0) : 0;
   const fatigueStatus =
     fatigue >= 75
       ? { label: 'Exausto', className: 'text-red-400' }
@@ -801,15 +888,22 @@ export default function ProfilePage() {
   const saveSettings = useMutation({
     mutationFn: async () => {
       const wTarget = Math.round(weight * 35);
+      const basePayload = {
+        weight_kg: weight,
+        meals_target: mealsTarget,
+        water_target_ml: wTarget,
+        sleep_time: sleepTime,
+        wake_time: wakeTime,
+      };
       if (healthStats) {
         await supabase
           .from("user_health_stats" as any)
-          .update({ weight_kg: weight, meals_target: mealsTarget, water_target_ml: wTarget } as any)
+          .update(basePayload as any)
           .eq("user_id", user!.id);
       } else {
         await supabase
           .from("user_health_stats" as any)
-          .insert({ user_id: user!.id, weight_kg: weight, meals_target: mealsTarget, water_target_ml: wTarget } as any);
+          .insert({ user_id: user!.id, ...basePayload } as any);
       }
     },
     onSuccess: () => {
@@ -1123,6 +1217,34 @@ export default function ProfilePage() {
                   <button onClick={() => setMealsTarget(Math.min(8, mealsTarget + 1))} className="p-1 rounded bg-muted hover:bg-muted/80"><Plus className="w-4 h-4" /></button>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">Mínimo {Math.ceil(mealsTarget / 2)}x para não perder HP</p>
+              </div>
+            </div>
+
+            {/* Sleep schedule */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" /> Horário que durmo
+                </label>
+                <input
+                  type="time"
+                  value={sleepTime}
+                  onChange={(e) => setSleepTime(e.target.value)}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-indigo-500/50 outline-none"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Sem penalidade de fome/sede entre dormir e acordar</p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
+                  <Sun className="w-3.5 h-3.5 text-amber-400" /> Horário que acordo
+                </label>
+                <input
+                  type="time"
+                  value={wakeTime}
+                  onChange={(e) => setWakeTime(e.target.value)}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-amber-500/50 outline-none"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Ao acordar: HP e MP voltam ao máximo e a fadiga zera</p>
               </div>
             </div>
             
