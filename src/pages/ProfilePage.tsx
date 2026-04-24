@@ -1219,6 +1219,34 @@ export default function ProfilePage() {
                 <p className="text-[10px] text-muted-foreground mt-1">Mínimo {Math.ceil(mealsTarget / 2)}x para não perder HP</p>
               </div>
             </div>
+
+            {/* Sleep schedule */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" /> Horário que durmo
+                </label>
+                <input
+                  type="time"
+                  value={sleepTime}
+                  onChange={(e) => setSleepTime(e.target.value)}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-indigo-500/50 outline-none"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Sem penalidade de fome/sede entre dormir e acordar</p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
+                  <Sun className="w-3.5 h-3.5 text-amber-400" /> Horário que acordo
+                </label>
+                <input
+                  type="time"
+                  value={wakeTime}
+                  onChange={(e) => setWakeTime(e.target.value)}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-amber-500/50 outline-none"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Ao acordar: HP e MP voltam ao máximo e a fadiga zera</p>
+              </div>
+            </div>
             
             {/* Volume Control */}
             <div>
