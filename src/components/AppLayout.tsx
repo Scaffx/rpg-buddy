@@ -5,12 +5,14 @@ import ShortRestTimer from '@/components/ShortRestTimer';
 import SoundToggleButton from '@/components/SoundToggleButton';
 import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { CharacterSprite } from '@/components/CharacterSprite';
-import { Clock, Flame, ShieldAlert } from 'lucide-react';
+import { Flame, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { computeSixtyPercentStreak } from '@/lib/streakUtils';
 
 const DAILY_RESET_EVENT = 'daily-reset-processed';
 
@@ -75,6 +77,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const protectorCharges = streakProtector?.charges ?? 0;
   const protectorMax = streakProtector?.max ?? 3;
   const isProtectorRisk = protectorCharges <= 0;
+
+  const { data: streakDays = 0 } = useQuery<number>({
+    queryKey: ['mission-streak-header', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('missions')
+        .select('days_of_week, daily_status, created_at, is_failed, failed_date, completed, completed_at')
+        .eq('user_id', user!.id);
+      return computeSixtyPercentStreak((data as any[]) || []);
+    },
+    refetchInterval: 60_000,
+  });
 
   const closeRestTimer = () => {
     if (user?.id) {
@@ -196,34 +211,75 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <CharacterSprite />
             </div>
 
-            <div className="flex items-center gap-2">
-              <SoundToggleButton />
+            <TooltipProvider delayDuration={150}>
+              <div className="flex items-center gap-1.5">
+                <SoundToggleButton />
 
-              <div
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${
-                  isProtectorRisk
-                    ? 'border-red-500/50 bg-red-500/15 text-red-300 animate-pulse'
-                    : 'border-orange-400/40 bg-orange-400/10 text-orange-300'
-                }`}
-                title="Cargas do Protetor de Streak"
-              >
-                {isProtectorRisk ? <ShieldAlert className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
-                <span>Protetor {protectorCharges}/{protectorMax}</span>
+                {/* Streak de dias com ≥60% das missões cumpridas */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={`inline-flex items-center gap-1 h-8 w-8 sm:w-auto sm:px-2 justify-center rounded-md border text-xs font-semibold transition-all hover:scale-105 ${
+                        streakDays > 0
+                          ? 'border-amber-400/50 bg-amber-400/10 text-amber-300'
+                          : 'border-border bg-muted/30 text-muted-foreground'
+                      }`}
+                    >
+                      <Trophy className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline tabular-nums">{streakDays}d</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="text-xs">
+                      Streak de consistência: <strong>{streakDays} dia{streakDays === 1 ? '' : 's'}</strong>
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Dias seguidos com ≥60% das missões diárias cumpridas.</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Protetor de streak */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={`inline-flex items-center gap-1 h-8 w-8 sm:w-auto sm:px-2 justify-center rounded-md border text-xs font-semibold transition-all hover:scale-105 ${
+                        isProtectorRisk
+                          ? 'border-destructive/50 bg-destructive/15 text-destructive animate-pulse'
+                          : 'border-orange-400/40 bg-orange-400/10 text-orange-300'
+                      }`}
+                    >
+                      {isProtectorRisk ? <ShieldAlert className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:inline tabular-nums">{protectorCharges}/{protectorMax}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="text-xs">
+                      Protetor de Streak: <strong>{protectorCharges}/{protectorMax}</strong>
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Cargas que evitam quebrar a streak ao falhar uma missão.</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Short Rest com ícone de fogueira */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowRestTimer(!showRestTimer)}
+                      className="inline-flex items-center gap-1 h-8 w-8 sm:w-auto sm:px-2 justify-center rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 transition-all text-xs font-medium"
+                      aria-label="Descanso Breve"
+                    >
+                      <Flame className="w-4 h-4" />
+                      {headerLabel && (
+                        <span className="font-mono text-[11px] leading-none tabular-nums hidden sm:inline">{headerLabel}</span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="text-xs"><strong>Short Rest</strong> — Fogueira de descanso</p>
+                    <p className="text-[10px] text-muted-foreground">Recupera HP, MP e reduz fadiga após 15-60 min.</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
-
-              <button
-                onClick={() => setShowRestTimer(!showRestTimer)}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition text-sm font-medium"
-                title="Descanso Breve"
-              >
-                {headerLabel ? (
-                  <span className="font-mono text-xs leading-none">{headerLabel}</span>
-                ) : (
-                  <Clock className="w-4 h-4" />
-                )}
-                <span className="hidden sm:inline">Short Rest</span>
-              </button>
-            </div>
+            </TooltipProvider>
           </header>
           {showDailyResetNotice && (
             <div className="mx-2 mt-2 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-300">
