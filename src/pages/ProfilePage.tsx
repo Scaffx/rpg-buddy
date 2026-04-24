@@ -716,6 +716,8 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"perfil" | "habilidades" | "inventario" | "amigos" | "conquistas">("perfil");
   const [weight, setWeight] = useState(70);
   const [mealsTarget, setMealsTarget] = useState(3);
+  const [sleepTime, setSleepTime] = useState('23:00');
+  const [wakeTime, setWakeTime] = useState('07:00');
   const [volume, setVolume] = useState(100);
   const [xpAwarded, setXpAwarded] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -733,6 +735,10 @@ export default function ProfilePage() {
     if (healthStats) {
       setWeight(Number(healthStats.weight_kg) || 70);
       setMealsTarget(healthStats.meals_target || 3);
+      const rawSleep = String((healthStats as any).sleep_time || '23:00');
+      const rawWake = String((healthStats as any).wake_time || '07:00');
+      setSleepTime(rawSleep.slice(0, 5));
+      setWakeTime(rawWake.slice(0, 5));
     }
   }, [healthStats]);
 
