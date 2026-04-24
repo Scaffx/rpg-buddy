@@ -888,15 +888,22 @@ export default function ProfilePage() {
   const saveSettings = useMutation({
     mutationFn: async () => {
       const wTarget = Math.round(weight * 35);
+      const basePayload = {
+        weight_kg: weight,
+        meals_target: mealsTarget,
+        water_target_ml: wTarget,
+        sleep_time: sleepTime,
+        wake_time: wakeTime,
+      };
       if (healthStats) {
         await supabase
           .from("user_health_stats" as any)
-          .update({ weight_kg: weight, meals_target: mealsTarget, water_target_ml: wTarget } as any)
+          .update(basePayload as any)
           .eq("user_id", user!.id);
       } else {
         await supabase
           .from("user_health_stats" as any)
-          .insert({ user_id: user!.id, weight_kg: weight, meals_target: mealsTarget, water_target_ml: wTarget } as any);
+          .insert({ user_id: user!.id, ...basePayload } as any);
       }
     },
     onSuccess: () => {
