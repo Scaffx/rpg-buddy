@@ -78,6 +78,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const protectorMax = streakProtector?.max ?? 3;
   const isProtectorRisk = protectorCharges <= 0;
 
+  const { data: streakDays = 0 } = useQuery<number>({
+    queryKey: ['mission-streak-header', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('missions')
+        .select('days_of_week, daily_status, created_at, is_failed, failed_date, completed, completed_at')
+        .eq('user_id', user!.id);
+      return computeSixtyPercentStreak((data as any[]) || []);
+    },
+    refetchInterval: 60_000,
+  });
+
   const closeRestTimer = () => {
     if (user?.id) {
       const saved = readShortRestState(user.id);
