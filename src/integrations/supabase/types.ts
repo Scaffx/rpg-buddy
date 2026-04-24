@@ -1096,12 +1096,15 @@ export type Database = {
           fatigue: number | null
           id: string
           last_reset_date: string | null
+          last_wake_recovery_date: string | null
           max_hp: number | null
           max_mp: number | null
           meals_completed: number | null
           meals_target: number | null
+          sleep_time: string | null
           updated_at: string
           user_id: string
+          wake_time: string | null
           water_completed_ml: number | null
           water_target_ml: number | null
           weight_kg: number | null
@@ -1113,12 +1116,15 @@ export type Database = {
           fatigue?: number | null
           id?: string
           last_reset_date?: string | null
+          last_wake_recovery_date?: string | null
           max_hp?: number | null
           max_mp?: number | null
           meals_completed?: number | null
           meals_target?: number | null
+          sleep_time?: string | null
           updated_at?: string
           user_id: string
+          wake_time?: string | null
           water_completed_ml?: number | null
           water_target_ml?: number | null
           weight_kg?: number | null
@@ -1130,12 +1136,15 @@ export type Database = {
           fatigue?: number | null
           id?: string
           last_reset_date?: string | null
+          last_wake_recovery_date?: string | null
           max_hp?: number | null
           max_mp?: number | null
           meals_completed?: number | null
           meals_target?: number | null
+          sleep_time?: string | null
           updated_at?: string
           user_id?: string
+          wake_time?: string | null
           water_completed_ml?: number | null
           water_target_ml?: number | null
           weight_kg?: number | null
