@@ -212,22 +212,23 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
 
             <TooltipProvider delayDuration={150}>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 <SoundToggleButton />
 
                 {/* Streak de dias com ≥60% das missões cumpridas */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div
-                      className={`inline-flex items-center gap-1 h-8 w-8 sm:w-auto sm:px-2 justify-center rounded-md border text-xs font-semibold transition-all hover:scale-105 ${
+                    <button
+                      type="button"
+                      className={`inline-flex items-center justify-center h-8 w-8 rounded-md border text-xs font-semibold transition-all hover:scale-105 ${
                         streakDays > 0
                           ? 'border-amber-400/50 bg-amber-400/10 text-amber-300'
                           : 'border-border bg-muted/30 text-muted-foreground'
                       }`}
+                      aria-label={`Streak: ${streakDays} dias`}
                     >
-                      <Trophy className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline tabular-nums">{streakDays}d</span>
-                    </div>
+                      <Trophy className="w-4 h-4" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p className="text-xs">
@@ -240,16 +241,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 {/* Protetor de streak */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div
-                      className={`inline-flex items-center gap-1 h-8 w-8 sm:w-auto sm:px-2 justify-center rounded-md border text-xs font-semibold transition-all hover:scale-105 ${
+                    <button
+                      type="button"
+                      className={`inline-flex items-center justify-center h-8 w-8 rounded-md border text-xs font-semibold transition-all hover:scale-105 ${
                         isProtectorRisk
                           ? 'border-destructive/50 bg-destructive/15 text-destructive animate-pulse'
                           : 'border-orange-400/40 bg-orange-400/10 text-orange-300'
                       }`}
+                      aria-label={`Protetor: ${protectorCharges} de ${protectorMax}`}
                     >
-                      {isProtectorRisk ? <ShieldAlert className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
-                      <span className="hidden sm:inline tabular-nums">{protectorCharges}/{protectorMax}</span>
-                    </div>
+                      {isProtectorRisk ? <ShieldAlert className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p className="text-xs">
@@ -264,12 +266,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setShowRestTimer(!showRestTimer)}
-                      className="inline-flex items-center gap-1 h-8 w-8 sm:w-auto sm:px-2 justify-center rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 transition-all text-xs font-medium"
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 transition-all relative"
                       aria-label="Descanso Breve"
                     >
                       <Flame className="w-4 h-4" />
                       {headerLabel && (
-                        <span className="font-mono text-[11px] leading-none tabular-nums hidden sm:inline">{headerLabel}</span>
+                        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 font-mono text-[9px] leading-none tabular-nums bg-background border border-primary/30 rounded px-1 py-0.5 text-primary whitespace-nowrap">{headerLabel}</span>
                       )}
                     </button>
                   </TooltipTrigger>
