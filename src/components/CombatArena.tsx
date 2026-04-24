@@ -608,7 +608,14 @@ export default function CombatArena({
       }
 
       // Jogador regenera 1 MP por turno (não em vitória/derrota)
-      setPlayerMp((prev) => Math.min(initialPlayerMaxMp, prev + 1));
+      const regeneratedMp = Math.min(initialPlayerMaxMp, playerMpRef.current + 1);
+      setPlayerMp(regeneratedMp);
+      if (user?.id) {
+        void supabase
+          .from('user_health_stats')
+          .update({ current_mp: regeneratedMp } as any)
+          .eq('user_id', user.id);
+      }
 
       setTurn('player');
     };
