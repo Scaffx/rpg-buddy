@@ -5,12 +5,14 @@ import ShortRestTimer from '@/components/ShortRestTimer';
 import SoundToggleButton from '@/components/SoundToggleButton';
 import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { CharacterSprite } from '@/components/CharacterSprite';
-import { Clock, Flame, ShieldAlert } from 'lucide-react';
+import { Flame, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { computeSixtyPercentStreak } from '@/lib/streakUtils';
 
 const DAILY_RESET_EVENT = 'daily-reset-processed';
 
