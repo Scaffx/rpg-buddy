@@ -138,6 +138,47 @@ SET pontos_talento = GREATEST(COALESCE(pontos_talento, 0), floor(COALESCE(level,
 GRANT SELECT ON public.talentos_disponiveis TO anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON public.talentos_jogador TO authenticated;
 
+-- ============================================================
+-- PASSO 5: Corrige persistência do Diário de Aventura
+-- Resolve: "Erro ao salvar diário" (tabela/policies ausentes)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.adventure_journal (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  entry_date date NOT NULL,
+  content text NOT NULL DEFAULT '',
+  mood text CHECK (mood IN ('feliz', 'neutro', 'cansado', 'motivado', 'ansioso')) DEFAULT 'neutro',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, entry_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_adventure_journal_user_date
+  ON public.adventure_journal (user_id, entry_date DESC);
+
+ALTER TABLE public.adventure_journal ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'adventure_journal'
+      AND policyname = 'users_own_journal'
+  ) THEN
+    CREATE POLICY "users_own_journal" ON public.adventure_journal
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.adventure_journal TO authenticated;
+
+-- Recarrega o cache para a nova tabela aparecer imediatamente via API
+NOTIFY pgrst, 'reload schema';
+
 -- ============================================
 
 -- Add comprehensive mechanics documentation to system update logs
