@@ -835,27 +835,47 @@ export default function ProfilePage() {
   const mealHalf = Math.ceil(mealsTarget / 2);
   const maxHp = playerCombatStats.hp;
   const maxMp = playerCombatStats.mp;
-  // Penalidades dinâmicas após LV 15
+
+  // Hero is "asleep" between sleep_time and wake_time. While asleep, he doesn't
+  // suffer hunger penalties — he wakes up at full HP/MP and only then starts
+  // accumulating the day's effects.
+  const heroAwake = useMemo(
+    () => isHeroAwake(
+      (healthStats as any)?.sleep_time,
+      (healthStats as any)?.wake_time,
+    ),
+    [healthStats],
+  );
+
+  // Penalidades dinâmicas após LV 15 (somente quando acordado)
   let mealPenalty = 0;
   let penaltyMessages: string[] = [];
-  if ((profile?.level || 1) > 15) {
-    // Refeições: 5% do HP máximo por refeição faltante
-    if (mealsToday < mealHalf) {
-      mealPenalty = Math.round((mealHalf - mealsToday) * 0.05 * maxHp);
-      penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
-    }
-  } else {
-    // Penalidade antiga para refeições (antes do LV 16)
-    if (mealsToday < mealHalf) {
-      mealPenalty = (mealHalf - mealsToday) * 10;
-      penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+  if (heroAwake) {
+    if ((profile?.level || 1) > 15) {
+      // Refeições: 5% do HP máximo por refeição faltante
+      if (mealsToday < mealHalf) {
+        mealPenalty = Math.round((mealHalf - mealsToday) * 0.05 * maxHp);
+        penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+      }
+    } else {
+      // Penalidade antiga para refeições (antes do LV 16)
+      if (mealsToday < mealHalf) {
+        mealPenalty = (mealHalf - mealsToday) * 10;
+        penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+      }
     }
   }
+
   const persistedHp = Number(healthStats?.current_hp ?? maxHp);
   const persistedMp = Number(healthStats?.current_mp ?? maxMp);
-  const currentHp = Math.max(0, Math.min(maxHp, persistedHp) - mealPenalty);
-  const currentMp = Math.max(0, Math.min(maxMp, persistedMp));
-  const fatigue = healthStats?.fatigue ?? 0;
+  // While asleep, exibimos HP/MP cheios (regeneração noturna).
+  const currentHp = heroAwake
+    ? Math.max(0, Math.min(maxHp, persistedHp) - mealPenalty)
+    : maxHp;
+  const currentMp = heroAwake
+    ? Math.max(0, Math.min(maxMp, persistedMp))
+    : maxMp;
+  const fatigue = heroAwake ? (healthStats?.fatigue ?? 0) : 0;
   const fatigueStatus =
     fatigue >= 75
       ? { label: 'Exausto', className: 'text-red-400' }
