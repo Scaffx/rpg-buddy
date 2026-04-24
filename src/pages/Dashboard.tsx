@@ -209,6 +209,7 @@ export default function Dashboard() {
   }, [allMissions, todayMissionMetrics.required, todayMissionMetrics.completed, todayMissionMetrics.pending]);
 
   const streakActive = missionStreak.days > 0;
+  const todayStreakRisk = useMemo(() => evaluateTodayStreakRisk(allMissions || []), [allMissions]);
 
   useEffect(() => {
     const tryWeeklyProtectorReset = async () => {
