@@ -124,9 +124,11 @@ function getBossResourceType(name?: string, element?: string | null): BossResour
 }
 
 // Custo de MP de uma habilidade do jogador, derivado do "power".
-function getSkillMpCost(power: number): number {
+// Aumentado para tornar gestão de mana mais relevante: cada ~15 de poder
+// custa 1 MP (mín. 2, máx. 16).
+export function getSkillMpCost(power: number): number {
   if (!power || power <= 0) return 0;
-  return Math.max(1, Math.min(8, Math.ceil(power / 30)));
+  return Math.max(2, Math.min(16, Math.ceil(power / 15)));
 }
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
