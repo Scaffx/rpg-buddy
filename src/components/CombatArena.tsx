@@ -513,6 +513,14 @@ export default function CombatArena({
 
       const mpAfterTurn = Math.max(0, playerMpRef.current - skillCost);
 
+      // Persiste o MP no perfil para refletir na barra de MP do "Meu Perfil".
+      if (user?.id) {
+        void supabase
+          .from('user_health_stats')
+          .update({ current_mp: mpAfterTurn } as any)
+          .eq('user_id', user.id);
+      }
+
       setTurn('player');
       setIsRolling(true);
       setRollValue(null);
