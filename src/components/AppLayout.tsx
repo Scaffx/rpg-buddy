@@ -43,6 +43,7 @@ type StreakProtectorProfileRow = {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   useMidnightReset();
+  useSleepWakeAlerts();
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
   const [showDailyResetNotice, setShowDailyResetNotice] = useState(false);
