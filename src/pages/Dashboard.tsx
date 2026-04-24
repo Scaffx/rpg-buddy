@@ -10,6 +10,7 @@ import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { evaluateTodayStreakRisk } from "@/lib/streakUtils";
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -208,6 +209,7 @@ export default function Dashboard() {
   }, [allMissions, todayMissionMetrics.required, todayMissionMetrics.completed, todayMissionMetrics.pending]);
 
   const streakActive = missionStreak.days > 0;
+  const todayStreakRisk = useMemo(() => evaluateTodayStreakRisk(allMissions || []), [allMissions]);
 
   useEffect(() => {
     const tryWeeklyProtectorReset = async () => {
@@ -358,6 +360,26 @@ export default function Dashboard() {
               <span className="text-xs text-red-300">
                 {missionStreak.days} dia{missionStreak.days === 1 ? '' : 's'} completos
               </span>
+            </div>
+          )}
+
+          {todayStreakRisk.required > 0 && todayStreakRisk.atRisk && !todayStreakRisk.alreadyHit && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/60 bg-amber-500/15 px-3 py-2 text-amber-200">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <div className="flex-1 text-xs">
+                <p className="font-bold">Streak em risco!</p>
+                <p className="text-amber-300/90">
+                  Faltam <strong>{todayStreakRisk.missingForThreshold}</strong> missão{todayStreakRisk.missingForThreshold === 1 ? '' : 'es'} para garantir 60% hoje
+                  ({todayStreakRisk.completed}/{todayStreakRisk.thresholdCount} concluídas, {todayStreakRisk.pending} pendentes).
+                </p>
+              </div>
+            </div>
+          )}
+
+          {todayStreakRisk.required > 0 && todayStreakRisk.alreadyHit && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-emerald-200">
+              <Check className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-semibold">Meta de 60% do dia atingida — streak garantida!</span>
             </div>
           )}
         </motion.div>

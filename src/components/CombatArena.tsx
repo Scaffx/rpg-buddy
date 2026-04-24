@@ -124,9 +124,11 @@ function getBossResourceType(name?: string, element?: string | null): BossResour
 }
 
 // Custo de MP de uma habilidade do jogador, derivado do "power".
-function getSkillMpCost(power: number): number {
+// Aumentado para tornar gestão de mana mais relevante: cada ~15 de poder
+// custa 1 MP (mín. 2, máx. 16).
+export function getSkillMpCost(power: number): number {
   if (!power || power <= 0) return 0;
-  return Math.max(1, Math.min(8, Math.ceil(power / 30)));
+  return Math.max(2, Math.min(16, Math.ceil(power / 15)));
 }
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -511,6 +513,14 @@ export default function CombatArena({
 
       const mpAfterTurn = Math.max(0, playerMpRef.current - skillCost);
 
+      // Persiste o MP no perfil para refletir na barra de MP do "Meu Perfil".
+      if (user?.id) {
+        void supabase
+          .from('user_health_stats')
+          .update({ current_mp: mpAfterTurn } as any)
+          .eq('user_id', user.id);
+      }
+
       setTurn('player');
       setIsRolling(true);
       setRollValue(null);
@@ -598,7 +608,14 @@ export default function CombatArena({
       }
 
       // Jogador regenera 1 MP por turno (não em vitória/derrota)
-      setPlayerMp((prev) => Math.min(initialPlayerMaxMp, prev + 1));
+      const regeneratedMp = Math.min(initialPlayerMaxMp, playerMpRef.current + 1);
+      setPlayerMp(regeneratedMp);
+      if (user?.id) {
+        void supabase
+          .from('user_health_stats')
+          .update({ current_mp: regeneratedMp } as any)
+          .eq('user_id', user.id);
+      }
 
       setTurn('player');
     };

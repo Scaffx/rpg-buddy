@@ -1462,10 +1462,14 @@ export default function ProfilePage() {
                       <p className="text-xs text-muted-foreground">{skill.description}</p>
                       <p className="text-[11px] text-muted-foreground">Item exigido: {skill.requiredItem}</p>
 
-                      <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="grid grid-cols-4 gap-2 text-xs">
                         <div className="bg-background/60 rounded p-2 border border-border/50">
                           <p className="text-muted-foreground">Poder</p>
                           <p className="font-bold text-foreground">{skill.power}</p>
+                        </div>
+                        <div className="bg-background/60 rounded p-2 border border-border/50">
+                          <p className="text-muted-foreground">MP</p>
+                          <p className="font-bold text-cyan-400">{Math.max(2, Math.min(16, Math.ceil((skill.power || 0) / 15)))}</p>
                         </div>
                         <div className="bg-background/60 rounded p-2 border border-border/50">
                           <p className="text-muted-foreground">CD</p>
@@ -1473,7 +1477,7 @@ export default function ProfilePage() {
                         </div>
                         <div className="bg-background/60 rounded p-2 border border-border/50">
                           <p className="text-muted-foreground">Base</p>
-                          <p className="font-bold text-foreground">{skill.basedOn.join(" + ")}</p>
+                          <p className="font-bold text-foreground text-[10px]">{skill.basedOn.join(" + ")}</p>
                         </div>
                       </div>
 
@@ -1519,10 +1523,14 @@ export default function ProfilePage() {
                     <p className="text-xs text-muted-foreground">{skill.description}</p>
                     <p className="text-[11px] text-muted-foreground">{skill.fantasy}</p>
 
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-4 gap-2 text-xs">
                       <div className="bg-background/60 rounded p-2 border border-border/50">
                         <p className="text-muted-foreground">Poder</p>
                         <p className="font-bold text-foreground">{skill.power}</p>
+                      </div>
+                      <div className="bg-background/60 rounded p-2 border border-border/50">
+                        <p className="text-muted-foreground">MP</p>
+                        <p className="font-bold text-cyan-400">{Math.max(2, Math.min(16, Math.ceil((skill.power || 0) / 15)))}</p>
                       </div>
                       <div className="bg-background/60 rounded p-2 border border-border/50">
                         <p className="text-muted-foreground">CD</p>
@@ -1530,7 +1538,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="bg-background/60 rounded p-2 border border-border/50">
                         <p className="text-muted-foreground">Base</p>
-                        <p className="font-bold text-foreground">{skill.basedOn.join(" + ")}</p>
+                        <p className="font-bold text-foreground text-[10px]">{skill.basedOn.join(" + ")}</p>
                       </div>
                     </div>
 

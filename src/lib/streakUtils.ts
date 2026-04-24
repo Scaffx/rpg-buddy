@@ -4,6 +4,7 @@
 // are skipped, days in the future are ignored.
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const STREAK_THRESHOLD = 0.6;
 
 export function getLocalDateString(date: Date = new Date()): string {
   return date.toLocaleDateString('en-CA');
@@ -60,16 +61,14 @@ export function computeSixtyPercentStreak(missions: StreakMission[] | null | und
 
     const ratio = completedCount / requiredMissions.length;
 
-    // Today is "in progress": only break the streak if the day is over and ratio < 60%.
-    // For simplicity we count today only if it already meets 60%.
     if (daysBack === 0) {
-      if (ratio >= 0.6) {
+      if (ratio >= STREAK_THRESHOLD) {
         streak += 1;
       }
       continue;
     }
 
-    if (ratio >= 0.6) {
+    if (ratio >= STREAK_THRESHOLD) {
       streak += 1;
     } else {
       break;
@@ -77,4 +76,61 @@ export function computeSixtyPercentStreak(missions: StreakMission[] | null | und
   }
 
   return streak;
+}
+
+export type TodayStreakStatus = {
+  required: number;
+  completed: number;
+  failed: number;
+  pending: number;
+  thresholdCount: number;     // mínimo necessário para 60%
+  missingForThreshold: number; // quantas faltam para 60% hoje
+  ratio: number;               // 0..1
+  atRisk: boolean;             // true quando ainda não atingiu 60% e os pendentes são exatamente o suficiente ou menos
+  alreadyHit: boolean;         // já atingiu 60%
+};
+
+/**
+ * Avalia o status do dia de hoje em relação à meta de 60% para a streak.
+ */
+export function evaluateTodayStreakRisk(missions: StreakMission[] | null | undefined): TodayStreakStatus {
+  const today = new Date();
+  const dateStr = getLocalDateString(today);
+  const dayName = DAYS_MAP[today.getDay()];
+
+  const requiredMissions = (missions || []).filter((mission) => {
+    const daysOfWeek: string[] = mission.days_of_week || [];
+    if (!(daysOfWeek.length > 0 && daysOfWeek.includes(dayName))) return false;
+    const createdAt = String(mission.created_at || '').slice(0, 10);
+    if (createdAt && createdAt > dateStr) return false;
+    return true;
+  });
+
+  const required = requiredMissions.length;
+  let completed = 0;
+  let failed = 0;
+  for (const m of requiredMissions) {
+    const state = getMissionStateForDate(m, dateStr);
+    if (state === 'completed' || state === 'protected') completed += 1;
+    else if (state === 'failed' || state === 'failed_accepted') failed += 1;
+  }
+  const pending = Math.max(0, required - completed - failed);
+  const thresholdCount = required > 0 ? Math.ceil(required * STREAK_THRESHOLD) : 0;
+  const missingForThreshold = Math.max(0, thresholdCount - completed);
+  const ratio = required > 0 ? completed / required : 0;
+  const alreadyHit = required > 0 && ratio >= STREAK_THRESHOLD;
+  // Em risco: ainda não bateu 60% e a quantidade pendente é apertada (≤ missing + 1)
+  const atRisk = required > 0 && !alreadyHit && pending <= missingForThreshold + 1;
+
+  return {
+    required,
+    completed,
+    failed,
+    pending,
+    thresholdCount,
+    missingForThreshold,
+    ratio,
+    atRisk,
+    alreadyHit,
+  };
 }
