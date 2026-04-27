@@ -1305,7 +1305,7 @@ export default function ProfilePage() {
         {activeTab === "perfil" && (
           <div className="space-y-6">
             {/* XP Award Card */}
-            {mealsToday >= mealsTarget && totalWaterToday >= waterTargetMl && xpAwarded && (
+            {mealsToday >= Math.max(3, mealsTarget) && totalWaterToday >= waterTargetMl && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
