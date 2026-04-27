@@ -244,16 +244,24 @@ export default function MobilePage() {
         <div className="text-center py-6">
           <Button
             size="lg"
-            asChild
+            asChild={!!apkUrl}
+            disabled={!apkUrl}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
           >
-            <a href={APK_URL} download>
-              <Download className="w-5 h-5 mr-2" />
-              Baixar APK agora
-            </a>
+            {apkUrl ? (
+              <a href={apkUrl} download target="_blank" rel="noopener noreferrer">
+                <Download className="w-5 h-5 mr-2" />
+                Baixar APK v{latestVersion}
+              </a>
+            ) : (
+              <span>
+                <RefreshCw className="w-5 h-5 mr-2" />
+                APK em preparação
+              </span>
+            )}
           </Button>
           <p className="text-xs text-muted-foreground mt-3">
-            Versão Android • ~8 MB • Atualizações automáticas via app
+            Versão Android • Atualizações verificadas automaticamente
           </p>
         </div>
       </div>
