@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -8,9 +9,8 @@ import { useAttributes, useXpHistory } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Hexagon, Loader2 } from 'lucide-react';
 
-const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
 export default function ProgressPage() {
+  const { t, i18n } = useTranslation();
   const { data: xpHistory, isLoading: xpLoading } = useXpHistory(7);
   const { data: attributes, isLoading: attrLoading } = useAttributes();
 
@@ -20,14 +20,15 @@ export default function ProgressPage() {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const dayLabel = DAY_LABELS[d.getDay()];
+      const locale = i18n.resolvedLanguage === 'pt' ? 'pt-BR' : i18n.resolvedLanguage;
+      const dayLabel = d.toLocaleDateString(locale, { weekday: 'short' });
       const dayXp = (xpHistory || [])
         .filter((h: any) => h.date === dateStr)
         .reduce((sum: number, h: any) => sum + (h.xp_gained || 0), 0);
       last7.push({ day: dayLabel, date: dateStr, xp: dayXp });
     }
     return last7;
-  }, [xpHistory]);
+  }, [i18n.resolvedLanguage, xpHistory]);
 
   const radarData = useMemo(() => {
     if (!attributes) return [];
@@ -54,7 +55,7 @@ export default function ProgressPage() {
           className="rpg-card-glow"
         >
           <h2 className="text-lg font-display font-semibold text-foreground mb-4">
-            ⚡ XP Ganho nos Últimos 7 Dias
+            ⚡ {t('app.progress.xp_last_7_days')}
           </h2>
           {xpLoading ? (
             <div className="flex justify-center py-10">
@@ -82,8 +83,8 @@ export default function ProgressPage() {
                       borderRadius: '8px',
                       color: 'hsl(45 20% 90%)',
                     }}
-                    formatter={(value: number) => [`${value} XP`, 'XP Ganho']}
-                    labelFormatter={(label) => `Dia: ${label}`}
+                    formatter={(value: number) => [`${value} XP`, t('app.progress.xp_gained')]}
+                    labelFormatter={(label) => `${t('app.progress.day')}: ${label}`}
                   />
                   <Line
                     type="monotone"
@@ -108,11 +109,11 @@ export default function ProgressPage() {
         >
           <h2 className="text-lg font-display font-semibold text-foreground mb-2">
             <Hexagon className="w-5 h-5 inline mr-2" />
-            Evolução de Atributos
+            {t('app.progress.attributes_evolution')}
           </h2>
           {maxAttr && (
             <p className="text-xs text-muted-foreground mb-4">
-              Destaque: <span className="text-primary font-semibold">{maxAttr.icon} {maxAttr.name}</span> ({maxAttr.xp} XP)
+              {t('app.progress.highlight')}: <span className="text-primary font-semibold">{maxAttr.icon} {maxAttr.name}</span> ({maxAttr.xp} XP)
             </p>
           )}
           {attrLoading ? (
@@ -174,7 +175,7 @@ export default function ProgressPage() {
               <div className="text-2xl mb-1">{a.icon}</div>
               <p className="text-xs font-medium text-foreground">{a.name}</p>
               <p className="text-primary font-bold text-sm">{a.xp} XP</p>
-              <p className="text-[10px] text-muted-foreground">Nv. {a.level}</p>
+              <p className="text-[10px] text-muted-foreground">{t('app.progress.level_short')} {a.level}</p>
             </motion.div>
           ))}
         </div>

@@ -1,4 +1,5 @@
 ﻿import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { useMissions } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,12 +46,13 @@ function useWeeklyActivity() {
 }
 
 export default function VirtuesPage() {
+  const { t, i18n } = useTranslation();
   const { data: missions = [] } = useMissions();
   const { data: activity = [] } = useWeeklyActivity();
 
   const weekDays = useMemo(() => getLast7Days(), []);
 
-  // Estat├¡sticas por miss├úo
+  // Estatisticas por missao
   const missionStats = useMemo(() => {
     const stats = new Map<string, {
       title: string;
@@ -72,7 +74,7 @@ export default function VirtuesPage() {
         else if (status === 'failed_accepted') recovered++;
       });
 
-      // Inclui apenas miss├Áes com algum movimento na semana
+      // Inclui apenas missoes com algum movimento na semana
       if (completed + failed + recovered > 0) {
         stats.set(m.id, { title: m.title, completed, failed, recovered });
       }
@@ -103,7 +105,7 @@ export default function VirtuesPage() {
     [missionStats],
   );
 
-  // Atividade por dia (conclu├¡das vs falhadas)
+  // Atividade por dia (concluidas vs falhadas)
   const dailyBreakdown = useMemo(() => {
     return weekDays.map((day) => {
       let c = 0, f = 0, r = 0;
@@ -114,10 +116,11 @@ export default function VirtuesPage() {
         else if (s === 'failed_accepted') r++;
       });
       const date = new Date(day + 'T12:00:00');
-      const label = date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' });
+      const locale = i18n.resolvedLanguage === 'pt' ? 'pt-BR' : i18n.resolvedLanguage;
+      const label = date.toLocaleDateString(locale, { weekday: 'short', day: '2-digit' });
       return { day, label, completed: c, failed: f, recovered: r };
     });
-  }, [missions, weekDays]);
+  }, [i18n.resolvedLanguage, missions, weekDays]);
 
   const totalActions = totals.completed + totals.failed + totals.recovered;
   const successRate = totalActions > 0 ? Math.round((totals.completed / totalActions) * 100) : 0;
@@ -128,9 +131,9 @@ export default function VirtuesPage() {
         <div className="flex items-center gap-3">
           <Circle className="w-7 h-7 text-primary" />
           <div>
-            <h1 className="text-2xl font-display font-bold text-primary">Virtudes</h1>
+            <h1 className="text-2xl font-display font-bold text-primary">{t('app.virtues.title')}</h1>
             <p className="text-xs text-muted-foreground">
-              Relat├│rio semanal das suas miss├Áes ÔÇö ├║ltimos 7 dias
+              {t('app.virtues.subtitle')}
             </p>
           </div>
         </div>
@@ -140,7 +143,7 @@ export default function VirtuesPage() {
           <div className="rpg-card p-4 space-y-1">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-muted-foreground">Conclu├¡das</span>
+              <span className="text-xs text-muted-foreground">{t('app.virtues.completed')}</span>
             </div>
             <p className="text-2xl font-bold text-emerald-400">{totals.completed}</p>
           </div>
@@ -148,7 +151,7 @@ export default function VirtuesPage() {
           <div className="rpg-card p-4 space-y-1">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400" />
-              <span className="text-xs text-muted-foreground">Falhadas</span>
+              <span className="text-xs text-muted-foreground">{t('app.virtues.failed')}</span>
             </div>
             <p className="text-2xl font-bold text-red-400">{totals.failed}</p>
           </div>
@@ -156,26 +159,26 @@ export default function VirtuesPage() {
           <div className="rpg-card p-4 space-y-1">
             <div className="flex items-center gap-2">
               <RotateCcw className="w-4 h-4 text-amber-400" />
-              <span className="text-xs text-muted-foreground">Recuperadas</span>
+              <span className="text-xs text-muted-foreground">{t('app.virtues.recovered')}</span>
             </div>
             <p className="text-2xl font-bold text-amber-400">{totals.recovered}</p>
-            <p className="text-[10px] text-muted-foreground">Marcadas como "fiz" depois de falhar</p>
+            <p className="text-[10px] text-muted-foreground">{t('app.virtues.recovered_hint')}</p>
           </div>
 
           <div className="rpg-card p-4 space-y-1">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Taxa de sucesso</span>
+              <span className="text-xs text-muted-foreground">{t('app.virtues.success_rate')}</span>
             </div>
             <p className="text-2xl font-bold text-primary">{successRate}%</p>
           </div>
         </div>
 
-        {/* Breakdown di├írio */}
+        {/* Breakdown diario */}
         <div className="rpg-card p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-primary" />
-            <h2 className="text-sm font-bold text-foreground">ATIVIDADE DI├üRIA (7 DIAS)</h2>
+            <h2 className="text-sm font-bold text-foreground">{t('app.virtues.daily_activity')}</h2>
           </div>
 
           <div className="grid grid-cols-7 gap-2">
@@ -189,9 +192,9 @@ export default function VirtuesPage() {
                 <div key={d.day} className="space-y-1.5 text-center">
                   <p className="text-[10px] uppercase font-bold text-muted-foreground">{d.label}</p>
                   <div className="h-24 flex flex-col-reverse rounded-md overflow-hidden border border-border/50 bg-muted/20">
-                    <div className="bg-emerald-500/70" style={{ height: `${pctC}%` }} title={`${d.completed} conclu├¡das`} />
-                    <div className="bg-amber-500/70" style={{ height: `${pctR}%` }} title={`${d.recovered} recuperadas`} />
-                    <div className="bg-red-500/70" style={{ height: `${pctF}%` }} title={`${d.failed} falhadas`} />
+                    <div className="bg-emerald-500/70" style={{ height: `${pctC}%` }} title={`${d.completed} ${t('app.virtues.completed').toLowerCase()}`} />
+                    <div className="bg-amber-500/70" style={{ height: `${pctR}%` }} title={`${d.recovered} ${t('app.virtues.recovered').toLowerCase()}`} />
+                    <div className="bg-red-500/70" style={{ height: `${pctF}%` }} title={`${d.failed} ${t('app.virtues.failed').toLowerCase()}`} />
                   </div>
                   <p className="text-[10px] font-semibold text-foreground">{total}</p>
                 </div>
@@ -200,9 +203,9 @@ export default function VirtuesPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/70" /> Conclu├¡das</div>
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500/70" /> Recuperadas</div>
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-500/70" /> Falhadas</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/70" /> {t('app.virtues.completed')}</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500/70" /> {t('app.virtues.recovered')}</div>
+            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-500/70" /> {t('app.virtues.failed')}</div>
           </div>
         </div>
 
@@ -211,11 +214,11 @@ export default function VirtuesPage() {
           <div className="rpg-card p-5 space-y-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-sm font-bold text-foreground">SUAS VIRTUDES</h2>
+              <h2 className="text-sm font-bold text-foreground">{t('app.virtues.your_virtues')}</h2>
             </div>
-            <p className="text-xs text-muted-foreground">Miss├Áes que voc├¬ mais cumpriu nesta semana</p>
+            <p className="text-xs text-muted-foreground">{t('app.virtues.your_virtues_hint')}</p>
             {topCompleted.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">Nenhuma miss├úo conclu├¡da esta semana ainda.</p>
+              <p className="text-xs text-muted-foreground italic">{t('app.virtues.no_completed')}</p>
             ) : (
               <ul className="space-y-2">
                 {topCompleted.map((s, i) => (
@@ -234,11 +237,11 @@ export default function VirtuesPage() {
           <div className="rpg-card p-5 space-y-3">
             <div className="flex items-center gap-2">
               <TrendingDown className="w-5 h-5 text-red-400" />
-              <h2 className="text-sm font-bold text-foreground">PONTOS DE ATEN├ç├âO</h2>
+              <h2 className="text-sm font-bold text-foreground">{t('app.virtues.attention_points')}</h2>
             </div>
-            <p className="text-xs text-muted-foreground">Miss├Áes em que voc├¬ mais falhou nesta semana</p>
+            <p className="text-xs text-muted-foreground">{t('app.virtues.attention_points_hint')}</p>
             {topFailed.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">Nenhuma falha esta semana ÔÇö excelente! ­ƒÄë</p>
+              <p className="text-xs text-muted-foreground italic">{t('app.virtues.no_failed')}</p>
             ) : (
               <ul className="space-y-2">
                 {topFailed.map((s, i) => (
@@ -255,19 +258,19 @@ export default function VirtuesPage() {
           </div>
         </div>
 
-        {/* Detalhamento por miss├úo */}
+        {/* Detalhamento por missao */}
         {missionStats.length > 0 && (
           <div className="rpg-card p-5 space-y-3">
-            <h2 className="text-sm font-bold text-foreground">DETALHAMENTO POR MISS├âO</h2>
+            <h2 className="text-sm font-bold text-foreground">{t('app.virtues.mission_breakdown')}</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
-                    <th className="text-left py-2 px-2 font-medium">Miss├úo</th>
-                    <th className="text-center py-2 px-2 font-medium text-emerald-400">Ô£ô</th>
-                    <th className="text-center py-2 px-2 font-medium text-amber-400">Ôå╗</th>
-                    <th className="text-center py-2 px-2 font-medium text-red-400">Ô£ù</th>
-                    <th className="text-center py-2 px-2 font-medium">Taxa</th>
+                    <th className="text-left py-2 px-2 font-medium">{t('app.virtues.table_mission')}</th>
+                    <th className="text-center py-2 px-2 font-medium text-emerald-400">{t('app.virtues.completed_short')}</th>
+                    <th className="text-center py-2 px-2 font-medium text-amber-400">{t('app.virtues.recovered_short')}</th>
+                    <th className="text-center py-2 px-2 font-medium text-red-400">{t('app.virtues.failed_short')}</th>
+                    <th className="text-center py-2 px-2 font-medium">{t('app.virtues.table_rate')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -291,7 +294,7 @@ export default function VirtuesPage() {
               </table>
             </div>
             <p className="text-[10px] text-muted-foreground italic">
-              Ô£ô Conclu├¡das no dia ┬À Ôå╗ Recuperadas (marcadas como feitas ap├│s falhar) ┬À Ô£ù Falhadas
+              {t('app.virtues.table_legend')}
             </p>
           </div>
         )}
@@ -299,7 +302,7 @@ export default function VirtuesPage() {
         {missionStats.length === 0 && (
           <div className="rpg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">
-              Nenhuma atividade de miss├Áes nos ├║ltimos 7 dias. Comece a cumprir suas miss├Áes di├írias para ver seu relat├│rio aqui!
+              {t('app.virtues.empty_state')}
             </p>
           </div>
         )}

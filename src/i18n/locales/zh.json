@@ -136,6 +136,130 @@
       "rest_label_short": "短暂休息 — 篝火",
       "rest_desc": "15-60分钟后恢复HP、MP并减少疲劳。",
       "daily_reset": "每日重置已处理：任务、餐食、水分和计时器已更新。"
+    },
+    "virtues": {
+      "title": "美德",
+      "subtitle": "你的任务周报 — 最近7天",
+      "completed": "已完成",
+      "failed": "失败",
+      "recovered": "已补救",
+      "recovered_hint": "失败后重新标记为已完成",
+      "success_rate": "成功率",
+      "daily_activity": "每日活动（7天）",
+      "your_virtues": "你的优势",
+      "your_virtues_hint": "本周你完成次数最多的任务",
+      "no_completed": "本周还没有完成任何任务。",
+      "attention_points": "注意点",
+      "attention_points_hint": "本周你失败次数最多的任务",
+      "no_failed": "本周没有失败，太好了！",
+      "mission_breakdown": "任务明细",
+      "table_mission": "任务",
+      "completed_short": "完",
+      "recovered_short": "补",
+      "failed_short": "失",
+      "table_rate": "比率",
+      "table_legend": "完 = 当天完成 · 补 = 失败后补救完成 · 失 = 失败",
+      "empty_state": "最近7天没有任务活动。开始完成你的日常任务后，这里就会显示报告。"
+    },
+    "progress": {
+      "xp_last_7_days": "最近7天获得的XP",
+      "xp_gained": "获得XP",
+      "day": "日期",
+      "attributes_evolution": "属性成长",
+      "highlight": "亮点",
+      "level_short": "等级"
+    },
+    "mobile": {
+      "android_version": "Android 版本",
+      "new_version": "新版本！",
+      "hero_title": "口袋里的 Hero's Journey",
+      "hero_subtitle": "在你的 Android 上安装官方应用，让英雄面板始终触手可及，并支持原生通知和离线模式。",
+      "current_version": "当前版本",
+      "download_apk": "下载 APK",
+      "apk_preparing": "APK 准备中",
+      "why_use": "为什么使用这个应用？",
+      "how_to_install": "如何安装（分步）",
+      "security_tip_title": "安全提示",
+      "security_tip_desc": "安装完成后，你可以在 Android 设置中再次关闭“未知来源”。",
+      "iphone_title": "你用 iPhone 吗？",
+      "iphone_desc": "目前 iPhone 使用可安装的网页版：",
+      "iphone_step_1": "在 Safari 中打开网站",
+      "iphone_step_2": "点击分享按钮",
+      "iphone_step_3": "选择“添加到主屏幕”",
+      "developer_title": "开发者版本",
+      "developer_desc": "项目使用 Capacitor。本地编译方式：导出到 GitHub，运行",
+      "developer_and": "以及",
+      "faq_title": "常见问题",
+      "footer_note": "Android 版本 • 自动检查更新",
+      "benefits": {
+        "notifications_title": "原生通知",
+        "notifications_desc": "英雄提醒会直接显示在锁屏上。",
+        "offline_title": "支持离线",
+        "offline_desc": "即使网络不稳定，也能访问你的进度。",
+        "performance_title": "更高性能",
+        "performance_desc": "动画流畅，启动迅速。",
+        "security_title": "安全且私密",
+        "security_desc": "与网页版使用相同的加密方式。"
+      },
+      "steps": {
+        "s1_title": "下载 APK 文件",
+        "s1_desc": "点击下面的下载按钮。`.apk` 文件会保存在手机的 Downloads 文件夹中。",
+        "s2_title": "允许来自未知来源的安装",
+        "s2_desc": "前往 设置 → 安全 → 为浏览器启用“未知来源”或“安装未知应用”。",
+        "s3_title": "打开已下载的文件",
+        "s3_desc": "打开手机文件管理器，进入 Downloads，然后点击 lifeonrpg.apk 文件。",
+        "s4_title": "安装并打开 Hero's Journey",
+        "s4_desc": "确认安装。应用图标会出现在主屏幕。使用与网页版相同的账号登录。"
+      },
+      "faq": {
+        "q1_title": "安装 APK 安全吗？",
+        "q1_desc": "安全。APK 由与网页版相同的源代码编译而来，只请求必要权限（通知和本地存储）。",
+        "q2_title": "我会丢失进度吗？",
+        "q2_desc": "不会。你的进度保存在云端。只需在应用中使用相同账号登录即可。",
+        "q3_title": "什么时候会上架 Play Store？",
+        "q3_desc": "我们正在准备正式发布。目前，直接 APK 是把应用装到手机上的最快方式。",
+        "q4_title": "那 iPhone 呢？",
+        "q4_desc": "iOS 版本已在路线图中。目前，iPhone 用户可以使用可安装的网页版（Safari 中“添加到主屏幕”）。"
+      }
+    },
+    "system_info": {
+      "title": "系统信息",
+      "subtitle": "查看最近更新，并发送你对系统改进的想法。",
+      "update_logs": "更新日志",
+      "highlight": "重点",
+      "no_logs": "暂无可用更新日志。",
+      "suggest_improvements": "提出改进建议",
+      "feedback_title_placeholder": "建议标题",
+      "feedback_message_placeholder": "描述你希望在系统中看到的想法、Bug 或改进",
+      "send_feedback": "发送建议",
+      "your_feedback": "你提交的建议",
+      "no_user_feedback": "你还没有发送任何建议。",
+      "admin_panel": "建议管理面板",
+      "admin_panel_hint": "仅对 Supabase Auth 中 app_metadata.role = admin 的账号可见。",
+      "user_label": "用户",
+      "no_admin_feedback": "尚未收到任何建议。",
+      "errors": {
+        "not_authenticated": "未认证",
+        "fill_fields": "请填写标题和建议内容。"
+      },
+      "toasts": {
+        "sent_title": "建议已发送",
+        "sent_desc": "你的建议已保存，稍后会进行评估。",
+        "send_error_title": "发送出错",
+        "status_updated_title": "状态已更新",
+        "status_updated_desc": "反馈更新成功。",
+        "update_error_title": "更新出错"
+      },
+      "status": {
+        "novo": "新建",
+        "avaliando": "评估中",
+        "planejado": "已计划",
+        "feito": "已完成"
+      }
+    },
+    "not_found": {
+      "title": "哎呀！页面未找到",
+      "back_home": "返回首页"
     }
   },
   "footer": {

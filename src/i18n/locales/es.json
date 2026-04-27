@@ -136,6 +136,130 @@
       "rest_label_short": "Descanso Breve — Fogata",
       "rest_desc": "Recupera HP, MP y reduce la fatiga tras 15-60 min.",
       "daily_reset": "Reinicio diario procesado: misiones, comidas, agua y temporizadores actualizados."
+    },
+    "virtues": {
+      "title": "Virtudes",
+      "subtitle": "Informe semanal de tus misiones — últimos 7 días",
+      "completed": "Completadas",
+      "failed": "Falladas",
+      "recovered": "Recuperadas",
+      "recovered_hint": "Marcadas como hechas después de fallar",
+      "success_rate": "Tasa de éxito",
+      "daily_activity": "ACTIVIDAD DIARIA (7 DÍAS)",
+      "your_virtues": "TUS VIRTUDES",
+      "your_virtues_hint": "Misiones que más cumpliste esta semana",
+      "no_completed": "Todavía no completaste ninguna misión esta semana.",
+      "attention_points": "PUNTOS DE ATENCIÓN",
+      "attention_points_hint": "Misiones en las que más fallaste esta semana",
+      "no_failed": "Ningún fallo esta semana — excelente!",
+      "mission_breakdown": "DETALLE POR MISIÓN",
+      "table_mission": "Misión",
+      "completed_short": "C",
+      "recovered_short": "R",
+      "failed_short": "F",
+      "table_rate": "Tasa",
+      "table_legend": "C = Completadas en el día · R = Recuperadas (marcadas como hechas después de fallar) · F = Falladas",
+      "empty_state": "No hubo actividad de misiones en los últimos 7 días. Empieza a completar tus misiones diarias para ver tu informe aquí."
+    },
+    "progress": {
+      "xp_last_7_days": "XP Ganado en los Últimos 7 Días",
+      "xp_gained": "XP Ganado",
+      "day": "Día",
+      "attributes_evolution": "Evolución de Atributos",
+      "highlight": "Destaque",
+      "level_short": "Nv."
+    },
+    "mobile": {
+      "android_version": "Versión Android",
+      "new_version": "¡Nueva versión!",
+      "hero_title": "Hero's Journey en tu bolsillo",
+      "hero_subtitle": "Instala la app oficial en tu Android y ten siempre a mano tu panel de héroe, con notificaciones nativas y modo offline.",
+      "current_version": "Tu versión actual",
+      "download_apk": "Descargar APK",
+      "apk_preparing": "APK en preparación",
+      "why_use": "¿Por qué usar la app?",
+      "how_to_install": "Cómo instalar (paso a paso)",
+      "security_tip_title": "Consejo de seguridad",
+      "security_tip_desc": "Después de la instalación, puedes desactivar otra vez \"Fuentes desconocidas\" en la configuración de Android.",
+      "iphone_title": "¿Tienes iPhone?",
+      "iphone_desc": "Por ahora, iPhone usa la versión web instalable:",
+      "iphone_step_1": "Abre el sitio en Safari",
+      "iphone_step_2": "Toca el botón Compartir",
+      "iphone_step_3": "Elige \"Añadir a la pantalla de inicio\"",
+      "developer_title": "Versión de desarrollador",
+      "developer_desc": "El proyecto usa Capacitor. Para compilar localmente: exporta a GitHub, ejecuta",
+      "developer_and": "y",
+      "faq_title": "Preguntas frecuentes",
+      "footer_note": "Versión Android • Actualizaciones verificadas automáticamente",
+      "benefits": {
+        "notifications_title": "Notificaciones nativas",
+        "notifications_desc": "Alertas del héroe directamente en la pantalla de bloqueo.",
+        "offline_title": "Funciona offline",
+        "offline_desc": "Accede a tu progreso incluso sin internet estable.",
+        "performance_title": "Mejor rendimiento",
+        "performance_desc": "Animaciones fluidas y apertura instantánea.",
+        "security_title": "Seguro y privado",
+        "security_desc": "La misma encriptación que la versión web."
+      },
+      "steps": {
+        "s1_title": "Descarga el archivo APK",
+        "s1_desc": "Haz clic en el botón de descarga abajo. El archivo .apk se guardará en la carpeta Descargas de tu celular.",
+        "s2_title": "Permite instalaciones de fuentes desconocidas",
+        "s2_desc": "Ve a Configuración → Seguridad → activa 'Fuentes desconocidas' o 'Instalar apps desconocidas' para tu navegador.",
+        "s3_title": "Abre el archivo descargado",
+        "s3_desc": "Usa el gestor de archivos de tu celular, ve a Descargas y toca el archivo lifeonrpg.apk.",
+        "s4_title": "Instala y abre Hero's Journey",
+        "s4_desc": "Confirma la instalación. El icono de la app aparecerá en tu pantalla de inicio. Inicia sesión con la misma cuenta de la versión web."
+      },
+      "faq": {
+        "q1_title": "¿Es seguro instalar el APK?",
+        "q1_desc": "Sí. El APK se compila a partir del mismo código fuente que la versión web y no solicita permisos más allá de lo necesario (notificaciones y almacenamiento local).",
+        "q2_title": "¿Perderé mi progreso?",
+        "q2_desc": "No. Tu progreso se guarda en la nube. Solo inicia sesión con la misma cuenta en la app.",
+        "q3_title": "¿Cuándo estará en Play Store?",
+        "q3_desc": "Estamos preparando la publicación oficial. Por ahora, el APK directo es la forma más rápida de tener la app en tu celular.",
+        "q4_title": "¿Y el iPhone?",
+        "q4_desc": "La versión iOS está en el roadmap. Por ahora, los iPhone pueden usar la versión web instalable (Añadir a la pantalla de inicio en Safari)."
+      }
+    },
+    "system_info": {
+      "title": "Información del Sistema",
+      "subtitle": "Consulta actualizaciones recientes y envía ideas de mejora para el sistema.",
+      "update_logs": "Registro de actualizaciones",
+      "highlight": "Destacado",
+      "no_logs": "No hay registros de actualización disponibles.",
+      "suggest_improvements": "Sugiere mejoras",
+      "feedback_title_placeholder": "Título de la sugerencia",
+      "feedback_message_placeholder": "Describe tu idea, bug o mejora que te gustaría ver en el sistema",
+      "send_feedback": "Enviar sugerencia",
+      "your_feedback": "Tus sugerencias enviadas",
+      "no_user_feedback": "Aún no has enviado ninguna sugerencia.",
+      "admin_panel": "Panel administrativo de sugerencias",
+      "admin_panel_hint": "Visible para cuentas con app_metadata.role = admin en Supabase Auth.",
+      "user_label": "Usuario",
+      "no_admin_feedback": "Todavía no se ha recibido ninguna sugerencia.",
+      "errors": {
+        "not_authenticated": "No autenticado",
+        "fill_fields": "Completa el título y la sugerencia."
+      },
+      "toasts": {
+        "sent_title": "Sugerencia enviada",
+        "sent_desc": "Tu sugerencia quedó guardada para revisión posterior.",
+        "send_error_title": "Error al enviar",
+        "status_updated_title": "Estado actualizado",
+        "status_updated_desc": "Feedback actualizado con éxito.",
+        "update_error_title": "Error al actualizar"
+      },
+      "status": {
+        "novo": "nuevo",
+        "avaliando": "evaluando",
+        "planejado": "planificado",
+        "feito": "hecho"
+      }
+    },
+    "not_found": {
+      "title": "Oops! Página no encontrada",
+      "back_home": "Volver al inicio"
     }
   },
   "footer": {

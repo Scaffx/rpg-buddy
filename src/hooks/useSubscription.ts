@@ -47,16 +47,26 @@ export function useSubscription() {
   // Realtime
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel(`subscriptions-${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "subscriptions", filter: `user_id=eq.${user.id}` },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["subscription", user.id, env] });
-        }
-      )
-      .subscribe();
+    const topic = `realtime:subscriptions-${user.id}`;
+
+    for (const existingChannel of supabase.getChannels()) {
+      if (existingChannel.topic === topic) {
+        supabase.removeChannel(existingChannel);
+      }
+    }
+
+    const channel = supabase.channel(`subscriptions-${user.id}`);
+
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "subscriptions", filter: `user_id=eq.${user.id}` },
+      () => {
+        queryClient.invalidateQueries({ queryKey: ["subscription", user.id, env] });
+      }
+    );
+
+    channel.subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };

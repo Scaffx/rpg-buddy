@@ -136,6 +136,130 @@
       "rest_label_short": "Short Rest — Campfire",
       "rest_desc": "Recovers HP, MP and reduces fatigue after 15-60 min.",
       "daily_reset": "Daily reset processed: quests, meals, water and timers updated."
+    },
+    "virtues": {
+      "title": "Virtues",
+      "subtitle": "Weekly report of your quests — last 7 days",
+      "completed": "Completed",
+      "failed": "Failed",
+      "recovered": "Recovered",
+      "recovered_hint": "Marked as done after failing",
+      "success_rate": "Success rate",
+      "daily_activity": "DAILY ACTIVITY (7 DAYS)",
+      "your_virtues": "YOUR VIRTUES",
+      "your_virtues_hint": "Quests you completed the most this week",
+      "no_completed": "No quest completed this week yet.",
+      "attention_points": "ATTENTION POINTS",
+      "attention_points_hint": "Quests you failed the most this week",
+      "no_failed": "No failures this week — excellent!",
+      "mission_breakdown": "MISSION BREAKDOWN",
+      "table_mission": "Quest",
+      "completed_short": "C",
+      "recovered_short": "R",
+      "failed_short": "F",
+      "table_rate": "Rate",
+      "table_legend": "C = Completed on the day · R = Recovered (marked done after failing) · F = Failed",
+      "empty_state": "No quest activity in the last 7 days. Start completing your daily quests to see your report here!"
+    },
+    "progress": {
+      "xp_last_7_days": "XP Gained in the Last 7 Days",
+      "xp_gained": "XP Gained",
+      "day": "Day",
+      "attributes_evolution": "Attribute Evolution",
+      "highlight": "Highlight",
+      "level_short": "Lvl."
+    },
+    "mobile": {
+      "android_version": "Android Version",
+      "new_version": "New version!",
+      "hero_title": "Hero's Journey in your pocket",
+      "hero_subtitle": "Install the official Android app and keep your hero dashboard close at hand — with native notifications and offline mode.",
+      "current_version": "Your current version",
+      "download_apk": "Download APK",
+      "apk_preparing": "APK in preparation",
+      "why_use": "Why use the app?",
+      "how_to_install": "How to install (step by step)",
+      "security_tip_title": "Security tip",
+      "security_tip_desc": "After installation, you can disable \"Unknown sources\" again in Android settings.",
+      "iphone_title": "Have an iPhone?",
+      "iphone_desc": "For now, iPhone uses the installable web version:",
+      "iphone_step_1": "Open the site in Safari",
+      "iphone_step_2": "Tap the Share button",
+      "iphone_step_3": "Choose \"Add to Home Screen\"",
+      "developer_title": "Developer version",
+      "developer_desc": "The project uses Capacitor. To build locally: export to GitHub, run",
+      "developer_and": "and",
+      "faq_title": "Frequently asked questions",
+      "footer_note": "Android version • Updates checked automatically",
+      "benefits": {
+        "notifications_title": "Native notifications",
+        "notifications_desc": "Hero alerts directly on your lock screen.",
+        "offline_title": "Works offline",
+        "offline_desc": "Access your progress even without stable internet.",
+        "performance_title": "Better performance",
+        "performance_desc": "Smooth animations and instant launch.",
+        "security_title": "Safe and private",
+        "security_desc": "Same encryption as the web version."
+      },
+      "steps": {
+        "s1_title": "Download the APK file",
+        "s1_desc": "Click the download button below. The .apk file will be saved to your phone's Downloads folder.",
+        "s2_title": "Allow installs from unknown sources",
+        "s2_desc": "Go to Settings → Security → enable 'Unknown sources' or 'Install unknown apps' for your browser.",
+        "s3_title": "Open the downloaded file",
+        "s3_desc": "Use your phone's file manager, go to Downloads and tap the lifeonrpg.apk file.",
+        "s4_title": "Install and open Hero's Journey",
+        "s4_desc": "Confirm the installation. The app icon will appear on your home screen. Log in with the same account as the web version."
+      },
+      "faq": {
+        "q1_title": "Is it safe to install the APK?",
+        "q1_desc": "Yes. The APK is compiled from the same source code as the web version and requests only the necessary permissions (notifications and local storage).",
+        "q2_title": "Will I lose my progress?",
+        "q2_desc": "No. Your progress is saved in the cloud. Just log in with the same account in the app.",
+        "q3_title": "When will it be on the Play Store?",
+        "q3_desc": "We are preparing the official release. For now, the direct APK is the fastest way to get the app on your phone.",
+        "q4_title": "What about iPhone?",
+        "q4_desc": "The iOS version is on the roadmap. For now, iPhones can use the installable web version (Add to Home Screen in Safari)."
+      }
+    },
+    "system_info": {
+      "title": "System Information",
+      "subtitle": "Check recent updates and send ideas to improve the system.",
+      "update_logs": "Update logs",
+      "highlight": "Highlight",
+      "no_logs": "No update logs available.",
+      "suggest_improvements": "Suggest improvements",
+      "feedback_title_placeholder": "Suggestion title",
+      "feedback_message_placeholder": "Describe your idea, bug, or improvement you would like to see in the system",
+      "send_feedback": "Send suggestion",
+      "your_feedback": "Your submitted suggestions",
+      "no_user_feedback": "You have not sent any suggestions yet.",
+      "admin_panel": "Administrative suggestion panel",
+      "admin_panel_hint": "Visible to accounts with app_metadata.role = admin in Supabase Auth.",
+      "user_label": "User",
+      "no_admin_feedback": "No suggestions received yet.",
+      "errors": {
+        "not_authenticated": "Not authenticated",
+        "fill_fields": "Fill in the title and suggestion."
+      },
+      "toasts": {
+        "sent_title": "Suggestion sent",
+        "sent_desc": "Your suggestion was saved for later review.",
+        "send_error_title": "Error sending",
+        "status_updated_title": "Status updated",
+        "status_updated_desc": "Feedback updated successfully.",
+        "update_error_title": "Error updating"
+      },
+      "status": {
+        "novo": "new",
+        "avaliando": "reviewing",
+        "planejado": "planned",
+        "feito": "done"
+      }
+    },
+    "not_found": {
+      "title": "Oops! Page not found",
+      "back_home": "Return to Home"
     }
   },
   "footer": {

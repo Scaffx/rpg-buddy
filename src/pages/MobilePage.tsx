@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Smartphone, Download, CheckCircle2, ShieldCheck, Wifi, Bell, Github, Apple, Play, ChevronRight, Package, Zap, Sparkles, RefreshCw } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
@@ -9,59 +11,32 @@ import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 
-const benefits = [
-  { icon: Bell, title: "Notificações nativas", desc: "Alertas do herói direto na tela de bloqueio." },
-  { icon: Wifi, title: "Funciona offline", desc: "Acesse seu progresso mesmo sem internet estável." },
-  { icon: Zap, title: "Performance superior", desc: "Animações fluidas e abertura instantânea." },
-  { icon: ShieldCheck, title: "Seguro e privado", desc: "Mesma criptografia da versão web." },
-];
-
-const steps = [
-  {
-    n: 1,
-    title: "Baixe o arquivo APK",
-    desc: "Clique no botão de download abaixo. O arquivo .apk será salvo na pasta Downloads do seu celular.",
-  },
-  {
-    n: 2,
-    title: "Permita instalações de fontes desconhecidas",
-    desc: "Vá em Configurações → Segurança → ative 'Fontes desconhecidas' ou 'Instalar apps desconhecidos' para o seu navegador.",
-  },
-  {
-    n: 3,
-    title: "Abra o arquivo baixado",
-    desc: "Use o gerenciador de arquivos do seu celular, vá em Downloads e toque no arquivo lifeonrpg.apk.",
-  },
-  {
-    n: 4,
-    title: "Instale e abra o Hero's Journey",
-    desc: "Confirme a instalação. O ícone do app aparecerá na sua tela inicial. Faça login com a mesma conta da versão web.",
-  },
-];
-
-const faq = [
-  {
-    q: "É seguro instalar o APK?",
-    a: "Sim. O APK é compilado a partir do mesmo código-fonte da versão web e não solicita permissões além do necessário (notificações e armazenamento local).",
-  },
-  {
-    q: "Vou perder meu progresso?",
-    a: "Não. Seu progresso fica salvo na nuvem. Basta fazer login com a mesma conta no app.",
-  },
-  {
-    q: "Quando vai ter na Play Store?",
-    a: "Estamos preparando a publicação oficial. Por enquanto, o APK direto é a forma mais rápida de ter o app no celular.",
-  },
-  {
-    q: "E iPhone?",
-    a: "A versão iOS está no roadmap. Por enquanto, iPhones podem usar a versão web instalável (Adicionar à Tela de Início pelo Safari).",
-  },
-];
-
 export default function MobilePage() {
+  const { t } = useTranslation();
   const { latest, hasUpdate } = useAppUpdate();
   const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
   const latestVersion = latest?.version ?? APP_VERSION;
+
+  const benefits = useMemo(() => [
+    { icon: Bell, title: t("app.mobile.benefits.notifications_title"), desc: t("app.mobile.benefits.notifications_desc") },
+    { icon: Wifi, title: t("app.mobile.benefits.offline_title"), desc: t("app.mobile.benefits.offline_desc") },
+    { icon: Zap, title: t("app.mobile.benefits.performance_title"), desc: t("app.mobile.benefits.performance_desc") },
+    { icon: ShieldCheck, title: t("app.mobile.benefits.security_title"), desc: t("app.mobile.benefits.security_desc") },
+  ], [t]);
+
+  const steps = useMemo(() => [
+    { n: 1, title: t("app.mobile.steps.s1_title"), desc: t("app.mobile.steps.s1_desc") },
+    { n: 2, title: t("app.mobile.steps.s2_title"), desc: t("app.mobile.steps.s2_desc") },
+    { n: 3, title: t("app.mobile.steps.s3_title"), desc: t("app.mobile.steps.s3_desc") },
+    { n: 4, title: t("app.mobile.steps.s4_title"), desc: t("app.mobile.steps.s4_desc") },
+  ], [t]);
+
+  const faq = useMemo(() => [
+    { q: t("app.mobile.faq.q1_title"), a: t("app.mobile.faq.q1_desc") },
+    { q: t("app.mobile.faq.q2_title"), a: t("app.mobile.faq.q2_desc") },
+    { q: t("app.mobile.faq.q3_title"), a: t("app.mobile.faq.q3_desc") },
+    { q: t("app.mobile.faq.q4_title"), a: t("app.mobile.faq.q4_desc") },
+  ], [t]);
 
   return (
     <AppLayout>
@@ -80,7 +55,7 @@ export default function MobilePage() {
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <Badge variant="outline" className="border-primary/40 text-primary">
-                  Versão Android
+                  {t("app.mobile.android_version")}
                 </Badge>
                 <Badge variant="secondary" className="font-mono text-xs">
                   v{latestVersion}
@@ -92,18 +67,18 @@ export default function MobilePage() {
                 )}
                 {hasUpdate && (
                   <Badge className="bg-primary/20 text-primary border-primary/40">
-                    <Sparkles className="w-3 h-3 mr-1" /> Nova versão!
+                    <Sparkles className="w-3 h-3 mr-1" /> {t("app.mobile.new_version")}
                   </Badge>
                 )}
               </div>
               <h1 className="font-display text-2xl md:text-4xl font-bold text-primary mb-2">
-                Hero's Journey no seu bolso
+                {t("app.mobile.hero_title")}
               </h1>
               <p className="text-muted-foreground max-w-2xl">
-                Instale o app oficial no seu Android e tenha seu painel de herói sempre à mão — com notificações nativas e modo offline.
+                {t("app.mobile.hero_subtitle")}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Sua versão atual: <span className="font-mono">{APP_VERSION_LABEL}</span>
+                {t("app.mobile.current_version")}: <span className="font-mono">{APP_VERSION_LABEL}</span>
               </p>
             </div>
             <Button
@@ -115,12 +90,12 @@ export default function MobilePage() {
               {apkUrl ? (
                 <a href={apkUrl} download target="_blank" rel="noopener noreferrer">
                   <Download className="w-5 h-5 mr-2" />
-                  Baixar APK v{latestVersion}
+                  {t("app.mobile.download_apk")} v{latestVersion}
                 </a>
               ) : (
                 <span>
                   <RefreshCw className="w-5 h-5 mr-2" />
-                  APK em preparação
+                  {t("app.mobile.apk_preparing")}
                 </span>
               )}
             </Button>
@@ -133,7 +108,7 @@ export default function MobilePage() {
         {/* Benefits */}
         <section>
           <h2 className="font-display text-xl text-primary mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5" /> Por que usar o app?
+            <Package className="w-5 h-5" /> {t("app.mobile.why_use")}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {benefits.map((b, i) => (
@@ -160,7 +135,7 @@ export default function MobilePage() {
         {/* Tutorial */}
         <section>
           <h2 className="font-display text-xl text-primary mb-4 flex items-center gap-2">
-            <Play className="w-5 h-5" /> Como instalar (passo a passo)
+            <Play className="w-5 h-5" /> {t("app.mobile.how_to_install")}
           </h2>
           <div className="space-y-3">
             {steps.map((s, i) => (
@@ -188,9 +163,9 @@ export default function MobilePage() {
 
           <Alert className="mt-4 border-primary/30 bg-primary/5">
             <ShieldCheck className="w-4 h-4 text-primary" />
-            <AlertTitle>Dica de segurança</AlertTitle>
+            <AlertTitle>{t("app.mobile.security_tip_title")}</AlertTitle>
             <AlertDescription>
-              Após a instalação, você pode desativar novamente "Fontes desconhecidas" nas configurações do Android.
+              {t("app.mobile.security_tip_desc")}
             </AlertDescription>
           </Alert>
         </section>
@@ -200,15 +175,15 @@ export default function MobilePage() {
           <Card className="bg-card/60 border-border/60">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Apple className="w-5 h-5" /> Tem iPhone?
+                <Apple className="w-5 h-5" /> {t("app.mobile.iphone_title")}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>Por enquanto, iPhone usa a versão web instalável:</p>
+              <p>{t("app.mobile.iphone_desc")}</p>
               <ol className="list-decimal pl-5 space-y-1">
-                <li>Abra o site no Safari</li>
-                <li>Toque no botão Compartilhar</li>
-                <li>Escolha "Adicionar à Tela de Início"</li>
+                <li>{t("app.mobile.iphone_step_1")}</li>
+                <li>{t("app.mobile.iphone_step_2")}</li>
+                <li>{t("app.mobile.iphone_step_3")}</li>
               </ol>
             </CardContent>
           </Card>
@@ -216,12 +191,12 @@ export default function MobilePage() {
           <Card className="bg-card/60 border-border/60">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Github className="w-5 h-5" /> Versão de desenvolvedor
+                <Github className="w-5 h-5" /> {t("app.mobile.developer_title")}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p>
-                O projeto usa Capacitor. Para compilar localmente: exporte para o GitHub, rode <code className="text-primary">npm install</code> e <code className="text-primary">npx cap run android</code>.
+                {t("app.mobile.developer_desc")} <code className="text-primary">npm install</code> {t("app.mobile.developer_and")} <code className="text-primary">npx cap run android</code>.
               </p>
             </CardContent>
           </Card>
@@ -229,7 +204,7 @@ export default function MobilePage() {
 
         {/* FAQ */}
         <section>
-          <h2 className="font-display text-xl text-primary mb-4">Perguntas frequentes</h2>
+          <h2 className="font-display text-xl text-primary mb-4">{t("app.mobile.faq_title")}</h2>
           <div className="space-y-3">
             {faq.map((f) => (
               <Card key={f.q} className="bg-card/60 border-border/60">
@@ -256,17 +231,17 @@ export default function MobilePage() {
             {apkUrl ? (
               <a href={apkUrl} download target="_blank" rel="noopener noreferrer">
                 <Download className="w-5 h-5 mr-2" />
-                Baixar APK v{latestVersion}
+                {t("app.mobile.download_apk")} v{latestVersion}
               </a>
             ) : (
               <span>
                 <RefreshCw className="w-5 h-5 mr-2" />
-                APK em preparação
+                {t("app.mobile.apk_preparing")}
               </span>
             )}
           </Button>
           <p className="text-xs text-muted-foreground mt-3">
-            Versão Android • Atualizações verificadas automaticamente
+            {t("app.mobile.footer_note")}
           </p>
         </div>
       </div>
