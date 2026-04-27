@@ -6,3 +6,12 @@
 // ============================================================
 export const APP_VERSION = "1.0.0";
 export const APP_VERSION_CODE = 1;
+
+// Marca o app como Beta. Quando true, exibimos badges "BETA"
+// em locais visíveis (landing, página mobile, modais de update).
+export const IS_BETA = true;
+
+// Rótulo formatado pronto pra UI: "v1.0.0 BETA" ou "v1.0.0".
+export const APP_VERSION_LABEL = IS_BETA
+  ? `v${APP_VERSION} BETA`
+  : `v${APP_VERSION}`;
