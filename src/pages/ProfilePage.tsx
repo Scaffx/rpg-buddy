@@ -1045,6 +1045,21 @@ export default function ProfilePage() {
   };
 
   const waterPercent = Math.min(100, Math.round((totalWaterToday / waterTargetMl) * 100));
+
+  // 🎯 Auto-disparar recompensa de XP quando ambas as metas (3+ refeições e água total) forem atingidas
+  useEffect(() => {
+    if (
+      !xpAwarded &&
+      !awardHealthXP.isPending &&
+      mealsToday >= Math.max(3, mealsTarget) &&
+      totalWaterToday >= waterTargetMl &&
+      waterTargetMl > 0
+    ) {
+      checkAndAwardXP();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mealsToday, totalWaterToday, waterTargetMl, mealsTarget, xpAwarded]);
+
   const hpPercent = Math.round((currentHp / maxHp) * 100);
   const mpPercent = Math.round((currentMp / maxMp) * 100);
   const currentGold = (goldBalance as any)?.gold ?? 100;
