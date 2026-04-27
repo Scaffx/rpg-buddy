@@ -130,9 +130,26 @@ export default function CalendarPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-display font-bold text-primary text-glow">
-          📅 Calendário
-        </h1>
+        <div className="flex items-end justify-between flex-wrap gap-2">
+          <h1 className="text-2xl font-display font-bold text-primary text-glow">
+            📅 Calendário
+          </h1>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400/50" /> Conclusões
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-destructive/60" /> Fracassos
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full ring-2 ring-blue-500/50" /> Diário
+            </span>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-3">
+          🔗 <span className="text-foreground font-medium">Don't break the chain</span> — mantenha os dias
+          em verde dourado e evite as marcas vermelhas.
+        </p>
 
         {isLoading ? (
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
