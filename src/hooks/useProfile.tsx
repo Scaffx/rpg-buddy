@@ -554,21 +554,28 @@ export const useCompleteMission = () => {
     }) => {
       const today = toDateString(new Date());
 
-      // Buscar perfil para XP scaling baseado no nível
-      const { data: currentProfile } = await supabase
-        .from('profiles')
-        .select('level, boss_keys, missions_completed')
-        .eq('user_id', user!.id)
-        .single();
-      
+      // ⚡ Paralelizar leituras independentes
+      const [
+        { data: currentProfile },
+        activeBuffs,
+        talentEffects,
+        { data: mission, error: missionError },
+        { data: primaryAttrMeta },
+      ] = await Promise.all([
+        supabase.from('profiles').select('level, boss_keys, missions_completed').eq('user_id', user!.id).single(),
+        getActiveBuffEffects(user!.id),
+        getPlayerTalentEffects(user!.id),
+        supabase.from('missions').select('*').eq('id', missionId).single(),
+        supabase.from('attributes').select('name').eq('id', attributeId).maybeSingle(),
+      ]);
+
+      if (missionError) throw missionError;
+
       const playerLevel = currentProfile?.level || 1;
-      const activeBuffs = await getActiveBuffEffects(user!.id);
-      const talentEffects = await getPlayerTalentEffects(user!.id);
       const hadFlowXpBuff = activeBuffs.has('estado_fluxo_xp');
 
       // XP Dinâmico: escala com o nível do jogador
       let xpMultiplier = 1 + Math.floor((playerLevel - 1) / 5) * 0.5; // +50% a cada 5 níveis
-      // Loja do Tempo: bônus de XP aplicados via regras de combate/economia centralizadas
       xpMultiplier += getRoutineXpBuffBonus(activeBuffs);
       if (hadFlowXpBuff) {
         xpMultiplier *= 1.2;
@@ -579,22 +586,7 @@ export const useCompleteMission = () => {
       }
       const scaledXpReward = Math.round(xpReward * xpMultiplier);
 
-      // Buscar missão
-      const { data: mission, error: missionError } = await supabase
-        .from('missions')
-        .select('*')
-        .eq('id', missionId)
-        .single();
-
-      if (missionError) throw missionError;
-
       const typedMission = mission as any;
-
-      const { data: primaryAttrMeta } = await supabase
-        .from('attributes')
-        .select('name')
-        .eq('id', attributeId)
-        .maybeSingle();
 
       const missionCategory = deriveMissionCategory({
         mission: typedMission,
