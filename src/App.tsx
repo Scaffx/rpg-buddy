@@ -26,6 +26,7 @@ import Onboarding from "./pages/Onboarding";
 import SystemInfoPage from "./pages/SystemInfoPage";
 import VirtuesPage from "./pages/VirtuesPage";
 import Landing from "./pages/Landing";
+import MobilePage from "./pages/MobilePage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -99,6 +100,7 @@ function AppRoutes() {
       <Route path="/prioridade" element={<ProtectedRoute><PrioridadePage /></ProtectedRoute>} />
       <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
       <Route path="/virtues" element={<ProtectedRoute><VirtuesPage /></ProtectedRoute>} />
+      <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

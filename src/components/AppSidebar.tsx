@@ -7,7 +7,7 @@ import ActiveTalentsBadge from '@/components/ActiveTalentsBadge';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
   ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles,
+  Sparkles, Smartphone,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import {
@@ -37,6 +37,7 @@ const navItems = [
   { title: 'Virtudes', url: '/virtues', icon: Circle },
   { title: 'Boss Arena', url: '/boss', icon: Skull },
   { title: 'Informações do Sistema', url: '/system-info', icon: ScrollText },
+  { title: 'Mobile / APK', url: '/mobile', icon: Smartphone },
   { title: 'Chat IA', url: '/ai-chat', icon: Brain },
 ];
 
