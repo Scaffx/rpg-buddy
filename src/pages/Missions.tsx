@@ -163,7 +163,7 @@ export default function Missions() {
   const [formMissionType, setFormMissionType] = useState<"recorrente" | "unica">("recorrente");
   const [formDueDate, setFormDueDate] = useState("");
 
-  const { data: allMissions, isLoading } = useMissions();
+  const { data: allMissions, isLoading, isError } = useMissions();
   const { data: attrs } = useAttributes();
   const createMission = useCreateMission();
   const completeMission = useCompleteMission();
@@ -668,7 +668,9 @@ const handleSave = async () => {
           <div className="flex justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : todayMissions.length === 0 && nextDaysMissions.length === 0 && todayUniqueMissions.length === 0 && nextUniqueMissions.length === 0 ? (
+        ) : isError ? (
+          <p className="text-sm text-destructive text-center py-8">⚠️ Erro ao carregar missões. Verifique sua conexão e tente novamente.</p>
+        ) : (activeTab === "concluidas" ? completedMissions.length === 0 : (todayMissions.length === 0 && nextDaysMissions.length === 0 && todayUniqueMissions.length === 0 && nextUniqueMissions.length === 0)) ? (
           <p className="text-sm text-muted-foreground text-center py-8">{t('app.missions.empty_state')}</p>
         ) : (
           <>

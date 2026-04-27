@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { getLevelFromXp } from '@/lib/progression';
+import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
 
 const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -165,8 +166,8 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
           .select('name, level')
           .eq('user_id', userId);
         if (attrs) {
-          const attrLevels = require('@/lib/combat').getAttributeLevels(attrs);
-          const stats = require('@/lib/combat').getPlayerCombatStats(profile.level, attrLevels);
+          const attrLevels = getAttributeLevels(attrs);
+          const stats = getPlayerCombatStats(profile.level, attrLevels);
           maxHp = stats.hp;
           maxMp = stats.mp;
         }
