@@ -192,6 +192,17 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
         .update({ streak_current_days: 0 } as any)
         .eq('user_id', userId);
 
+      // Log estruturado da transação de XP (penalidade)
+      await supabase.from('xp_transactions' as any).insert({
+        user_id: userId,
+        mission_id: m.id,
+        reason: 'mission_failed',
+        xp_delta: -xpPenalty,
+        gold_delta: 0,
+        local_date: pastDateStr,
+        description: `Missão fracassada (D+1 expirou): ${m.title}`,
+      });
+
       failedList.push({ ...m, failed_date: pastDateStr });
       break; // One failure per mission at a time
     }
