@@ -370,21 +370,41 @@ export default function Landing() {
       </section>
 
       {/* ============== FOOTER ============== */}
-      <footer className="border-t border-border/40 py-8 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Swords className="w-4 h-4 text-primary" />
-            <span>LifeOnRPG · {t("footer.tagline")}</span>
-            {IS_BETA && (
-              <Badge className="ml-1 h-4 px-1.5 text-[9px] bg-accent/20 text-accent border border-accent/40 hover:bg-accent/20">
-                BETA
-              </Badge>
-            )}
+      <footer className="border-t border-border/40 py-10 px-4 md:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Swords className="w-4 h-4 text-primary" />
+              <span>LifeOnRPG · {t("footer.tagline")}</span>
+              {IS_BETA && (
+                <Badge className="ml-1 h-4 px-1.5 text-[9px] bg-accent/20 text-accent border border-accent/40 hover:bg-accent/20">
+                  BETA
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <Link to="/auth" className="hover:text-primary">{t("nav.login")}</Link>
+              <Link to="/auth?mode=signup" className="hover:text-primary">{t("nav.signup")}</Link>
+              <a href="#pricing" className="hover:text-primary">{t("pricing.eyebrow")}</a>
+              <a href="#download" className="hover:text-primary">APK</a>
+            </div>
           </div>
-          <div className="flex gap-4">
-            <Link to="/auth" className="hover:text-primary">{t("nav.login")}</Link>
-            <Link to="/auth?mode=signup" className="hover:text-primary">{t("nav.signup")}</Link>
-            <a href="#download" className="hover:text-primary">APK</a>
+
+          <div className="border-t border-border/30 pt-4 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-muted-foreground/80">
+            <div className="flex flex-wrap gap-4 justify-center">
+              <Link to="/terms" className="hover:text-primary underline-offset-4 hover:underline">
+                {t("footer.legal_terms")}
+              </Link>
+              <Link to="/privacy" className="hover:text-primary underline-offset-4 hover:underline">
+                {t("footer.legal_privacy")}
+              </Link>
+              <Link to="/refund" className="hover:text-primary underline-offset-4 hover:underline">
+                {t("footer.legal_refund")}
+              </Link>
+            </div>
+            <div className="text-center md:text-right">
+              © {new Date().getFullYear()} Murillo Gabrie Scaff · Powered by Paddle
+            </div>
           </div>
         </div>
       </footer>
