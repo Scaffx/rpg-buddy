@@ -1,8 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
 
 const db = supabase as any;
+
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeRelatedGameItem(raw: unknown): GameItem | null {
+  if (Array.isArray(raw)) return (raw[0] as GameItem) || null;
+  return (raw as GameItem) || null;
+}
 
 export type GameItem = {
   id: string;
@@ -337,10 +348,11 @@ export function useConsumeItem() {
 
       if (inventoryError) throw inventoryError;
 
-      const itemEffect = String(inventoryRow?.game_items?.effect || '');
-      const itemName = String(inventoryRow?.game_items?.name || '');
+      const relatedItem = normalizeRelatedGameItem(inventoryRow?.game_items);
+      const itemEffect = String(relatedItem?.effect || '').trim().toLowerCase();
+      const itemName = String(relatedItem?.name || '');
       // Consider consumable if is_consumable flag is set OR if effect is defined (for older items)
-      const isConsumable = Boolean(inventoryRow?.game_items?.is_consumable) || !!itemEffect;
+      const isConsumable = Boolean(relatedItem?.is_consumable) || !!itemEffect;
 
       const { data: talents } = await (supabase as any)
         .from('talentos_jogador')
@@ -361,6 +373,11 @@ export function useConsumeItem() {
       const preserveCharge = hasAlquimistaAmador && isPotionLike && Math.random() < 0.1;
 
       if (isConsumable && itemEffect) {
+        const [{ data: profile }, { data: attrs }] = await Promise.all([
+          db.from('profiles').select('level').eq('user_id', user.id).maybeSingle(),
+          db.from('attributes').select('name, level').eq('user_id', user.id),
+        ]);
+
         const { data: healthStats, error: healthError } = await db
           .from('user_health_stats')
           .select('max_hp, current_hp, max_mp, current_mp, fatigue')
@@ -369,12 +386,26 @@ export function useConsumeItem() {
 
         if (healthError) throw healthError;
 
+        const computed = getPlayerCombatStats(
+          Number((profile as any)?.level ?? 1),
+          getAttributeLevels((attrs || []) as any[]),
+        );
+
+        const effectiveMaxHp = Math.max(
+          toFiniteNumber(healthStats?.max_hp, 100),
+          toFiniteNumber(computed.hp, 100),
+        );
+        const effectiveMaxMp = Math.max(
+          toFiniteNumber(healthStats?.max_mp, 10),
+          toFiniteNumber((computed as any).mp, 10),
+        );
+
         const baseStats = {
-          max_hp: Number(healthStats?.max_hp ?? 100),
-          current_hp: Number(healthStats?.current_hp ?? 100),
-          max_mp: Number(healthStats?.max_mp ?? 10),
-          current_mp: Number(healthStats?.current_mp ?? 10),
-          fatigue: Number(healthStats?.fatigue ?? 0),
+          max_hp: effectiveMaxHp,
+          current_hp: toFiniteNumber(healthStats?.current_hp, effectiveMaxHp),
+          max_mp: effectiveMaxMp,
+          current_mp: toFiniteNumber(healthStats?.current_mp, 0),
+          fatigue: toFiniteNumber(healthStats?.fatigue, 0),
         };
 
         const updates: Record<string, number | string> = {};
@@ -396,9 +427,18 @@ export function useConsumeItem() {
 
         if (Object.keys(updates).length > 0) {
           if (healthStats) {
-            await db.from('user_health_stats').update(updates).eq('user_id', user.id);
+            const payload = {
+              ...updates,
+              max_hp: baseStats.max_hp,
+              max_mp: baseStats.max_mp,
+            };
+            const { error: updateHealthError } = await db
+              .from('user_health_stats')
+              .update(payload)
+              .eq('user_id', user.id);
+            if (updateHealthError) throw updateHealthError;
           } else {
-            await db.from('user_health_stats').insert({
+            const { error: insertHealthError } = await db.from('user_health_stats').insert({
               user_id: user.id,
               max_hp: baseStats.max_hp,
               current_hp: Number(updates.current_hp ?? baseStats.current_hp),
@@ -407,15 +447,26 @@ export function useConsumeItem() {
               fatigue: Number(updates.fatigue ?? baseStats.fatigue),
               last_reset_date: (updates.last_reset_date as string) ?? new Date().toISOString().split('T')[0],
             });
+            if (insertHealthError) throw insertHealthError;
           }
         }
       }
 
       if (!preserveCharge) {
         if (quantity <= 1) {
-          await db.from('user_inventory').delete().eq('id', inventoryId).eq('user_id', user.id);
+          const { error: deleteError } = await db
+            .from('user_inventory')
+            .delete()
+            .eq('id', inventoryId)
+            .eq('user_id', user.id);
+          if (deleteError) throw deleteError;
         } else {
-          await db.from('user_inventory').update({ quantity: quantity - 1 }).eq('id', inventoryId).eq('user_id', user.id);
+          const { error: decError } = await db
+            .from('user_inventory')
+            .update({ quantity: quantity - 1 })
+            .eq('id', inventoryId)
+            .eq('user_id', user.id);
+          if (decError) throw decError;
         }
       }
 
@@ -431,6 +482,7 @@ export function useConsumeItem() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['health_stats', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
       queryClient.refetchQueries({ queryKey: ['health_stats', user?.id], type: 'active' });
     },
   });

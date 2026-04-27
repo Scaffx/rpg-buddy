@@ -44,6 +44,11 @@ function formatPtBrDateTime(date: Date): string {
   }).format(date);
 }
 
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 async function getShortRestUsageToday(userId: string): Promise<string | null> {
   const startOfDayLocal = getStartOfLocalDay();
   const { data, error } = await supabase
@@ -1739,14 +1744,16 @@ export function useShortRestRecovery() {
 
       // Use computed maxes (passed from UI) so recovery is meaningful even when
       // DB max_hp/max_mp lag behind level/attribute progression.
-      const dbMaxHp = Number(healthStats?.max_hp ?? 100);
-      const dbMaxMp = Number(healthStats?.max_mp ?? 10);
-      const effectiveMaxHp = Math.max(dbMaxHp, Number(params?.computedMaxHp ?? 0));
-      const effectiveMaxMp = Math.max(dbMaxMp, Number(params?.computedMaxMp ?? 0));
+      const dbMaxHp = toFiniteNumber(healthStats?.max_hp, 100);
+      const dbMaxMp = toFiniteNumber(healthStats?.max_mp, 10);
+      const effectiveMaxHp = Math.max(dbMaxHp, toFiniteNumber(params?.computedMaxHp, 0));
+      const effectiveMaxMp = Math.max(dbMaxMp, toFiniteNumber(params?.computedMaxMp, 0));
 
-      const currentHp = Number(healthStats?.current_hp ?? effectiveMaxHp);
-      const currentMp = Number(healthStats?.current_mp ?? effectiveMaxMp);
-      const fatigue = Number(healthStats?.fatigue ?? 0);
+      const currentHp = toFiniteNumber(healthStats?.current_hp, effectiveMaxHp);
+      // Em dados legados/corrompidos, current_mp pode vir null; nesse caso tratamos como 0
+      // para garantir recuperação efetiva no short rest.
+      const currentMp = toFiniteNumber(healthStats?.current_mp, 0);
+      const fatigue = toFiniteNumber(healthStats?.fatigue, 0);
 
       const hpGain = Math.max(1, Math.ceil(effectiveMaxHp * 0.3));
       const mpGain = Math.max(1, Math.ceil(effectiveMaxMp * 0.3));
