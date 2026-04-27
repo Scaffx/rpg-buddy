@@ -25,6 +25,7 @@ export default function CalendarPage() {
   const { data: journalEntry } = useJournalEntry(selectedDateStr);
   const saveJournal = useSaveJournalEntry();
   const journalDates = useJournalDates();
+  const { data: failedDateStrs = [] } = useFailedDates(60);
   const [journalText, setJournalText] = useState('');
   const [journalMood, setJournalMood] = useState<JournalMood>('neutro');
   const journalInitialized = useRef('');
