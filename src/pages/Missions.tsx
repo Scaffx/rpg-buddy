@@ -269,7 +269,8 @@ export default function Missions() {
 
       if (!selectedCategories.includes("Todos")) {
         result = result.filter((m: any) => {
-          const attrName = m.attributes?.name;
+          const primaryAttr = attrs?.find((a: any) => a.id === m.attribute_id);
+          const attrName = primaryAttr?.name;
           const secondaryIds: string[] = (m as any).secondary_attribute_ids || [];
           const allAttrNames = [attrName];
           if (attrs && secondaryIds.length > 0) {
@@ -667,7 +668,7 @@ const handleSave = async () => {
           <div className="flex justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : todayMissions.length === 0 && nextDaysMissions.length === 0 ? (
+        ) : todayMissions.length === 0 && nextDaysMissions.length === 0 && todayUniqueMissions.length === 0 && nextUniqueMissions.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">{t('app.missions.empty_state')}</p>
         ) : (
           <>

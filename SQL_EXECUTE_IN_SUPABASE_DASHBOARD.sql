@@ -268,3 +268,97 @@ INSERT INTO public.system_update_logs (version_tag, title, summary, details, is_
     false
   )
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- PASSO 6: Cria tabela de desafios de NPC
+-- Resolve: "Could not find the table 'public.npc_challenge_completions' in the schema cache"
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.npc_challenge_completions (
+  id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  npc_id       text        NOT NULL,
+  challenge_id text        NOT NULL,
+  week_token   text        NOT NULL,
+  completed_at timestamptz NOT NULL DEFAULT now(),
+  xp_earned    int         NOT NULL DEFAULT 0,
+  gold_earned  int         NOT NULL DEFAULT 0,
+  UNIQUE (user_id, npc_id, challenge_id, week_token)
+);
+
+CREATE INDEX IF NOT EXISTS idx_npc_completions_user_week
+  ON public.npc_challenge_completions (user_id, week_token);
+
+ALTER TABLE public.npc_challenge_completions ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'npc_challenge_completions'
+      AND policyname = 'users_own_npc_completions'
+  ) THEN
+    CREATE POLICY "users_own_npc_completions" ON public.npc_challenge_completions
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, DELETE ON public.npc_challenge_completions TO authenticated;
+
+-- ============================================================
+-- PASSO 7: Cria funções RPC usadas pela página de NPC
+-- Resolve: "add_xp_to_user" e "add_gold_to_user" não existem
+-- ============================================================
+
+-- Tabela de XP necessário por nível (espelha src/lib/progression.ts)
+CREATE OR REPLACE FUNCTION public.add_xp_to_user(p_user_id uuid, p_xp int)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_current_xp  int;
+  v_new_xp      int;
+  v_new_level   int;
+  xp_table      int[] := ARRAY[
+       0,   80,  180,  300,  440,  600,  775,  960, 1155, 1360,
+    1575, 1800, 2040, 2295, 2565, 2855, 3165, 3495, 3850, 4230,
+    4640, 5080, 5555, 6065, 6615, 7205, 7840, 8520, 9250,10035,
+   10875,11775
+  ];
+  i             int;
+BEGIN
+  SELECT COALESCE(total_xp, 0) INTO v_current_xp
+    FROM public.profiles WHERE user_id = p_user_id;
+
+  v_new_xp := v_current_xp + p_xp;
+
+  -- Calcula nível a partir da tabela de XP
+  v_new_level := 1;
+  FOR i IN REVERSE array_length(xp_table, 1)..2 LOOP
+    IF v_new_xp >= xp_table[i] THEN
+      v_new_level := i;
+      EXIT;
+    END IF;
+  END LOOP;
+
+  UPDATE public.profiles
+    SET total_xp = v_new_xp,
+        level    = v_new_level
+  WHERE user_id = p_user_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.add_gold_to_user(p_user_id uuid, p_gold int)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE public.user_balance
+    SET gold       = COALESCE(gold, 0) + p_gold,
+        updated_at = now()
+  WHERE user_id = p_user_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.add_xp_to_user(uuid, int)  TO authenticated;
+GRANT EXECUTE ON FUNCTION public.add_gold_to_user(uuid, int) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
