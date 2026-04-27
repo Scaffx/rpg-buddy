@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useJournalEntry, useSaveJournalEntry, useJournalDates, type JournalMood } from '@/hooks/useAdventureJournal';
+import { useFailedDates } from '@/hooks/useMissionReports';
 import { toast } from 'sonner';
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -24,6 +25,7 @@ export default function CalendarPage() {
   const { data: journalEntry } = useJournalEntry(selectedDateStr);
   const saveJournal = useSaveJournalEntry();
   const journalDates = useJournalDates();
+  const { data: failedDateStrs = [] } = useFailedDates(60);
   const [journalText, setJournalText] = useState('');
   const [journalMood, setJournalMood] = useState<JournalMood>('neutro');
   const journalInitialized = useRef('');
@@ -92,8 +94,14 @@ export default function CalendarPage() {
     });
   }, [allMissions, selectedDate, completions]);
 
+  const failedDates = useMemo(
+    () => failedDateStrs.map((d) => new Date(d + 'T12:00:00')).filter((d) => !isNaN(d.getTime())),
+    [failedDateStrs],
+  );
+
   const modifiers = {
     completed: completedDates,
+    failed: failedDates,
     journaled: [...journalDates]
       .map((d) => new Date(d + 'T12:00:00'))
       .filter((d) => !isNaN(d.getTime())),
@@ -106,6 +114,13 @@ export default function CalendarPage() {
       color: 'hsl(43 96% 56%)',
       fontWeight: 'bold' as const,
     },
+    failed: {
+      backgroundColor: 'hsl(0 75% 55% / 0.25)',
+      color: 'hsl(0 75% 70%)',
+      borderRadius: '50%',
+      fontWeight: 'bold' as const,
+      boxShadow: 'inset 0 0 0 1px hsl(0 75% 55% / 0.6)',
+    },
     journaled: {
       outline: '2px solid hsl(217 91% 60% / 0.5)',
       borderRadius: '50%',
@@ -115,9 +130,26 @@ export default function CalendarPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-display font-bold text-primary text-glow">
-          📅 Calendário
-        </h1>
+        <div className="flex items-end justify-between flex-wrap gap-2">
+          <h1 className="text-2xl font-display font-bold text-primary text-glow">
+            📅 Calendário
+          </h1>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400/50" /> Conclusões
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-destructive/60" /> Fracassos
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full ring-2 ring-blue-500/50" /> Diário
+            </span>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-3">
+          🔗 <span className="text-foreground font-medium">Don't break the chain</span> — mantenha os dias
+          em verde dourado e evite as marcas vermelhas.
+        </p>
 
         {isLoading ? (
           <Loader2 className="w-8 h-8 animate-spin text-primary" />

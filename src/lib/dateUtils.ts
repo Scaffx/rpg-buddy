@@ -43,6 +43,27 @@ export function isToday(dateStr: string): boolean {
 }
 
 /**
+ * Retorna a string YYYY-MM-DD do dia anterior ao de hoje (fuso local).
+ */
+export function yesterdayStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return toDateString(d);
+}
+
+/**
+ * Retorna um label relativo para a data: "Hoje", "Ontem" ou a data formatada (dd/MM/yyyy).
+ * Aceita string YYYY-MM-DD ou Date.
+ */
+export function formatRelativeDay(input: string | Date): string {
+  const dateStr = typeof input === 'string' ? input : toDateString(input);
+  if (dateStr === today()) return 'Hoje';
+  if (dateStr === yesterdayStr()) return 'Ontem';
+  const d = parseLocalDate(dateStr);
+  return d.toLocaleDateString('pt-BR');
+}
+
+/**
  * Retorna o token da semana atual (data da segunda-feira) em YYYY-MM-DD.
  * Útil para streak protector, refresh semanal de NPCs etc.
  */

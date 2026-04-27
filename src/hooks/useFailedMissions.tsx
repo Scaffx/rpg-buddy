@@ -192,6 +192,17 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
         .update({ streak_current_days: 0 } as any)
         .eq('user_id', userId);
 
+      // Log estruturado da transação de XP (penalidade)
+      await supabase.from('xp_transactions' as any).insert({
+        user_id: userId,
+        mission_id: m.id,
+        reason: 'mission_failed',
+        xp_delta: -xpPenalty,
+        gold_delta: 0,
+        local_date: pastDateStr,
+        description: `Missão fracassada (D+1 expirou): ${m.title}`,
+      });
+
       failedList.push({ ...m, failed_date: pastDateStr });
       break; // One failure per mission at a time
     }
@@ -314,6 +325,17 @@ export function usePayPenalty() {
         amount: -goldCost,
         reason: `Pagou penalidade: ${mission.title}`,
       });
+
+      // Log estruturado: pagamento com ouro restaura XP perdido
+      await supabase.from('xp_transactions' as any).insert({
+        user_id: user.id,
+        mission_id: mission.id,
+        reason: 'penalty_paid_with_gold',
+        xp_delta: xpToRestore,
+        gold_delta: -goldCost,
+        local_date: (mission as any).failed_date || new Date().toLocaleDateString('en-CA'),
+        description: `Pagou penalidade com ${goldCost} 🪙: ${mission.title} (+${xpToRestore} XP)`,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
@@ -425,6 +447,17 @@ export function useMarkFailedAsDone() {
         action: 'mission_failed_recovered',
         description: `Recuperou missão fracassada: ${mission.title} (+${xpToRestore} XP)`,
         xp_gained: xpToRestore,
+      });
+
+      // Log estruturado: recuperação manual de missão fracassada
+      await supabase.from('xp_transactions' as any).insert({
+        user_id: user.id,
+        mission_id: mission.id,
+        reason: 'mission_recovered',
+        xp_delta: xpToRestore,
+        gold_delta: 0,
+        local_date: (mission as any).failed_date || new Date().toLocaleDateString('en-CA'),
+        description: `Recuperou missão fracassada: ${mission.title} (+${xpToRestore} XP)`,
       });
     },
     onSuccess: () => {
