@@ -1240,6 +1240,42 @@ export type Database = {
         }
         Relationships: []
       }
+      xp_transactions: {
+        Row: {
+          created_at: string
+          description: string | null
+          gold_delta: number
+          id: string
+          local_date: string
+          mission_id: string | null
+          reason: string
+          user_id: string
+          xp_delta: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          gold_delta?: number
+          id?: string
+          local_date?: string
+          mission_id?: string | null
+          reason: string
+          user_id: string
+          xp_delta?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          gold_delta?: number
+          id?: string
+          local_date?: string
+          mission_id?: string | null
+          reason?: string
+          user_id?: string
+          xp_delta?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
