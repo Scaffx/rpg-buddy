@@ -97,6 +97,28 @@
     "footnote": "Android 8.0+ · 应用内自动更新"
   },
   "footer": {
-    "tagline": "你的人生,你的旅程。"
+    "tagline": "你的人生,你的旅程。",
+    "legal_terms": "条款",
+    "legal_privacy": "隐私",
+    "legal_refund": "退款"
+  },
+  "pricing": {
+    "eyebrow": "简单定价",
+    "title": "一个套餐。没有套路。",
+    "subtitle": "7天免费试用,可随时通过 Paddle 取消。",
+    "plan_name": "冒险者",
+    "price_currency": "R$",
+    "price_amount": "4.90",
+    "price_period": "/月",
+    "trial": "7天免费",
+    "features": {
+      "f1": "全部11项属性与55个职业",
+      "f2": "完整的每日任务系统",
+      "f3": "60个主题首领与全球排行榜",
+      "f4": "时光商店、成就与数据分析",
+      "f5": "Android 应用 (APK) 与云同步"
+    },
+    "cta": "开始7天免费试用",
+    "mor_note": "付款由 Paddle.com 处理(Merchant of Record)。"
   }
 }

@@ -27,6 +27,9 @@ import SystemInfoPage from "./pages/SystemInfoPage";
 import VirtuesPage from "./pages/VirtuesPage";
 import Landing from "./pages/Landing";
 import MobilePage from "./pages/MobilePage";
+import TermsPage from "./pages/legal/TermsPage";
+import PrivacyPage from "./pages/legal/PrivacyPage";
+import RefundPage from "./pages/legal/RefundPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -86,6 +89,9 @@ function AppRoutes() {
     <Routes>
       <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
       <Route path="/landing" element={<LandingRoute />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/refund" element={<RefundPage />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />

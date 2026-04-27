@@ -97,6 +97,28 @@
     "footnote": "Android 8.0+ · Auto-updates inside the app"
   },
   "footer": {
-    "tagline": "Your life, your journey."
+    "tagline": "Your life, your journey.",
+    "legal_terms": "Terms",
+    "legal_privacy": "Privacy",
+    "legal_refund": "Refund"
+  },
+  "pricing": {
+    "eyebrow": "Simple pricing",
+    "title": "One plan. No tricks.",
+    "subtitle": "Start with a 7-day free trial. Cancel anytime through Paddle.",
+    "plan_name": "Adventurer",
+    "price_currency": "R$",
+    "price_amount": "4.90",
+    "price_period": "/month",
+    "trial": "7 days free",
+    "features": {
+      "f1": "All 11 attributes and 55 classes",
+      "f2": "Full daily quest system",
+      "f3": "60 themed bosses and global ranking",
+      "f4": "Time Shop, achievements and analytics",
+      "f5": "Android app (APK) with sync"
+    },
+    "cta": "Start 7-day free trial",
+    "mor_note": "Payments processed by Paddle.com (Merchant of Record)."
   }
 }
