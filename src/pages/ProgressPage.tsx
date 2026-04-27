@@ -53,6 +53,9 @@ export default function ProgressPage() {
           Progresso
         </h1>
 
+        {/* Dashboard de relatórios de missões */}
+        <ReportsPanel />
+
         {/* XP Line Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
