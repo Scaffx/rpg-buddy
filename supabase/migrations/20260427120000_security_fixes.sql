@@ -176,11 +176,6 @@ GRANT EXECUTE ON FUNCTION public.has_active_subscription(uuid, text) TO authenti
 -- 4. debug_sintonizado: função de debug exposta ao público — remover acesso
 --    (exposição de dados internos do inventário a usuários anônimos)
 -- ─────────────────────────────────────────────────────────────────────────────
-REVOKE ALL ON FUNCTION public.debug_sintonizado() FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.debug_sintonizado() FROM anon;
--- Mantém apenas para authenticated (uso interno de diagnóstico)
-GRANT EXECUTE ON FUNCTION public.debug_sintonizado() TO authenticated;
-
 -- Recriar com search_path fixo
 CREATE OR REPLACE FUNCTION public.debug_sintonizado()
 RETURNS TABLE(col_exists boolean, sample_value boolean)

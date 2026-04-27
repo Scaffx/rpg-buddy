@@ -688,8 +688,8 @@ Deno.serve(async (req) => {
       },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unexpected error';
-    return new Response(JSON.stringify({ error: message }), {
+    console.error('processar_turno error:', error);
+    return new Response(JSON.stringify({ error: 'Erro interno ao processar turno. Tente novamente.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
