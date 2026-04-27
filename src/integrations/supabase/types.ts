@@ -41,6 +41,39 @@ export type Database = {
         }
         Relationships: []
       }
+      app_releases: {
+        Row: {
+          apk_url: string
+          changelog: string | null
+          created_at: string
+          id: string
+          is_mandatory: boolean
+          released_at: string
+          version: string
+          version_code: number
+        }
+        Insert: {
+          apk_url: string
+          changelog?: string | null
+          created_at?: string
+          id?: string
+          is_mandatory?: boolean
+          released_at?: string
+          version: string
+          version_code: number
+        }
+        Update: {
+          apk_url?: string
+          changelog?: string | null
+          created_at?: string
+          id?: string
+          is_mandatory?: boolean
+          released_at?: string
+          version?: string
+          version_code?: number
+        }
+        Relationships: []
+      }
       attributes: {
         Row: {
           created_at: string
