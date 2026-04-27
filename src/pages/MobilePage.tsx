@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Smartphone, Download, CheckCircle2, ShieldCheck, Wifi, Bell, Github, Apple, Play, ChevronRight, Package, Zap } from "lucide-react";
-import { AppLayout } from "@/components/AppLayout";
+import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
