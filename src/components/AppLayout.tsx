@@ -337,6 +337,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <LevelUpCinematic />
         </div>
         <AppUpdateModal />
+        <FloatingAiChat />
       </div>
     </SidebarProvider>
   );
