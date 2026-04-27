@@ -831,7 +831,73 @@ export const useCompleteMission = () => {
       return { success: true, inspiredGranted };
     },
 
-    onSuccess: () => {
+    // ⚡ OPTIMISTIC UPDATE: marca a missão como concluída na UI antes do servidor responder.
+    onMutate: async ({ missionId, attributeId, xpReward, secondaryAttributeIds = [] }) => {
+      const today = toDateString(new Date());
+      await queryClient.cancelQueries({ queryKey: ['missions'] });
+
+      const previousMissions = queryClient.getQueriesData({ queryKey: ['missions'] });
+      const previousProfile = queryClient.getQueryData(['profile', user?.id]);
+      const previousAttributes = queryClient.getQueryData(['attributes', user?.id]);
+      const previousGold = queryClient.getQueryData(['gold_balance', user?.id]);
+
+      // Atualiza otimisticamente as missões (marca daily_status do dia)
+      queryClient.setQueriesData({ queryKey: ['missions'] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((m: any) => {
+          if (m.id !== missionId) return m;
+          const days: string[] = m.days_of_week || [];
+          if (days.length > 0) {
+            return { ...m, daily_status: { ...(m.daily_status || {}), [today]: 'completed' } };
+          }
+          return { ...m, completed: true, completed_at: new Date().toISOString() };
+        });
+      });
+
+      // Atualiza otimisticamente o XP do perfil (estimativa)
+      queryClient.setQueryData(['profile', user?.id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          total_xp: (old.total_xp || 0) + xpReward,
+          xp_today: (old.xp_today || 0) + xpReward,
+          missions_completed: (old.missions_completed || 0) + 1,
+        };
+      });
+
+      // Atualiza otimisticamente os atributos
+      queryClient.setQueryData(['attributes', user?.id], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((a: any) => {
+          if (a.id === attributeId) return { ...a, xp: (a.xp || 0) + xpReward };
+          if (secondaryAttributeIds.includes(a.id)) return { ...a, xp: (a.xp || 0) + 1 };
+          return a;
+        });
+      });
+
+      // Atualiza otimisticamente o ouro (estimativa: +2)
+      queryClient.setQueryData(['gold_balance', user?.id], (old: any) => {
+        if (!old) return old;
+        return { ...old, gold: (old.gold || 0) + 2 };
+      });
+
+      return { previousMissions, previousProfile, previousAttributes, previousGold };
+    },
+
+    onError: (_err, _vars, context: any) => {
+      // Reverte em caso de erro
+      if (context?.previousMissions) {
+        context.previousMissions.forEach(([key, value]: [any, any]) => {
+          queryClient.setQueryData(key, value);
+        });
+      }
+      if (context?.previousProfile) queryClient.setQueryData(['profile', user?.id], context.previousProfile);
+      if (context?.previousAttributes) queryClient.setQueryData(['attributes', user?.id], context.previousAttributes);
+      if (context?.previousGold) queryClient.setQueryData(['gold_balance', user?.id], context.previousGold);
+    },
+
+    onSettled: () => {
+      // Re-sincroniza com o servidor após sucesso ou erro
       queryClient.invalidateQueries({ queryKey: ['missions'] });
       queryClient.invalidateQueries({ queryKey: ['attributes'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
@@ -839,6 +905,7 @@ export const useCompleteMission = () => {
       queryClient.invalidateQueries({ queryKey: ['xp_today'] });
       queryClient.invalidateQueries({ queryKey: ['missions_today_count'] });
       queryClient.invalidateQueries({ queryKey: ['rank_position'] });
+      queryClient.invalidateQueries({ queryKey: ['gold_balance'] });
     },
   });
 };
