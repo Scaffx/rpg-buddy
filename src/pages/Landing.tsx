@@ -1,6 +1,8 @@
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import {
   Swords,
   Sparkles,
@@ -49,6 +51,19 @@ export default function Landing() {
   const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
   const latestVersion = latest?.version ?? APP_VERSION;
   const downloadLabel = IS_BETA ? `v${latestVersion} BETA` : `v${latestVersion}`;
+  const isNative = Capacitor.isNativePlatform();
+
+  const handleApkDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!apkUrl) return;
+    if (isNative) {
+      // No APK nativo, use Browser.open()
+      await Browser.open({ url: apkUrl });
+    } else {
+      // Na web, permite download normal
+      window.open(apkUrl, "_blank", "noopener,noreferrer");
+    }
+  };
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground overflow-x-hidden">
@@ -377,14 +392,12 @@ export default function Landing() {
             <div className="flex flex-wrap justify-center gap-3">
               {apkUrl ? (
                 <Button
-                  asChild
                   size="lg"
+                  onClick={handleApkDownload}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)] h-14 px-8 text-base"
                 >
-                  <a href={apkUrl} download target="_blank" rel="noopener noreferrer">
-                    <Download className="w-5 h-5" />
-                    {t("download.cta_download")} · {downloadLabel}
-                  </a>
+                  <Download className="w-5 h-5" />
+                  {t("download.cta_download")} · {downloadLabel}
                 </Button>
               ) : (
                 <Button

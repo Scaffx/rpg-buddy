@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 
 export default function MobilePage() {
@@ -18,6 +19,18 @@ export default function MobilePage() {
   const isNative = Capacitor.isNativePlatform();
   const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
   const latestVersion = latest?.version ?? APP_VERSION;
+
+  const handleApkDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!apkUrl) return;
+    if (isNative) {
+      // No APK nativo, use Browser.open()
+      await Browser.open({ url: apkUrl });
+    } else {
+      // Na web, permite download normal
+      window.open(apkUrl, "_blank", "noopener,noreferrer");
+    }
+  };
 
   const benefits = useMemo(() => [
     { icon: Bell, title: t("app.mobile.benefits.notifications_title"), desc: t("app.mobile.benefits.notifications_desc") },
@@ -85,15 +98,15 @@ export default function MobilePage() {
             </div>
             <Button
               size="lg"
-              asChild={!!apkUrl}
+              onClick={apkUrl ? handleApkDownload : undefined}
               disabled={!apkUrl}
               className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
             >
               {apkUrl ? (
-                <a href={apkUrl} download target="_blank" rel="noopener noreferrer">
+                <>
                   <Download className="w-5 h-5 mr-2" />
                   {t("app.mobile.download_apk")} v{latestVersion}
-                </a>
+                </>
               ) : (
                 <span>
                   <RefreshCw className="w-5 h-5 mr-2" />
@@ -226,15 +239,15 @@ export default function MobilePage() {
         <div className="text-center py-6">
           <Button
             size="lg"
-            asChild={!!apkUrl}
+            onClick={apkUrl ? handleApkDownload : undefined}
             disabled={!apkUrl}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
           >
             {apkUrl ? (
-              <a href={apkUrl} download target="_blank" rel="noopener noreferrer">
+              <>
                 <Download className="w-5 h-5 mr-2" />
                 {t("app.mobile.download_apk")} v{latestVersion}
-              </a>
+              </>
             ) : (
               <span>
                 <RefreshCw className="w-5 h-5 mr-2" />

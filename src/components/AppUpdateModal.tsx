@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { APP_VERSION } from "@/lib/version";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 
 const DISMISS_KEY = "lifeonrpg_update_dismissed_for";
 
@@ -43,7 +44,8 @@ export function AppUpdateModal() {
 
   const handleDownload = () => {
     if (latest.apk_url && latest.apk_url !== "#") {
-      window.open(latest.apk_url, "_blank", "noopener,noreferrer");
+      // Use Browser.open() para URLs externas no APK nativo
+      Browser.open({ url: latest.apk_url });
     }
   };
 
