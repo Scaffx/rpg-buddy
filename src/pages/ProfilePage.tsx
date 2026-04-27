@@ -1033,7 +1033,7 @@ export default function ProfilePage() {
     try {
       await awardHealthXP.mutateAsync();
       setXpAwarded(true);
-      toast.success('🎉 Desafio Completado! + 50 XP por manter a saúde em dia!');
+      toast.success('🎉 Desafio Completado! +35 XP por manter a saúde em dia!');
     } catch (error: any) {
       if (error.message.includes('já ganhou')) {
         setXpAwarded(true);
@@ -1298,8 +1298,8 @@ export default function ProfilePage() {
               >
                 <span className="text-4xl inline-block">🏆</span>
                 <h2 className="font-display font-bold text-lg text-success">Todas as metas completadas!</h2>
-                <p className="text-sm text-muted-foreground">Você ganhou +50 XP por manter a saúde em dia!</p>
-                <div className="text-3xl font-bold text-xp pt-2">✨ +50 XP</div>
+                <p className="text-sm text-muted-foreground">Você ganhou +35 XP por manter a saúde em dia!</p>
+                <div className="text-3xl font-bold text-xp pt-2">✨ +35 XP</div>
               </motion.div>
             )}
             

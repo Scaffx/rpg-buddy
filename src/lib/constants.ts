@@ -46,4 +46,4 @@ export const NPC_REFRESH_DAY = 1; // segunda-feira (0=Dom, 1=Seg)
 // === Daily bonus ===
 export const DAILY_BONUS_XP = 15;
 export const DAILY_BONUS_GOLD = 5;
-export const HEALTH_CHALLENGE_XP = 50;
+export const HEALTH_CHALLENGE_XP = 35;
