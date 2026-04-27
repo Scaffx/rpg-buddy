@@ -6,6 +6,8 @@ import SoundToggleButton from '@/components/SoundToggleButton';
 import HeroNotificationBell from '@/components/HeroNotificationBell';
 import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { CharacterSprite } from '@/components/CharacterSprite';
+import { AppUpdateModal } from '@/components/AppUpdateModal';
+import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
 import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
@@ -204,7 +206,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full flex-col">
+        <PaymentTestModeBanner />
+        <div className="flex flex-1 w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-16 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 px-2">
@@ -328,6 +332,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         )}
 
         <LevelUpCinematic />
+        </div>
+        <AppUpdateModal />
       </div>
     </SidebarProvider>
   );
