@@ -8,6 +8,7 @@ import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { CharacterSprite } from '@/components/CharacterSprite';
 import { AppUpdateModal } from '@/components/AppUpdateModal';
 import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
+import { SubscriptionExpiryNotice } from '@/components/SubscriptionExpiryNotice';
 import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
@@ -291,6 +292,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </div>
             </TooltipProvider>
           </header>
+          <SubscriptionExpiryNotice />
           {showDailyResetNotice && (
             <div className="mx-2 mt-2 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-300">
               {dailyResetMessage}
