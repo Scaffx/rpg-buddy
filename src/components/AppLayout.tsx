@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import ShortRestTimer from '@/components/ShortRestTimer';
 import SoundToggleButton from '@/components/SoundToggleButton';
+import HeroNotificationBell from '@/components/HeroNotificationBell';
 import LevelUpCinematic from '@/components/LevelUpCinematic';
 import { CharacterSprite } from '@/components/CharacterSprite';
 import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
@@ -216,6 +217,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <TooltipProvider delayDuration={150}>
               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 <SoundToggleButton />
+                <HeroNotificationBell />
 
                 {/* Streak de dias com ≥60% das missões cumpridas */}
                 <Tooltip>
