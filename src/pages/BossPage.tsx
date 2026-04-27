@@ -45,7 +45,7 @@ export default function BossPage() {
   const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number } | null>(null);
+  const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number; playerFatigue: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
   const [rankingRegion, setRankingRegion] = useState<string | null>(null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(rankingRegion);
@@ -55,12 +55,14 @@ export default function BossPage() {
   const handleCombatVictory = () => {
     queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
     queryClient.invalidateQueries({ queryKey: ['profile'] });
+    queryClient.invalidateQueries({ queryKey: ['health_stats'] });
     queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
     // Não fechar a arena automaticamente — usuário fecha pelo botão "Sair da Arena".
   };
 
   const handleCombatDefeat = () => {
     queryClient.invalidateQueries({ queryKey: ['profile'] });
+    queryClient.invalidateQueries({ queryKey: ['health_stats'] });
     // Não fechar a arena automaticamente — usuário fecha pelo botão "Sair da Arena".
   };
 
@@ -140,6 +142,9 @@ export default function BossPage() {
       const maxMp = healthStats?.max_mp != null
         ? Number(healthStats.max_mp)
         : Number((playerStats as any).mp ?? 40);
+      const currentFatigue = healthStats?.fatigue != null
+        ? Number((healthStats as any).fatigue)
+        : 0;
 
       setActiveCombat({
         id: combat.id,
@@ -150,6 +155,7 @@ export default function BossPage() {
         playerHp: currentHp,
         playerMp: currentMp,
         playerMaxMp: maxMp,
+        playerFatigue: currentFatigue,
       });
       toast({ title: `⚔️ ${t('app.boss.combat_started')}`, description: t('app.boss.arena_opened', { name: boss.name }) });
     } catch (err: any) {
@@ -253,6 +259,7 @@ export default function BossPage() {
                       initialPlayerHp={activeCombat.playerHp}
                       initialPlayerMp={activeCombat.playerMp}
                       initialPlayerMaxMp={activeCombat.playerMaxMp}
+                      initialPlayerFatigue={activeCombat.playerFatigue}
                       bossName={activeCombat.bossName}
                       bossElement={activeCombat.bossElement}
                       onVictory={handleCombatVictory}

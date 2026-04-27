@@ -1711,11 +1711,11 @@ export function useHealthStats() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('user_health_stats')
-        .select('current_hp, current_mp, max_hp, max_mp')
+        .select('current_hp, current_mp, max_hp, max_mp, fatigue')
         .eq('user_id', user!.id)
         .maybeSingle();
       if (error) throw error;
-      return data as { current_hp: number; current_mp: number; max_hp: number; max_mp: number } | null;
+      return data as { current_hp: number; current_mp: number; max_hp: number; max_mp: number; fatigue: number } | null;
     },
   });
 }

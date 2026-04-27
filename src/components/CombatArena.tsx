@@ -79,6 +79,7 @@ type CombatArenaProps = {
   initialPlayerHp?: number;
   initialPlayerMp?: number;
   initialPlayerMaxMp?: number;
+  initialPlayerFatigue?: number;
   bossName?: string;
   bossElement?: string | null;
   provider?: CombatDataProvider;
@@ -202,6 +203,7 @@ export default function CombatArena({
   initialPlayerHp = 120,
   initialPlayerMp = 40,
   initialPlayerMaxMp = 40,
+  initialPlayerFatigue = 0,
   bossName,
   bossElement,
   provider,
@@ -225,6 +227,7 @@ export default function CombatArena({
   const [bossHp, setBossHp] = useState(initialBossHp);
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
   const [playerMp, setPlayerMp] = useState(initialPlayerMp);
+  const [playerFatigue, setPlayerFatigue] = useState(initialPlayerFatigue);
   const [bossResource, setBossResource] = useState(bossResourceMax);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
   const [hitEffects, setHitEffects] = useState<HitEffect[]>([]);
@@ -241,6 +244,7 @@ export default function CombatArena({
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
   const playerMpRef = useRef(playerMp);
+  const playerFatigueRef = useRef(playerFatigue);
   const bossResourceRef = useRef(bossResource);
   const currentBattleTokenRef = useRef(0);
   const mountedRef = useRef(true);
@@ -257,6 +261,10 @@ export default function CombatArena({
   useEffect(() => {
     playerMpRef.current = playerMp;
   }, [playerMp]);
+
+  useEffect(() => {
+    playerFatigueRef.current = playerFatigue;
+  }, [playerFatigue]);
 
   useEffect(() => {
     bossResourceRef.current = bossResource;
@@ -403,6 +411,7 @@ export default function CombatArena({
     setBossHp(initialBossHp);
     setPlayerHp(initialPlayerHp);
     setPlayerMp(initialPlayerMp);
+    setPlayerFatigue(initialPlayerFatigue);
     setBossResource(bossResourceMax);
     setRollValue(null);
     setDamagePopups([]);
@@ -417,6 +426,18 @@ export default function CombatArena({
     setShowDefeat(false);
     setInsufficientResourceWarning(null);
     setTurn('player');
+  };
+
+  const persistPlayerVitals = (nextHp: number, nextMp: number, nextFatigue: number) => {
+    if (!user?.id) return;
+    void supabase
+      .from('user_health_stats')
+      .update({
+        current_hp: Math.max(0, Math.round(nextHp)),
+        current_mp: Math.max(0, Math.round(nextMp)),
+        fatigue: Math.max(0, Math.min(100, Math.round(nextFatigue))),
+      } as any)
+      .eq('user_id', user.id);
   };
 
   // Encontra a próxima skill que o jogador pode pagar com MP atual.
@@ -512,14 +533,7 @@ export default function CombatArena({
       }
 
       const mpAfterTurn = Math.max(0, playerMpRef.current - skillCost);
-
-      // Persiste o MP no perfil para refletir na barra de MP do "Meu Perfil".
-      if (user?.id) {
-        void supabase
-          .from('user_health_stats')
-          .update({ current_mp: mpAfterTurn } as any)
-          .eq('user_id', user.id);
-      }
+      persistPlayerVitals(playerHpRef.current, mpAfterTurn, playerFatigueRef.current);
 
       setTurn('player');
       setIsRolling(true);
@@ -586,7 +600,15 @@ export default function CombatArena({
 
       setIsRolling(false);
       setRollValue(turnResult.dado_boss);
-      setPlayerHp(turnResult.hp_player_restante);
+      const nextHp = Math.max(0, turnResult.hp_player_restante);
+      setPlayerHp(nextHp);
+
+      // Combate gera desgaste: +1 de fadiga por ataque do boss e +1 extra se dano foi alto.
+      const fatigueGain = turnResult.dano_boss >= 20 ? 2 : 1;
+      const nextFatigue = Math.min(100, Math.max(0, playerFatigueRef.current + fatigueGain));
+      setPlayerFatigue(nextFatigue);
+      persistPlayerVitals(nextHp, mpAfterTurn, nextFatigue);
+
       pushDamage('player', turnResult.dano_boss, turnResult.dado_boss);
       appendBattleLog({
         actor: 'boss',
@@ -602,6 +624,7 @@ export default function CombatArena({
       }
 
       if (turnResult.status === 'derrota') {
+        persistPlayerVitals(nextHp, mpAfterTurn, nextFatigue);
         launchDefeatCinematic();
         setTurn('finished');
         return;
@@ -610,12 +633,7 @@ export default function CombatArena({
       // Jogador regenera 1 MP por turno (não em vitória/derrota)
       const regeneratedMp = Math.min(initialPlayerMaxMp, playerMpRef.current + 1);
       setPlayerMp(regeneratedMp);
-      if (user?.id) {
-        void supabase
-          .from('user_health_stats')
-          .update({ current_mp: regeneratedMp } as any)
-          .eq('user_id', user.id);
-      }
+      persistPlayerVitals(nextHp, regeneratedMp, nextFatigue);
 
       setTurn('player');
     };
@@ -738,6 +756,9 @@ export default function CombatArena({
               </div>
             );
           })()}
+          <div className="mt-2 text-[11px] text-orange-300/90">
+            Fadiga: <span className="font-mono font-semibold">{playerFatigue}%</span>
+          </div>
           {hitEffects
             .filter((h) => h.target === 'player')
             .map((h) => (
