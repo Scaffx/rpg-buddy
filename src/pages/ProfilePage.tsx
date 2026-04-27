@@ -1033,7 +1033,7 @@ export default function ProfilePage() {
     try {
       await awardHealthXP.mutateAsync();
       setXpAwarded(true);
-      toast.success('🎉 Desafio Completado! + 50 XP por manter a saúde em dia!');
+      toast.success('🎉 Desafio Completado! +35 XP por manter a saúde em dia!');
     } catch (error: any) {
       if (error.message.includes('já ganhou')) {
         setXpAwarded(true);
@@ -1045,6 +1045,21 @@ export default function ProfilePage() {
   };
 
   const waterPercent = Math.min(100, Math.round((totalWaterToday / waterTargetMl) * 100));
+
+  // 🎯 Auto-disparar recompensa de XP quando ambas as metas (3+ refeições e água total) forem atingidas
+  useEffect(() => {
+    if (
+      !xpAwarded &&
+      !awardHealthXP.isPending &&
+      mealsToday >= Math.max(3, mealsTarget) &&
+      totalWaterToday >= waterTargetMl &&
+      waterTargetMl > 0
+    ) {
+      checkAndAwardXP();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mealsToday, totalWaterToday, waterTargetMl, mealsTarget, xpAwarded]);
+
   const hpPercent = Math.round((currentHp / maxHp) * 100);
   const mpPercent = Math.round((currentMp / maxMp) * 100);
   const currentGold = (goldBalance as any)?.gold ?? 100;
@@ -1290,7 +1305,7 @@ export default function ProfilePage() {
         {activeTab === "perfil" && (
           <div className="space-y-6">
             {/* XP Award Card */}
-            {mealsToday >= mealsTarget && totalWaterToday >= waterTargetMl && xpAwarded && (
+            {mealsToday >= Math.max(3, mealsTarget) && totalWaterToday >= waterTargetMl && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -1298,8 +1313,8 @@ export default function ProfilePage() {
               >
                 <span className="text-4xl inline-block">🏆</span>
                 <h2 className="font-display font-bold text-lg text-success">Todas as metas completadas!</h2>
-                <p className="text-sm text-muted-foreground">Você ganhou +50 XP por manter a saúde em dia!</p>
-                <div className="text-3xl font-bold text-xp pt-2">✨ +50 XP</div>
+                <p className="text-sm text-muted-foreground">Você ganhou +35 XP por manter a saúde em dia!</p>
+                <div className="text-3xl font-bold text-xp pt-2">✨ +35 XP</div>
               </motion.div>
             )}
             

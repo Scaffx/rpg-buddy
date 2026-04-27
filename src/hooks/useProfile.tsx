@@ -1549,7 +1549,7 @@ export function useAwardHealthXP() {
 
   return useMutation({
     mutationFn: async () => {
-      const XP_REWARD = 50;
+      const XP_REWARD = 35;
       const startOfDayLocal = getStartOfLocalDay();
 
       // Verificar se já ganhou o bônus hoje
@@ -1612,7 +1612,7 @@ export function useAwardHealthXP() {
         .insert({
           user_id: user!.id,
           action: 'health_challenge_complete',
-          description: '✨ Desafio de saúde completado! +50 XP',
+          description: '✨ Desafio de saúde completado! +35 XP',
           xp_gained: XP_REWARD,
         });
 
