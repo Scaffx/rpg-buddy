@@ -239,6 +239,63 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ============== PRICING (público) ============== */}
+      <section id="pricing" className="py-20 px-4 md:px-8 max-w-6xl mx-auto">
+        <SectionHeader
+          eyebrow={t("pricing.eyebrow")}
+          title={t("pricing.title")}
+          subtitle={t("pricing.subtitle")}
+        />
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.5 }}
+          className="mt-12 max-w-md mx-auto"
+        >
+          <div className="relative rounded-2xl border-2 border-primary/40 bg-card/70 backdrop-blur-sm p-8 shadow-[var(--glow-gold)]">
+            <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground font-black tracking-wider px-3 py-0.5">
+              {t("pricing.trial").toUpperCase()}
+            </Badge>
+
+            <h3 className="font-[var(--font-display)] text-2xl font-bold text-center mb-2">
+              {t("pricing.plan_name")}
+            </h3>
+
+            <div className="flex items-baseline justify-center gap-1 mt-4 mb-6">
+              <span className="text-lg text-muted-foreground">{t("pricing.price_currency")}</span>
+              <span className="text-5xl md:text-6xl font-black text-primary font-[var(--font-display)]">
+                {t("pricing.price_amount")}
+              </span>
+              <span className="text-muted-foreground">{t("pricing.price_period")}</span>
+            </div>
+
+            <ul className="space-y-3 mb-8">
+              {(["f1", "f2", "f3", "f4", "f5"] as const).map((key) => (
+                <li key={key} className="flex items-start gap-2 text-sm">
+                  <Check className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                  <span>{t(`pricing.features.${key}`)}</span>
+                </li>
+              ))}
+            </ul>
+
+            <Button
+              size="lg"
+              onClick={() => navigate("/auth?mode=signup")}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12"
+            >
+              <UserPlus className="w-4 h-4" />
+              {t("pricing.cta")}
+            </Button>
+
+            <p className="text-[11px] text-muted-foreground text-center mt-4 leading-relaxed">
+              {t("pricing.mor_note")}
+            </p>
+          </div>
+        </motion.div>
+      </section>
+
       {/* ============== DOWNLOAD APK ============== */}
       <section id="download" className="py-24 px-4 md:px-8">
         <div className="max-w-4xl mx-auto relative">
