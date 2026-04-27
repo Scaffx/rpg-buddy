@@ -94,8 +94,14 @@ export default function CalendarPage() {
     });
   }, [allMissions, selectedDate, completions]);
 
+  const failedDates = useMemo(
+    () => failedDateStrs.map((d) => new Date(d + 'T12:00:00')).filter((d) => !isNaN(d.getTime())),
+    [failedDateStrs],
+  );
+
   const modifiers = {
     completed: completedDates,
+    failed: failedDates,
     journaled: [...journalDates]
       .map((d) => new Date(d + 'T12:00:00'))
       .filter((d) => !isNaN(d.getTime())),
@@ -107,6 +113,13 @@ export default function CalendarPage() {
       borderRadius: '50%',
       color: 'hsl(43 96% 56%)',
       fontWeight: 'bold' as const,
+    },
+    failed: {
+      backgroundColor: 'hsl(0 75% 55% / 0.25)',
+      color: 'hsl(0 75% 70%)',
+      borderRadius: '50%',
+      fontWeight: 'bold' as const,
+      boxShadow: 'inset 0 0 0 1px hsl(0 75% 55% / 0.6)',
     },
     journaled: {
       outline: '2px solid hsl(217 91% 60% / 0.5)',
