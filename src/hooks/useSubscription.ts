@@ -64,22 +64,57 @@ export function useSubscription() {
 
   const sub = query.data;
   const now = Date.now();
-  const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end).getTime() : null;
+
+  // Carência: usuário mantém acesso até o FINAL do dia (23:59:59.999 local)
+  // do vencimento. Ex: vence dia 21 -> bloqueia somente após 23:59 do dia 21.
+  const periodEndRaw = sub?.current_period_end ? new Date(sub.current_period_end) : null;
+  const graceEnd = periodEndRaw
+    ? new Date(
+        periodEndRaw.getFullYear(),
+        periodEndRaw.getMonth(),
+        periodEndRaw.getDate(),
+        23, 59, 59, 999
+      ).getTime()
+    : null;
+
+  const withinGrace = graceEnd === null || graceEnd > now;
 
   const isActive =
     !!sub &&
     (((sub.status === "active" || sub.status === "trialing" || sub.status === "past_due") &&
-      (periodEnd === null || periodEnd > now)) ||
-      (sub.status === "canceled" && periodEnd !== null && periodEnd > now));
+      withinGrace) ||
+      (sub.status === "canceled" && graceEnd !== null && graceEnd > now));
 
   const isTrial = sub?.status === "trialing";
   const isCanceled = sub?.status === "canceled";
+  const isPastDue = sub?.status === "past_due";
+
+  // Dias restantes até o bloqueio (arredondado para cima — o dia atual conta como 1)
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysUntilBlock = graceEnd !== null
+    ? Math.max(0, Math.ceil((graceEnd - now) / msPerDay))
+    : null;
+
+  // Janela de aviso amigável: 3 dias antes ou se cancelada/past_due
+  const shouldWarn =
+    isActive &&
+    daysUntilBlock !== null &&
+    daysUntilBlock <= 3 &&
+    (isCanceled || isPastDue || sub?.cancel_at_period_end === true);
+
+  const blockDateLabel = periodEndRaw
+    ? periodEndRaw.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })
+    : null;
 
   return {
     subscription: sub,
     isActive,
     isTrial,
     isCanceled,
+    isPastDue,
+    daysUntilBlock,
+    shouldWarn,
+    blockDateLabel,
     isLoading: query.isLoading,
   };
 }
