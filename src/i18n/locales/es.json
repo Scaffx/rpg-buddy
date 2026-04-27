@@ -96,6 +96,48 @@
     "footnote_beta": "Build Beta · ",
     "footnote": "Android 8.0+ · Actualizaciones automáticas dentro de la app"
   },
+  "app": {
+    "sidebar": {
+      "my_rpg": "Mi RPG",
+      "my_rpg_sub": "Construye tu historia",
+      "level": "NIVEL",
+      "class": "Clase",
+      "profile": "Mi Perfil",
+      "dashboard": "Panel",
+      "calendar": "Calendario",
+      "missions": "Misiones Principales",
+      "classes": "Clases",
+      "talents": "Talentos",
+      "shop": "Tienda",
+      "npc_missions": "Misiones NPC",
+      "health": "Salud",
+      "priority": "Prioridad",
+      "progress": "Progreso",
+      "virtues": "Virtudes",
+      "boss_arena": "Arena de Jefes",
+      "mobile": "Móvil / APK",
+      "system_info": "Info del Sistema",
+      "logout": "Salir"
+    },
+    "rank": {
+      "legendary": "Legendario",
+      "master": "Maestro",
+      "veteran": "Veterano",
+      "warrior": "Guerrero",
+      "apprentice": "Aprendiz",
+      "novice": "Novato"
+    },
+    "header": {
+      "streak_title": "Racha de consistencia",
+      "streak_desc": "Días seguidos con ≥60% de las misiones diarias completadas.",
+      "protector_title": "Protector de Racha",
+      "protector_desc": "Cargas que evitan romper la racha al fallar una misión.",
+      "rest_label": "Descanso Breve",
+      "rest_label_short": "Descanso Breve — Fogata",
+      "rest_desc": "Recupera HP, MP y reduce la fatiga tras 15-60 min.",
+      "daily_reset": "Reinicio diario procesado: misiones, comidas, agua y temporizadores actualizados."
+    }
+  },
   "footer": {
     "tagline": "Tu vida, tu viaje.",
     "legal_terms": "Términos",

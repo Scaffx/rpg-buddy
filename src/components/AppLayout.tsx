@@ -11,6 +11,7 @@ import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
 import { SubscriptionExpiryNotice } from '@/components/SubscriptionExpiryNotice';
 import FloatingAiChat from '@/components/FloatingAiChat';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
@@ -48,6 +49,7 @@ type StreakProtectorProfileRow = {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   useMidnightReset();
   useSleepWakeAlerts();
   const [showRestTimer, setShowRestTimer] = useState(false);
@@ -237,16 +239,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                           ? 'border-amber-400/50 bg-amber-400/10 text-amber-300'
                           : 'border-border bg-muted/30 text-muted-foreground'
                       }`}
-                      aria-label={`Streak: ${streakDays} dias`}
+                      aria-label={`Streak: ${streakDays}`}
                     >
                       <Trophy className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p className="text-xs">
-                      Streak de consistência: <strong>{streakDays} dia{streakDays === 1 ? '' : 's'}</strong>
+                      {t('app.header.streak_title')}: <strong>{streakDays} {streakDays === 1 ? 'dia' : t('app.header.streak_title') === 'Consistency Streak' ? 'days' : 'dias'}</strong>
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Dias seguidos com ≥60% das missões diárias cumpridas.</p>
+                    <p className="text-[10px] text-muted-foreground">{t('app.header.streak_desc')}</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -267,9 +269,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p className="text-xs">
-                      Protetor de Streak: <strong>{protectorCharges}/{protectorMax}</strong>
+                      {t('app.header.protector_title')}: <strong>{protectorCharges}/{protectorMax}</strong>
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Cargas que evitam quebrar a streak ao falhar uma missão.</p>
+                    <p className="text-[10px] text-muted-foreground">{t('app.header.protector_desc')}</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -279,7 +281,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     <button
                       onClick={() => setShowRestTimer(!showRestTimer)}
                       className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 transition-all relative"
-                      aria-label="Descanso Breve"
+                      aria-label={t('app.header.rest_label')}
                     >
                       <Flame className="w-4 h-4" />
                       {headerLabel && (
@@ -288,8 +290,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    <p className="text-xs"><strong>Short Rest</strong> — Fogueira de descanso</p>
-                    <p className="text-[10px] text-muted-foreground">Recupera HP, MP e reduz fadiga após 15-60 min.</p>
+                    <p className="text-xs"><strong>{t('app.header.rest_label_short')}</strong></p>
+                    <p className="text-[10px] text-muted-foreground">{t('app.header.rest_desc')}</p>
                   </TooltipContent>
                 </Tooltip>
               </div>

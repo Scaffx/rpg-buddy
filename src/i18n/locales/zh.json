@@ -96,6 +96,48 @@
     "footnote_beta": "Beta版本 · ",
     "footnote": "Android 8.0+ · 应用内自动更新"
   },
+  "app": {
+    "sidebar": {
+      "my_rpg": "我的RPG",
+      "my_rpg_sub": "构建你的故事",
+      "level": "等级",
+      "class": "职业",
+      "profile": "我的档案",
+      "dashboard": "控制台",
+      "calendar": "日历",
+      "missions": "主要任务",
+      "classes": "职业",
+      "talents": "天赋",
+      "shop": "商店",
+      "npc_missions": "NPC任务",
+      "health": "健康",
+      "priority": "优先级",
+      "progress": "进度",
+      "virtues": "美德",
+      "boss_arena": "Boss竞技场",
+      "mobile": "移动端/APK",
+      "system_info": "系统信息",
+      "logout": "登出"
+    },
+    "rank": {
+      "legendary": "传奇",
+      "master": "大师",
+      "veteran": "老兵",
+      "warrior": "战士",
+      "apprentice": "学徒",
+      "novice": "新手"
+    },
+    "header": {
+      "streak_title": "连续记录",
+      "streak_desc": "连续天数中完成≥60%的每日任务。",
+      "protector_title": "连续保护者",
+      "protector_desc": "防止任务失败时中断连续记录的充能。",
+      "rest_label": "短暂休息",
+      "rest_label_short": "短暂休息 — 篝火",
+      "rest_desc": "15-60分钟后恢复HP、MP并减少疲劳。",
+      "daily_reset": "每日重置已处理：任务、餐食、水分和计时器已更新。"
+    }
+  },
   "footer": {
     "tagline": "你的人生,你的旅程。",
     "legal_terms": "条款",

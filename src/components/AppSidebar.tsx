@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile, useClasses } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
@@ -22,31 +23,31 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 
-const navItems = [
-  { title: 'Meu Perfil', url: '/profile', icon: User },
-  { title: 'Painel', url: '/', icon: LayoutGrid },
-  { title: 'Calendário', url: '/calendar', icon: Calendar },
-  { title: 'Missões Principais', url: '/missions', icon: Target },
-  { title: 'Classes', url: '/classes', icon: Swords },
-  { title: 'Talentos', url: '/feats', icon: Sparkles },
-  { title: 'Loja', url: '/shop', icon: Store },
-  { title: 'Missões de NPC', url: '/npc', icon: Users },
-  { title: 'Saúde', url: '/health', icon: Heart },
-  { title: 'Prioridade', url: '/prioridade', icon: ListOrdered },
-  { title: 'Progresso', url: '/progress', icon: TrendingUp },
-  { title: 'Virtudes', url: '/virtues', icon: Circle },
-  { title: 'Boss Arena', url: '/boss', icon: Skull },
-  { title: 'Mobile / APK', url: '/mobile', icon: Smartphone },
-  { title: 'Informações do Sistema', url: '/system-info', icon: ScrollText },
+const navItemDefs = [
+  { key: 'profile', url: '/profile', icon: User },
+  { key: 'dashboard', url: '/', icon: LayoutGrid },
+  { key: 'calendar', url: '/calendar', icon: Calendar },
+  { key: 'missions', url: '/missions', icon: Target },
+  { key: 'classes', url: '/classes', icon: Swords },
+  { key: 'talents', url: '/feats', icon: Sparkles },
+  { key: 'shop', url: '/shop', icon: Store },
+  { key: 'npc_missions', url: '/npc', icon: Users },
+  { key: 'health', url: '/health', icon: Heart },
+  { key: 'priority', url: '/prioridade', icon: ListOrdered },
+  { key: 'progress', url: '/progress', icon: TrendingUp },
+  { key: 'virtues', url: '/virtues', icon: Circle },
+  { key: 'boss_arena', url: '/boss', icon: Skull },
+  { key: 'mobile', url: '/mobile', icon: Smartphone },
+  { key: 'system_info', url: '/system-info', icon: ScrollText },
 ];
 
-function getRank(level: number) {
-  if (level >= 50) return 'Lendário';
-  if (level >= 30) return 'Mestre';
-  if (level >= 20) return 'Veterano';
-  if (level >= 10) return 'Guerreiro';
-  if (level >= 5) return 'Aprendiz';
-  return 'Novato';
+function getRankKey(level: number) {
+  if (level >= 50) return 'legendary';
+  if (level >= 30) return 'master';
+  if (level >= 20) return 'veteran';
+  if (level >= 10) return 'warrior';
+  if (level >= 5) return 'apprentice';
+  return 'novice';
 }
 
 export function AppSidebar() {
@@ -57,7 +58,13 @@ export function AppSidebar() {
   const { data: classes } = useClasses();
   const { data: goldBalance } = useGoldBalance();
   const location = useLocation();
+  const { t } = useTranslation();
   const currentGold = (goldBalance as any)?.gold ?? 100;
+
+  const navItems = useMemo(
+    () => navItemDefs.map((item) => ({ ...item, title: t(`app.sidebar.${item.key}`) })),
+    [t],
+  );
 
   const currentClass = useMemo(() => {
     const id = (profile as any)?.current_class_id;
@@ -78,8 +85,8 @@ export function AppSidebar() {
             <div className="flex items-center gap-2 mb-3">
               <Crown className="w-6 h-6 text-primary" />
               <div>
-                <h2 className="font-display font-bold text-primary text-sm">Meu RPG</h2>
-                <p className="text-[10px] text-sidebar-foreground/60">Monte a sua história</p>
+                <h2 className="font-display font-bold text-primary text-sm">{t('app.sidebar.my_rpg')}</h2>
+                <p className="text-[10px] text-sidebar-foreground/60">{t('app.sidebar.my_rpg_sub')}</p>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -87,10 +94,10 @@ export function AppSidebar() {
                 {profile?.display_name || user?.email?.split('@')[0] || 'Aventureiro'}
               </p>
               <p className="text-[11px] text-sidebar-foreground/70">
-                NÍVEL {profile?.level || 1} • {getRank(profile?.level || 1)}
+                {t('app.sidebar.level')} {profile?.level || 1} • {t(`app.rank.${getRankKey(profile?.level || 1)}`)}
               </p>
               <p className="text-[11px] text-sidebar-foreground/60">
-                Classe: {currentClass}
+                {t('app.sidebar.class')}: {currentClass}
               </p>
               <div className="space-y-1">
                 <div className="rpg-stat-bar h-1.5">
@@ -142,7 +149,7 @@ export function AppSidebar() {
           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-sidebar-foreground/60 hover:text-destructive transition-colors rounded-md hover:bg-sidebar-accent/50"
         >
           <LogOut className="w-4 h-4 shrink-0" />
-          {!collapsed && <span>Sair</span>}
+          {!collapsed && <span>{t('app.sidebar.logout')}</span>}
         </button>
       </SidebarFooter>
     </Sidebar>

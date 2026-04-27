@@ -96,6 +96,48 @@
     "footnote_beta": "Beta build · ",
     "footnote": "Android 8.0+ · Auto-updates inside the app"
   },
+  "app": {
+    "sidebar": {
+      "my_rpg": "My RPG",
+      "my_rpg_sub": "Build your story",
+      "level": "LEVEL",
+      "class": "Class",
+      "profile": "My Profile",
+      "dashboard": "Dashboard",
+      "calendar": "Calendar",
+      "missions": "Main Quests",
+      "classes": "Classes",
+      "talents": "Talents",
+      "shop": "Shop",
+      "npc_missions": "NPC Quests",
+      "health": "Health",
+      "priority": "Priority",
+      "progress": "Progress",
+      "virtues": "Virtues",
+      "boss_arena": "Boss Arena",
+      "mobile": "Mobile / APK",
+      "system_info": "System Info",
+      "logout": "Log Out"
+    },
+    "rank": {
+      "legendary": "Legendary",
+      "master": "Master",
+      "veteran": "Veteran",
+      "warrior": "Warrior",
+      "apprentice": "Apprentice",
+      "novice": "Novice"
+    },
+    "header": {
+      "streak_title": "Consistency Streak",
+      "streak_desc": "Consecutive days with ≥60% of daily quests completed.",
+      "protector_title": "Streak Protector",
+      "protector_desc": "Charges that prevent breaking the streak when failing a quest.",
+      "rest_label": "Short Rest",
+      "rest_label_short": "Short Rest — Campfire",
+      "rest_desc": "Recovers HP, MP and reduces fatigue after 15-60 min.",
+      "daily_reset": "Daily reset processed: quests, meals, water and timers updated."
+    }
+  },
   "footer": {
     "tagline": "Your life, your journey.",
     "legal_terms": "Terms",

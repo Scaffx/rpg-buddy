@@ -96,6 +96,48 @@
     "footnote_beta": "Build Beta · ",
     "footnote": "Android 8.0+ · Atualizações automáticas dentro do app"
   },
+  "app": {
+    "sidebar": {
+      "my_rpg": "Meu RPG",
+      "my_rpg_sub": "Monte a sua história",
+      "level": "NÍVEL",
+      "class": "Classe",
+      "profile": "Meu Perfil",
+      "dashboard": "Painel",
+      "calendar": "Calendário",
+      "missions": "Missões Principais",
+      "classes": "Classes",
+      "talents": "Talentos",
+      "shop": "Loja",
+      "npc_missions": "Missões de NPC",
+      "health": "Saúde",
+      "priority": "Prioridade",
+      "progress": "Progresso",
+      "virtues": "Virtudes",
+      "boss_arena": "Boss Arena",
+      "mobile": "Mobile / APK",
+      "system_info": "Informações do Sistema",
+      "logout": "Sair"
+    },
+    "rank": {
+      "legendary": "Lendário",
+      "master": "Mestre",
+      "veteran": "Veterano",
+      "warrior": "Guerreiro",
+      "apprentice": "Aprendiz",
+      "novice": "Novato"
+    },
+    "header": {
+      "streak_title": "Streak de consistência",
+      "streak_desc": "Dias seguidos com ≥60% das missões diárias cumpridas.",
+      "protector_title": "Protetor de Streak",
+      "protector_desc": "Cargas que evitam quebrar a streak ao falhar uma missão.",
+      "rest_label": "Descanso Breve",
+      "rest_label_short": "Short Rest — Fogueira de descanso",
+      "rest_desc": "Recupera HP, MP e reduz fadiga após 15-60 min.",
+      "daily_reset": "Virada diária processada: missões, refeições, água e timers foram atualizados."
+    }
+  },
   "footer": {
     "tagline": "Sua vida, sua jornada.",
     "legal_terms": "Termos",
