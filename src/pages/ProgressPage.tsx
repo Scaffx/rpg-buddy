@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { useAttributes, useXpHistory } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
+import ReportsPanel from '@/components/ReportsPanel';
 import { BarChart3, Hexagon, Loader2 } from 'lucide-react';
 
 const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
