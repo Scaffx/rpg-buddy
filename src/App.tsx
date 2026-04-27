@@ -42,7 +42,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" replace />;
+  // Visitantes deslogados vão pra Landing pública (raiz "/" passa a mostrar Landing).
+  if (!user) return <Navigate to="/landing" replace />;
   // Redireciona para onboarding se o usuário ainda não completou o formulário inicial
   // Verifica banco primeiro, fallback para localStorage (caso a migration não tenha sido aplicada)
   const onboardingDone = (profile as any)?.onboarding_completed === true
