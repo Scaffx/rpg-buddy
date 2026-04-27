@@ -134,7 +134,7 @@ export default function Landing() {
             variants={fadeUp}
             className="mt-6 text-base md:text-lg text-muted-foreground max-w-2xl mx-auto"
           >
-            Beba água, treine, estude, durma cedo — e veja seu personagem evoluir,
+            Beba água, treine, estude, durma cedo, e veja seu personagem evoluir,
             dropar loot e enfrentar bosses. <strong className="text-foreground">Disciplina virou aventura.</strong>
           </motion.p>
 
@@ -172,14 +172,14 @@ export default function Landing() {
         <SectionHeader
           eyebrow="O que é o LifeOnRPG"
           title="O primeiro RPG cuja história é a sua vida."
-          subtitle="Não é um app de tarefas com pontinhos. É um sistema completo de progressão pessoal — atributos, classes, missões, bosses, loot e ranking. Tudo movido pelo que você faz no mundo real."
+          subtitle="Não é um app de tarefas com pontinhos. É um sistema completo de progressão pessoal, atributos, classes, missões, bosses, loot e ranking. Tudo movido pelo que você faz no mundo real."
         />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-12">
           <FeatureCard
             icon={<Sparkles className="w-6 h-6" />}
             title="11 atributos vivos"
-            text="Força, Mente, Carisma, Disciplina e mais. Cada missão alimenta os atributos certos — você vê onde está forte e onde precisa treinar."
+            text="Força, Mente, Carisma, Disciplina e mais. Cada missão alimenta os atributos certos, você vê onde está forte e onde precisa treinar."
             color="primary"
           />
           <FeatureCard
@@ -197,7 +197,7 @@ export default function Landing() {
           <FeatureCard
             icon={<Flame className="w-6 h-6" />}
             title="Don't Break the Chain"
-            text="Calendário de chamas: cada dia com 60%+ de missões cumpridas vira streak. Quebrar dói — manter vicia."
+            text="Calendário de chamas: cada dia com 60%+ de missões cumpridas vira streak. Quebrar dói, manter vicia."
             color="destructive"
           />
           <FeatureCard
@@ -221,7 +221,7 @@ export default function Landing() {
           <SectionHeader
             eyebrow="Por que somos diferentes"
             title="A maioria dos apps de hábito te recompensa por marcar caixinhas. O LifeOnRPG te cobra."
-            subtitle="A diferença está nas consequências. Aqui, ignorar a missão dói no personagem — e isso muda tudo."
+            subtitle="A diferença está nas consequências. Aqui, ignorar a missão dói no personagem, e isso muda tudo."
           />
 
           <div className="grid md:grid-cols-2 gap-6 mt-12">
@@ -233,17 +233,17 @@ export default function Landing() {
             <DiffRow
               icon={<Zap className="w-5 h-5" />}
               title="Economia de Ouro real"
-              text="Boss derrotado dá Ouro. Ouro compra buffs temporários na Loja do Tempo. Recompensa não é cosmética — afeta seu próximo dia."
+              text="Boss derrotado dá Ouro. Ouro compra buffs temporários na Loja do Tempo. Recompensa não é cosmética, afeta seu próximo dia."
             />
             <DiffRow
               icon={<Brain className="w-5 h-5" />}
               title="Atributos que importam"
-              text="Cada missão vincula a 1 atributo principal e até 2 secundários. Você cresce de forma equilibrada — ou aprende onde está negligente."
+              text="Cada missão vincula a 1 atributo principal e até 2 secundários. Você cresce de forma equilibrada, ou aprende onde está negligente."
             />
             <DiffRow
               icon={<Bell className="w-5 h-5" />}
               title="O herói fala com você"
-              text="Notificações contextuais: 'Você não bebeu água há 4h', 'Streak em risco esta noite', 'Boss desbloqueado'. Não é spam — é o personagem te chamando."
+              text="Notificações contextuais: 'Você não bebeu água há 4h', 'Streak em risco esta noite', 'Boss desbloqueado'. Não é spam, é o personagem te chamando."
             />
             <DiffRow
               icon={<Crown className="w-5 h-5" />}
@@ -264,7 +264,7 @@ export default function Landing() {
         <SectionHeader
           eyebrow="Segurança & Privacidade"
           title="Seus dados são seus. Ponto."
-          subtitle="O LifeOnRPG é construído sobre a mesma infraestrutura usada por bancos e fintechs — e nada do que você registra fica acessível a terceiros."
+          subtitle="O LifeOnRPG é construído sobre a mesma infraestrutura usada por bancos e fintechs, e nada do que você registra fica acessível a terceiros."
         />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
@@ -276,7 +276,7 @@ export default function Landing() {
           <SecurityCard
             icon={<ShieldCheck className="w-6 h-6" />}
             title="Row Level Security"
-            text="Cada usuário só vê seus próprios dados. Garantido por políticas no banco — não dá pra burlar pelo cliente."
+            text="Cada usuário só vê seus próprios dados. Garantido por políticas no banco, não dá pra burlar pelo cliente."
           />
           <SecurityCard
             icon={<Eye className="w-6 h-6" />}
@@ -286,7 +286,7 @@ export default function Landing() {
           <SecurityCard
             icon={<Database className="w-6 h-6" />}
             title="Backups diários"
-            text="Seu progresso é replicado e versionado. Nada se perde — nem por bug nosso, nem por troca de celular."
+            text="Seu progresso é replicado e versionado. Nada se perde, nem por bug nosso, nem por troca de celular."
           />
         </div>
       </section>
@@ -296,7 +296,7 @@ export default function Landing() {
         <SectionHeader
           eyebrow="Em desenvolvimento"
           title="O reino está expandindo."
-          subtitle="Você está no acesso Beta — tudo que vier depois entra automaticamente na sua conta."
+          subtitle="Você está no acesso Beta, tudo que vier depois entra automaticamente na sua conta."
         />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
