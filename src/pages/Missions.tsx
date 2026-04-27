@@ -600,9 +600,7 @@ const handleSave = async () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {failedMissions.map((m: any) => {
-                const failedDate = m.failed_date
-                  ? new Date(m.failed_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                  : 'Hoje';
+                const failedDate = m.failed_date ? formatRelativeDay(m.failed_date) : 'Hoje';
                 return (
                   <div
                     key={m.id}
