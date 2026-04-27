@@ -97,6 +97,28 @@
     "footnote": "Android 8.0+ · Atualizações automáticas dentro do app"
   },
   "footer": {
-    "tagline": "Sua vida, sua jornada."
+    "tagline": "Sua vida, sua jornada.",
+    "legal_terms": "Termos",
+    "legal_privacy": "Privacidade",
+    "legal_refund": "Reembolso"
+  },
+  "pricing": {
+    "eyebrow": "Preço simples",
+    "title": "Um plano. Sem pegadinhas.",
+    "subtitle": "Comece grátis por 7 dias. Cancele quando quiser, no próprio Paddle.",
+    "plan_name": "Aventureiro",
+    "price_currency": "R$",
+    "price_amount": "4,90",
+    "price_period": "/mês",
+    "trial": "7 dias grátis",
+    "features": {
+      "f1": "Todos os 11 atributos e 55 classes",
+      "f2": "Sistema completo de missões diárias",
+      "f3": "60 bosses temáticos e ranking mundial",
+      "f4": "Loja do Tempo, conquistas e analytics",
+      "f5": "App Android (APK) com sincronização"
+    },
+    "cta": "Começar 7 dias grátis",
+    "mor_note": "Pagamento processado por Paddle.com (Merchant of Record)."
   }
 }
