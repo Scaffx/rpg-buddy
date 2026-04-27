@@ -448,6 +448,17 @@ export function useMarkFailedAsDone() {
         description: `Recuperou missão fracassada: ${mission.title} (+${xpToRestore} XP)`,
         xp_gained: xpToRestore,
       });
+
+      // Log estruturado: recuperação manual de missão fracassada
+      await supabase.from('xp_transactions' as any).insert({
+        user_id: user.id,
+        mission_id: mission.id,
+        reason: 'mission_recovered',
+        xp_delta: xpToRestore,
+        gold_delta: 0,
+        local_date: (mission as any).failed_date || new Date().toLocaleDateString('en-CA'),
+        description: `Recuperou missão fracassada: ${mission.title} (+${xpToRestore} XP)`,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
