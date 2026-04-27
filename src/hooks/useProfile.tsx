@@ -774,6 +774,15 @@ export const useCompleteMission = () => {
           xp_gained: totalXpReward,
         });
 
+      // Registrar no histórico de XP para o gráfico de progresso
+      await supabase
+        .from('xp_history' as any)
+        .insert({
+          user_id: user!.id,
+          xp_gained: totalXpReward,
+          type: 'mission',
+        } as any);
+
       // Adicionar ouro
       const { data: bal } = await supabase
         .from('user_balance')
@@ -895,6 +904,7 @@ export const useCompleteMission = () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
       queryClient.invalidateQueries({ queryKey: ['xp_today'] });
+      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
       queryClient.invalidateQueries({ queryKey: ['missions_today_count'] });
       queryClient.invalidateQueries({ queryKey: ['rank_position'] });
       queryClient.invalidateQueries({ queryKey: ['gold_balance'] });

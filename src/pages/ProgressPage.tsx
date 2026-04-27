@@ -6,8 +6,7 @@ import {
 } from 'recharts';
 import { useAttributes, useXpHistory } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
-import ReportsPanel from '@/components/ReportsPanel';
-import { BarChart3, Hexagon, Loader2 } from 'lucide-react';
+import { Hexagon, Loader2 } from 'lucide-react';
 
 const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -48,14 +47,6 @@ export default function ProgressPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-display font-bold text-primary text-glow">
-          <BarChart3 className="w-6 h-6 inline mr-2" />
-          Progresso
-        </h1>
-
-        {/* Dashboard de relatórios de missões */}
-        <ReportsPanel />
-
         {/* XP Line Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
