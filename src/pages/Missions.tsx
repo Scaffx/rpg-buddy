@@ -18,6 +18,7 @@ import {
   useDeleteChecklistItem,
 } from "@/hooks/useMissionActions";
 import { useCheckFailedMissions, useFailedMissions, usePayPenalty, useAcceptPenalty, useWelcomeBackCheck, useMarkFailedAsDone, useTodayRecoveryCount } from "@/hooks/useFailedMissions";
+import { formatRelativeDay } from "@/lib/dateUtils";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
