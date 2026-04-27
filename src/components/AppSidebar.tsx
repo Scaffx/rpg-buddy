@@ -36,9 +36,8 @@ const navItems = [
   { title: 'Progresso', url: '/progress', icon: TrendingUp },
   { title: 'Virtudes', url: '/virtues', icon: Circle },
   { title: 'Boss Arena', url: '/boss', icon: Skull },
-  { title: 'Informações do Sistema', url: '/system-info', icon: ScrollText },
   { title: 'Mobile / APK', url: '/mobile', icon: Smartphone },
-  { title: 'Chat IA', url: '/ai-chat', icon: Brain },
+  { title: 'Informações do Sistema', url: '/system-info', icon: ScrollText },
 ];
 
 function getRank(level: number) {
