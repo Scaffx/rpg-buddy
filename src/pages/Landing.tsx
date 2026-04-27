@@ -1,5 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import {
   Swords,
   Sparkles,
@@ -29,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -41,6 +43,7 @@ const stagger = {
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { latest } = useAppUpdate();
   const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
   const latestVersion = latest?.version ?? APP_VERSION;
@@ -63,7 +66,8 @@ export default function Landing() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <LanguageSwitcher />
             <Button
               variant="ghost"
               size="sm"
@@ -71,8 +75,7 @@ export default function Landing() {
               className="hover:text-primary"
             >
               <LogIn className="w-4 h-4" />
-              <span className="hidden sm:inline">Logar / Log In</span>
-              <span className="sm:hidden">Login</span>
+              <span className="hidden sm:inline">{t("nav.login")}</span>
             </Button>
             <Button
               size="sm"
@@ -80,8 +83,7 @@ export default function Landing() {
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)]"
             >
               <UserPlus className="w-4 h-4" />
-              <span className="hidden sm:inline">Cadastrar / Sign Up</span>
-              <span className="sm:hidden">Cadastrar</span>
+              <span className="hidden sm:inline">{t("nav.signup")}</span>
             </Button>
           </div>
         </div>
@@ -120,22 +122,21 @@ export default function Landing() {
             variants={fadeUp}
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold mb-6"
           >
-            <Sparkles className="w-3.5 h-3.5" /> Sua vida virou um RPG · Acesso Beta aberto
+            <Sparkles className="w-3.5 h-3.5" /> {t("hero.badge")}
           </motion.div>
 
           <motion.h1
             variants={fadeUp}
             className="text-4xl md:text-6xl lg:text-7xl font-black leading-[1.05] font-[var(--font-display)]"
           >
-            Transforme cada hábito em <span className="text-primary">XP real</span>.
+            {t("hero.title_part1")} <span className="text-primary">{t("hero.title_highlight")}</span>.
           </motion.h1>
 
           <motion.p
             variants={fadeUp}
             className="mt-6 text-base md:text-lg text-muted-foreground max-w-2xl mx-auto"
           >
-            Beba água, treine, estude, durma cedo, e veja seu personagem evoluir,
-            dropar loot e enfrentar bosses. <strong className="text-foreground">Disciplina virou aventura.</strong>
+            {t("hero.subtitle_main")} <strong className="text-foreground">{t("hero.subtitle_strong")}</strong>
           </motion.p>
 
           <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -145,7 +146,7 @@ export default function Landing() {
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)] h-12 px-7"
             >
               <UserPlus className="w-4 h-4" />
-              Cadastrar / Sign Up
+              {t("hero.cta_signup")}
               <ArrowRight className="w-4 h-4" />
             </Button>
             <Button
@@ -155,14 +156,14 @@ export default function Landing() {
               className="border-primary/30 hover:border-primary h-12 px-7"
             >
               <LogIn className="w-4 h-4" />
-              Logar / Log In
+              {t("hero.cta_login")}
             </Button>
           </motion.div>
 
           <motion.div variants={fadeUp} className="mt-6 flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-success" /> 7 dias grátis</span>
-            <span className="flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5 text-accent" /> APK Android disponível</span>
-            <span className="flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5 text-primary" /> 60 bosses</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-success" /> {t("hero.perk_trial")}</span>
+            <span className="flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5 text-accent" /> {t("hero.perk_apk")}</span>
+            <span className="flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5 text-primary" /> {t("hero.perk_bosses")}</span>
           </motion.div>
         </motion.div>
       </section>
@@ -170,48 +171,18 @@ export default function Landing() {
       {/* ============== O QUE É O APP ============== */}
       <section className="py-20 px-4 md:px-8 max-w-6xl mx-auto">
         <SectionHeader
-          eyebrow="O que é o LifeOnRPG"
-          title="O primeiro RPG cuja história é a sua vida."
-          subtitle="Não é um app de tarefas com pontinhos. É um sistema completo de progressão pessoal, atributos, classes, missões, bosses, loot e ranking. Tudo movido pelo que você faz no mundo real."
+          eyebrow={t("what.eyebrow")}
+          title={t("what.title")}
+          subtitle={t("what.subtitle")}
         />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-12">
-          <FeatureCard
-            icon={<Sparkles className="w-6 h-6" />}
-            title="11 atributos vivos"
-            text="Força, Mente, Carisma, Disciplina e mais. Cada missão alimenta os atributos certos, você vê onde está forte e onde precisa treinar."
-            color="primary"
-          />
-          <FeatureCard
-            icon={<Calendar className="w-6 h-6" />}
-            title="Missões diárias reais"
-            text="Configure hábitos por dia da semana. Falhou ontem? O sistema marca e cobra XP automaticamente. Nada escapa."
-            color="accent"
-          />
-          <FeatureCard
-            icon={<Crown className="w-6 h-6" />}
-            title="60 bosses temáticos"
-            text="Do Nível 1 ao 60. Cada chefe consome 'Chaves de Boss' que você ganha cumprindo missões. Disciplina vira poder de combate."
-            color="primary"
-          />
-          <FeatureCard
-            icon={<Flame className="w-6 h-6" />}
-            title="Don't Break the Chain"
-            text="Calendário de chamas: cada dia com 60%+ de missões cumpridas vira streak. Quebrar dói, manter vicia."
-            color="destructive"
-          />
-          <FeatureCard
-            icon={<Heart className="w-6 h-6" />}
-            title="HP, MP, Fadiga e Fome"
-            text="Seu personagem reflete sua saúde. Beba água, coma direito, durma. O herói desmaia se você se descuidar."
-            color="accent"
-          />
-          <FeatureCard
-            icon={<Trophy className="w-6 h-6" />}
-            title="Ranking mundial"
-            text="Compare seu Power Level com aventureiros do Brasil e do mundo. Suba de posição cumprindo o que prometeu."
-            color="primary"
-          />
+          <FeatureCard icon={<Sparkles className="w-6 h-6" />} title={t("what.cards.attrs_title")} text={t("what.cards.attrs_text")} color="primary" />
+          <FeatureCard icon={<Calendar className="w-6 h-6" />} title={t("what.cards.missions_title")} text={t("what.cards.missions_text")} color="accent" />
+          <FeatureCard icon={<Crown className="w-6 h-6" />} title={t("what.cards.bosses_title")} text={t("what.cards.bosses_text")} color="primary" />
+          <FeatureCard icon={<Flame className="w-6 h-6" />} title={t("what.cards.streak_title")} text={t("what.cards.streak_text")} color="destructive" />
+          <FeatureCard icon={<Heart className="w-6 h-6" />} title={t("what.cards.hp_title")} text={t("what.cards.hp_text")} color="accent" />
+          <FeatureCard icon={<Trophy className="w-6 h-6" />} title={t("what.cards.rank_title")} text={t("what.cards.rank_text")} color="primary" />
         </div>
       </section>
 
@@ -219,42 +190,18 @@ export default function Landing() {
       <section className="py-20 px-4 md:px-8 bg-gradient-to-b from-transparent via-accent/5 to-transparent">
         <div className="max-w-6xl mx-auto">
           <SectionHeader
-            eyebrow="Por que somos diferentes"
-            title="A maioria dos apps de hábito te recompensa por marcar caixinhas. O LifeOnRPG te cobra."
-            subtitle="A diferença está nas consequências. Aqui, ignorar a missão dói no personagem, e isso muda tudo."
+            eyebrow={t("diff.eyebrow")}
+            title={t("diff.title")}
+            subtitle={t("diff.subtitle")}
           />
 
           <div className="grid md:grid-cols-2 gap-6 mt-12">
-            <DiffRow
-              icon={<Target className="w-5 h-5" />}
-              title="Punição retroativa"
-              text="Esqueceu de marcar 'beber água' ontem? O sistema desconta XP automaticamente. Sem desculpa, sem editar a história."
-            />
-            <DiffRow
-              icon={<Zap className="w-5 h-5" />}
-              title="Economia de Ouro real"
-              text="Boss derrotado dá Ouro. Ouro compra buffs temporários na Loja do Tempo. Recompensa não é cosmética, afeta seu próximo dia."
-            />
-            <DiffRow
-              icon={<Brain className="w-5 h-5" />}
-              title="Atributos que importam"
-              text="Cada missão vincula a 1 atributo principal e até 2 secundários. Você cresce de forma equilibrada, ou aprende onde está negligente."
-            />
-            <DiffRow
-              icon={<Bell className="w-5 h-5" />}
-              title="O herói fala com você"
-              text="Notificações contextuais: 'Você não bebeu água há 4h', 'Streak em risco esta noite', 'Boss desbloqueado'. Não é spam, é o personagem te chamando."
-            />
-            <DiffRow
-              icon={<Crown className="w-5 h-5" />}
-              title="Classes que evoluem"
-              text="55 classes em 6 tiers. Sua próxima classe depende do que você priorizou. Guerreiro vira Paladino só se você cuidou da Mente também."
-            />
-            <DiffRow
-              icon={<Users className="w-5 h-5" />}
-              title="Sem conteúdo infinito"
-              text="Não tem feed pra rolar, não tem notificação social. O app abre, você cumpre suas missões, e fecha. Foco no que importa."
-            />
+            <DiffRow icon={<Target className="w-5 h-5" />} title={t("diff.rows.punish_title")} text={t("diff.rows.punish_text")} />
+            <DiffRow icon={<Zap className="w-5 h-5" />} title={t("diff.rows.gold_title")} text={t("diff.rows.gold_text")} />
+            <DiffRow icon={<Brain className="w-5 h-5" />} title={t("diff.rows.attrs_title")} text={t("diff.rows.attrs_text")} />
+            <DiffRow icon={<Bell className="w-5 h-5" />} title={t("diff.rows.talk_title")} text={t("diff.rows.talk_text")} />
+            <DiffRow icon={<Crown className="w-5 h-5" />} title={t("diff.rows.class_title")} text={t("diff.rows.class_text")} />
+            <DiffRow icon={<Users className="w-5 h-5" />} title={t("diff.rows.focus_title")} text={t("diff.rows.focus_text")} />
           </div>
         </div>
       </section>
@@ -262,48 +209,32 @@ export default function Landing() {
       {/* ============== SEGURANÇA ============== */}
       <section className="py-20 px-4 md:px-8 max-w-6xl mx-auto">
         <SectionHeader
-          eyebrow="Segurança & Privacidade"
-          title="Seus dados são seus. Ponto."
-          subtitle="O LifeOnRPG é construído sobre a mesma infraestrutura usada por bancos e fintechs, e nada do que você registra fica acessível a terceiros."
+          eyebrow={t("security.eyebrow")}
+          title={t("security.title")}
+          subtitle={t("security.subtitle")}
         />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
-          <SecurityCard
-            icon={<Lock className="w-6 h-6" />}
-            title="Criptografia ponta-a-ponta no transporte"
-            text="Toda comunicação entre o app e o servidor usa HTTPS/TLS 1.3."
-          />
-          <SecurityCard
-            icon={<ShieldCheck className="w-6 h-6" />}
-            title="Row Level Security"
-            text="Cada usuário só vê seus próprios dados. Garantido por políticas no banco, não dá pra burlar pelo cliente."
-          />
-          <SecurityCard
-            icon={<Eye className="w-6 h-6" />}
-            title="Zero rastreamento de comportamento"
-            text="Sem pixels de Facebook, sem analytics invasivo. Só métricas anônimas de erro pra manter o app estável."
-          />
-          <SecurityCard
-            icon={<Database className="w-6 h-6" />}
-            title="Backups diários"
-            text="Seu progresso é replicado e versionado. Nada se perde, nem por bug nosso, nem por troca de celular."
-          />
+          <SecurityCard icon={<Lock className="w-6 h-6" />} title={t("security.cards.tls_title")} text={t("security.cards.tls_text")} />
+          <SecurityCard icon={<ShieldCheck className="w-6 h-6" />} title={t("security.cards.rls_title")} text={t("security.cards.rls_text")} />
+          <SecurityCard icon={<Eye className="w-6 h-6" />} title={t("security.cards.track_title")} text={t("security.cards.track_text")} />
+          <SecurityCard icon={<Database className="w-6 h-6" />} title={t("security.cards.backup_title")} text={t("security.cards.backup_text")} />
         </div>
       </section>
 
       {/* ============== ROADMAP ============== */}
       <section className="py-20 px-4 md:px-8 max-w-6xl mx-auto">
         <SectionHeader
-          eyebrow="Em desenvolvimento"
-          title="O reino está expandindo."
-          subtitle="Você está no acesso Beta, tudo que vier depois entra automaticamente na sua conta."
+          eyebrow={t("roadmap.eyebrow")}
+          title={t("roadmap.title")}
+          subtitle={t("roadmap.subtitle")}
         />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
-          <RoadmapCard icon={<Brain className="w-7 h-7" />} title="IA Mentor" text="Conselheiro inteligente analisa seus hábitos e sugere quests personalizadas." tag="EM BREVE" />
-          <RoadmapCard icon={<Skull className="w-7 h-7" />} title="Bosses de Hábitos" text="Vícios viram chefões. Derrote o 'Lord Procrastinação' com missões consistentes." tag="EM BREVE" />
-          <RoadmapCard icon={<Users className="w-7 h-7" />} title="Dungeons em Party" text="Forme grupo com amigos. Todos precisam cumprir pra avançar." tag="EM BREVE" />
-          <RoadmapCard icon={<Package className="w-7 h-7" />} title="Itens Lendários" text="Sistema expandido de loot, crafting e armas com bônus reais aos atributos." tag="EM BREVE" />
+          <RoadmapCard icon={<Brain className="w-7 h-7" />} title={t("roadmap.cards.ai_title")} text={t("roadmap.cards.ai_text")} tag={t("roadmap.tag")} />
+          <RoadmapCard icon={<Skull className="w-7 h-7" />} title={t("roadmap.cards.habit_title")} text={t("roadmap.cards.habit_text")} tag={t("roadmap.tag")} />
+          <RoadmapCard icon={<Users className="w-7 h-7" />} title={t("roadmap.cards.party_title")} text={t("roadmap.cards.party_text")} tag={t("roadmap.tag")} />
+          <RoadmapCard icon={<Package className="w-7 h-7" />} title={t("roadmap.cards.loot_title")} text={t("roadmap.cards.loot_text")} tag={t("roadmap.tag")} />
         </div>
       </section>
 
@@ -318,7 +249,7 @@ export default function Landing() {
               </Badge>
               {IS_BETA && (
                 <Badge className="bg-accent/20 text-accent border border-accent/40 hover:bg-accent/20 font-black tracking-wider">
-                  ACESSO BETA
+                  {t("download.beta_badge")}
                 </Badge>
               )}
             </div>
@@ -334,11 +265,10 @@ export default function Landing() {
             </motion.div>
 
             <h2 className="text-3xl md:text-5xl font-black font-[var(--font-display)] mb-4">
-              Leve a aventura no <span className="text-primary">bolso</span>.
+              {t("download.title_part1")} <span className="text-primary">{t("download.title_highlight")}</span>.
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto mb-8">
-              Instale o APK Android e receba notificações em tempo real do seu herói. Funciona offline,
-              sincroniza ao reconectar.
+              {t("download.subtitle")}
             </p>
 
             <div className="flex flex-wrap justify-center gap-3">
@@ -350,7 +280,7 @@ export default function Landing() {
                 >
                   <a href={apkUrl} download target="_blank" rel="noopener noreferrer">
                     <Download className="w-5 h-5" />
-                    Baixar APK · {downloadLabel}
+                    {t("download.cta_download")} · {downloadLabel}
                   </a>
                 </Button>
               ) : (
@@ -360,7 +290,7 @@ export default function Landing() {
                   className="bg-primary/40 text-primary-foreground font-bold h-14 px-8 text-base"
                 >
                   <Download className="w-5 h-5" />
-                  APK em preparação · {downloadLabel}
+                  {t("download.cta_preparing")} · {downloadLabel}
                 </Button>
               )}
 
@@ -370,12 +300,12 @@ export default function Landing() {
                 variant="outline"
                 className="border-primary/30 hover:border-primary h-14 px-8 text-base"
               >
-                <Link to="/auth?mode=signup">Usar no navegador</Link>
+                <Link to="/auth?mode=signup">{t("download.cta_browser")}</Link>
               </Button>
             </div>
 
             <p className="text-xs text-muted-foreground mt-6">
-              {IS_BETA ? "Build Beta · " : ""}Android 8.0+ · Atualizações automáticas dentro do app
+              {IS_BETA ? t("download.footnote_beta") : ""}{t("download.footnote")}
             </p>
           </div>
         </div>
@@ -386,7 +316,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <Swords className="w-4 h-4 text-primary" />
-            <span>LifeOnRPG · Sua vida, sua jornada.</span>
+            <span>LifeOnRPG · {t("footer.tagline")}</span>
             {IS_BETA && (
               <Badge className="ml-1 h-4 px-1.5 text-[9px] bg-accent/20 text-accent border border-accent/40 hover:bg-accent/20">
                 BETA
@@ -394,8 +324,8 @@ export default function Landing() {
             )}
           </div>
           <div className="flex gap-4">
-            <Link to="/auth" className="hover:text-primary">Logar / Log In</Link>
-            <Link to="/auth?mode=signup" className="hover:text-primary">Cadastrar / Sign Up</Link>
+            <Link to="/auth" className="hover:text-primary">{t("nav.login")}</Link>
+            <Link to="/auth?mode=signup" className="hover:text-primary">{t("nav.signup")}</Link>
             <a href="#download" className="hover:text-primary">APK</a>
           </div>
         </div>
