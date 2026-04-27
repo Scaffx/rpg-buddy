@@ -325,6 +325,17 @@ export function usePayPenalty() {
         amount: -goldCost,
         reason: `Pagou penalidade: ${mission.title}`,
       });
+
+      // Log estruturado: pagamento com ouro restaura XP perdido
+      await supabase.from('xp_transactions' as any).insert({
+        user_id: user.id,
+        mission_id: mission.id,
+        reason: 'penalty_paid_with_gold',
+        xp_delta: xpToRestore,
+        gold_delta: -goldCost,
+        local_date: (mission as any).failed_date || new Date().toLocaleDateString('en-CA'),
+        description: `Pagou penalidade com ${goldCost} 🪙: ${mission.title} (+${xpToRestore} XP)`,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
