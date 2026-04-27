@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
-import { APP_VERSION } from "@/lib/version";
+import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 
 const benefits = [
@@ -85,6 +85,11 @@ export default function MobilePage() {
                 <Badge variant="secondary" className="font-mono text-xs">
                   v{latestVersion}
                 </Badge>
+                {IS_BETA && (
+                  <Badge className="bg-accent/20 text-accent border border-accent/40 hover:bg-accent/20 font-black tracking-wider">
+                    BETA
+                  </Badge>
+                )}
                 {hasUpdate && (
                   <Badge className="bg-primary/20 text-primary border-primary/40">
                     <Sparkles className="w-3 h-3 mr-1" /> Nova versão!
@@ -98,7 +103,7 @@ export default function MobilePage() {
                 Instale o app oficial no seu Android e tenha seu painel de herói sempre à mão — com notificações nativas e modo offline.
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Sua versão atual: <span className="font-mono">v{APP_VERSION}</span>
+                Sua versão atual: <span className="font-mono">{APP_VERSION_LABEL}</span>
               </p>
             </div>
             <Button
