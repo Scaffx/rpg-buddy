@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile, useClasses, useSelectClass } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -56,6 +57,7 @@ const CLASS_NAME_TO_STARTER: Record<string, string> = Object.fromEntries(
 );
 
 export default function ClassesPage() {
+  const { t } = useTranslation();
   const { data: profile, isLoading: pLoading } = useProfile();
   const { data: classes, isLoading: cLoading } = useClasses();
   const selectClass = useSelectClass();
@@ -149,7 +151,7 @@ export default function ClassesPage() {
 
   const handleSelect = async (classId: string, className: string) => {
     if (profile?.current_class_id) {
-      toast({ title: '🔒 Classe bloqueada', description: 'Sua classe já foi selecionada e não pode ser alterada.', variant: 'destructive' });
+      toast({ title: `🔒 ${t('app.classes.locked_toast')}`, description: t('app.classes.locked_toast_desc'), variant: 'destructive' });
       return;
     }
     setSelecting(classId);
@@ -170,14 +172,14 @@ export default function ClassesPage() {
       // Grant class equipment kit if a valid starter class was resolved
       if (starterClass) {
         await claimClassKit.mutateAsync(starterClass);
-        toast({ title: `🎁 Kit de ${className} recebido!`, description: 'Verifique seu inventário para equipar seus novos itens.' });
+        toast({ title: `🎁 ${t('app.classes.kit_received', { name: className })}`, description: t('app.classes.kit_received_desc') });
       } else {
-        toast({ title: `🎉 Classe selecionada: ${className}!` });
+        toast({ title: `🎉 ${t('app.classes.class_selected', { name: className })}` });
       }
 
       setSelectedDetail(null);
     } catch {
-      toast({ title: 'Erro ao selecionar classe', variant: 'destructive' });
+      toast({ title: t('app.classes.error_select'), variant: 'destructive' });
     } finally {
       setSelecting(null);
     }
@@ -189,10 +191,10 @@ export default function ClassesPage() {
     try {
       await addGold.mutateAsync({ amount: 50, reason: 'Recompensa de classe inicial', type: 'class_reward' });
       localStorage.setItem(`class_reward_claimed_${user.id}`, 'true');
-      toast({ title: '🎉 Recompensa coletada!', description: '+50 moedas de ouro!' });
+      toast({ title: `🎉 ${t('app.classes.reward_collected')}`, description: t('app.classes.reward_collected_desc') });
       setSelectedDetail(null);
     } catch {
-      toast({ title: 'Erro ao coletar recompensa', variant: 'destructive' });
+      toast({ title: t('app.classes.error_reward'), variant: 'destructive' });
     } finally {
       setClaimingReward(false);
     }
@@ -337,12 +339,12 @@ export default function ClassesPage() {
         <div className="flex items-center gap-2">
           <Swords className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
-            Árvore de Classes
+            {t('app.classes.page_title')}
           </h1>
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Nível atual: <span className="text-primary font-bold">{userLevel}</span> — Clique em uma classe desbloqueada para ver detalhes.
+        {t('app.classes.current_level_hint', { n: userLevel })}
         </p>
 
         {/* Legend */}
@@ -386,7 +388,7 @@ export default function ClassesPage() {
                 {/* Next evolutions */}
                 {selectedDetail.children.length > 0 && (
                   <div>
-                    <p className="text-xs font-bold text-muted-foreground mb-2">Próximas evoluções:</p>
+                    <p className="text-xs font-bold text-muted-foreground mb-2">{t('app.classes.next_evolutions')}:</p>
                     <div className="flex gap-2">
                       {selectedDetail.children.map((child) => (
                         <div key={child.id} className={`flex-1 rounded-lg border p-2 text-center ${tierColors[child.column_index]?.bg} ${tierColors[child.column_index]?.border}`}>
@@ -411,15 +413,15 @@ export default function ClassesPage() {
                     ) : (
                       <Gift className="w-4 h-4 mr-2" />
                     )}
-                    Recolher Recompensa (50 🪙)
+                    {t('app.classes.claim_reward_button')}
                   </Button>
                 ) : profile?.current_class_id === selectedDetail.id ? (
                   <div className="flex items-center justify-center gap-1 text-sm text-primary font-bold py-2">
-                    <Check className="w-4 h-4" /> Classe Atual
+                    <Check className="w-4 h-4" /> {t('app.classes.current_class')}
                   </div>
                 ) : profile?.current_class_id ? (
                   <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground py-2">
-                    <Lock className="w-4 h-4" /> Classe selecionada — não é possível trocar
+                    <Lock className="w-4 h-4" /> {t('app.classes.class_locked')}
                   </div>
                 ) : userLevel >= selectedDetail.level_min ? (
                   <Button
@@ -430,11 +432,11 @@ export default function ClassesPage() {
                     {selecting === selectedDetail.id ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : null}
-                    Selecionar {selectedDetail.name}
+                    {t('app.classes.select_button', { name: selectedDetail.name })}
                   </Button>
                 ) : (
                   <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground py-2">
-                    <Lock className="w-4 h-4" /> Desbloqueável no nível {selectedDetail.level_min}
+                    <Lock className="w-4 h-4" /> {t('app.classes.unlocked_at', { n: selectedDetail.level_min })}
                   </div>
                 )}
               </div>

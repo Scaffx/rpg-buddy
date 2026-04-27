@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMissions } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
@@ -15,6 +16,7 @@ import { toast } from 'sonner';
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function CalendarPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { data: allMissions, isLoading } = useMissions();
@@ -132,23 +134,22 @@ export default function CalendarPage() {
       <div className="space-y-6">
         <div className="flex items-end justify-between flex-wrap gap-2">
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
-            📅 Calendário
+            {t('app.calendar.page_title')}
           </h1>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400/50" /> Conclusões
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400/50" /> {t('app.calendar.legend_completions')}
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-destructive/60" /> Fracassos
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-destructive/60" /> {t('app.calendar.legend_failures')}
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full ring-2 ring-blue-500/50" /> Diário
+              <span className="inline-block w-2.5 h-2.5 rounded-full ring-2 ring-blue-500/50" /> {t('app.calendar.legend_journal')}
             </span>
           </div>
         </div>
         <p className="text-xs text-muted-foreground -mt-3">
-          🔗 <span className="text-foreground font-medium">Don't break the chain</span> — mantenha os dias
-          em verde dourado e evite as marcas vermelhas.
+          <span className="text-foreground font-medium">Don't break the chain</span> — {t('app.calendar.chain_note')}
         </p>
 
         {isLoading ? (
@@ -179,16 +180,16 @@ export default function CalendarPage() {
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm text-foreground flex-1">{m.title}</span>
                         {m.completedOnDate ? (
-                          <span className="rpg-badge bg-green-500/20 text-green-400 border-green-500/30">✅ Feita</span>
+                          <span className="rpg-badge bg-green-500/20 text-green-400 border-green-500/30">{t('app.calendar.badge_done')}</span>
                         ) : (
-                          <span className="rpg-badge bg-yellow-500/20 text-yellow-400 border-yellow-500/30">⏳ Pendente</span>
+                          <span className="rpg-badge bg-yellow-500/20 text-yellow-400 border-yellow-500/30">{t('app.calendar.badge_pending')}</span>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground rpg-card py-4 text-center">Nenhuma missão neste dia.</p>
+                <p className="text-sm text-muted-foreground rpg-card py-4 text-center">{t('app.calendar.missions_empty')}</p>
               )}
 
               {/* Diário de Aventura */}
@@ -196,18 +197,18 @@ export default function CalendarPage() {
                 <div className="rpg-card space-y-3 mt-2">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-bold text-foreground">Diário de Aventura</h3>
-                    {journalEntry && <span className="text-[10px] text-emerald-400 font-semibold">✓ Salvo</span>}
+                    <h3 className="text-sm font-bold text-foreground">{t('app.calendar.journal_header')}</h3>
+                    {journalEntry && <span className="text-[10px] text-emerald-400 font-semibold">{t('app.calendar.journal_saved_indicator')}</span>}
                   </div>
 
                   {/* Seletor de humor */}
                   <div className="flex gap-2 flex-wrap">
-                    {([
-                      { mood: 'feliz',    emoji: '😄', label: 'Feliz' },
-                      { mood: 'motivado', emoji: '🔥', label: 'Motivado' },
-                      { mood: 'neutro',   emoji: '😐', label: 'Neutro' },
-                      { mood: 'cansado',  emoji: '😴', label: 'Cansado' },
-                      { mood: 'ansioso',  emoji: '😰', label: 'Ansioso' },
+                    {([   
+                      { mood: 'feliz',    emoji: '😄', label: t('app.calendar.mood_happy') },
+                      { mood: 'motivado', emoji: '🔥', label: t('app.calendar.mood_motivated') },
+                      { mood: 'neutro',   emoji: '😐', label: t('app.calendar.mood_neutral') },
+                      { mood: 'cansado',  emoji: '😴', label: t('app.calendar.mood_tired') },
+                      { mood: 'ansioso',  emoji: '😰', label: t('app.calendar.mood_anxious') },
                     ] as { mood: JournalMood; emoji: string; label: string }[]).map(({ mood, emoji, label }) => (
                       <button
                         key={mood}
@@ -227,19 +228,19 @@ export default function CalendarPage() {
                   <textarea
                     value={journalText}
                     onChange={(e) => setJournalText(e.target.value)}
-                    placeholder="Escreva sobre sua jornada hoje... O que você conquistou? Como se sentiu?"
+                    placeholder={t('app.calendar.journal_placeholder')}
                     rows={4}
                     className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary/50 outline-none resize-none"
                   />
 
                   <button
                     onClick={() => {
-                      if (!journalText.trim()) { toast.error('Escreva algo antes de salvar.'); return; }
+                      if (!journalText.trim()) { toast.error(t('app.calendar.toast_journal_empty')); return; }
                       saveJournal.mutate(
                         { dateStr: selectedDateStr, content: journalText.trim(), mood: journalMood },
                         {
-                          onSuccess: () => toast.success('Diário salvo! 📖'),
-                          onError: () => toast.error('Erro ao salvar diário.'),
+                          onSuccess: () => toast.success(t('app.calendar.toast_journal_saved')),
+                          onError: () => toast.error(t('app.calendar.toast_journal_error')),
                         },
                       );
                     }}
@@ -251,7 +252,7 @@ export default function CalendarPage() {
                     ) : (
                       <Save className="w-4 h-4" />
                     )}
-                    Salvar Diário
+                    {t('app.calendar.button_save_journal')}
                   </button>
                 </div>
               )}

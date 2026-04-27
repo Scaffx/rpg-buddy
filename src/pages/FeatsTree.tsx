@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Sparkles, Clock3, Flame, Coins, CheckCircle2, Shield, BookOpen, Swords, WandSparkles, Gem, Wind } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { useProfile } from '@/hooks/useProfile';
 import { useAvailableTalents, useBuyTalent, usePlayerTalents, type Talent } from '@/hooks/useTalents';
@@ -124,6 +125,7 @@ const FALLBACK_TALENTS: Talent[] = [
 ];
 
 export default function FeatsTree() {
+  const { t } = useTranslation();
   const { data: profile } = useProfile();
   const { data: available = [] } = useAvailableTalents();
   const { data: ownedRows = [] } = usePlayerTalents();
@@ -145,8 +147,8 @@ export default function FeatsTree() {
     }
 
     buyTalent.mutate(talento, {
-      onSuccess: () => toast.success(`Talento desbloqueado: ${talento.nome}`),
-      onError: (err: any) => toast.error(err?.message || 'Nao foi possivel comprar o talento.'),
+      onSuccess: () => toast.success(t('app.feats.talent_unlocked', { name: talento.nome })),
+      onError: (err: any) => toast.error(err?.message || t('app.feats.error_buy')),
     });
   };
 
@@ -155,16 +157,16 @@ export default function FeatsTree() {
       <div className="space-y-6">
         <div className="flex items-center gap-2">
           <Sparkles className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-display font-bold text-primary text-glow">Arvore de Talentos</h1>
+          <h1 className="text-2xl font-display font-bold text-primary text-glow">{t('app.feats.page_title')}</h1>
         </div>
 
         <div className="rpg-card flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-muted-foreground">Pontos de Talento disponiveis</p>
+            <p className="text-sm text-muted-foreground">{t('app.feats.available_points')}</p>
             <p className="text-2xl font-bold text-primary">{pontos}</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            Voce ganha 1 ponto a cada 5 niveis. Proximo marco: nivel {nextMilestone}.
+            {t('app.feats.points_hint', { n: nextMilestone })}
           </p>
         </div>
 
@@ -192,17 +194,17 @@ export default function FeatsTree() {
 
                 <p className="text-sm text-muted-foreground mb-5">{talento.descricao}</p>
                 <div className="mb-4 rounded-md border border-border/60 bg-background/30 px-3 py-2">
-                  <p className="text-xs text-muted-foreground">Sinergia</p>
+                  <p className="text-xs text-muted-foreground">{t('app.feats.synergy_label')}</p>
                   <p className="text-sm font-medium text-foreground">{ui.synergy}</p>
                 </div>
-                <p className="text-xs text-primary mb-5">Custo: 1 ponto de talento</p>
+                <p className="text-xs text-primary mb-5">{t('app.feats.cost_label')}</p>
 
                 <button
                   onClick={() => handleBuy(talento)}
                   disabled={owned || pontos <= 0 || buyTalent.isPending}
                   className="w-full rounded-lg border border-primary/40 bg-primary/20 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {owned ? 'Adquirido' : 'Comprar (1 ponto)'}
+                  {owned ? t('app.feats.button_owned') : t('app.feats.button_buy')}
                 </button>
               </motion.div>
             );

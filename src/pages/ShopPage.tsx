@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoldBalance, useBuyItem } from '@/hooks/useGold';
@@ -62,6 +63,7 @@ function normalizeCategory(rawCategory: string | null | undefined): 'consumable'
 }
 
 export default function ShopPage() {
+  const { t } = useTranslation();
   const [buying, setBuying] = useState<string | null>(null);
   const { data: balance } = useGoldBalance();
   const buyMutation = useBuyItem();
@@ -104,17 +106,17 @@ export default function ShopPage() {
   };
 
   const CATEGORY_LABELS: Record<string, string> = {
-    weapon: '⚔️ Arma',
-    armor: '🛡️ Armadura',
-    accessory: '📿 Acessório',
-    consumable: '🧪 Consumível',
+    weapon: t('app.shop.label_weapon'),
+    armor: t('app.shop.label_armor'),
+    accessory: t('app.shop.label_accessory'),
+    consumable: t('app.shop.label_consumable'),
   };
 
   const CATEGORY_TAB_LABELS: Record<string, string> = {
-    consumable: 'Consumíveis',
-    weapon: 'Armas',
-    armor: 'Armaduras',
-    accessory: 'Acessórios',
+    consumable: t('app.shop.tab_consumables'),
+    weapon: t('app.shop.tab_weapons'),
+    armor: t('app.shop.tab_armors'),
+    accessory: t('app.shop.tab_accessories'),
   };
 
   const CATEGORY_TAB_ICONS: Record<string, React.ComponentType<any>> = {
@@ -135,7 +137,7 @@ export default function ShopPage() {
     setBuying(item.id);
     buyMutation.mutate(item, {
       onSuccess: () => {
-        toast.success(`${item.name} comprado com sucesso! 🪙`);
+        toast.success(t('app.shop.toast_buy_success_time', { name: item.name }));
         setBuying(null);
       },
       onError: (err: Error) => {
@@ -149,7 +151,7 @@ export default function ShopPage() {
     if (!itemsList || itemsList.length === 0) {
       return (
         <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">
-          Nenhum item disponível na Loja do Tempo no momento.
+          {t('app.shop.empty_time_shop')}
         </div>
       );
     }
@@ -220,13 +222,13 @@ export default function ShopPage() {
               <ShoppingBag className="w-8 h-8 text-cyan-400" />
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-                  🏪 Loja
+                  {t('app.shop.page_title')}
                 </h1>
-                <p className="text-sm text-muted-foreground">EQUIPAMENTOS E BÊNÇÃOS</p>
+                <p className="text-sm text-muted-foreground">{t('app.shop.page_subtitle')}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2">
-              <span className="text-sm text-muted-foreground">SEU SALDO</span>
+              <span className="text-sm text-muted-foreground">{t('app.shop.label_balance')}</span>
               <Coins className="w-5 h-5 text-yellow-400" />
               <span className="text-xl font-bold text-emerald-400">
                 {currentGold} 🪙
@@ -237,7 +239,7 @@ export default function ShopPage() {
           <div className="flex justify-end">
             <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <History className="w-4 h-4 text-orange-400" />
-              Histórico de Compras
+              {t('app.shop.link_purchase_history')}
             </button>
           </div>
         </div>
@@ -246,8 +248,8 @@ export default function ShopPage() {
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 mt-0.5" />
             <div>
-              <p className="font-semibold">Erro ao carregar a loja</p>
-              <p className="text-xs opacity-90">Tente atualizar a página. Se persistir, pode ser um problema de dados no Supabase.</p>
+              <p className="font-semibold">{t('app.shop.error_title')}</p>
+              <p className="text-xs opacity-90">{t('app.shop.error_desc')}</p>
             </div>
           </div>
         )}
@@ -257,25 +259,25 @@ export default function ShopPage() {
           <TabsList className="grid w-full max-w-md grid-cols-2 bg-secondary/50 border border-border rounded-lg p-1">
             <TabsTrigger value="tempo" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <Clock className="w-4 h-4 mr-2" />
-              Loja do Tempo
+              {t('app.shop.tab_time_shop')}
             </TabsTrigger>
             <TabsTrigger value="equipamentos" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
               <Sword className="w-4 h-4 mr-2" />
-              Equipamentos
+              {t('app.shop.tab_equipment')}
             </TabsTrigger>
           </TabsList>
 
           {/* Loja do Tempo */}
           <TabsContent value="tempo" className="space-y-4 mt-6">
             <div className="space-y-2">
-              <h2 className="text-lg font-display font-bold text-cyan-400">Loja do Tempo</h2>
+              <h2 className="text-lg font-display font-bold text-cyan-400">{t('app.shop.section_time_shop_title')}</h2>
               <p className="text-sm text-muted-foreground italic">
-                "O tempo é seu maior ativo. Adquira pausas, proteção e equilíbrio para evoluir com sabedoria."
+                {t('app.shop.section_time_shop_quote')}
               </p>
             </div>
             {isTimeShopLoading ? (
               <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando itens...
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('app.shop.loading_items')}
               </div>
             ) : (
               renderItems(items)
@@ -285,15 +287,15 @@ export default function ShopPage() {
           {/* Loja de Equipamentos */}
           <TabsContent value="equipamentos" className="space-y-4 mt-6">
             <div className="space-y-2">
-              <h2 className="text-lg font-display font-bold text-purple-400">Loja de Equipamentos</h2>
+              <h2 className="text-lg font-display font-bold text-purple-400">{t('app.shop.section_equip_title')}</h2>
               <p className="text-sm text-muted-foreground italic">
-                "Armas, armaduras e acessórios permanentes para fortalecer seu personagem."
+                {t('app.shop.section_equip_quote')}
               </p>
             </div>
 
             {isEquipLoading ? (
               <div className="flex items-center justify-center py-10 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando equipamentos...
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('app.shop.loading_equip')}
               </div>
             ) : (
               <Tabs defaultValue="consumable" className="w-full space-y-4">
@@ -321,7 +323,7 @@ export default function ShopPage() {
 
                       {catItems.length === 0 ? (
                         <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">
-                          Nenhum item disponível em {CATEGORY_TAB_LABELS[cat].toLowerCase()} no momento.
+                          {t('app.shop.empty_category', { category: CATEGORY_TAB_LABELS[cat].toLowerCase() })}
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -358,7 +360,7 @@ export default function ShopPage() {
                                     setBuying(item.id);
                                     buyEquipMutation.mutate(item, {
                                       onSuccess: () => {
-                                        toast.success(`${item.name} comprado! Verifique seu inventário.`);
+                                        toast.success(t('app.shop.toast_buy_success_equip', { name: item.name }));
                                         setBuying(null);
                                       },
                                       onError: (err: Error) => {
@@ -375,7 +377,7 @@ export default function ShopPage() {
                                       : undefined,
                                   }}
                                 >
-                                  {buying === item.id ? 'COMPRANDO...' : !canAfford ? 'OURO INSUFICIENTE' : 'COMPRAR'}
+                                  {buying === item.id ? t('app.shop.button_buying') : !canAfford ? t('app.shop.button_no_gold') : t('app.shop.button_buy')}
                                 </button>
                               </div>
                             );
@@ -390,7 +392,7 @@ export default function ShopPage() {
 
             {!isEquipLoading && (shopEquipItems?.length || 0) === 0 && (
               <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">
-                Nenhum equipamento disponível na loja no momento.
+                {t('app.shop.empty_equip')}
               </div>
             )}
           </TabsContent>

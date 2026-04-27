@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttributes, useProfile } from '@/hooks/useProfile';
@@ -171,6 +172,7 @@ const REGIONS = [
 const TOTAL_STEPS = 5; // tutorial, região, classe, missões, conclusão
 
 export default function Onboarding() {
+  const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -261,10 +263,10 @@ export default function Onboarding() {
       localStorage.setItem(`starter_item_v1_${user.id}`, selectedClass.starterItem);
       localStorage.setItem(`onboarding_v1_${user.id}`, 'done');
 
-      toast({ title: '🎉 Aventura iniciada!', description: 'Suas missões foram criadas. Boa sorte!' });
+      toast({ title: t('app.onboarding.success_title'), description: t('app.onboarding.success_desc') });
       navigate('/');
     } catch (err: any) {
-      toast({ title: 'Erro ao criar missões', description: err.message, variant: 'destructive' });
+      toast({ title: t('app.onboarding.error_title'), description: err.message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -308,10 +310,10 @@ export default function Onboarding() {
               </motion.div>
 
               <h1 className="text-4xl font-display font-bold text-primary text-glow mb-2">
-                Bem-vindo ao RPG Pessoal
+                {t('app.onboarding.step0_title')}
               </h1>
               <p className="text-muted-foreground text-lg mb-8">
-                Onde sua rotina vira uma aventura épica
+                {t('app.onboarding.step0_subtitle')}
               </p>
 
               <div className="grid gap-4 text-left mb-8">
@@ -320,8 +322,8 @@ export default function Onboarding() {
                     <Sword className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Missões = Hábitos reais</h3>
-                    <p className="text-sm text-muted-foreground">Suas tarefas do dia a dia viram missões com XP, recompensas e progressão de nível.</p>
+                    <h3 className="font-semibold text-foreground">{t('app.onboarding.feature1_title')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('app.onboarding.feature1_desc')}</p>
                   </div>
                 </div>
 
@@ -330,8 +332,8 @@ export default function Onboarding() {
                     <Star className="w-5 h-5 text-yellow-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Evolua seu personagem</h3>
-                    <p className="text-sm text-muted-foreground">Cada hábito completo aumenta seus atributos — Força, Inteligência, Sabedoria e mais. Quanto mais constante, mais forte você fica.</p>
+                    <h3 className="font-semibold text-foreground">{t('app.onboarding.feature2_title')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('app.onboarding.feature2_desc')}</p>
                   </div>
                 </div>
 
@@ -340,8 +342,8 @@ export default function Onboarding() {
                     <Shield className="w-5 h-5 text-red-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Penalidades por falhar</h3>
-                    <p className="text-sm text-muted-foreground">Missões não cumpridas cobram XP de você. Isso torna a consistência valiosa — assim como na vida real.</p>
+                    <h3 className="font-semibold text-foreground">{t('app.onboarding.feature3_title')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('app.onboarding.feature3_desc')}</p>
                   </div>
                 </div>
 
@@ -350,14 +352,14 @@ export default function Onboarding() {
                     <Zap className="w-5 h-5 text-green-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Chefões, lojas e NPCs</h3>
-                    <p className="text-sm text-muted-foreground">Use seu progresso para enfrentar chefões, comprar itens e interagir com NPCs — porque evoluir deve ser divertido.</p>
+                    <h3 className="font-semibold text-foreground">{t('app.onboarding.feature4_title')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('app.onboarding.feature4_desc')}</p>
                   </div>
                 </div>
               </div>
 
               <Button className="w-full gap-2" onClick={() => setStep(1)}>
-                Começar <ChevronRight className="w-4 h-4" />
+                {t('app.onboarding.start_button')} <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </motion.div>
@@ -376,10 +378,10 @@ export default function Onboarding() {
             <div className="rpg-card-glow p-6">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-display font-bold text-primary text-glow">
-                  De qual região você é?
+                  {t('app.onboarding.step1_title')}
                 </h2>
                 <p className="text-muted-foreground mt-2">
-                  Isso define seu ranking regional no sistema.
+                  {t('app.onboarding.step1_subtitle')}
                 </p>
               </div>
 
@@ -409,7 +411,7 @@ export default function Onboarding() {
 
               <div className="mt-4">
                 <Button variant="ghost" onClick={() => setStep(0)}>
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+                  <ChevronLeft className="w-4 h-4 mr-1" /> {t('app.onboarding.back_button')}
                 </Button>
               </div>
             </div>
@@ -429,10 +431,10 @@ export default function Onboarding() {
             <div className="rpg-card-glow p-6">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-display font-bold text-primary text-glow">
-                  Qual classe você se identifica?
+                  {t('app.onboarding.step2_title')}
                 </h2>
                 <p className="text-muted-foreground mt-2">
-                  Sua escolha define missões iniciais personalizadas para a sua rotina.
+                  {t('app.onboarding.step2_subtitle')}
                 </p>
               </div>
 
@@ -453,14 +455,14 @@ export default function Onboarding() {
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">{cls.modernDescription}</p>
-                    <p className="text-xs text-primary mt-2">Item inicial: {cls.starterItem}</p>
+                    <p className="text-xs text-primary mt-2">{t('app.onboarding.starter_item')}: {cls.starterItem}</p>
                   </motion.button>
                 ))}
               </div>
 
               <div className="mt-4">
                 <Button variant="ghost" onClick={() => setStep(1)}>
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+                  <ChevronLeft className="w-4 h-4 mr-1" /> {t('app.onboarding.back_button')}
                 </Button>
               </div>
             </div>
@@ -484,10 +486,10 @@ export default function Onboarding() {
                   <span className="font-bold text-lg">{selectedClass.name}</span>
                 </div>
                 <h2 className="text-2xl font-display font-bold text-primary text-glow">
-                  Escolha suas missões iniciais
+                  {t('app.onboarding.step3_title')}
                 </h2>
                 <p className="text-muted-foreground mt-2">
-                  Selecione as missões que fazem sentido para sua rotina agora.
+                  {t('app.onboarding.step3_subtitle')}
                 </p>
               </div>
 
@@ -540,18 +542,18 @@ export default function Onboarding() {
               </div>
 
               <p className="text-xs text-muted-foreground text-center mb-4">
-                {selectedMissions.size} missão(ões) selecionada(s). Você pode criar ou editar missões depois.
+                {selectedMissions.size} {t('app.onboarding.missions_selected')}.
               </p>
 
               <div className="flex gap-3">
                 <Button variant="ghost" onClick={() => setStep(2)}>
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+                  <ChevronLeft className="w-4 h-4 mr-1" /> {t('app.onboarding.back_button')}
                 </Button>
                 <Button
                   className="flex-1 gap-2"
                   onClick={() => setStep(4)}
                 >
-                  Continuar <ChevronRight className="w-4 h-4" />
+                  {t('app.onboarding.continue_button')} <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -578,19 +580,19 @@ export default function Onboarding() {
               </motion.div>
 
               <h2 className="text-3xl font-display font-bold text-primary text-glow mb-2">
-                Tudo pronto, aventureiro!
+                {t('app.onboarding.step4_title')}
               </h2>
               <p className="text-muted-foreground text-lg mb-6">
-                Sua jornada como <span className="text-primary font-bold">{selectedClass.name}</span> está prestes a começar.
+                {t('app.onboarding.step4_subtitle', { class: selectedClass.name })}
               </p>
 
               <div className="text-sm text-primary mb-4">
-                Equipamento inicial: <span className="font-bold">{selectedClass.starterItem}</span>
+                {t('app.onboarding.starter_equipment')}: <span className="font-bold">{selectedClass.starterItem}</span>
               </div>
 
               <div className="text-left bg-muted/20 rounded-xl border border-border p-4 mb-6">
                 <p className="text-sm font-semibold text-foreground mb-3">
-                  {selectedMissions.size} missão(ões) serão criadas:
+                  {selectedMissions.size} {t('app.onboarding.missions_will_be_created')}:
                 </p>
                 <ul className="space-y-2">
                   {selectedClass.missions
@@ -605,7 +607,7 @@ export default function Onboarding() {
               </div>
 
               <div className="text-xs text-muted-foreground mb-6 bg-primary/5 border border-primary/20 rounded-lg p-3">
-                💡 <strong>Dica:</strong> Comece com poucos hábitos e seja consistente. Você pode adicionar mais missões a qualquer momento em <strong>Missões</strong>.
+                💡 <strong>{t('app.onboarding.tip_label')}:</strong> {t('app.onboarding.tip_text')}
               </div>
 
               <Button
@@ -614,9 +616,9 @@ export default function Onboarding() {
                 disabled={saving}
               >
                 {saving ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Criando missões...</>
+                  <><Loader2 className="w-5 h-5 animate-spin" /> {t('app.onboarding.saving_button')}</>
                 ) : (
-                  <>Iniciar aventura <Zap className="w-5 h-5" /></>
+                  <>{t('app.onboarding.finish_button')} <Zap className="w-5 h-5" /></>
                 )}
               </Button>
             </div>

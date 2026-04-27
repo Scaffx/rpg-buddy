@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { motion } from "framer-motion";
 import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount, useRankPosition } from "@/hooks/useProfile";
@@ -80,6 +81,7 @@ function BonusCountdown({ nextClaimAt }: { nextClaimAt: string | null }) {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: attributes, isLoading: attrsLoading } = useAttributes();
@@ -250,7 +252,7 @@ export default function Dashboard() {
       const charges = Number((profile as any).streak_protector_charges ?? 0);
       if (hour >= 22 && hasPending && charges <= 0 && !sessionStorage.getItem(key)) {
         sessionStorage.setItem(key, 'shown');
-        toast.error('A sua Streak de missoes esta em risco, e voce nao possui um Protetor de Streak, se proteja.');
+        toast.error(t('app.dashboard.streak_risk_toast'));
       }
     };
 
@@ -316,23 +318,23 @@ export default function Dashboard() {
   }
 
   const statCards = [
-    { key: "level", label: "Nível", icon: Star, value: profile?.level || 1 },
-    { key: "rank", label: "Rank", icon: Trophy, value: rankPosition ? `#${rankPosition}` : "--" },
+    { key: "level", label: t('app.dashboard.stat_level'), icon: Star, value: profile?.level || 1 },
+    { key: "rank", label: t('app.dashboard.stat_rank'), icon: Trophy, value: rankPosition ? `#${rankPosition}` : "--" },
     {
       key: "class",
-      label: "Classe",
+      label: t('app.dashboard.stat_class'),
       icon: Swords,
       value: currentClass ? `${currentClass.icon} ${currentClass.name}` : "📖 Aprendiz",
     },
-    { key: "total_xp", label: "XP Total", icon: Zap, value: profile?.total_xp || 0 },
+    { key: "total_xp", label: t('app.dashboard.stat_xp_total'), icon: Zap, value: profile?.total_xp || 0 },
     {
       key: "missions_today",
-      label: "Missões Hoje",
+      label: t('app.dashboard.stat_missions_today'),
       icon: Calendar,
       value: todayMissionsCount || 0,
     },
-    { key: "missions", label: "Missões Total", icon: Target, value: profile?.missions_completed || 0 },
-    { key: "xp_today", label: "XP Hoje", icon: TrendingUp, value: todayXp || 0 },
+    { key: "missions", label: t('app.dashboard.stat_missions_total'), icon: Target, value: profile?.missions_completed || 0 },
+    { key: "xp_today", label: t('app.dashboard.stat_xp_today'), icon: TrendingUp, value: todayXp || 0 },
   ];
 
   const handleComplete = async (mission: any) => {
@@ -351,14 +353,14 @@ export default function Dashboard() {
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
             Olá, {profile?.display_name || "Aventureiro"}!
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Sua jornada continua. Continue evoluindo!</p>
+          <p className="text-muted-foreground text-sm mt-1">{t('app.dashboard.greeting_subtitle')}</p>
 
           {streakActive && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-500/60 bg-red-500/15 px-3 py-1.5 text-red-200 streak-fire-aura">
               <Flame className="w-4 h-4 text-red-400" />
-              <span className="text-sm font-bold">STREAK DE MISSOES</span>
+              <span className="text-sm font-bold">{t('app.dashboard.streak_badge')}</span>
               <span className="text-xs text-red-300">
-                {missionStreak.days} dia{missionStreak.days === 1 ? '' : 's'} completos
+                {missionStreak.days} {t('app.dashboard.streak_days', { count: missionStreak.days })}
               </span>
             </div>
           )}
@@ -367,10 +369,9 @@ export default function Dashboard() {
             <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/60 bg-amber-500/15 px-3 py-2 text-amber-200">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
               <div className="flex-1 text-xs">
-                <p className="font-bold">Streak em risco!</p>
+                <p className="font-bold">{t('app.dashboard.streak_risk_title')}</p>
                 <p className="text-amber-300/90">
-                  Faltam <strong>{todayStreakRisk.missingForThreshold}</strong> missão{todayStreakRisk.missingForThreshold === 1 ? '' : 'es'} para garantir 60% hoje
-                  ({todayStreakRisk.completed}/{todayStreakRisk.thresholdCount} concluídas, {todayStreakRisk.pending} pendentes).
+                  {t('app.dashboard.streak_risk_body', { n: todayStreakRisk.missingForThreshold, done: todayStreakRisk.completed, threshold: todayStreakRisk.thresholdCount, pending: todayStreakRisk.pending })}
                 </p>
               </div>
             </div>
@@ -379,7 +380,7 @@ export default function Dashboard() {
           {todayStreakRisk.required > 0 && todayStreakRisk.alreadyHit && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-emerald-200">
               <Check className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-semibold">Meta de 60% do dia atingida — streak garantida!</span>
+              <span className="text-xs font-semibold">{t('app.dashboard.streak_safe')}</span>
             </div>
           )}
         </motion.div>
@@ -410,7 +411,7 @@ export default function Dashboard() {
             className="rpg-card"
           >
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-muted-foreground">Progresso para Nível {profile.level + 1}</span>
+              <span className="text-muted-foreground">{t('app.dashboard.xp_progress_label', { n: profile.level + 1 })}</span>
               <span className="text-primary font-semibold">{profile.total_xp % 200}/200 XP</span>
             </div>
             <div className="rpg-stat-bar">
@@ -437,13 +438,13 @@ export default function Dashboard() {
                 <div>
                   {dailyBonus.isClaimed ? (
                     <>
-                      <h3 className="font-bold text-muted-foreground">Bônus Diário Coletado</h3>
+                      <h3 className="font-bold text-muted-foreground">{t('app.dashboard.daily_bonus_claimed')}</h3>
                       <BonusCountdown nextClaimAt={dailyBonus.nextClaimAt} />
                     </>
                   ) : (
                     <>
-                      <h3 className="font-bold text-foreground">Bônus Diário Disponível!</h3>
-                      <p className="text-xs text-muted-foreground">+15 XP e +5 🪙</p>
+                      <h3 className="font-bold text-foreground">{t('app.dashboard.daily_bonus_available')}</h3>
+                      <p className="text-xs text-muted-foreground">{t('app.dashboard.daily_bonus_description')}</p>
                     </>
                   )}
                 </div>
@@ -469,7 +470,7 @@ export default function Dashboard() {
                   ) : (
                     <Coins className="w-4 h-4 mr-1" />
                   )}
-                  Coletar
+                  {t('app.dashboard.daily_bonus_button')}
                 </Button>
               )}
             </div>
@@ -478,7 +479,7 @@ export default function Dashboard() {
 
         {/* Today's Daily Missions */}
         <div>
-          <h2 className="text-lg font-display font-semibold text-foreground mb-1">📅 Missões de Hoje</h2>
+          <h2 className="text-lg font-display font-semibold text-foreground mb-1">{t('app.dashboard.missions_today_header')}</h2>
           <p className="text-xs text-muted-foreground mb-3">{todayDayLabel}</p>
 
           {missionsLoading ? (
@@ -537,14 +538,14 @@ export default function Dashboard() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground rpg-card text-center py-4">
-              Nenhuma missão para hoje. Crie uma! 🎯
+              Nenhuma missão para hoje. {t('app.dashboard.missions_today_empty')}
             </p>
           )}
         </div>
 
         {/* Attributes */}
         <div>
-          <h2 className="text-lg font-display font-semibold text-foreground mb-3">Atributos</h2>
+          <h2 className="text-lg font-display font-semibold text-foreground mb-3">{t('app.dashboard.attributes_header')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {attributes?.map((attr, i) => (
               <motion.div
@@ -577,9 +578,9 @@ export default function Dashboard() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 w-5 h-5 text-orange-400" />
               <div className="space-y-3">
-                <h3 className="text-lg font-bold text-foreground">O que acha de diminuirmos nossas tarefas diarias?</h3>
+                <h3 className="text-lg font-bold text-foreground">{t('app.dashboard.coach_title')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Percebemos um padrao de mais de 60% de falhas por 3 dias consecutivos. Podemos reduzir metas para recuperar consistencia.
+                  {t('app.dashboard.coach_body')}
                 </p>
                 <p className="text-sm italic text-orange-300">{coachQuote}</p>
                 <div className="flex justify-end">
@@ -587,7 +588,7 @@ export default function Dashboard() {
                     onClick={() => setShowCoachPopup(false)}
                     className="bg-orange-500/20 text-orange-300 border border-orange-500/40 hover:bg-orange-500/30"
                   >
-                    Entendi
+                    {t('app.dashboard.coach_confirm_button')}
                   </Button>
                 </div>
               </div>

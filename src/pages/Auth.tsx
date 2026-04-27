@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ export default function Auth() {
   const [resending, setResending] = useState(false);
   const [forgotPassword, setForgotPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const { t } = useTranslation();
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -28,7 +30,7 @@ export default function Auth() {
 
   const handleResendConfirmation = async () => {
     if (!email) {
-      toast({ title: 'Informe seu email primeiro', variant: 'destructive' });
+      toast({ title: t('app.auth.toast_email_required'), variant: 'destructive' });
       return;
     }
     setResending(true);
@@ -36,11 +38,11 @@ export default function Auth() {
       const { error } = await supabase.auth.resend({ type: 'signup', email });
       if (error) throw error;
       toast({
-        title: '📧 Email reenviado!',
-        description: 'Verifique sua caixa de entrada e confirme o cadastro.',
+        title: t('app.auth.toast_email_resent_title'),
+        description: t('app.auth.toast_email_resent_desc'),
       });
     } catch (err: any) {
-      toast({ title: 'Erro ao reenviar', description: err.message, variant: 'destructive' });
+      toast({ title: t('app.auth.toast_resend_error'), description: err.message, variant: 'destructive' });
     } finally {
       setResending(false);
     }
@@ -49,7 +51,7 @@ export default function Auth() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      toast({ title: 'Informe seu email', variant: 'destructive' });
+      toast({ title: t('app.auth.toast_email_required_reset'), variant: 'destructive' });
       return;
     }
     setResetLoading(true);
@@ -59,12 +61,12 @@ export default function Auth() {
       });
       if (error) throw error;
       toast({
-        title: '📧 Email enviado!',
-        description: 'Verifique sua caixa de entrada para redefinir sua senha.',
+        title: t('app.auth.toast_reset_sent_title'),
+        description: t('app.auth.toast_reset_sent_desc'),
       });
       setForgotPassword(false);
     } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+      toast({ title: t('app.auth.toast_error'), description: err.message, variant: 'destructive' });
     } finally {
       setResetLoading(false);
     }
@@ -82,21 +84,21 @@ export default function Auth() {
         await signUp(email, password, displayName);
         setNeedsConfirmation(true);
         toast({
-          title: '⚔️ Conta criada!',
-          description: 'Verifique seu email para confirmar o registro.',
+          title: t('app.auth.toast_account_created_title'),
+          description: t('app.auth.toast_account_created_desc'),
         });
       }
     } catch (err: any) {
       if (isLogin && isEmailConfirmationError(err.message)) {
         setNeedsConfirmation(true);
         toast({
-          title: 'Email não confirmado',
-          description: 'Confirme seu email antes de entrar. Verifique sua caixa de entrada ou reenvie o email abaixo.',
+          title: t('app.auth.toast_email_not_confirmed_title'),
+          description: t('app.auth.toast_email_not_confirmed_desc'),
           variant: 'destructive',
         });
       } else {
         toast({
-          title: 'Erro',
+          title: t('app.auth.toast_error'),
           description: err.message,
           variant: 'destructive',
         });
@@ -123,10 +125,10 @@ export default function Auth() {
             <Sword className="w-8 h-8 text-primary" />
           </motion.div>
           <h1 className="text-3xl font-display font-bold text-primary text-glow">
-            RPG Pessoal
+            {t('app.auth.app_title')}
           </h1>
           <p className="text-muted-foreground mt-2">
-            Transforme sua vida em uma aventura épica
+            {t('app.auth.app_subtitle')}
           </p>
         </div>
 
@@ -139,7 +141,7 @@ export default function Auth() {
               }`}
             >
               <Shield className="w-4 h-4 inline mr-1.5" />
-              Entrar
+              {t('app.auth.tab_login')}
             </button>
             <button
               onClick={() => setIsLogin(false)}
@@ -148,7 +150,7 @@ export default function Auth() {
               }`}
             >
               <Sword className="w-4 h-4 inline mr-1.5" />
-              Registrar
+              {t('app.auth.tab_register')}
             </button>
           </div>
 
@@ -156,7 +158,7 @@ export default function Auth() {
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  Email cadastrado
+                  {t('app.auth.label_registered_email')}
                 </label>
                 <Input
                   type="email"
@@ -173,14 +175,14 @@ export default function Auth() {
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
               >
                 {resetLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                📧 Enviar link de redefinição
+                {t('app.auth.button_send_reset')}
               </Button>
               <button
                 type="button"
                 onClick={() => setForgotPassword(false)}
                 className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                ← Voltar ao login
+                {t('app.auth.link_back_to_login')}
               </button>
             </form>
           ) : (
@@ -188,19 +190,19 @@ export default function Auth() {
             {!isLogin && (
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  Nome do Herói
+                  {t('app.auth.label_hero_name')}
                 </label>
                 <Input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Seu nome de aventureiro"
+                  placeholder={t('app.auth.placeholder_hero_name')}
                   className="bg-secondary border-border"
                 />
               </div>
             )}
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Email
+                {t('app.auth.label_email')}
               </label>
               <Input
                 type="email"
@@ -214,7 +216,7 @@ export default function Auth() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-sm font-medium text-foreground">
-                  Senha
+                  {t('app.auth.label_password')}
                 </label>
                 {isLogin && (
                   <button
@@ -222,7 +224,7 @@ export default function Auth() {
                     onClick={() => setForgotPassword(true)}
                     className="text-xs text-muted-foreground hover:text-primary transition-colors"
                   >
-                    Esqueci a senha
+                    {t('app.auth.link_forgot_password')}
                   </button>
                 )}
               </div>
@@ -244,13 +246,13 @@ export default function Auth() {
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : null}
-              {isLogin ? '⚔️ Entrar na Aventura' : '🛡️ Criar Personagem'}
+              {isLogin ? t('app.auth.button_login') : t('app.auth.button_register')}
             </Button>
             {needsConfirmation && (
               <div className="mt-3 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm text-yellow-300">
                 <p className="mb-2 flex items-center gap-1.5">
                   <Mail className="w-4 h-4 flex-shrink-0" />
-                  Confirme seu email para acessar o jogo.
+                  {t('app.auth.notice_confirm_email')}
                 </p>
                 <button
                   type="button"
@@ -258,7 +260,7 @@ export default function Auth() {
                   disabled={resending}
                   className="underline text-yellow-200 hover:text-yellow-100 disabled:opacity-50"
                 >
-                  {resending ? 'Enviando...' : 'Reenviar email de confirmação'}
+                  {resending ? t('app.auth.button_resend_sending') : t('app.auth.button_resend')}
                 </button>
               </div>
             )}

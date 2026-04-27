@@ -12,6 +12,31 @@ function getSupabase() {
   return _supabase;
 }
 
+function randomAccessKeyCode() {
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
+}
+
+async function issueAnnualAccessKey(userId: string, subscriptionId: string) {
+  const supabase = getSupabase();
+
+  const { data: existingKey } = await supabase
+    .from('subscription_access_keys')
+    .select('id')
+    .eq('granted_by_subscription_id', subscriptionId)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingKey) return;
+
+  await supabase.from('subscription_access_keys').insert({
+    owner_user_id: userId,
+    granted_by_subscription_id: subscriptionId,
+    code: randomAccessKeyCode(),
+    grant_months: 2,
+    status: 'issued',
+  });
+}
+
 async function handleSubscriptionCreated(data: any, env: PaddleEnv) {
   const { id, customerId, items, status, currentBillingPeriod, customData } = data;
   const userId = customData?.userId;
@@ -40,6 +65,10 @@ async function handleSubscriptionCreated(data: any, env: PaddleEnv) {
     environment: env,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'paddle_subscription_id' });
+
+  if (priceId === 'premium_annual') {
+    await issueAnnualAccessKey(userId, id);
+  }
 }
 
 async function handleSubscriptionUpdated(data: any, env: PaddleEnv) {

@@ -254,45 +254,90 @@ export default function Landing() {
           transition={{ duration: 0.5 }}
           className="mt-12 max-w-md mx-auto"
         >
-          <div className="relative rounded-2xl border-2 border-primary/40 bg-card/70 backdrop-blur-sm p-8 shadow-[var(--glow-gold)]">
-            <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground font-black tracking-wider px-3 py-0.5">
-              {t("pricing.trial").toUpperCase()}
-            </Badge>
+          <div className="grid gap-6 md:grid-cols-2 md:max-w-4xl md:mx-auto">
+            <div className="relative rounded-2xl border-2 border-primary/40 bg-card/70 backdrop-blur-sm p-8 shadow-[var(--glow-gold)]">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground font-black tracking-wider px-3 py-0.5">
+                {t("pricing.monthly.badge").toUpperCase()}
+              </Badge>
 
-            <h3 className="font-[var(--font-display)] text-2xl font-bold text-center mb-2">
-              {t("pricing.plan_name")}
-            </h3>
+              <h3 className="font-[var(--font-display)] text-2xl font-bold text-center mb-2">
+                {t("pricing.monthly.name")}
+              </h3>
 
-            <div className="flex items-baseline justify-center gap-1 mt-4 mb-6">
-              <span className="text-lg text-muted-foreground">{t("pricing.price_currency")}</span>
-              <span className="text-5xl md:text-6xl font-black text-primary font-[var(--font-display)]">
-                {t("pricing.price_amount")}
-              </span>
-              <span className="text-muted-foreground">{t("pricing.price_period")}</span>
+              <div className="flex items-baseline justify-center gap-1 mt-4 mb-2">
+                <span className="text-lg text-muted-foreground">{t("pricing.price_currency")}</span>
+                <span className="text-5xl md:text-6xl font-black text-primary font-[var(--font-display)]">
+                  {t("pricing.monthly.price_amount")}
+                </span>
+                <span className="text-muted-foreground">{t("pricing.monthly.price_period")}</span>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mb-6">{t("pricing.monthly.desc")}</p>
+
+              <ul className="space-y-3 mb-8">
+                {(["f1", "f2", "f3", "f4", "f5"] as const).map((key) => (
+                  <li key={key} className="flex items-start gap-2 text-sm">
+                    <Check className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                    <span>{t(`pricing.features.${key}`)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                size="lg"
+                onClick={() => navigate("/auth?mode=signup")}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12"
+              >
+                <UserPlus className="w-4 h-4" />
+                {t("pricing.monthly.cta")}
+              </Button>
             </div>
 
-            <ul className="space-y-3 mb-8">
-              {(["f1", "f2", "f3", "f4", "f5"] as const).map((key) => (
-                <li key={key} className="flex items-start gap-2 text-sm">
+            <div className="relative rounded-2xl border-2 border-accent/40 bg-card/70 backdrop-blur-sm p-8 shadow-[0_0_40px_rgba(255,184,108,0.18)]">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground font-black tracking-wider px-3 py-0.5">
+                {t("pricing.annual.badge").toUpperCase()}
+              </Badge>
+
+              <h3 className="font-[var(--font-display)] text-2xl font-bold text-center mb-2">
+                {t("pricing.annual.name")}
+              </h3>
+
+              <div className="flex items-baseline justify-center gap-1 mt-4 mb-2">
+                <span className="text-lg text-muted-foreground">{t("pricing.price_currency")}</span>
+                <span className="text-5xl md:text-6xl font-black text-primary font-[var(--font-display)]">
+                  {t("pricing.annual.price_amount")}
+                </span>
+                <span className="text-muted-foreground">{t("pricing.annual.price_period")}</span>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mb-2">{t("pricing.annual.desc")}</p>
+              <p className="text-sm text-accent text-center font-semibold mb-6">{t("pricing.annual.bonus")}</p>
+
+              <ul className="space-y-3 mb-8">
+                {(["f1", "f2", "f3", "f4", "f5"] as const).map((key) => (
+                  <li key={key} className="flex items-start gap-2 text-sm">
+                    <Check className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                    <span>{t(`pricing.features.${key}`)}</span>
+                  </li>
+                ))}
+                <li className="flex items-start gap-2 text-sm">
                   <Check className="w-5 h-5 text-success shrink-0 mt-0.5" />
-                  <span>{t(`pricing.features.${key}`)}</span>
+                  <span>{t("pricing.features.f6")}</span>
                 </li>
-              ))}
-            </ul>
+              </ul>
 
-            <Button
-              size="lg"
-              onClick={() => navigate("/auth?mode=signup")}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12"
-            >
-              <UserPlus className="w-4 h-4" />
-              {t("pricing.cta")}
-            </Button>
-
-            <p className="text-[11px] text-muted-foreground text-center mt-4 leading-relaxed">
-              {t("pricing.mor_note")}
-            </p>
+              <Button
+                size="lg"
+                onClick={() => navigate("/auth?mode=signup")}
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold h-12"
+              >
+                <UserPlus className="w-4 h-4" />
+                {t("pricing.annual.cta")}
+              </Button>
+            </div>
           </div>
+
+          <p className="text-[11px] text-muted-foreground text-center mt-4 leading-relaxed">
+            {t("pricing.mor_note")}
+          </p>
         </motion.div>
       </section>
 

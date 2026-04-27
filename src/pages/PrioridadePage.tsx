@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { usePlans, useCreatePlan, useDeletePlan } from "@/hooks/usePlans";
 import { useMissions } from "@/hooks/useProfile";
 import AppLayout from "@/components/AppLayout";
@@ -22,6 +23,7 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 }
 
 export default function PrioridadePage() {
+  const { t } = useTranslation();
   const { data: plans, isLoading } = usePlans();
   const { data: missions } = useMissions();
   const createPlan = useCreatePlan();
@@ -88,14 +90,14 @@ export default function PrioridadePage() {
   return (
     <AppLayout>
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-display font-bold text-primary">Planos & Metas</h1>
-        <Button onClick={() => setModalOpen(true)}>Novo Plano/Meta</Button>
+        <h1 className="text-2xl font-display font-bold text-primary">{t('app.priority.page_title')}</h1>
+        <Button onClick={() => setModalOpen(true)}>{t('app.priority.new_plan_button')}</Button>
       </div>
 
       <div className="mb-6 p-4 rounded-lg bg-muted/30 border border-border/40">
-        <p className="text-sm text-foreground font-semibold mb-1">🎯 Como funciona?</p>
+        <p className="text-sm text-foreground font-semibold mb-1">🎯 {t('app.priority.how_it_works_title')}</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Crie metas de longo prazo (viagem, curso, peso ideal, etc.) e <span className="text-primary font-medium">vincule missões diárias</span> que vão somar progresso automaticamente cada vez que você concluir uma delas. Defina um <span className="text-primary font-medium">valor-meta</span> (R$, horas, kg, livros — você escolhe a unidade) e quanto cada conclusão de missão contribui.
+          {t('app.priority.how_it_works_body')}
         </p>
       </div>
 
@@ -104,11 +106,11 @@ export default function PrioridadePage() {
         <DialogContent className="bg-gradient-to-br from-background via-secondary/60 to-background border border-border/60 shadow-2xl max-h-[90vh] overflow-y-auto">
           <form className="space-y-4" onSubmit={handleCreate}>
             <DialogHeader>
-              <DialogTitle className="text-2xl font-extrabold text-primary drop-shadow">Novo Plano/Meta</DialogTitle>
+              <DialogTitle className="text-2xl font-extrabold text-primary drop-shadow">{t('app.priority.modal_title')}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-2">
-              <Label className="text-xs">⚡ Modelos rápidos (opcional)</Label>
+              <Label className="text-xs">⚡ {t('app.priority.quick_templates')}</Label>
               <div className="flex flex-wrap gap-1.5">
                 {TEMPLATES.map((t) => (
                   <button
@@ -124,7 +126,7 @@ export default function PrioridadePage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="plan-title">Título</Label>
+            <Label htmlFor="plan-title">{t('app.priority.label_title')}</Label>
               <Input
                 id="plan-title"
                 placeholder="Ex: Viagem dos Sonhos, Novo PC Gamer, Curso de Inglês..."
@@ -135,7 +137,7 @@ export default function PrioridadePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="plan-desc">Descrição</Label>
+            <Label htmlFor="plan-desc">{t('app.priority.label_description')}</Label>
               <Textarea
                 id="plan-desc"
                 placeholder="Ex: Juntar dinheiro para viajar, comprar um item caro, conquistar uma certificação, etc."
@@ -145,7 +147,7 @@ export default function PrioridadePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="plan-target">Valor Meta</Label>
+            <Label htmlFor="plan-target">{t('app.priority.label_target')}</Label>
               <Input
                 id="plan-target"
                 type="number"
@@ -158,10 +160,10 @@ export default function PrioridadePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Missões contribuintes</Label>
+              <Label>{t('app.priority.label_missions')}</Label>
               <div className="space-y-2">
                 {form.missions.length === 0 && (
-                  <div className="text-xs text-muted-foreground bg-muted/40 rounded p-2 border border-dashed border-border/40 text-center">Nenhuma missão adicionada. Adicione missões que vão contribuir para o progresso deste plano!</div>
+                  <div className="text-xs text-muted-foreground bg-muted/40 rounded p-2 border border-dashed border-border/40 text-center">{t('app.priority.no_missions')}</div>
                 )}
                 {form.missions.map((m) => {
                   const mission = missions?.find((ms: any) => ms.id === m.mission_id);
@@ -176,7 +178,7 @@ export default function PrioridadePage() {
                         onChange={(e) => handleMissionValueChange(m.mission_id, Number(e.target.value))}
                       />
                       <Button type="button" size="sm" variant="destructive" onClick={() => handleRemoveMission(m.mission_id)}>
-                        Remover
+                        {t('app.priority.button_remove')}
                       </Button>
                     </div>
                   );
@@ -187,7 +189,7 @@ export default function PrioridadePage() {
                     value={missionToAdd}
                     onChange={(e) => setMissionToAdd(e.target.value)}
                   >
-                    <option value="">Selecionar missão...</option>
+                    <option value="">{t('app.priority.select_mission')}</option>
                     {missions?.filter((m: any) => !form.missions.some((fm) => fm.mission_id === m.id)).map((m: any) => (
                       <option key={m.id} value={m.id}>{m.title}</option>
                     ))}
@@ -207,17 +209,17 @@ export default function PrioridadePage() {
                     onClick={() => missionToAdd && missionValue > 0 && handleAddMission(missionToAdd, missionValue)}
                     disabled={!missionToAdd || missionValue <= 0}
                   >
-                    Adicionar missão contribuinte
+                    {t('app.priority.button_add_mission')}
                   </Button>
                 </div>
               </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
-                Cancelar
+                {t('app.priority.button_cancel')}
               </Button>
               <Button type="submit" disabled={createPlan.isPending}>
-                Salvar
+                {t('app.priority.button_save')}
               </Button>
             </DialogFooter>
           </form>
@@ -227,9 +229,9 @@ export default function PrioridadePage() {
       {/* Cards dos planos/metas */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
-          <div>Carregando...</div>
+          <div>{t('app.priority.loading')}</div>
         ) : plans?.length === 0 ? (
-          <div className="text-muted-foreground">Nenhum plano cadastrado.</div>
+          <div className="text-muted-foreground">{t('app.priority.empty')}</div>
         ) : (
           plans?.map((plan: any) => {
             const percent = Math.min(100, Math.round((plan.current_value / plan.target_value) * 100));
@@ -238,7 +240,7 @@ export default function PrioridadePage() {
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-lg text-foreground">{plan.title}</h3>
                   <Button size="sm" variant="destructive" onClick={() => deletePlan.mutate(plan.id)}>
-                    Excluir
+                    {t('app.priority.button_delete')}
                   </Button>
                 </div>
                 <p className="text-muted-foreground text-sm">{plan.description}</p>
@@ -250,17 +252,17 @@ export default function PrioridadePage() {
                   <span>{percent}%</span>
                 </div>
                 <div className="mt-2">
-                  <p className="font-semibold text-xs mb-1">Missões vinculadas:</p>
+                  <p className="font-semibold text-xs mb-1">{t('app.priority.linked_missions')}:</p>
                   <ul className="list-disc ml-4 text-xs text-muted-foreground">
                     {plan.plan_missions?.map((pm: any) => (
                       <li key={pm.id}>
-                        {pm.missions?.title} (+{pm.value_per_completion} por conclusão)
+                        {pm.missions?.title} (+{pm.value_per_completion} {t('app.priority.per_completion')})
                       </li>
                     ))}
                   </ul>
                 </div>
                 {percent >= 100 && (
-                  <div className="text-success font-bold mt-2">Plano Concluído!</div>
+                  <div className="text-success font-bold mt-2">{t('app.priority.plan_complete')}</div>
                 )}
               </div>
             );

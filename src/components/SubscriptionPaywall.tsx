@@ -1,27 +1,27 @@
 import { Crown, Check, Loader2, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { useSubscription } from "@/hooks/useSubscription";
 
-const FEATURES = [
-  "Todas as missões diárias e XP ilimitado",
-  "Sistema completo de Bosses e Arena PvE",
-  "55 classes e árvore de talentos",
-  "Loja do Tempo, Inventário e Equipamentos",
-  "Ranking mundial e regional",
-  "Análises de progresso e gráficos",
-  "Suporte prioritário ao herói",
-];
-
 /**
  * Card de paywall com botão de assinatura via Paddle.
  * Mostra preço localizado automaticamente (PricePreview do Paddle).
  */
 export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation();
   const { openCheckout, loading } = usePaddleCheckout();
   const { isActive, isTrial } = useSubscription();
+
+  const features = [
+    t("pricing.features.f1"),
+    t("pricing.features.f2"),
+    t("pricing.features.f3"),
+    t("pricing.features.f4"),
+    t("pricing.features.f5"),
+  ];
 
   if (isActive) {
     return (
@@ -32,10 +32,10 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
           </div>
           <div className="flex-1">
             <h3 className="font-cinzel font-semibold">
-              Premium Ativo {isTrial && <Badge variant="outline" className="ml-1">Trial</Badge>}
+              {t("pricing.access_active")} {isTrial && <Badge variant="outline" className="ml-1">Trial</Badge>}
             </h3>
             <p className="text-xs text-muted-foreground">
-              Você tem acesso completo ao LifeonRPG.
+              {t("pricing.access_active_desc")}
             </p>
           </div>
         </div>
@@ -52,26 +52,75 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
       <div className="relative">
         <div className="flex items-center gap-2 mb-2">
           <Crown className="h-5 w-5 text-primary" />
-          <h3 className="font-cinzel text-xl font-bold">LifeonRPG Premium</h3>
+          <h3 className="font-cinzel text-xl font-bold">{t("pricing.access_plan_title")}</h3>
           <Badge className="bg-primary/20 text-primary border-primary/40 ml-auto">
             <Sparkles className="h-3 w-3 mr-1" />
-            7 dias grátis
+            {t("pricing.monthly.badge")}
           </Badge>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-4">
+          {t("pricing.access_plan_subtitle")}
+        </p>
+
+        <div className="grid gap-3 mb-4 md:grid-cols-2">
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold text-foreground">{t("pricing.monthly.name")}</p>
+              <Badge variant="outline" className="border-primary/30 text-primary">{t("pricing.monthly.badge")}</Badge>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="font-cinzel text-2xl font-bold text-primary">{t("pricing.price_currency")} {t("pricing.monthly.price_amount")}</span>
+              <span className="text-sm text-muted-foreground">{t("pricing.monthly.price_period")}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{t("pricing.monthly.desc")}</p>
+            <Button
+              onClick={() => openCheckout({ priceId: "premium_monthly" })}
+              disabled={loading}
+              className="mt-3 w-full"
+              size="sm"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Crown className="h-4 w-4 mr-2" />}
+              {t("pricing.monthly.cta")}
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-accent/40 bg-accent/10 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold text-foreground">{t("pricing.annual.name")}</p>
+              <Badge className="bg-accent/20 text-accent border-accent/40">{t("pricing.annual.badge")}</Badge>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="font-cinzel text-2xl font-bold text-primary">{t("pricing.price_currency")} {t("pricing.annual.price_amount")}</span>
+              <span className="text-sm text-muted-foreground">{t("pricing.annual.price_period")}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{t("pricing.annual.desc")}</p>
+            <p className="mt-2 text-xs font-medium text-accent">{t("pricing.annual.bonus")}</p>
+            <Button
+              onClick={() => openCheckout({ priceId: "premium_annual" })}
+              disabled={loading}
+              className="mt-3 w-full bg-accent text-accent-foreground hover:bg-accent/90"
+              size="sm"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Crown className="h-4 w-4 mr-2" />}
+              {t("pricing.annual.cta")}
+            </Button>
+          </div>
         </div>
 
         <div className="mb-4">
           <div className="flex items-baseline gap-1">
-            <span className="font-cinzel text-3xl font-bold text-primary">R$ 4,90</span>
-            <span className="text-sm text-muted-foreground">/mês</span>
+            <span className="font-cinzel text-3xl font-bold text-primary">{t("pricing.price_currency")} {t("pricing.monthly.price_amount")}</span>
+            <span className="text-sm text-muted-foreground">{t("pricing.monthly.price_period")}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Preço equivalente em USD, EUR, GBP e mais — adaptado à sua região.
+            {t("pricing.region_note")}
           </p>
         </div>
 
         {!compact && (
           <ul className="space-y-2 mb-5">
-            {FEATURES.map((f) => (
+            {features.map((f) => (
               <li key={f} className="flex items-start gap-2 text-sm">
                 <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <span>{f}</span>
@@ -80,22 +129,8 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
           </ul>
         )}
 
-        <Button
-          onClick={() => openCheckout({ priceId: "premium_monthly" })}
-          disabled={loading}
-          className="w-full"
-          size="lg"
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Crown className="h-4 w-4 mr-2" />
-          )}
-          Começar 7 dias grátis
-        </Button>
-
         <p className="text-[11px] text-center text-muted-foreground mt-2">
-          Cancele quando quiser • Cobrança via Paddle (MoR global)
+          {t("pricing.mor_note")}
         </p>
       </div>
     </Card>

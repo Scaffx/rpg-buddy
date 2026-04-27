@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,6 +11,7 @@ import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 
 export default function HealthPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,10 +36,10 @@ export default function HealthPage() {
 
       if (uploadError) throw uploadError;
 
-      toast.success('📄 Exame enviado com sucesso!');
+      toast.success(t('app.health.toast_upload_success'));
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error: any) {
-      toast.error('Erro ao enviar exame: ' + error.message);
+      toast.error(t('app.health.toast_upload_error', { message: error.message }));
     } finally {
       setUploading(false);
     }
@@ -60,10 +62,10 @@ export default function HealthPage() {
     },
     onSuccess: (data) => {
       setAnalysisResult(data);
-      toast.success('✨ Análise concluída!');
+      toast.success(t('app.health.toast_analysis_success'));
     },
     onError: () => {
-      toast.error('Erro ao analisar o documento');
+      toast.error(t('app.health.toast_analysis_error'));
     },
   });
 
@@ -72,7 +74,7 @@ export default function HealthPage() {
       <div className="space-y-6 max-w-3xl mx-auto">
         <div className="flex items-center gap-2">
           <Heart className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-display font-bold text-primary text-glow">Saúde</h1>
+          <h1 className="text-2xl font-display font-bold text-primary text-glow">{t('app.health.page_title')}</h1>
         </div>
 
         <motion.div
@@ -82,8 +84,8 @@ export default function HealthPage() {
         >
           <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
-            <p className="font-semibold text-foreground mb-1">💡 Dica:</p>
-            <p>O acompanhamento regular de sua saúde é importante! Marque suas refeições e hidratação em <strong>"Meu Perfil"</strong> para ganhar XP.</p>
+            <p className="font-semibold text-foreground mb-1">{t('app.health.notice_title')}</p>
+            <p>{t('app.health.notice_body')}</p>
           </div>
         </motion.div>
 
@@ -95,7 +97,7 @@ export default function HealthPage() {
         >
           <div className="flex items-center gap-2 mb-4">
             <FileText className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-display font-bold text-foreground">📋 Exames Médicos</h3>
+            <h3 className="font-display font-bold text-foreground">{t('app.health.section_medical_exams')}</h3>
           </div>
 
           <div 
@@ -119,10 +121,10 @@ export default function HealthPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                {uploading ? 'Enviando...' : 'Clique para carregar exame médico'}
+                {uploading ? t('app.health.upload_uploading') : t('app.health.upload_idle')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                PDF, Imagem ou Documento (máx. 10MB)
+                {t('app.health.upload_hint')}
               </p>
             </div>
           </div>
@@ -136,11 +138,11 @@ export default function HealthPage() {
           >
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="w-5 h-5 text-emerald-400" />
-              <h3 className="font-display font-bold text-foreground">📊 Resultado da Análise</h3>
+              <h3 className="font-display font-bold text-foreground">{t('app.health.section_analysis_result')}</h3>
             </div>
 
             <div className="text-center p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-              <p className="text-sm text-muted-foreground mb-2">Pontuação de Saúde</p>
+              <p className="text-sm text-muted-foreground mb-2">{t('app.health.label_health_score')}</p>
               <div className="text-4xl font-bold text-emerald-400 mb-2">{analysisResult.healthScore}%</div>
               <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                 <div
@@ -152,21 +154,21 @@ export default function HealthPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Pressão Arterial</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('app.health.label_blood_pressure')}</p>
                 <p className="text-lg font-bold text-blue-400">{analysisResult.bloodPressure}</p>
               </div>
               <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Colesterol</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('app.health.label_cholesterol')}</p>
                 <p className="text-lg font-bold text-yellow-400">{analysisResult.cholesterol}</p>
               </div>
               <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Glicose</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('app.health.label_glucose')}</p>
                 <p className="text-lg font-bold text-orange-400">{analysisResult.glucose}</p>
               </div>
             </div>
 
             <div className="space-y-2 pt-2 border-t border-border">
-              <p className="text-xs font-semibold text-muted-foreground">💡 Recomendações:</p>
+              <p className="text-xs font-semibold text-muted-foreground">{t('app.health.label_recommendations')}</p>
               <ul className="space-y-1">
                 {analysisResult.recommendations.map((rec: string, idx: number) => (
                   <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -185,13 +187,13 @@ export default function HealthPage() {
           transition={{ delay: 0.2 }}
           className="rpg-card space-y-2"
         >
-          <h3 className="font-bold text-foreground">💡 Dicas de Saúde</h3>
+          <h3 className="font-bold text-foreground">{t('app.health.section_tips')}</h3>
           <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-            <li>Beba cerca de 2 litros de água por dia</li>
-            <li>Faça 3 refeições principais</li>
-            <li>Mantenha uma rotina regular</li>
-            <li>Consulte um médico regularmente</li>
-            <li>Carregar exames aqui para acompanhar sua saúde</li>
+            <li>{t('app.health.tip_1')}</li>
+            <li>{t('app.health.tip_2')}</li>
+            <li>{t('app.health.tip_3')}</li>
+            <li>{t('app.health.tip_4')}</li>
+            <li>{t('app.health.tip_5')}</li>
           </ul>
         </motion.div>
       </div>

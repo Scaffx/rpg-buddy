@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
@@ -35,6 +36,7 @@ function useRankings(region: string | null) {
 }
 
 export default function BossPage() {
+  const { t } = useTranslation();
   const { data: bosses, isLoading } = useBosses();
   const { data: battles } = useBossBattles();
   const { data: profile } = useProfile();
@@ -66,53 +68,53 @@ export default function BossPage() {
     setActiveCombat(null);
   };
 
-  const dungeons = [
+  const dungeons = useMemo(() => [
     {
       id: '1',
-      name: 'Catacumbas Perdidas',
-      difficulty: 'Médio',
+      name: t('app.boss.dungeon_1_name'),
+      difficulty: t('app.boss.difficulty_medium'),
       icon: '🗿',
       minLevel: 5,
       requiredPlayers: 3,
       currentPlayers: 2,
-      boss: { name: 'Guardião das Sombras', hp: 150, icon: '👹' },
+      boss: { name: t('app.boss.dungeon_1_boss'), hp: 150, icon: '👹' },
       xpReward: 200,
-      description: 'Uma masmorra antiga repleta de mistérios',
-      uniqueItem: 'Capa das Sombras',
-      specialCoin: 'Moeda Sombria',
-      titleReward: 'O Guardião das Sombras',
+      description: t('app.boss.dungeon_1_desc'),
+      uniqueItem: t('app.boss.dungeon_1_item'),
+      specialCoin: t('app.boss.dungeon_1_coin'),
+      titleReward: t('app.boss.dungeon_1_title'),
     },
     {
       id: '2',
-      name: 'Torre da Perdição',
-      difficulty: 'Difícil',
+      name: t('app.boss.dungeon_2_name'),
+      difficulty: t('app.boss.difficulty_hard'),
       icon: '🏰',
       minLevel: 10,
       requiredPlayers: 4,
       currentPlayers: 3,
-      boss: { name: 'Feiticeiro Arcano', hp: 200, icon: '🧙' },
+      boss: { name: t('app.boss.dungeon_2_boss'), hp: 200, icon: '🧙' },
       xpReward: 300,
-      description: 'Um desafio épico para os bravos aventureiros',
-      uniqueItem: 'Cajado do Destino',
-      specialCoin: 'Moeda Arcana',
-      titleReward: 'O Conjurador da Perdição',
+      description: t('app.boss.dungeon_2_desc'),
+      uniqueItem: t('app.boss.dungeon_2_item'),
+      specialCoin: t('app.boss.dungeon_2_coin'),
+      titleReward: t('app.boss.dungeon_2_title'),
     },
     {
       id: '3',
-      name: 'Floresta Maldita',
-      difficulty: 'Fácil',
+      name: t('app.boss.dungeon_3_name'),
+      difficulty: t('app.boss.difficulty_easy'),
       icon: '🌲',
       minLevel: 2,
       requiredPlayers: 2,
       currentPlayers: 1,
-      boss: { name: 'Besta Selvagem', hp: 100, icon: '🐺' },
+      boss: { name: t('app.boss.dungeon_3_boss'), hp: 100, icon: '🐺' },
       xpReward: 150,
-      description: 'Uma masmorra para iniciantes',
-      uniqueItem: 'Garra da Fera',
-      specialCoin: 'Moeda da Natureza',
-      titleReward: 'O Domador da Floresta',
+      description: t('app.boss.dungeon_3_desc'),
+      uniqueItem: t('app.boss.dungeon_3_item'),
+      specialCoin: t('app.boss.dungeon_3_coin'),
+      titleReward: t('app.boss.dungeon_3_title'),
     },
-  ];
+  ], [t]);
 
   // Set of boss IDs already defeated
   const defeatedBossIds = new Set(
@@ -120,7 +122,7 @@ export default function BossPage() {
   );
 
   const handleJoinDungeon = (dungeonName: string) => {
-    toast({ title: `✨ Você se juntou a ${dungeonName}!`, description: 'Aguardando outros jogadores...' });
+      toast({ title: `✨ ${t('app.boss.joined_dungeon', { name: dungeonName })}`, description: t('app.boss.waiting_players') });
   };
 
   const handleStartArenaCombat = async (boss: any) => {
@@ -149,11 +151,11 @@ export default function BossPage() {
         playerMp: currentMp,
         playerMaxMp: maxMp,
       });
-      toast({ title: '⚔️ Combate iniciado', description: `Arena aberta contra ${boss.name}.` });
+      toast({ title: `⚔️ ${t('app.boss.combat_started')}`, description: t('app.boss.arena_opened', { name: boss.name }) });
     } catch (err: any) {
       toast({
-        title: 'Erro ao iniciar combate',
-        description: err?.message || 'Não foi possível iniciar combate agora.',
+        title: t('app.boss.error_start_combat'),
+        description: err?.message || t('app.boss.error_start_combat_desc'),
         variant: 'destructive',
       });
     }
@@ -176,7 +178,7 @@ export default function BossPage() {
         <div className="flex items-center gap-2">
           <Skull className="w-6 h-6 text-destructive" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
-            Ir para aventura
+            {t('app.boss.page_title')}
           </h1>
         </div>
 
@@ -190,7 +192,7 @@ export default function BossPage() {
                 : "bg-secondary border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            ⚔️ Aventura Solo
+            ⚔️ {t('app.boss.tab_solo')}
           </button>
           <button
             onClick={() => setActiveTab("coletiva")}
@@ -200,7 +202,7 @@ export default function BossPage() {
                 : "bg-secondary border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            👥 Masmorra Coletiva
+            👥 {t('app.boss.tab_dungeon')}
           </button>
           <button
             onClick={() => setActiveTab("ranking")}
@@ -210,7 +212,7 @@ export default function BossPage() {
                 : "bg-secondary border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            🏆 Ranking
+            🏆 {t('app.boss.tab_ranking')}
           </button>
         </div>
 
@@ -226,7 +228,7 @@ export default function BossPage() {
                   <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
                     <span className="text-lg">🔑</span>
                     <span className="font-bold text-primary text-lg">{(profile as any).boss_keys || 0}</span>
-                    <span className="text-xs text-muted-foreground">Chaves</span>
+                    <span className="text-xs text-muted-foreground">{t('app.boss.keys_label')}</span>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -302,7 +304,7 @@ export default function BossPage() {
 
                     {/* Difficulty */}
                     <div className="flex items-center gap-1 text-xs">
-                      <span className="text-muted-foreground">Dificuldade:</span>
+                      <span className="text-muted-foreground">{t('app.boss.difficulty_label')}:</span>
                       {Array.from({ length: difficultyStars }).map((_, idx) => (
                         <span key={idx} className="text-yellow-400">⭐</span>
                       ))}
@@ -311,7 +313,7 @@ export default function BossPage() {
                     {/* Skills */}
                     {skills.length > 0 && (
                       <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs text-left space-y-1">
-                        <p className="font-semibold text-foreground mb-1">⚡ Habilidades:</p>
+                        <p className="font-semibold text-foreground mb-1">⚡ {t('app.boss.skills_label')}:</p>
                         {skills.map((skill, idx) => (
                           <div key={idx}>
                             <span className="font-semibold text-primary">{skill.name}</span>
@@ -324,7 +326,7 @@ export default function BossPage() {
                     {/* Mechanic */}
                     {boss.mechanic && (
                       <div className="w-full text-xs text-left bg-primary/10 rounded-lg p-2 border border-primary/20">
-                        <span className="font-semibold text-primary">🎯 Mecânica:</span>{' '}
+                        <span className="font-semibold text-primary">🎯 {t('app.boss.mechanic_label')}:</span>{' '}
                         <span className="text-foreground">{boss.mechanic}</span>
                       </div>
                     )}
@@ -338,21 +340,21 @@ export default function BossPage() {
                         <div><p className="text-muted-foreground">AGI</p><p className="font-bold text-foreground">{b.agi}</p></div>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-2">
-                        Fraqueza tática: <span className="font-semibold text-primary">{b.weakness}</span> • Ameaça: <span className="font-semibold text-destructive">{b.threat}</span>
+                        {t('app.boss.weakness_label')}: <span className="font-semibold text-primary">{b.weakness}</span> • {t('app.boss.threat_label')}: <span className="font-semibold text-destructive">{b.threat}</span>
                       </p>
                     </div>
 
                     {isDefeated ? (
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        ✅ Boss Derrotado
+                        ✅ {t('app.boss.boss_defeated')}
                       </Button>
                     ) : isLocked ? (
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔒 Requer Nível {boss.level}
+                        🔒 {t('app.boss.requires_level', { n: boss.level })}
                       </Button>
                     ) : ((profile as any)?.boss_keys || 0) < (boss.keys_cost || 1) ? (
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔑 Precisa de {boss.keys_cost || 1} Chaves (tem {(profile as any)?.boss_keys || 0})
+                        🔑 {t('app.boss.needs_keys', { need: boss.keys_cost || 1, have: (profile as any)?.boss_keys || 0 })}
                       </Button>
                     ) : (
                       <div className="w-full grid grid-cols-1 gap-2">
@@ -367,7 +369,7 @@ export default function BossPage() {
                           ) : (
                             <Skull className="w-4 h-4 mr-1" />
                           )}
-                          Enfrentar boss (🔑 {boss.keys_cost || 1})
+                          {t('app.boss.fight_boss', { keys: boss.keys_cost || 1 })}
                         </Button>
                       </div>
                     )}
@@ -381,7 +383,7 @@ export default function BossPage() {
             {/* Battle history */}
             {battles && battles.length > 0 && (
               <div>
-                <h2 className="text-lg font-display font-semibold text-foreground mb-3">Histórico de Batalhas</h2>
+                <h2 className="text-lg font-display font-semibold text-foreground mb-3">{t('app.boss.battle_history')}</h2>
                 <div className="space-y-2">
                   {battles.slice(0, 10).map((b) => (
                     <div key={b.id} className="rpg-card flex items-center justify-between">
@@ -390,12 +392,12 @@ export default function BossPage() {
                         <div>
                           <p className="text-sm text-foreground">{(b as any).bosses?.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            Dano: {b.damage_dealt} • {new Date(b.created_at).toLocaleString('pt-BR')}
+                            {t('app.boss.damage_dealt')}: {b.damage_dealt} • {new Date(b.created_at).toLocaleString('pt-BR')}
                           </p>
                         </div>
                       </div>
                       <span className={`text-sm font-bold ${b.won ? 'text-success' : 'text-destructive'}`}>
-                        {b.won ? '✅ Vitória' : '❌ Derrota'}
+                        {b.won ? `✅ ${t('app.boss.victory')}` : `❌ ${t('app.boss.defeat')}`}
                       </span>
                     </div>
                   ))}
@@ -541,13 +543,13 @@ export default function BossPage() {
             <div className="rpg-card bg-secondary/50 border-border/50">
               <div className="flex items-center gap-2 mb-2">
                 <Flame className="w-4 h-4 text-yellow-400" />
-                <p className="text-sm font-bold text-foreground">Nível de Poder — Como é calculado?</p>
+                <p className="text-sm font-bold text-foreground">{t('app.boss.power_level_title')}</p>
               </div>
               <div className="bg-muted/60 rounded-lg p-3 border border-border/40 font-mono text-center">
                 <p className="text-sm text-primary font-bold">Poder = (Nível × 100) + (XP Total ÷ 10)</p>
               </div>
               <p className="text-[11px] text-muted-foreground mt-2">
-                Quanto maior seu nível e XP acumulado, mais alto será seu Nível de Poder no ranking.
+                {t('app.boss.power_level_desc')}
               </p>
             </div>
 
@@ -557,7 +559,7 @@ export default function BossPage() {
                 <div className="flex items-center gap-3">
                   <Crown className="w-5 h-5 text-primary" />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-foreground">Sua posição</p>
+                    <p className="text-sm font-semibold text-foreground">{t('app.boss.your_position')}</p>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       <span className="text-xs text-muted-foreground">Nível {profile.level}</span>
                       <span className="text-xs font-bold text-primary">⚡ Poder: {getPowerLevel(profile.level, profile.total_xp)}</span>
@@ -602,7 +604,7 @@ export default function BossPage() {
                       <div className="flex-1 min-w-0">
                         <p className={`font-semibold truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
                           {player.display_name && player.display_name.trim() !== '' ? player.display_name : 'Aventureiro'}
-                          {isCurrentUser && <span className="text-xs text-primary ml-2">(Você)</span>}
+                          {isCurrentUser && <span className="text-xs text-primary ml-2">({t('app.boss.you')})</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Nível {player.level} • {player.total_xp} XP • ⚡ Poder: {power}
@@ -619,7 +621,7 @@ export default function BossPage() {
             ) : (
               <div className="rpg-card text-center py-8">
                 <Trophy className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">Nenhum jogador encontrado nesta região.</p>
+                <p className="text-muted-foreground">{t('app.boss.no_players')}</p>
               </div>
             )}
           </div>

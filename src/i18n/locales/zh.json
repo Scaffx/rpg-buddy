@@ -37,21 +37,34 @@
   },
   "diff": {
     "eyebrow": "为什么我们与众不同",
-    "title": "大多数习惯应用奖励你打勾。LifeOnRPG则向你索要。",
-    "subtitle": "差别在于后果。这里,忽略任务伤的是角色,而这改变了一切。",
-    "rows": {
+    "title": "按适合你的方式获得应用访问权限。",
+    "subtitle": "R$ 4.90/月是用于访问 LifeOnRPG 应用。你可以按月支付，也可以直接购买年费方案。",
       "punish_title": "追溯性惩罚",
-      "punish_text": "昨天忘了记录'喝水'?系统自动扣XP。没借口,没法改写历史。",
-      "gold_title": "真实金币经济",
-      "gold_text": "击败首领获得金币。金币在时光商店购买临时增益。奖励不是装饰,会影响明天。",
+    "access_plan_title": "LifeOnRPG 访问方案",
+    "access_plan_subtitle": "这是用于完整使用应用的订阅，而不是额外的高级功能包。",
+    "access_active": "访问方案已激活",
+    "access_active_desc": "你的应用访问权限已开启，旅程可以正常继续。",
+    "region_note": "支持 USD、EUR、GBP 等地区等值价格，会按你的地区适配。",
+    "monthly": {
+      "name": "月度方案",
+      "badge": "月度访问",
+      "price_amount": "4.90",
+      "price_period": "/月",
+      "desc": "按月支付，并保持对应用的完整访问权限。",
+      "cta": "订阅月度方案"
+    },
+    "annual": {
+      "name": "年度方案",
+      "badge": "最佳选择",
+      "price_amount": "58.80",
       "attrs_title": "真正重要的属性",
-      "attrs_text": "每个任务关联1个主属性和最多2个副属性。你均衡成长,或发现自己在何处懈怠。",
-      "talk_title": "角色会跟你说话",
-      "talk_text": "情境通知:'你4小时没喝水','今晚连击有风险','首领已解锁'。不是垃圾信息,是角色在召唤你。",
-      "class_title": "进化的职业",
-      "class_text": "6阶共55个职业。下一个职业取决于你优先做了什么。战士唯有兼顾心智才能转圣骑士。",
+      "attrs_text": "每个任务都会关联 1 个主属性和最多 2 个副属性。你要么均衡成长，要么会看清自己忽略了哪里。",
+      "talk_title": "英雄会对你说话",
+      "talk_text": "情境通知：'你已经 4 小时没喝水了'、'今晚连击有风险'、'Boss 已解锁'。这不是垃圾提醒，而是角色在呼唤你。",
+      "class_title": "会进化的职业",
+      "class_text": "55 个职业、6 个阶段。你的下一个职业取决于你真正优先培养了什么。战士只有在你也锻炼心智时，才会进化成圣骑士。",
       "focus_title": "没有无尽内容",
-      "focus_text": "没有信息流可刷,没有社交通知。打开、做任务、关闭。专注于真正重要的事。"
+      "focus_text": "没有可以一直刷的动态流，也没有社交骚扰通知。打开应用，完成任务，关闭它。专注真正重要的事。"
     }
   },
   "security": {
@@ -270,21 +283,39 @@
   },
   "pricing": {
     "eyebrow": "简单定价",
-    "title": "一个套餐。没有套路。",
-    "subtitle": "7天免费试用,可随时通过 Paddle 取消。",
-    "plan_name": "冒险者",
+    "title": "按适合你的方式获得应用访问权限。",
+    "subtitle": "R$ 4.90/月是用于访问 LifeOnRPG 应用。你可以按月支付，也可以直接购买年费方案。",
     "price_currency": "R$",
-    "price_amount": "4.90",
-    "price_period": "/月",
-    "trial": "7天免费",
-    "features": {
-      "f1": "全部11项属性与55个职业",
-      "f2": "完整的每日任务系统",
-      "f3": "60个主题首领与全球排行榜",
-      "f4": "时光商店、成就与数据分析",
-      "f5": "Android 应用 (APK) 与云同步"
+    "access_plan_title": "LifeOnRPG 访问方案",
+    "access_plan_subtitle": "这是用于完整使用应用的订阅，而不是额外的高级功能包。",
+    "access_active": "访问方案已激活",
+    "access_active_desc": "你的应用访问权限已开启，旅程可以正常继续。",
+    "region_note": "支持 USD、EUR、GBP 等地区等值价格，会按你的地区适配。",
+    "monthly": {
+      "name": "月度方案",
+      "badge": "月度访问",
+      "price_amount": "4.90",
+      "price_period": "/月",
+      "desc": "按月支付，并保持对应用的完整访问权限。",
+      "cta": "订阅月度方案"
     },
-    "cta": "开始7天免费试用",
-    "mor_note": "付款由 Paddle.com 处理(Merchant of Record)。"
+    "annual": {
+      "name": "年度方案",
+      "badge": "最佳选择",
+      "price_amount": "58.80",
+      "price_period": "/年",
+      "desc": "同样按每月 R$ 4.90 计算，但按年一次性付款。",
+      "bonus": "年度奖励：赠送 1 把可为另一位用户解锁 2 个月免费访问的钥匙。",
+      "cta": "订阅年度方案"
+    },
+    "features": {
+      "f1": "全部 11 项属性和 55 个职业",
+      "f2": "完整的每日任务系统",
+      "f3": "60 个主题 Boss 和全球排名",
+      "f4": "时间商店、成就与分析",
+      "f5": "带同步功能的 Android 应用 (APK)",
+      "f6": "1 把可赠送给其他用户的 2 个月奖励钥匙"
+    },
+    "mor_note": "支付由 Paddle.com（Merchant of Record）处理。"
   }
 }

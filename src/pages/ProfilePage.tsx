@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+﻿import { useState, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from 'react-i18next';
 import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
@@ -251,6 +252,7 @@ const MEASUREMENT_FIELDS = [
 ];
 
 function BodyEvolutionSection() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: measurements } = useBodyMeasurements();
@@ -325,7 +327,7 @@ function BodyEvolutionSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["body_measurements"] });
-      toast.success("Medidas registradas! 📐");
+      toast.success(t("app.profile.measuresSavedToast"));
       setShowForm(false);
       setFormData({});
       setNotes("");
@@ -335,7 +337,7 @@ function BodyEvolutionSection() {
     },
     onError: () => {
       setUploading(false);
-      toast.error("Erro ao salvar medidas");
+      toast.error(t("app.profile.measuresErrorToast"));
     },
   });
 
@@ -363,26 +365,26 @@ function BodyEvolutionSection() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Ruler className="w-5 h-5 text-emerald-400" />
-          <h3 className="text-sm font-bold text-foreground">🏋️ EVOLUÇÃO FÍSICA</h3>
+          <h3 className="text-sm font-bold text-foreground">{t('app.profile.physicalEvolutionTitle')}</h3>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
           className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"
         >
-          <Plus className="w-3 h-3" /> Nova Medição
+          <Plus className="w-3 h-3" /> {t('app.profile.newMeasurementButton')}
         </button>
       </div>
 
       {/* Form */}
       {showForm && (
         <div className="bg-card border border-emerald-500/20 rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2">
-          <h4 className="text-xs font-bold text-emerald-400">📐 Registrar Medidas</h4>
+          <h4 className="text-xs font-bold text-emerald-400">{t('app.profile.registerMeasuresTitle')}</h4>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {MEASUREMENT_FIELDS.map((f) => (
               <div key={f.key}>
                 <label className="text-[10px] text-muted-foreground mb-0.5 block">
-                  {f.icon} {f.label} ({f.unit})
+                  {f.icon} {t('app.profile.measure_' + f.key)} ({f.unit})
                 </label>
                 <input
                   type="number"
@@ -397,25 +399,25 @@ function BodyEvolutionSection() {
           </div>
 
           <div>
-            <label className="text-[10px] text-muted-foreground mb-0.5 block">📝 Observações</label>
+            <label className="text-[10px] text-muted-foreground mb-0.5 block">{t('app.profile.observationsLabel')}</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full px-2 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-emerald-500/50 outline-none resize-none h-16"
-              placeholder="Como você está se sentindo?"
+              placeholder={t('app.profile.observationsPlaceholder')}
             />
           </div>
 
           {/* Photo Upload */}
           <div>
-            <label className="text-[10px] text-muted-foreground mb-1 block">📷 Foto de Progresso</label>
+            <label className="text-[10px] text-muted-foreground mb-1 block">{t('app.profile.progressPhotoLabel')}</label>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
             <div className="flex items-center gap-3">
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-1 px-3 py-2 bg-muted border border-border rounded-lg text-xs text-muted-foreground hover:border-emerald-500/50 transition-colors"
               >
-                <Upload className="w-3 h-3" /> Escolher foto
+                <Upload className="w-3 h-3" /> {t('app.profile.choosePhotoButton')}
               </button>
               {photoPreview && (
                 <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-emerald-500/30">
@@ -436,7 +438,7 @@ function BodyEvolutionSection() {
             disabled={uploading}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-foreground rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
           >
-            <Save className="w-4 h-4" /> {uploading ? "Salvando..." : "Salvar Medidas"}
+            <Save className="w-4 h-4" /> {uploading ? t('app.profile.savingIndicator') : t('app.profile.saveMeasuresButton')}
           </button>
         </div>
       )}
@@ -446,10 +448,10 @@ function BodyEvolutionSection() {
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              📅 Última medição: {format(new Date(latest.measured_at), "dd MMM yyyy", { locale: ptBR })}
+              {t('app.profile.lastMeasurementLabel')} {format(new Date(latest.measured_at), "dd MMM yyyy", { locale: ptBR })}
             </span>
             {measurements && measurements.length > 1 && (
-              <span className="text-[10px] text-emerald-400">{measurements.length} registros</span>
+              <span className="text-[10px] text-emerald-400">{t('app.profile.recordsCount', { count: measurements.length })}</span>
             )}
           </div>
 
@@ -460,7 +462,7 @@ function BodyEvolutionSection() {
               const diff = getDiff(f.key);
               return (
                 <div key={f.key} className="bg-muted/30 border border-border rounded-lg p-2">
-                  <p className="text-[10px] text-muted-foreground">{f.icon} {f.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{f.icon} {t('app.profile.measure_' + f.key)}</p>
                   <div className="flex items-end gap-1">
                     <span className="text-lg font-bold text-foreground">{Number(value).toFixed(1)}</span>
                     <span className="text-[10px] text-muted-foreground mb-0.5">{f.unit}</span>
@@ -492,9 +494,9 @@ function BodyEvolutionSection() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-emerald-400" />
-              <h4 className="text-xs font-bold text-foreground">GALERIA DE PROGRESSO</h4>
+              <h4 className="text-xs font-bold text-foreground">{t('app.profile.progressGalleryTitle')}</h4>
             </div>
-            <span className="text-[10px] text-muted-foreground">{photosWithUrl.length} fotos</span>
+            <span className="text-[10px] text-muted-foreground">{t('app.profile.photosCount', { count: photosWithUrl.length })}</span>
           </div>
 
           <div className="relative">
@@ -550,8 +552,8 @@ function BodyEvolutionSection() {
       {!latest && !showForm && (
         <div className="text-center py-8 text-muted-foreground">
           <Ruler className="w-8 h-8 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">Nenhuma medição registrada ainda.</p>
-          <p className="text-xs">Clique em "Nova Medição" para começar a rastrear!</p>
+          <p className="text-sm">{t('app.profile.noMeasurementsYet')}</p>
+          <p className="text-xs">{t('app.profile.clickToStartTracking')}</p>
         </div>
       )}
     </div>
@@ -559,6 +561,7 @@ function BodyEvolutionSection() {
 }
 
 function EvolutionChart({ measurements }: { measurements: any[] }) {
+  const { t } = useTranslation();
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["weight_kg"]);
 
   const CHART_METRICS = [
@@ -593,7 +596,7 @@ function EvolutionChart({ measurements }: { measurements: any[] }) {
     <div className="bg-card border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
         <TrendingUp className="w-4 h-4 text-emerald-400" />
-        <h4 className="text-xs font-bold text-foreground">📈 EVOLUÇÃO AO LONGO DO TEMPO</h4>
+        <h4 className="text-xs font-bold text-foreground">{t('app.profile.evolutionChartTitle')}</h4>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -608,7 +611,7 @@ function EvolutionChart({ measurements }: { measurements: any[] }) {
             }`}
             style={selectedMetrics.includes(m.key) ? { borderColor: m.color + "80", backgroundColor: m.color + "20", color: m.color } : {}}
           >
-            {m.label}
+            {t('app.profile.measure_' + m.key)}
           </button>
         ))}
       </div>
@@ -637,7 +640,7 @@ function EvolutionChart({ measurements }: { measurements: any[] }) {
                 strokeWidth={2}
                 dot={{ r: 3, fill: m.color }}
                 connectNulls
-                name={`${m.label} (${m.unit})`}
+                name={`${t('app.profile.measure_' + m.key)} (${m.unit})`}
               />
             ))}
           </LineChart>
@@ -648,11 +651,12 @@ function EvolutionChart({ measurements }: { measurements: any[] }) {
 }
 
 function ThemeToggleSettings() {
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   
   return (
     <div>
-      <label className="text-xs text-muted-foreground mb-2 block">🎨 Tema</label>
+      <label className="text-xs text-muted-foreground mb-2 block">{t('app.profile.themeLabel')}</label>
       <div className="flex items-center gap-2">
         <button
           onClick={() => setTheme('dark')}
@@ -663,7 +667,7 @@ function ThemeToggleSettings() {
           }`}
         >
           <Moon className="w-4 h-4" />
-          <span className="text-sm font-medium">Escuro</span>
+          <span className="text-sm font-medium">{t('app.profile.themeDark')}</span>
         </button>
         <button
           onClick={() => setTheme('light')}
@@ -674,7 +678,7 @@ function ThemeToggleSettings() {
           }`}
         >
           <Sun className="w-4 h-4" />
-          <span className="text-sm font-medium">Claro</span>
+          <span className="text-sm font-medium">{t('app.profile.themeLight')}</span>
         </button>
       </div>
     </div>
@@ -700,6 +704,7 @@ export default function ProfilePage() {
   const awardHealthXP = useAwardHealthXP();
   const updateDisplayName = useUpdateDisplayName();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   // Amigos e conquistas
   const { data: friends = [] } = useFriends();
@@ -861,7 +866,7 @@ export default function ProfilePage() {
       // Penalidade antiga para refeições (antes do LV 16)
       if (mealsToday < mealHalf) {
         mealPenalty = (mealHalf - mealsToday) * 10;
-        penaltyMessages.push(`⚠️ Você perdeu ${mealPenalty} HP por não comer o suficiente!`);
+        penaltyMessages.push(t('app.profile.mealPenaltyMsg', { penalty: mealPenalty }));
       }
     }
   }
@@ -878,12 +883,12 @@ export default function ProfilePage() {
   const fatigue = heroAwake ? (healthStats?.fatigue ?? 0) : 0;
   const fatigueStatus =
     fatigue >= 75
-      ? { label: 'Exausto', className: 'text-red-400' }
+      ? { label: t('app.profile.fatigueExhausted'), className: 'text-red-400' }
       : fatigue >= 45
-        ? { label: 'Alta', className: 'text-orange-400' }
+        ? { label: t('app.profile.fatigueHigh'), className: 'text-orange-400' }
         : fatigue >= 15
-          ? { label: 'Media', className: 'text-yellow-400' }
-          : { label: 'Baixa', className: 'text-emerald-400' };
+          ? { label: t('app.profile.fatigueMedium'), className: 'text-yellow-400' }
+          : { label: t('app.profile.fatigueLow'), className: 'text-emerald-400' };
 
   const saveSettings = useMutation({
     mutationFn: async () => {
@@ -908,14 +913,14 @@ export default function ProfilePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["health_stats"] });
-      toast.success("Configurações salvas!");
+      toast.success(t('app.profile.settingsSavedToast'));
       setShowSettings(false);
     },
   });
 
   const saveCombatLoadout = useMutation({
     mutationFn: async (skillIds: string[]) => {
-      if (!user) throw new Error('Nao autenticado');
+      if (!user) throw new Error(t('app.profile.notAuthenticated'));
 
       const payload = skillIds
         .map((id) => unlockedSkillsById.get(id))
@@ -938,10 +943,10 @@ export default function ProfilePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      toast.success('Loadout de combate salvo com sucesso!');
+      toast.success(t('app.profile.combatLoadoutSavedToast'));
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Nao foi possivel salvar o loadout de combate.');
+      toast.error(err?.message || t('app.profile.combatLoadoutErrorToast'));
     },
   });
 
@@ -955,7 +960,7 @@ export default function ProfilePage() {
         return prev.filter((id) => id !== skillId);
       }
       if (prev.length >= MAX_COMBAT_SKILLS) {
-        toast.error(`Voce so pode equipar ate ${MAX_COMBAT_SKILLS} habilidades.`);
+        toast.error(t('app.profile.maxSkillsError', { max: MAX_COMBAT_SKILLS }));
         return prev;
       }
       return [...prev, skillId];
@@ -987,10 +992,10 @@ export default function ProfilePage() {
         queryClient.invalidateQueries({ queryKey: ["dailyTracking", user?.id] }),
       ]);
       await queryClient.refetchQueries({ queryKey: ["meal_log", user?.id], type: "active" });
-      toast.success("Refeição registrada! 🍖");
+      toast.success(t('app.profile.mealLoggedToast'));
     },
     onError: (err) => {
-      toast.error("Erro ao registrar refeição: " + (err?.message || err));
+      toast.error(t('app.profile.mealLogErrorPrefix') + (err?.message || err));
     }
   });
 
@@ -1022,10 +1027,10 @@ export default function ProfilePage() {
         queryClient.refetchQueries({ queryKey: ["health_stats", user?.id], type: "active" }),
       ]);
 
-      toast.success("Água registrada! 💧");
+      toast.success(t('app.profile.waterLoggedToast'));
     },
     onError: (err) => {
-      toast.error("Erro ao registrar água: " + (err?.message || err));
+      toast.error(t('app.profile.waterLogErrorPrefix') + (err?.message || err));
     }
   });
 
@@ -1033,13 +1038,13 @@ export default function ProfilePage() {
     try {
       await awardHealthXP.mutateAsync();
       setXpAwarded(true);
-      toast.success('🎉 Desafio Completado! +35 XP por manter a saúde em dia!');
+      toast.success(t('app.profile.healthChallengeCompleteToast'));
     } catch (error: any) {
       if (error.message.includes('já ganhou')) {
         setXpAwarded(true);
-        toast.info('⚠️ Bônus já coletado. Volte amanhã para ganhar mais XP!');
+        toast.info(t('app.profile.xpAlreadyCollectedToast'));
       } else {
-        toast.error('Erro ao conceder XP: ' + error.message);
+        toast.error(t('app.profile.xpErrorPrefix') + error.message);
       }
     }
   };
@@ -1066,10 +1071,10 @@ export default function ProfilePage() {
 
   const respecClass = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error("Não autenticado");
+      if (!user) throw new Error(t('app.profile.notAuthenticated'));
       const currentClass = (profile as any)?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
       if (selectedRespecClass === currentClass) {
-        throw new Error("Você já está nessa classe.");
+        throw new Error(t('app.profile.alreadyInClass'));
       }
 
       // Primeiro respec é gratuito
@@ -1087,7 +1092,7 @@ export default function ProfilePage() {
         if (!isFirstRespec) {
           const { data: bal } = await supabase.from('user_balance').select('gold').eq('user_id', user.id).single();
           const gold = (bal as any)?.gold ?? 0;
-          if (gold < RESPEC_COST) throw new Error(`Ouro insuficiente! Você tem ${gold}, precisa de ${RESPEC_COST}.`);
+          if (gold < RESPEC_COST) throw new Error(t('app.profile.insufficientGold', { gold, required: RESPEC_COST }));
           await supabase.from('user_balance').update({ gold: gold - RESPEC_COST } as any).eq('user_id', user.id);
         }
       }
@@ -1109,13 +1114,13 @@ export default function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["gold-balance"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       if (data.isFirstRespec) {
-        toast.success(`Classe alterada gratuitamente! Novo item: ${data.starterItem}`);
+        toast.success(t('app.profile.classChangedFreeToast', { item: data.starterItem }));
       } else {
-        toast.success(`Classe alterada! Novo item inicial: ${data.starterItem}`);
+        toast.success(t('app.profile.classChangedToast', { item: data.starterItem }));
       }
     },
     onError: (err: any) => {
-      toast.error(err.message || "Falha ao fazer respec de classe");
+      toast.error(err.message || t('app.profile.classChangeErrorToast'));
     },
   });
 
@@ -1125,7 +1130,7 @@ export default function ProfilePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-primary font-display">⚔️ Meu Perfil</h1>
+            <h1 className="text-2xl font-bold text-primary font-display">{t('app.profile.pageTitle')}</h1>
             {editingName ? (
               <div className="flex items-center gap-2 mt-1">
                 <input
@@ -1137,7 +1142,7 @@ export default function ProfilePage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       updateDisplayName.mutate(newName, {
-                        onSuccess: () => { toast.success("Nome atualizado! ✨"); setEditingName(false); },
+                        onSuccess: () => { toast.success(t('app.profile.nameUpdatedToast')); setEditingName(false); },
                         onError: (err: any) => toast.error(err.message),
                       });
                     }
@@ -1147,7 +1152,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => {
                     updateDisplayName.mutate(newName, {
-                      onSuccess: () => { toast.success("Nome atualizado! ✨"); setEditingName(false); },
+                      onSuccess: () => { toast.success(t('app.profile.nameUpdatedToast')); setEditingName(false); },
                       onError: (err: any) => toast.error(err.message),
                     });
                   }}
@@ -1162,11 +1167,11 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-muted-foreground">{profile?.display_name || "Aventureiro"}</p>
+                <p className="text-sm text-muted-foreground">{profile?.display_name || t('app.profile.defaultAdventurerName')}</p>
                 <button
                   onClick={() => { setNewName(profile?.display_name || ""); setEditingName(true); }}
                   className="p-1 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-                  title="Editar nome (1x por semana)"
+                  title={t('app.profile.editNameTooltip')}
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
@@ -1185,11 +1190,11 @@ export default function ProfilePage() {
         {/* Tabs */}
         <div className="flex gap-1 sm:gap-2 border-b border-border overflow-x-auto">
           {[
-            { id: "perfil",      label: "📊 Perfil" },
-            { id: "habilidades", label: "🌟 Habilidades" },
-            { id: "inventario",  label: "🎒 Inventário" },
-            { id: "amigos",      label: "🤝 Amigos", badge: pendingRequests.length > 0 ? pendingRequests.length : undefined },
-            { id: "conquistas",  label: "🏆 Conquistas", badge: userAchievements.length > 0 ? userAchievements.length : undefined },
+            { id: "perfil",      label: t("app.profile.tabPerfil") },
+            { id: "habilidades", label: t("app.profile.tabHabilidades") },
+            { id: "inventario",  label: t("app.profile.tabInventario") },
+            { id: "amigos",      label: t("app.profile.tabAmigos"), badge: pendingRequests.length > 0 ? pendingRequests.length : undefined },
+            { id: "conquistas",  label: t("app.profile.tabConquistas"), badge: userAchievements.length > 0 ? userAchievements.length : undefined },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1213,25 +1218,25 @@ export default function ProfilePage() {
         {/* Settings Panel */}
         {showSettings && (
           <div className="bg-card border border-border rounded-xl p-4 space-y-4 animate-in slide-in-from-top-2">
-            <h3 className="text-sm font-bold text-foreground">⚙️ Configurações do Herói</h3>
+            <h3 className="text-sm font-bold text-foreground">{t('app.profile.settingsTitle')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Peso (kg)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('app.profile.weightLabel')}</label>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setWeight(Math.max(30, weight - 1))} className="p-1 rounded bg-muted hover:bg-muted/80"><Minus className="w-4 h-4" /></button>
                   <span className="text-lg font-bold text-foreground w-16 text-center">{weight}</span>
                   <button onClick={() => setWeight(Math.min(200, weight + 1))} className="p-1 rounded bg-muted hover:bg-muted/80"><Plus className="w-4 h-4" /></button>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">Meta de água: {Math.round(weight * 35)}ml/dia</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{t('app.profile.waterGoalHint', { amount: Math.round(weight * 35) })}</p>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Refeições por dia</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('app.profile.mealsPerDayLabel')}</label>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setMealsTarget(Math.max(1, mealsTarget - 1))} className="p-1 rounded bg-muted hover:bg-muted/80"><Minus className="w-4 h-4" /></button>
                   <span className="text-lg font-bold text-foreground w-16 text-center">{mealsTarget}x</span>
                   <button onClick={() => setMealsTarget(Math.min(8, mealsTarget + 1))} className="p-1 rounded bg-muted hover:bg-muted/80"><Plus className="w-4 h-4" /></button>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">Mínimo {Math.ceil(mealsTarget / 2)}x para não perder HP</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{t('app.profile.mealsMinimumHint', { count: Math.ceil(mealsTarget / 2) })}</p>
               </div>
             </div>
 
@@ -1239,7 +1244,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
-                  <Moon className="w-3.5 h-3.5 text-indigo-400" /> Horário que durmo
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" /> {t('app.profile.sleepTimeLabel')}
                 </label>
                 <input
                   type="time"
@@ -1247,11 +1252,11 @@ export default function ProfilePage() {
                   onChange={(e) => setSleepTime(e.target.value)}
                   className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-indigo-500/50 outline-none"
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">Sem penalidade de fome/sede entre dormir e acordar</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{t('app.profile.sleepTimeHint')}</p>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
-                  <Sun className="w-3.5 h-3.5 text-amber-400" /> Horário que acordo
+                  <Sun className="w-3.5 h-3.5 text-amber-400" /> {t('app.profile.wakeTimeLabel')}
                 </label>
                 <input
                   type="time"
@@ -1259,14 +1264,14 @@ export default function ProfilePage() {
                   onChange={(e) => setWakeTime(e.target.value)}
                   className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-amber-500/50 outline-none"
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">Ao acordar: HP e MP voltam ao máximo e a fadiga zera</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{t('app.profile.wakeTimeHint')}</p>
               </div>
             </div>
             
             {/* Volume Control */}
             <div>
               <label className="text-xs text-muted-foreground mb-2 block flex items-center gap-2">
-                🔊 Volume de Som
+                {t('app.profile.volumeLabel')}
               </label>
               <div className="flex items-center gap-3">
                 <input
@@ -1283,7 +1288,7 @@ export default function ProfilePage() {
                 />
                 <span className="text-sm font-bold text-foreground w-12 text-right">{volume}%</span>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Sons de clique, descanso e combate</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{t('app.profile.volumeHint')}</p>
             </div>
 
             {/* Theme Toggle */}
@@ -1296,7 +1301,7 @@ export default function ProfilePage() {
               }}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
             >
-              <Save className="w-4 h-4" /> Salvar
+              <Save className="w-4 h-4" /> {t('app.profile.saveButton')}
             </button>
           </div>
         )}
@@ -1312,9 +1317,9 @@ export default function ProfilePage() {
                 className="rpg-card-glow bg-gradient-to-r from-success/10 to-primary/10 border-success/30 text-center p-6 space-y-3"
               >
                 <span className="text-4xl inline-block">🏆</span>
-                <h2 className="font-display font-bold text-lg text-success">Todas as metas completadas!</h2>
-                <p className="text-sm text-muted-foreground">Você ganhou +35 XP por manter a saúde em dia!</p>
-                <div className="text-3xl font-bold text-xp pt-2">✨ +35 XP</div>
+                <h2 className="font-display font-bold text-lg text-success">{t('app.profile.allGoalsComplete')}</h2>
+                <p className="text-sm text-muted-foreground">{t('app.profile.xpHealthRewardMsg')}</p>
+                <div className="text-3xl font-bold text-xp pt-2">{t('app.profile.xpRewardValue')}</div>
               </motion.div>
             )}
             
@@ -1344,7 +1349,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-1.5 w-14">
                   <Flame className="w-5 h-5 text-orange-400" />
                 </div>
-                <span className="text-sm text-muted-foreground">FADIGA:</span>
+                <span className="text-sm text-muted-foreground">{t('app.profile.fatigueLabel')}</span>
                 <span className="text-xl font-bold text-foreground">{fatigue}</span>
                 <span className={`text-xs font-semibold ${fatigueStatus.className}`}>{fatigueStatus.label}</span>
               </div>
@@ -1359,9 +1364,9 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <UtensilsCrossed className="w-5 h-5 text-orange-400" />
-                    <h3 className="text-sm font-bold text-foreground">FOME</h3>
+                    <h3 className="text-sm font-bold text-foreground">{t('app.profile.hungerTitle')}</h3>
                   </div>
-                  <span className="text-xs text-muted-foreground">Meta: {mealsTarget}x/dia</span>
+                  <span className="text-xs text-muted-foreground">{t('app.profile.hungerGoal', { count: mealsTarget })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {Array.from({ length: mealsTarget }).map((_, i) => (
@@ -1371,7 +1376,7 @@ export default function ProfilePage() {
                   ))}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{mealsToday}/{mealsTarget} refeições</span>
+                  <span className="text-xs text-muted-foreground">{t('app.profile.mealsCountText', { current: mealsToday, target: mealsTarget })}</span>
                   <button
                     onClick={() => logMeal.mutate()}
                     disabled={mealsToday >= mealsTarget || logMeal.isPending}
@@ -1379,11 +1384,11 @@ export default function ProfilePage() {
                   >
                     {logMeal.isPending ? (
                       <span className="animate-spin mr-1 w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full"></span>
-                    ) : <Plus className="w-3 h-3" />} Refeição
+                    ) : <Plus className="w-3 h-3" />} {t('app.profile.mealButton')}
                   </button>
                 </div>
                 {mealsToday < mealHalf && (
-                  <p className="text-[10px] text-red-400">⚠️ Coma pelo menos {mealHalf}x para não perder HP!</p>
+                  <p className="text-[10px] text-red-400">{t('app.profile.eatMinimumWarning', { count: mealHalf })}</p>
                 )}
               </div>
 
@@ -1391,7 +1396,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Droplets className="w-5 h-5 text-cyan-400" />
-                    <h3 className="text-sm font-bold text-foreground">SEDE</h3>
+                    <h3 className="text-sm font-bold text-foreground">{t('app.profile.thirstTitle')}</h3>
                   </div>
                   <span className="text-xs text-muted-foreground">{waterTargetMl}ml/dia</span>
                 </div>
@@ -1413,7 +1418,7 @@ export default function ProfilePage() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground text-center">Base: {weight}kg × 35ml = {waterTargetMl}ml. Se ficar abaixo de 50% no dia, ganha +35 de fadiga.</p>
+                <p className="text-[10px] text-muted-foreground text-center">{t('app.profile.waterHint', { weight, target: waterTargetMl })}</p>
               </div>
             </div>
 
@@ -1430,30 +1435,30 @@ export default function ProfilePage() {
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-6 h-6 text-primary" />
-                <h3 className="text-lg font-bold text-foreground">🌟 Habilidades Táticas</h3>
+                <h3 className="text-lg font-bold text-foreground">{t('app.profile.tacticalSkillsTitle')}</h3>
               </div>
               <p className="text-xs text-muted-foreground">
-                Inspiradas no estilo de progressão clássica, mas com design original e balanceamento próprio. O poder de cada habilidade usa seus atributos treinados em missões.
+                {t('app.profile.tacticalSkillsDesc')}
               </p>
 
               <HeroStatusBar />
 
               <div className="bg-muted/30 border border-border rounded-lg p-3 text-xs">
-                <p className="text-foreground font-semibold">Classe inicial: {starterClass}</p>
-                <p className="text-muted-foreground">Item inicial: {starterItem}</p>
-                <p className="text-muted-foreground mt-1">Magia nesta temporada esta mais fraca por design. Builds hibridas com atributos fisicos e taticos tendem a render melhor.</p>
+                <p className="text-foreground font-semibold">{t('app.profile.starterClassInfo', { class: starterClass })}</p>
+                <p className="text-muted-foreground">{t('app.profile.starterItemInfo', { item: starterItem })}</p>
+                <p className="text-muted-foreground mt-1">{t('app.profile.magicWeakNote')}</p>
               </div>
 
               <div className="bg-muted/20 border border-border rounded-lg p-4 flex items-center gap-3">
                 <span className="text-xl">🔒</span>
                 <div>
-                  <p className="text-sm font-bold text-foreground">Classe Permanente</p>
-                  <p className="text-xs text-muted-foreground">Sua classe inicial é permanente e não pode ser alterada após a seleção.</p>
+                  <p className="text-sm font-bold text-foreground">{t('app.profile.permanentClassTitle')}</p>
+                  <p className="text-xs text-muted-foreground">{t('app.profile.permanentClassDesc')}</p>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-bold text-foreground mb-2">Kit Novato (Lv 1 ao 4)</h4>
+                <h4 className="text-sm font-bold text-foreground mb-2">{t('app.profile.noviceKitSection')}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {noviceSkills.map((skill) => (
                     <div
@@ -1470,16 +1475,16 @@ export default function ProfilePage() {
                           <p className="text-[11px] text-muted-foreground">{skill.archetype}</p>
                         </div>
                         <span className={`text-[10px] px-2 py-1 rounded-full border ${skill.unlocked ? "text-emerald-300 border-emerald-500/40" : "text-muted-foreground border-border"}`}>
-                          {skill.unlocked ? "Ativa" : `Req. Lv ${skill.unlockLevel}`}
+                          {skill.unlocked ? t('app.profile.skillActive') : t('app.profile.skillReqLevel', { level: skill.unlockLevel })}
                         </span>
                       </div>
 
                       <p className="text-xs text-muted-foreground">{skill.description}</p>
-                      <p className="text-[11px] text-muted-foreground">Item exigido: {skill.requiredItem}</p>
+                      <p className="text-[11px] text-muted-foreground">{t('app.profile.skillRequiredItem', { item: skill.requiredItem })}</p>
 
                       <div className="grid grid-cols-4 gap-2 text-xs">
                         <div className="bg-background/60 rounded p-2 border border-border/50">
-                          <p className="text-muted-foreground">Poder</p>
+                          <p className="text-muted-foreground">{t('app.profile.skillPower')}</p>
                           <p className="font-bold text-foreground">{skill.power}</p>
                         </div>
                         <div className="bg-background/60 rounded p-2 border border-border/50">
@@ -1487,11 +1492,11 @@ export default function ProfilePage() {
                           <p className="font-bold text-cyan-400">{Math.max(2, Math.min(16, Math.ceil((skill.power || 0) / 15)))}</p>
                         </div>
                         <div className="bg-background/60 rounded p-2 border border-border/50">
-                          <p className="text-muted-foreground">CD</p>
+                          <p className="text-muted-foreground">{t('app.profile.skillCooldown')}</p>
                           <p className="font-bold text-foreground">{skill.cooldown}t</p>
                         </div>
                         <div className="bg-background/60 rounded p-2 border border-border/50">
-                          <p className="text-muted-foreground">Base</p>
+                          <p className="text-muted-foreground">{t('app.profile.skillBase')}</p>
                           <p className="font-bold text-foreground text-[10px]">{skill.basedOn.join(" + ")}</p>
                         </div>
                       </div>
@@ -1505,7 +1510,7 @@ export default function ProfilePage() {
                               : 'bg-zinc-800/80 border border-zinc-700 text-zinc-200 hover:bg-zinc-700/80'
                           }`}
                         >
-                          {selectedCombatSkillIds.includes(skill.id) ? 'Remover do loadout' : 'Adicionar ao loadout'}
+                          {selectedCombatSkillIds.includes(skill.id) ? t('app.profile.removeFromLoadout') : t('app.profile.addToLoadout')}
                         </button>
                       )}
                     </div>
@@ -1514,7 +1519,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <h4 className="text-sm font-bold text-foreground mb-2">Habilidades Unicas da Classe</h4>
+                <h4 className="text-sm font-bold text-foreground mb-2">{t('app.profile.uniqueClassSkillsSection')}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {classSkills.map((skill) => (
                   <div
@@ -1540,7 +1545,7 @@ export default function ProfilePage() {
 
                     <div className="grid grid-cols-4 gap-2 text-xs">
                       <div className="bg-background/60 rounded p-2 border border-border/50">
-                        <p className="text-muted-foreground">Poder</p>
+                        <p className="text-muted-foreground">{t('app.profile.skillPower')}</p>
                         <p className="font-bold text-foreground">{skill.power}</p>
                       </div>
                       <div className="bg-background/60 rounded p-2 border border-border/50">
@@ -1548,11 +1553,11 @@ export default function ProfilePage() {
                         <p className="font-bold text-cyan-400">{Math.max(2, Math.min(16, Math.ceil((skill.power || 0) / 15)))}</p>
                       </div>
                       <div className="bg-background/60 rounded p-2 border border-border/50">
-                        <p className="text-muted-foreground">CD</p>
+                        <p className="text-muted-foreground">{t('app.profile.skillCooldown')}</p>
                         <p className="font-bold text-foreground">{skill.cooldown}t</p>
                       </div>
                       <div className="bg-background/60 rounded p-2 border border-border/50">
-                        <p className="text-muted-foreground">Base</p>
+                        <p className="text-muted-foreground">{t('app.profile.skillBase')}</p>
                         <p className="font-bold text-foreground text-[10px]">{skill.basedOn.join(" + ")}</p>
                       </div>
                     </div>
@@ -1566,7 +1571,7 @@ export default function ProfilePage() {
                             : 'bg-zinc-800/80 border border-zinc-700 text-zinc-200 hover:bg-zinc-700/80'
                         }`}
                       >
-                        {selectedCombatSkillIds.includes(skill.id) ? 'Remover do loadout' : 'Adicionar ao loadout'}
+                        {selectedCombatSkillIds.includes(skill.id) ? t('app.profile.removeFromLoadout') : t('app.profile.addToLoadout')}
                       </button>
                     )}
                   </div>
@@ -1575,17 +1580,17 @@ export default function ProfilePage() {
               </div>
 
               <div className="bg-secondary/40 border border-border rounded-lg p-3 flex items-center justify-between">
-                <span className="text-sm text-foreground font-semibold">Habilidades desbloqueadas</span>
+                <span className="text-sm text-foreground font-semibold">{t('app.profile.unlockedSkillsLabel')}</span>
                 <span className="text-2xl font-bold text-primary">{unlockedSkills.length}</span>
               </div>
 
               <div className="bg-zinc-900/40 border border-zinc-700 rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-foreground font-semibold">Loadout de Combate</span>
+                  <span className="text-sm text-foreground font-semibold">{t('app.profile.combatLoadoutTitle')}</span>
                   <span className="text-xs text-zinc-300">{selectedCombatSkills.length}/{MAX_COMBAT_SKILLS}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Selecione ate {MAX_COMBAT_SKILLS} habilidades desbloqueadas. Elas serao usadas em rotacao no combate contra boss.
+                  {t('app.profile.combatLoadoutDesc', { max: MAX_COMBAT_SKILLS })}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {selectedCombatSkills.length > 0 ? (
@@ -1595,7 +1600,7 @@ export default function ProfilePage() {
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-zinc-400">Nenhuma habilidade selecionada.</span>
+                    <span className="text-xs text-zinc-400">{t('app.profile.noSkillSelected')}</span>
                   )}
                 </div>
                 <button
@@ -1603,7 +1608,7 @@ export default function ProfilePage() {
                   disabled={saveCombatLoadout.isPending}
                   className="rounded-lg bg-primary/80 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary disabled:opacity-60"
                 >
-                  {saveCombatLoadout.isPending ? 'Salvando...' : 'Salvar loadout'}
+                  {saveCombatLoadout.isPending ? t('app.profile.savingLoadout') : t('app.profile.saveLoadoutButton')}
                 </button>
               </div>
             </div>
@@ -1611,10 +1616,10 @@ export default function ProfilePage() {
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <Skull className="w-5 h-5 text-destructive" />
-                <h3 className="text-base font-bold text-foreground">Status dos Bosses (leitura tática)</h3>
+                <h3 className="text-base font-bold text-foreground">{t('app.profile.bossStatusTitle')}</h3>
               </div>
               <p className="text-xs text-muted-foreground">
-                Estes status são mostrados na área de habilidades para você decidir qual build de missão treinar antes da batalha.
+                {t('app.profile.bossStatusDesc')}
               </p>
 
               {(bosses || []).length > 0 ? (
@@ -1626,7 +1631,7 @@ export default function ProfilePage() {
                         <div className="flex items-center justify-between">
                           <p className="font-bold text-foreground">{boss.icon} {boss.name}</p>
                           <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 border border-destructive/30 text-destructive">
-                            Ameaça {b.threat}
+                            {t('app.profile.bossThreat', { level: b.threat })}
                           </span>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-xs">
@@ -1636,14 +1641,14 @@ export default function ProfilePage() {
                           <div><p className="text-muted-foreground">AGI</p><p className="font-bold">{b.agi}</p></div>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Fraqueza tática: <span className="text-primary font-semibold">{b.weakness}</span>
+                          {t('app.profile.bossTacticalWeakness')} <span className="text-primary font-semibold">{b.weakness}</span>
                         </p>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Nenhum boss encontrado.</p>
+                <p className="text-sm text-muted-foreground">{t('app.profile.noBossFound')}</p>
               )}
             </div>
 
@@ -1660,8 +1665,8 @@ export default function ProfilePage() {
               return (
                 <div className="bg-card border border-border rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-foreground">💍 Sintonização Mágica</h3>
-                    <span className="text-xs text-muted-foreground">{attunedItems.length}/3 slots</span>
+                    <h3 className="text-sm font-bold text-foreground">{t('app.profile.magicAttunementTitle')}</h3>
+                    <span className="text-xs text-muted-foreground">{t('app.profile.attunementSlots', { count: attunedItems.length })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {[0, 1, 2].map((slot) => {
@@ -1674,7 +1679,7 @@ export default function ProfilePage() {
                               ? 'border-primary/50 bg-primary/10 text-primary'
                               : 'border-border bg-muted/30 text-muted-foreground'
                           }`}
-                          title={item ? `${item.game_items?.name || 'Item'} sintonizado` : 'Slot vazio'}
+                          title={item ? t('app.profile.itemAttuned', { name: item.game_items?.name || 'Item' }) : t('app.profile.slotEmpty')}
                         >
                           {item ? item.game_items?.icon || '💍' : '○'}
                         </div>
@@ -1682,7 +1687,7 @@ export default function ProfilePage() {
                     })}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Itens Épicos e Lendários precisam estar sintonizados para ativar bônus de status.
+                    {t('app.profile.attunementHint')}
                   </p>
                 </div>
               );
@@ -1691,28 +1696,28 @@ export default function ProfilePage() {
             <div className="bg-card border border-border rounded-xl p-6 space-y-6">
               <div className="flex items-center gap-2 mb-4">
                 <Swords className="w-6 h-6 text-primary" />
-                <h3 className="text-lg font-bold text-foreground">🎒 INVENTÁRIO</h3>
+                <h3 className="text-lg font-bold text-foreground">{t('app.profile.inventoryTitle')}</h3>
               </div>
 
               {!(profile as any)?.starter_kit_claimed ? (
                 <div className="space-y-4">
                   <div className="text-center space-y-2">
                     <p className="text-4xl">🥚</p>
-                    <p className="text-sm font-bold text-foreground">Kit de Novato disponível!</p>
+                    <p className="text-sm font-bold text-foreground">{t('app.profile.starterKitAvailableTitle')}</p>
                     <p className="text-xs text-muted-foreground">
-                      Receba seus primeiros equipamentos para começar a aventura (lv1–4).
+                      {t('app.profile.starterKitDesc')}
                     </p>
                     <button
                       onClick={() => {
                         claimStarterKit.mutate(undefined, {
-                          onSuccess: () => toast.success('🎁 Kit de Novato recebido! Verifique seu inventário.'),
-                          onError: (err: any) => toast.error(err.message || 'Erro ao resgatar kit'),
+                          onSuccess: () => toast.success(t('app.profile.starterKitClaimedToast')),
+                          onError: (err: any) => toast.error(err.message || t('app.profile.starterKitErrorToast')),
                         });
                       }}
                       disabled={claimStarterKit.isPending}
                       className="px-6 py-2 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
-                      {claimStarterKit.isPending ? '⏳ Resgatando...' : '📦 Resgatar Kit de Novato'}
+                      {claimStarterKit.isPending ? t('app.profile.claimingKit') : t('app.profile.claimStarterKitButton')}
                     </button>
                   </div>
                 </div>
@@ -1721,8 +1726,9 @@ export default function ProfilePage() {
                   <p className="text-4xl">🛡️</p>
                   <p className="text-sm text-muted-foreground">
                     {(profile as any)?.class_kit_claimed
-                      ? 'Derrote bosses para conseguir novos itens!'
-                      : 'Alcance o nível 5 e selecione sua classe em “Classes” para receber seu kit de classe!'}
+                      ? t('app.profile.defeatBossesForItems')
+                      : t('app.profile.reachLevel5ForKit')
+                    }
                   </p>
                 </div>
               ) : (
@@ -1743,9 +1749,9 @@ export default function ProfilePage() {
                     });
 
                     const categoryLabels: Record<string, string> = {
-                      weapon: '⚔️ Armas',
-                      armor: '🛡️ Armaduras',
-                      accessory: '💍 Acessórios',
+                      weapon: t('app.profile.weaponsCategory'),
+                      armor: t('app.profile.armorCategory'),
+                      accessory: t('app.profile.accessoryCategory'),
                     };
 
                     const SLOT_LIMITS: Record<string, number> = { armor: 1, weapon: 2, accessory: 3 };
@@ -1807,7 +1813,7 @@ export default function ProfilePage() {
                                           <div className="flex items-center gap-1.5">
                                             <p className="font-bold text-foreground text-sm">{item.name}</p>
                                             {isBest && !inv.equipped && (
-                                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">MELHOR</span>
+                                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">{t('app.profile.bestItemBadge')}</span>
                                             )}
                                           </div>
                                           <p className={`text-xs font-semibold ${rarityTextColors[item.rarity] || rarityTextColors.comum}`}>
@@ -1826,12 +1832,12 @@ export default function ProfilePage() {
                                         {item.crit_bonus > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">+{item.crit_bonus}% CRIT</span>}
                                         {requiresAttunement && (
                                           <span className={`text-[10px] px-1.5 py-0.5 rounded border ${inv.sintonizado ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted/40 text-muted-foreground border-border'}`}>
-                                            {inv.sintonizado ? 'Sintonizado' : 'Exige Sintonização'}
+                                            {inv.sintonizado ? t('app.profile.itemSynced') : t('app.profile.itemRequiresSync')}
                                           </span>
                                         )}
                                       </div>
                                       {requiresAttunement && !inv.sintonizado && (
-                                        <p className="text-[11px] text-amber-400 mt-1">Este item não concede bônus enquanto não estiver sintonizado.</p>
+                                        <p className="text-[11px] text-amber-400 mt-1">{t('app.profile.itemNoBonusWarning')}</p>
                                       )}
                                       {item.description && (
                                         <p className="text-xs text-muted-foreground/70 mt-1 italic">{item.description}</p>
@@ -1843,7 +1849,7 @@ export default function ProfilePage() {
                                         onClick={() => {
                                           toggleEquip.mutate(
                                             { inventoryId: inv.id, equipped: !inv.equipped },
-                                            { onError: (err: any) => toast.error(err?.message || 'Não foi possível equipar este item.') },
+                                            { onError: (err: any) => toast.error(err?.message || t('app.profile.equipErrorToast')) },
                                           );
                                         }}
                                         className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
@@ -1854,7 +1860,7 @@ export default function ProfilePage() {
                                               : 'bg-muted/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
                                         }`}
                                       >
-                                        {inv.equipped ? '✓ Equipado' : 'Equipar'}
+                                        {inv.equipped ? t('app.profile.equipped') : t('app.profile.equipButton')}
                                       </button>
 
                                       {requiresAttunement && (
@@ -1866,7 +1872,7 @@ export default function ProfilePage() {
                                                 onError: (err: any) =>
                                                   toast.error(
                                                     err?.message ||
-                                                      'Limite de sintonização atingido. Dessintonize um item para continuar.',
+                                                      t('app.profile.attunementLimitToast'),
                                                   ),
                                               },
                                             );
@@ -1877,7 +1883,7 @@ export default function ProfilePage() {
                                               : 'bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30'
                                           }`}
                                         >
-                                          {inv.sintonizado ? 'Dessintonizar' : 'Sintonizar'}
+                                          {inv.sintonizado ? t('app.profile.desynced') : t('app.profile.syncButton')}
                                         </button>
                                       )}
                                     </div>
@@ -1899,7 +1905,7 @@ export default function ProfilePage() {
                       <div className="space-y-3 border-t border-border pt-4">
                         <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                           <Heart className="w-4 h-4" />
-                          Consumíveis
+                          {t('app.profile.consumablesTitle')}
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {consumables.map((inv) => {
@@ -1920,7 +1926,7 @@ export default function ProfilePage() {
                                   onClick={() => consumeItem.mutate({ inventoryId: inv.id, quantity: inv.quantity })}
                                   className="w-full px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded hover:bg-emerald-500/30 transition-colors font-medium"
                                 >
-                                  Usar
+                                  {t('app.profile.useItemButton')}
                                 </button>
                               </div>
                             );
@@ -1933,7 +1939,7 @@ export default function ProfilePage() {
               )}
 
               <div className="bg-muted/30 border border-border/50 rounded-lg p-3 text-xs text-muted-foreground">
-                💡 Dica: Derrote bosses para ganhar equipamentos raros! O item marcado como "MELHOR" tem status superiores na categoria.
+                {t('app.profile.inventoryTip')}
               </div>
             </div>
           </div>
@@ -1946,7 +1952,7 @@ export default function ProfilePage() {
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <UserPlus className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Adicionar Amigo</h3>
+                <h3 className="text-sm font-bold text-foreground">{t('app.profile.addFriendTitle')}</h3>
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1954,7 +1960,7 @@ export default function ProfilePage() {
                   type="text"
                   value={friendSearch}
                   onChange={(e) => setFriendSearch(e.target.value)}
-                  placeholder="Buscar por nome de herói..."
+                  placeholder={t('app.profile.searchFriendPlaceholder')}
                   className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-primary/50 outline-none"
                 />
                 {isSearching && (
@@ -1975,23 +1981,23 @@ export default function ProfilePage() {
                         <div>
                           <p className="text-sm font-semibold text-foreground">{profile.display_name || 'Aventureiro'}</p>
                           <p className="text-xs text-muted-foreground">
-                            Nível {profile.level} • {profile.starter_class || 'Novato'}
+                            {t('app.profile.friendLevelInfo', { level: profile.level, class: profile.starter_class || t('app.profile.noviceClassFallback') })}
                           </p>
                         </div>
                         {alreadyFriend ? (
-                          <span className="text-xs text-emerald-400 flex items-center gap-1"><UserCheck className="w-3.5 h-3.5" />Amigo</span>
+                          <span className="text-xs text-emerald-400 flex items-center gap-1"><UserCheck className="w-3.5 h-3.5" />{t('app.profile.alreadyFriendLabel')}</span>
                         ) : (
                           <button
                             onClick={() =>
                               sendFriendRequest.mutate(profile.user_id, {
-                                onSuccess: () => { toast.success(`Solicitação enviada para ${profile.display_name}!`); setFriendSearch(""); },
-                                onError: (err: any) => toast.error(err.message || 'Erro ao enviar solicitação'),
+                                onSuccess: () => { toast.success(t('app.profile.friendRequestSentToast', { name: profile.display_name })); setFriendSearch(""); },
+                                onError: (err: any) => toast.error(err.message || t('app.profile.friendRequestErrorToast')),
                               })
                             }
                             disabled={sendFriendRequest.isPending}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-medium hover:bg-primary/30 transition-colors disabled:opacity-50"
                           >
-                            <UserPlus className="w-3 h-3" /> Adicionar
+                            <UserPlus className="w-3 h-3" /> {t('app.profile.addFriendButton')}
                           </button>
                         )}
                       </div>
@@ -2000,7 +2006,7 @@ export default function ProfilePage() {
                 </div>
               )}
               {friendSearch.length >= 2 && !isSearching && searchResults.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">Nenhum herói encontrado com este nome.</p>
+                <p className="text-xs text-muted-foreground text-center py-2">{t('app.profile.noHeroFound')}</p>
               )}
             </div>
 
@@ -2008,7 +2014,7 @@ export default function ProfilePage() {
             {pendingRequests.length > 0 && (
               <div className="bg-card border border-amber-500/30 rounded-xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-amber-400 text-sm font-bold">⏳ Solicitações Recebidas ({pendingRequests.length})</span>
+                  <span className="text-amber-400 text-sm font-bold">{t('app.profile.pendingRequestsTitle', { count: pendingRequests.length })}</span>
                 </div>
                 <div className="space-y-2">
                   {pendingRequests.map((req) => (
@@ -2016,31 +2022,31 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-sm font-semibold text-foreground">{req.other_profile?.display_name || 'Aventureiro'}</p>
                         <p className="text-xs text-muted-foreground">
-                          Nível {req.other_profile?.level || '?'} • {req.other_profile?.starter_class || 'Novato'}
+                          {t('app.profile.friendLevelInfo', { level: req.other_profile?.level || '?', class: req.other_profile?.starter_class || t('app.profile.noviceClassFallback') })}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() =>
                             respondFriendRequest.mutate({ requestId: req.id, accept: true }, {
-                              onSuccess: () => toast.success('Amizade aceita! 🤝'),
+                              onSuccess: () => toast.success(t('app.profile.friendshipAcceptedToast')),
                               onError: (err: any) => toast.error(err.message),
                             })
                           }
                           className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors"
                         >
-                          <UserCheck className="w-3 h-3" /> Aceitar
+                          <UserCheck className="w-3 h-3" /> {t('app.profile.acceptFriendButton')}
                         </button>
                         <button
                           onClick={() =>
                             respondFriendRequest.mutate({ requestId: req.id, accept: false }, {
-                              onSuccess: () => toast.info('Solicitação rejeitada.'),
+                              onSuccess: () => toast.info(t('app.profile.requestRejectedToast')),
                               onError: (err: any) => toast.error(err.message),
                             })
                           }
                           className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium hover:bg-rose-500/30 transition-colors"
                         >
-                          <UserX className="w-3 h-3" /> Rejeitar
+                          <UserX className="w-3 h-3" /> {t('app.profile.rejectFriendButton')}
                         </button>
                       </div>
                     </div>
@@ -2054,7 +2060,7 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
-                  <h3 className="text-sm font-bold text-foreground">Meus Amigos</h3>
+                  <h3 className="text-sm font-bold text-foreground">{t('app.profile.myFriendsTitle')}</h3>
                 </div>
                 <span className="text-xs text-muted-foreground">{friends.length}/50</span>
               </div>
@@ -2062,8 +2068,8 @@ export default function ProfilePage() {
               {friends.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Você ainda não tem amigos.</p>
-                  <p className="text-xs mt-1">Busque por nome acima para adicionar!</p>
+                  <p className="text-sm">{t('app.profile.noFriendsYet')}</p>
+                  <p className="text-xs mt-1">{t('app.profile.searchAboveHint')}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2085,18 +2091,18 @@ export default function ProfilePage() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-foreground truncate">{p?.display_name || 'Aventureiro'}</p>
                           <p className="text-xs text-muted-foreground">
-                            Nível {p?.level || 1} • {p?.starter_class || 'Novato'}
+                            {t('app.profile.friendLevelInfo', { level: p?.level || 1, class: p?.starter_class || t('app.profile.noviceClassFallback') })}
                           </p>
                         </div>
                         <button
                           onClick={() =>
                             removeFriend.mutate(friend.id, {
-                              onSuccess: () => toast.info('Amigo removido.'),
+                              onSuccess: () => toast.info(t('app.profile.friendRemovedToast')),
                               onError: (err: any) => toast.error(err.message),
                             })
                           }
                           className="p-1.5 text-muted-foreground hover:text-rose-400 transition-colors rounded-lg hover:bg-rose-500/10"
-                          title="Remover amigo"
+                          title={t('app.profile.removeFriendTooltip')}
                         >
                           <UserX className="w-4 h-4" />
                         </button>
@@ -2117,7 +2123,7 @@ export default function ProfilePage() {
               <Trophy className="w-10 h-10 text-primary shrink-0" />
               <div>
                 <p className="text-lg font-black text-primary">{userAchievements.length}/{allAchievements.length}</p>
-                <p className="text-xs text-muted-foreground">Conquistas desbloqueadas</p>
+                <p className="text-xs text-muted-foreground">{t('app.profile.achievementsUnlocked')}</p>
               </div>
               <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
                 <div
@@ -2156,7 +2162,7 @@ export default function ProfilePage() {
                           +{ach.gold_reward} 🪙
                         </span>
                         {unlocked && (
-                          <span className="text-[10px] text-emerald-400 font-semibold">✓ Desbloqueada</span>
+                          <span className="text-[10px] text-emerald-400 font-semibold">{t('app.profile.achievementUnlocked')}</span>
                         )}
                       </div>
                     </div>

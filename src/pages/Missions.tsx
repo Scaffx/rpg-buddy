@@ -1,6 +1,7 @@
 // src/pages/Missions.tsx
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useMissions,
@@ -64,25 +65,11 @@ import { useUndoMission } from '@/hooks/useUndoMission';
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const DAYS_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-
 const TIMES = [
   { value: "manha", label: "🌅 Manhã", icon: Sunrise },
   { value: "tarde", label: "☀️ Tarde", icon: Sun },
   { value: "noite", label: "🌙 Noite", icon: Moon },
   { value: "flex", label: "🔄 Flex", icon: RotateCcw },
-];
-
-const PRIORITIES = [
-  { value: "baixa", label: "Baixa", icon: Beer, color: "text-success border-success/50 bg-success/10" },
-  { value: "media", label: "Média", icon: Shield, color: "text-yellow-400 border-yellow-400/50 bg-yellow-400/10" },
-  { value: "alta", label: "Alta", icon: Flame, color: "text-destructive border-destructive/50 bg-destructive/10" },
-];
-
-const TABS = [
-  { value: "pendentes", label: "Pendentes", color: "bg-yellow-400/20 text-yellow-400" },
-  { value: "todas", label: "Todas", color: "bg-muted text-muted-foreground" },
-  { value: "foco", label: "Foco do Dia", color: "bg-primary/20 text-primary" },
-  { value: "concluidas", label: "Concluídas", color: "bg-success/20 text-success" },
 ];
 
 // Importado de @/lib/attributes
@@ -138,6 +125,21 @@ function obterProximoDiaAgendado(mission: any): string | null {
 }
 
 export default function Missions() {
+  const { t } = useTranslation();
+
+  const PRIORITIES = [
+    { value: "baixa", label: t('app.missions.priority_low'), icon: Beer, color: "text-success border-success/50 bg-success/10" },
+    { value: "media", label: t('app.missions.priority_medium'), icon: Shield, color: "text-yellow-400 border-yellow-400/50 bg-yellow-400/10" },
+    { value: "alta", label: t('app.missions.priority_high'), icon: Flame, color: "text-destructive border-destructive/50 bg-destructive/10" },
+  ];
+
+  const TABS = [
+    { value: "pendentes", label: t('app.missions.tab_pending'), color: "bg-yellow-400/20 text-yellow-400" },
+    { value: "todas", label: t('app.missions.tab_all'), color: "bg-muted text-muted-foreground" },
+    { value: "foco", label: t('app.missions.tab_focus'), color: "bg-primary/20 text-primary" },
+    { value: "concluidas", label: t('app.missions.tab_completed'), color: "bg-success/20 text-success" },
+  ];
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("pendentes");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(["Todos"]);
@@ -407,7 +409,7 @@ const handleSave = async () => {
         notes: formNotes.trim() || undefined,
         secondaryAttributeIds: formSecondaryAttrIds,
       });
-      toast({ title: '📜 Missão criada!', description: 'Boa sorte, aventureiro!' });
+      toast({ title: t('app.missions.mission_created'), description: t('app.missions.mission_created_desc') });
     }
 
     setShowCreateEdit(false);
@@ -426,8 +428,8 @@ const handleSave = async () => {
       });
 
       toast({
-        title: "⚔️ Missão concluída!",
-        description: `+${mission.xp_reward} XP ganhos! Próxima: ${obterProximoDiaAgendado(mission) || "Nenhum"}`,
+        title: t('app.missions.mission_completed'),
+        description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
       });
     } catch {
       toast({ title: "Erro", variant: "destructive" });
@@ -438,7 +440,7 @@ const handleSave = async () => {
     try {
       await deleteMission.mutateAsync(id);
       setDeleteConfirm(null);
-      toast({ title: "🗑️ Missão deletada com sucesso" });
+      toast({ title: t('app.missions.mission_deleted') });
     } catch {
       toast({ title: "Erro", variant: "destructive" });
     }
@@ -447,7 +449,7 @@ const handleSave = async () => {
   const handleArchive = async (id: string) => {
     try {
       await archiveMission.mutateAsync(id);
-      toast({ title: "⏸️ Missão arquivada" });
+      toast({ title: t('app.missions.mission_archived') });
     } catch {
       toast({ title: "Erro", variant: "destructive" });
     }
@@ -467,10 +469,10 @@ const handleSave = async () => {
   };
 
   const TIME_GROUPS = [
-    { key: "manha", label: "Manhã", icon: Sunrise },
-    { key: "tarde", label: "Tarde", icon: Sun },
-    { key: "noite", label: "Noite", icon: Moon },
-    { key: "flex", label: "Flex", icon: RotateCcw },
+    { key: "manha", label: t('app.missions.time_morning'), icon: Sunrise },
+    { key: "tarde", label: t('app.missions.time_afternoon'), icon: Sun },
+    { key: "noite", label: t('app.missions.time_evening'), icon: Moon },
+    { key: "flex", label: t('app.missions.time_flex'), icon: RotateCcw },
   ];
 
   return (
@@ -480,14 +482,14 @@ const handleSave = async () => {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-display font-bold text-primary">
             <Target className="w-6 h-6 inline mr-2" />
-            Missões
+            {t('app.missions.page_title')}
           </h1>
           <Button
             onClick={openCreateModal}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             size="sm"
           >
-            <Plus className="w-4 h-4 mr-1" /> Nova Missão
+            <Plus className="w-4 h-4 mr-1" /> {t('app.missions.new_mission_button')}
           </Button>
         </div>
 
@@ -497,7 +499,7 @@ const handleSave = async () => {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Pesquisar missão..."
+            placeholder={t('app.missions.search_placeholder')}
             className="pl-9 bg-secondary border-border"
           />
           {searchQuery && (
@@ -548,26 +550,26 @@ const handleSave = async () => {
           <DialogContent className="rpg-card border-primary/30 max-w-md">
             <DialogHeader>
               <DialogTitle className="text-xl text-center">
-                ⚔️ Sentimos sua falta, Herói!
+                ⚔️ {t('app.missions.welcome_back_title')}
               </DialogTitle>
             </DialogHeader>
             <div className="text-center space-y-3 py-4">
               <p className="text-6xl">🏰</p>
               <p className="text-sm text-muted-foreground">
-                Você esteve ausente por <span className="font-bold text-primary">{daysAway} dias</span>.
+                {t('app.missions.welcome_back_away', { n: daysAway })}
               </p>
               <p className="text-sm text-muted-foreground">
-                Inimigos se fortaleceram e missões ficaram pendentes! Volte à ação e recupere seu progresso.
+                {t('app.missions.welcome_back_body')}
               </p>
               {failedMissions.length > 0 && (
                 <p className="text-xs text-destructive font-semibold">
-                  🔥 {failedMissions.length} missão(ões) fracassada(s) aguardam sua decisão.
+                  🔥 {t('app.missions.failed_missions_count', { n: failedMissions.length })}
                 </p>
               )}
             </div>
             <DialogFooter>
               <Button onClick={() => setShowWelcomeBack(false)} className="w-full">
-                ⚔️ Voltar à Batalha!
+                ⚔️ {t('app.missions.welcome_back_button')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -579,7 +581,7 @@ const handleSave = async () => {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-destructive flex items-center gap-2">
                 <Flame className="w-5 h-5" />
-                🔥 MISSÕES FRACASSADAS ({failedMissions.length})
+                🔥 {t('app.missions.failed_section_title', { n: failedMissions.length })}
               </h3>
               {failedMissions.length > 1 && (
                 <button
@@ -593,7 +595,7 @@ const handleSave = async () => {
                   className="text-xs px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition-colors disabled:opacity-50"
                 >
                   {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : null}
-                  Aceitar Tudo (-{failedMissions.reduce((sum: number, m: any) => sum + (m.xp_penalized || m.xp_reward), 0)} XP)
+                  {t('app.missions.accept_all_penalty', { xp: failedMissions.reduce((sum: number, m: any) => sum + (m.xp_penalized || m.xp_reward), 0) })}
                 </button>
               )}
             </div>
@@ -608,7 +610,7 @@ const handleSave = async () => {
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
-                      <p className="text-xs text-destructive">XP Perdido: -{m.xp_penalized || m.xp_reward}</p>
+                      <p className="text-xs text-destructive">XP {t('app.missions.xp_lost')}: -{m.xp_penalized || m.xp_reward}</p>
                       <p className="text-xs text-muted-foreground">📅 {failedDate}</p>
                     </div>
                     <div className="flex gap-2 flex-wrap">
@@ -666,13 +668,13 @@ const handleSave = async () => {
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : todayMissions.length === 0 && nextDaysMissions.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Nenhuma missão encontrada.</p>
+          <p className="text-sm text-muted-foreground text-center py-8">{t('app.missions.empty_state')}</p>
         ) : (
           <>
             {/* HOJE */}
             {todayMissions.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-lg font-bold text-primary flex items-center gap-2">📅 Missões de Hoje</h2>
+                <h2 className="text-lg font-bold text-primary flex items-center gap-2">📅 {t('app.missions.today_header')}</h2>
 
                 {TIME_GROUPS.map(({ key, label, icon: Icon }) => {
                   const missions = todayMissions.filter((m: any) => {
@@ -723,7 +725,7 @@ const handleSave = async () => {
                 {todayUniqueMissions.length > 0 && (
                   <div className="space-y-3 mb-8">
                     <h2 className="text-lg font-bold text-orange-400 flex items-center gap-2">
-                      🎯 Missões Únicas de Hoje
+                      🎯 {t('app.missions.unique_today_header')}
                       <span className="text-xs bg-orange-400/20 text-orange-400 px-2 py-1 rounded-full">{todayUniqueMissions.length}</span>
                     </h2>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -754,7 +756,7 @@ const handleSave = async () => {
                 {nextUniqueMissions.length > 0 && (
                   <div className="space-y-3">
                     <h2 className="text-lg font-bold text-orange-300 flex items-center gap-2">
-                      🗓️ Próximas Missões Únicas
+                      🗓️ {t('app.missions.unique_next_header')}
                       <span className="text-xs bg-orange-400/20 text-orange-300 px-2 py-1 rounded-full">{nextUniqueMissions.length}</span>
                     </h2>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -788,8 +790,8 @@ const handleSave = async () => {
             {nextDaysMissions.length > 0 && (
               <div className="space-y-3 mt-8 pt-8 border-t border-border">
                 <h2 className="text-lg font-bold text-muted-foreground flex items-center gap-2">
-                  📆 Próximos Dias
-                  <span className="text-xs bg-muted px-2 py-1 rounded-full">{nextDaysMissions.length} missão(ões)</span>
+                  📆 {t('app.missions.next_days_header')}
+                  <span className="text-xs bg-muted px-2 py-1 rounded-full">{nextDaysMissions.length} {t('app.missions.mission_count')}</span>
                 </h2>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -822,7 +824,7 @@ const handleSave = async () => {
             {activeTab === "concluidas" && completedMissions.length > 0 && (
               <div className="space-y-3 mt-8 pt-8 border-t border-border">
                 <h2 className="text-lg font-bold text-success flex items-center gap-2">
-                  ✅ Concluídas
+                  ✅ {t('app.missions.completed_header')}
                   <span className="text-xs bg-success/20 text-success px-2 py-1 rounded-full">
                     {completedMissions.length}
                   </span>
@@ -890,16 +892,16 @@ const handleSave = async () => {
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>Tem certeza que deseja deletar esta missão?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle>{t('app.missions.delete_confirm_title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('app.missions.delete_confirm_desc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('app.missions.cancel_button')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
               className="bg-destructive text-destructive-foreground"
             >
-              Deletar
+              {t('app.missions.delete_button')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -932,6 +934,7 @@ function MissionCard({
   completing: boolean; newChecklistText: string; onNewChecklistTextChange: (v: string) => void;
   isCompletedToday: boolean; proximoDia?: string | null; isFutureMission?: boolean;
 }) {
+  const { t } = useTranslation();
   const { data: checklist } = useChecklistItems(mission.id);
   const addItem = useAddChecklistItem();
   const toggleItem = useToggleChecklistItem();
@@ -1050,7 +1053,7 @@ function MissionCard({
             </div>
             {proximoDia && (
               <p className="text-xs text-yellow-400/70">
-                Próxima: {proximoDia}
+                {t('app.missions.next_label')}: {proximoDia}
               </p>
             )}
           </div>
@@ -1059,7 +1062,7 @@ function MissionCard({
         {/* Sub-missions */}
         {totalCount > 0 && (
           <div className="mt-2">
-            <p className="text-xs text-muted-foreground">Sub-missões: {completedCount}/{totalCount}</p>
+            <p className="text-xs text-muted-foreground">{t('app.missions.sub_missions_count', { done: completedCount, total: totalCount })}</p>
             <Progress value={progressPercent} className="h-1.5 mt-1" />
           </div>
         )}
@@ -1111,7 +1114,7 @@ function MissionCard({
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : 'bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30'
               }`}
-              title={isCompletedToday ? 'Missão já concluída hoje' : isFutureMission ? 'Missão agendada para um dia futuro' : 'Completar missão'}
+              title={isCompletedToday ? t('app.missions.tooltip_completed') : isFutureMission ? t('app.missions.tooltip_future') : t('app.missions.tooltip_complete')}
             >
               {isCompletedToday ? (
                 <>
@@ -1119,11 +1122,11 @@ function MissionCard({
                 </>
               ) : isFutureMission ? (
                 <>
-                  <Lock className="w-4 h-4 mr-1" /> Futura
+                  <Lock className="w-4 h-4 mr-1" /> {t('app.missions.button_future')}
                 </>
               ) : (
                 <>
-                  <Check className="w-4 h-4 mr-1" /> Completar
+                  <Check className="w-4 h-4 mr-1" /> {t('app.missions.button_complete')}
                 </>
               )}
             </Button>
@@ -1157,7 +1160,7 @@ function MissionCard({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden space-y-2 pt-2 border-t border-border"
           >
-            <p className="text-xs text-muted-foreground font-medium">Sub-missões (+2 XP cada)</p>
+            <p className="text-xs text-muted-foreground font-medium">{t('app.missions.submissions_label')}</p>
             {checklist?.map((item: any) => (
               <div key={item.id} className="flex items-center gap-2">
                 <Checkbox
@@ -1179,9 +1182,7 @@ function MissionCard({
               <Input
                 value={newChecklistText}
                 onChange={(e) => onNewChecklistTextChange(e.target.value)}
-                placeholder="Adicionar item..."
-                className="h-7 text-xs bg-secondary border-border"
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChecklist())}
+                placeholder={t('app.missions.add_item_placeholder')}
               />
               <Button size="sm" variant="outline" className="h-7 text-xs border-primary/30 text-primary" onClick={handleAddChecklist} disabled={addItem.isPending}>
                 <Plus className="w-3 h-3" />
@@ -1217,6 +1218,7 @@ function MissionFormModal({
   formDueDate: string; setFormDueDate: (v: string) => void;
   onSave: () => void; saving: boolean; missionId?: string;
 }) {
+  const { t } = useTranslation();
   const { data: checklist } = useChecklistItems(missionId || '');
   const addItem = useAddChecklistItem();
   const toggleItem = useToggleChecklistItem();
@@ -1264,32 +1266,32 @@ function MissionFormModal({
       <DialogContent className="bg-card border-border max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-primary font-display">
-            {isEditing ? '✏️ Editar Missão' : '📜 Nova Missão'}
+            {isEditing ? `✏️ ${t('app.missions.edit_title')}` : `📜 ${t('app.missions.create_title')}`}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Title */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Título *</label>
-            <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Título da missão..." className="bg-secondary border-border" />
+            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_title_label')} *</label>
+            <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={t('app.missions.form_title_placeholder')} className="bg-secondary border-border" />
           </div>
 
           {/* Description */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
-            <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Descreva a missão..." className="bg-secondary border-border min-h-[60px]" />
+            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_desc_label')}</label>
+            <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder={t('app.missions.form_desc_placeholder')} className="bg-secondary border-border min-h-[60px]" />
           </div>
 
           {/* Primary Attribute */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Atributo Principal *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_attr_label')} *</label>
             <Select value={formAttrId} onValueChange={(v) => {
               setFormAttrId(v);
               setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== v));
             }}>
               <SelectTrigger className="bg-secondary border-border">
-                <SelectValue placeholder="Escolha o atributo principal" />
+                <SelectValue placeholder={t('app.missions.form_attr_placeholder')} />
               </SelectTrigger>
               <SelectContent>
                 {attrs.map((a: any) => (
@@ -1302,7 +1304,7 @@ function MissionFormModal({
           {/* Secondary Attributes (up to 2 more) */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">
-              Atributos Secundários (até 2)
+              {t('app.missions.form_secondary_attr_label')}
             </label>
             <div className="flex gap-1.5 flex-wrap">
               {attrs.map((a: any) => {
@@ -1343,7 +1345,7 @@ function MissionFormModal({
 
           {/* Priority */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Prioridade</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_priority_label')}</label>
             <div className="flex gap-2">
               {PRIORITIES.map((p) => {
                 const Icon = p.icon;
@@ -1366,7 +1368,7 @@ function MissionFormModal({
 
           {/* ✅ NOVO: Tipo de Missão */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Tipo de Missão</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_type_label')}</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -1377,7 +1379,7 @@ function MissionFormModal({
                     : 'bg-secondary border-border text-muted-foreground'
                 }`}
               >
-                📅 Recorrente
+                📅 {t('app.missions.type_recurring')}
               </button>
               <button
                 type="button"
@@ -1388,7 +1390,7 @@ function MissionFormModal({
                     : 'bg-secondary border-border text-muted-foreground'
                 }`}
               >
-                🎯 Única
+                🎯 {t('app.missions.type_unique')}
               </button>
             </div>
           </div>
@@ -1396,7 +1398,7 @@ function MissionFormModal({
           {/* Days (only for recorrente) */}
           {formMissionType === "recorrente" && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Dias da Semana</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_days_label')}</label>
               <div className="flex gap-1.5 flex-wrap">
                 {DAYS.map((d) => (
                   <button
@@ -1419,7 +1421,7 @@ function MissionFormModal({
           {/* Due Date (only for unica) */}
           {formMissionType === "unica" && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Data de Conclusão *</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_due_date_label')} *</label>
               <Input
                 type="date"
                 value={formDueDate}
@@ -1431,7 +1433,7 @@ function MissionFormModal({
 
           {/* ✅ NOVO: Time (até 2 horários) */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Horário Provável (até 2)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_time_label')}</label>
             <div className="flex gap-1.5 flex-wrap">
               {TIMES.map((t) => (
                 <button
@@ -1453,7 +1455,7 @@ function MissionFormModal({
             </div>
             {horariosArray.length > 0 && (
               <p className="text-xs text-muted-foreground mt-2">
-                Selecionados: {horariosArray.map((h) => TIMES.find((t) => t.value === h)?.label).join(' + ')}
+                {t('app.missions.form_time_selected')}: {horariosArray.map((h) => TIMES.find((t2) => t2.value === h)?.label).join(' + ')}
               </p>
             )}
           </div>
@@ -1461,7 +1463,7 @@ function MissionFormModal({
           {/* Checklist (only in edit mode) */}
           {isEditing && missionId && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Sub-missões (+2 XP cada)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.submissions_label')}</label>
               <div className="space-y-1.5">
                 {checklist?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-2">
@@ -1480,9 +1482,9 @@ function MissionFormModal({
                   <Input
                     value={newItem}
                     onChange={(e) => setNewItem(e.target.value)}
-                    placeholder="Adicionar item..."
+                    placeholder={t('app.missions.add_item_placeholder')}
                     className="h-7 text-xs bg-secondary border-border"
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}  
                   />
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleAddItem} disabled={addItem.isPending}>
                     <Plus className="w-3 h-3" />
@@ -1494,16 +1496,16 @@ function MissionFormModal({
 
           {/* XP preview */}
           <div className="rpg-card bg-secondary/50 text-center">
-            <p className="text-xs text-muted-foreground">Recompensa</p>
+            <p className="text-xs text-muted-foreground">{t('app.missions.xp_preview_label')}</p>
             <p className="text-primary font-bold">+25 XP</p>
           </div>
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">{t('app.missions.cancel_button')}</Button>
           <Button onClick={onSave} disabled={saving || !formTitle.trim() || !formAttrId} className="bg-success text-success-foreground hover:bg-success/90">
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-            {isEditing ? 'Salvar' : 'Criar Missão'}
+            {isEditing ? t('app.missions.button_save') : t('app.missions.button_create')}
           </Button>
         </DialogFooter>
       </DialogContent>

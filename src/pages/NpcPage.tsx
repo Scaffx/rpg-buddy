@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -94,6 +95,7 @@ const INITIAL_NPCS: Npc[] = [
 ];
 
 export default function NpcPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const qc = useQueryClient();
   const weekToken = currentWeekToken();
@@ -170,7 +172,7 @@ export default function NpcPage() {
         });
       }
     },
-    onError: (err: any) => toast.error(err.message || 'Erro ao registrar desafio'),
+    onError: (err: any) => toast.error(err.message || t('app.npc.error_challenge')),
   });
 
   const totalChallenges = INITIAL_NPCS.reduce((sum, npc) => sum + npc.challenges.length, 0);
@@ -184,8 +186,8 @@ export default function NpcPage() {
           <div className="flex items-center gap-3">
             <Users className="w-7 h-7 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold text-foreground">NPCs do Crescimento</h1>
-              <p className="text-sm text-muted-foreground">Desafios fora da zona de conforto</p>
+              <h1 className="text-2xl font-bold text-foreground">{t('app.npc.page_title')}</h1>
+              <p className="text-sm text-muted-foreground">{t('app.npc.page_subtitle')}</p>
             </div>
           </div>
           <Button size="sm" className="gap-2" disabled>
@@ -225,8 +227,8 @@ export default function NpcPage() {
                       style={{ width: `${(done / total) * 100}%` }}
                     />
                   </div>
-                  <Button variant="outline" size="sm" className="w-full mt-1 gap-2 border-primary/30 hover:bg-primary/10">
-                    <Zap className="w-3.5 h-3.5" /> Interagir
+                    <Button variant="outline" size="sm" className="w-full mt-1 gap-2 border-primary/30 hover:bg-primary/10">
+                    <Zap className="w-3.5 h-3.5" /> {t('app.npc.interact_button')}
                   </Button>
                 </CardContent>
               </Card>
@@ -239,12 +241,12 @@ export default function NpcPage() {
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-primary" />
             <span className="text-sm text-muted-foreground">
-              Desafios Completos: <span className="font-bold text-foreground">{completedChallenges}/{totalChallenges}</span>
+              {t('app.npc.stats_completed')}: <span className="font-bold text-foreground">{completedChallenges}/{totalChallenges}</span>
             </span>
           </div>
           <div className="h-5 w-px bg-border" />
           <div className="text-sm text-muted-foreground">
-            Próximo Nível: <span className="font-bold text-primary">{totalChallenges - completedChallenges} restantes</span>
+            {t('app.npc.next_level')}: <span className="font-bold text-primary">{totalChallenges - completedChallenges} {t('app.npc.remaining')}</span>
           </div>
         </div>
       </div>
@@ -267,8 +269,8 @@ export default function NpcPage() {
               </DialogHeader>
 
               <div className="space-y-3 py-2">
-                <p className="text-sm font-semibold text-foreground">⚔️ Desafios Semanais</p>
-                <p className="text-xs text-muted-foreground">+{NPC_XP_REWARD} XP e +{NPC_GOLD_REWARD} 🪙 por desafio</p>
+                <p className="text-sm font-semibold text-foreground">⚔️ {t('app.npc.weekly_challenges')}</p>
+                <p className="text-xs text-muted-foreground">+{NPC_XP_REWARD} XP {t('app.npc.and')} +{NPC_GOLD_REWARD} 🪙 {t('app.npc.per_challenge')}</p>
                 {selectedNpc.challenges.map((challenge) => {
                   const done = isCompleted(selectedNpc.id, challenge.id);
                   const isLoading = toggleChallenge.isPending;
@@ -299,7 +301,7 @@ export default function NpcPage() {
 
               <DialogFooter>
                 <Button onClick={() => setSelectedNpc(null)} className="w-full gap-2">
-                  <Sparkles className="w-4 h-4" /> Fechar
+                  <Sparkles className="w-4 h-4" /> {t('app.npc.close_button')}
                 </Button>
               </DialogFooter>
             </>
