@@ -1,0 +1,102 @@
+{
+  "nav": {
+    "login": "Iniciar sesión",
+    "signup": "Registrarse",
+    "language": "Idioma"
+  },
+  "hero": {
+    "badge": "Tu vida ahora es un RPG · Acceso Beta abierto",
+    "title_part1": "Convierte cada hábito en",
+    "title_highlight": "XP real",
+    "subtitle_main": "Bebe agua, entrena, estudia, duerme temprano, y mira a tu personaje evolucionar, soltar loot y enfrentar bosses.",
+    "subtitle_strong": "La disciplina ahora es aventura.",
+    "cta_signup": "Empezar ahora",
+    "cta_login": "Ya tengo cuenta",
+    "perk_trial": "7 días gratis",
+    "perk_apk": "APK Android disponible",
+    "perk_bosses": "60 bosses"
+  },
+  "what": {
+    "eyebrow": "Qué es LifeOnRPG",
+    "title": "El primer RPG cuya historia es tu vida.",
+    "subtitle": "No es otra lista de hábitos con casillas. Es un sistema completo de progresión personal: atributos, clases, misiones, bosses, loot y ranking. Todo movido por lo que haces en el mundo real.",
+    "cards": {
+      "attrs_title": "11 atributos vivos",
+      "attrs_text": "Fuerza, Mente, Carisma, Disciplina y más. Cada misión alimenta los atributos correctos. Ves dónde eres fuerte y dónde debes entrenar.",
+      "missions_title": "Misiones diarias reales",
+      "missions_text": "Configura hábitos por día de la semana. ¿Fallaste ayer? El sistema marca y cobra XP automáticamente. Nada se escapa.",
+      "bosses_title": "60 bosses temáticos",
+      "bosses_text": "Del Nivel 1 al 60. Cada jefe consume 'Llaves de Boss' que ganas cumpliendo misiones. La disciplina se vuelve poder de combate.",
+      "streak_title": "Don't Break the Chain",
+      "streak_text": "Calendario de llamas: cada día con 60%+ de misiones cumplidas suma racha. Romperla duele, mantenerla engancha.",
+      "hp_title": "HP, MP, Fatiga y Hambre",
+      "hp_text": "Tu personaje refleja tu salud. Bebe, come bien, duerme. El héroe se desmaya si te descuidas.",
+      "rank_title": "Ranking mundial",
+      "rank_text": "Compara tu Power Level con aventureros del mundo. Sube de posición cumpliendo lo que prometiste."
+    }
+  },
+  "diff": {
+    "eyebrow": "Por qué somos diferentes",
+    "title": "La mayoría de apps de hábitos te premian por marcar casillas. LifeOnRPG te cobra.",
+    "subtitle": "La diferencia está en las consecuencias. Aquí, ignorar la misión duele al personaje, y eso lo cambia todo.",
+    "rows": {
+      "punish_title": "Castigo retroactivo",
+      "punish_text": "¿Olvidaste registrar 'beber agua' ayer? El sistema descuenta XP automáticamente. Sin excusas, sin reescribir la historia.",
+      "gold_title": "Economía de Oro real",
+      "gold_text": "Boss derrotado da Oro. El Oro compra buffs temporales en la Tienda del Tiempo. La recompensa no es cosmética, afecta tu día siguiente.",
+      "attrs_title": "Atributos que importan",
+      "attrs_text": "Cada misión enlaza a 1 atributo principal y hasta 2 secundarios. Creces equilibrado, o aprendes dónde estás descuidando.",
+      "talk_title": "El héroe te habla",
+      "talk_text": "Notificaciones contextuales: 'No bebes agua hace 4h', 'Racha en riesgo esta noche', 'Boss desbloqueado'. No es spam, es el personaje llamándote.",
+      "class_title": "Clases que evolucionan",
+      "class_text": "55 clases en 6 tiers. Tu próxima clase depende de lo que priorizaste. Guerrero se vuelve Paladín solo si también cuidaste la Mente.",
+      "focus_title": "Sin contenido infinito",
+      "focus_text": "Sin feed para deslizar, sin notificaciones sociales. Abres la app, cumples tus misiones, y cierras. Foco en lo que importa."
+    }
+  },
+  "security": {
+    "eyebrow": "Seguridad y Privacidad",
+    "title": "Tus datos son tuyos. Punto.",
+    "subtitle": "LifeOnRPG está construido sobre la misma infraestructura que usan bancos y fintechs, y nada de lo que registras es accesible a terceros.",
+    "cards": {
+      "tls_title": "Cifrado punto a punto en transporte",
+      "tls_text": "Toda la comunicación entre app y servidor usa HTTPS/TLS 1.3.",
+      "rls_title": "Row Level Security",
+      "rls_text": "Cada usuario solo ve sus datos. Garantizado por políticas en la base, no se puede burlar desde el cliente.",
+      "track_title": "Cero rastreo de comportamiento",
+      "track_text": "Sin píxeles de Facebook, sin analíticas invasivas. Solo métricas anónimas de error para mantener la app estable.",
+      "backup_title": "Backups diarios",
+      "backup_text": "Tu progreso es replicado y versionado. Nada se pierde, ni por bug nuestro, ni por cambio de móvil."
+    }
+  },
+  "roadmap": {
+    "eyebrow": "En desarrollo",
+    "title": "El reino se está expandiendo.",
+    "subtitle": "Estás en acceso Beta, todo lo nuevo entra automáticamente en tu cuenta.",
+    "tag": "PRONTO",
+    "cards": {
+      "ai_title": "IA Mentor",
+      "ai_text": "Consejero inteligente analiza tus hábitos y sugiere quests personalizadas.",
+      "habit_title": "Bosses de Hábitos",
+      "habit_text": "Los vicios se vuelven jefes. Derrota a 'Lord Procrastinación' con misiones consistentes.",
+      "party_title": "Dungeons en Party",
+      "party_text": "Forma grupo con amigos. Todos deben cumplir para avanzar.",
+      "loot_title": "Ítems Legendarios",
+      "loot_text": "Sistema expandido de loot, crafting y armas con bonos reales a atributos."
+    }
+  },
+  "download": {
+    "beta_badge": "ACCESO BETA",
+    "title_part1": "Lleva la aventura en el",
+    "title_highlight": "bolsillo",
+    "subtitle": "Instala el APK Android y recibe notificaciones en tiempo real de tu héroe. Funciona offline, sincroniza al reconectar.",
+    "cta_download": "Descargar APK",
+    "cta_preparing": "APK en preparación",
+    "cta_browser": "Usar en navegador",
+    "footnote_beta": "Build Beta · ",
+    "footnote": "Android 8.0+ · Actualizaciones automáticas dentro de la app"
+  },
+  "footer": {
+    "tagline": "Tu vida, tu viaje."
+  }
+}
