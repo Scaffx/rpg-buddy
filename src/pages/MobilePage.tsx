@@ -1,12 +1,13 @@
 import { motion } from "framer-motion";
-import { Smartphone, Download, CheckCircle2, ShieldCheck, Wifi, Bell, Github, Apple, Play, ChevronRight, Package, Zap } from "lucide-react";
+import { Smartphone, Download, CheckCircle2, ShieldCheck, Wifi, Bell, Github, Apple, Play, ChevronRight, Package, Zap, Sparkles, RefreshCw } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-const APK_URL = "#"; // Placeholder — substituir pelo link real do APK quando publicado
+import { useAppUpdate } from "@/hooks/useAppUpdate";
+import { APP_VERSION } from "@/lib/version";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 
 const benefits = [
   { icon: Bell, title: "Notificações nativas", desc: "Alertas do herói direto na tela de bloqueio." },
@@ -58,6 +59,10 @@ const faq = [
 ];
 
 export default function MobilePage() {
+  const { latest, hasUpdate } = useAppUpdate();
+  const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
+  const latestVersion = latest?.version ?? APP_VERSION;
+
   return (
     <AppLayout>
       <div className="container max-w-5xl mx-auto p-4 md:p-6 space-y-8">
@@ -73,28 +78,52 @@ export default function MobilePage() {
               <Smartphone className="w-10 h-10 text-primary" />
             </div>
             <div className="flex-1">
-              <Badge variant="outline" className="mb-2 border-primary/40 text-primary">
-                Versão Android disponível
-              </Badge>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <Badge variant="outline" className="border-primary/40 text-primary">
+                  Versão Android
+                </Badge>
+                <Badge variant="secondary" className="font-mono text-xs">
+                  v{latestVersion}
+                </Badge>
+                {hasUpdate && (
+                  <Badge className="bg-primary/20 text-primary border-primary/40">
+                    <Sparkles className="w-3 h-3 mr-1" /> Nova versão!
+                  </Badge>
+                )}
+              </div>
               <h1 className="font-display text-2xl md:text-4xl font-bold text-primary mb-2">
                 Hero's Journey no seu bolso
               </h1>
               <p className="text-muted-foreground max-w-2xl">
                 Instale o app oficial no seu Android e tenha seu painel de herói sempre à mão — com notificações nativas e modo offline.
               </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Sua versão atual: <span className="font-mono">v{APP_VERSION}</span>
+              </p>
             </div>
             <Button
               size="lg"
-              asChild
+              asChild={!!apkUrl}
+              disabled={!apkUrl}
               className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
             >
-              <a href={APK_URL} download>
-                <Download className="w-5 h-5 mr-2" />
-                Baixar APK
-              </a>
+              {apkUrl ? (
+                <a href={apkUrl} download target="_blank" rel="noopener noreferrer">
+                  <Download className="w-5 h-5 mr-2" />
+                  Baixar APK v{latestVersion}
+                </a>
+              ) : (
+                <span>
+                  <RefreshCw className="w-5 h-5 mr-2" />
+                  APK em preparação
+                </span>
+              )}
             </Button>
           </div>
         </motion.div>
+
+        {/* Subscription Paywall */}
+        <SubscriptionPaywall />
 
         {/* Benefits */}
         <section>
