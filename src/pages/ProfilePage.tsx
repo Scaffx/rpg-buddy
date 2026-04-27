@@ -1077,18 +1077,14 @@ export default function ProfilePage() {
         throw new Error(t('app.profile.alreadyInClass'));
       }
 
-      // Primeiro respec é gratuito
-      const isFirstRespec = !localStorage.getItem(`respec_used_${user.id}`);
-      const cost = isFirstRespec ? 0 : RESPEC_COST;
-
-      // Tenta RPC, fallback para atualização direta
+      // Tenta RPC — custo é calculado server-side (primeiro respec gratuito verificado no servidor)
       const { data, error } = await (supabase.rpc as any)("perform_class_respec", {
         target_class: selectedRespecClass,
-        respec_cost: cost,
       });
 
       if (error) {
         // Fallback: verifica ouro e atualiza diretamente
+        const isFirstRespec = !localStorage.getItem(`respec_used_${user.id}`);
         if (!isFirstRespec) {
           const { data: bal } = await supabase.from('user_balance').select('gold').eq('user_id', user.id).single();
           const gold = (bal as any)?.gold ?? 0;
