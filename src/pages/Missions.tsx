@@ -1222,6 +1222,13 @@ function MissionFormModal({
   onSave: () => void; saving: boolean; missionId?: string;
 }) {
   const { t } = useTranslation();
+
+  const PRIORITIES = [
+    { value: "baixa", label: t('app.missions.priority_low'), icon: Beer, color: "text-success border-success/50 bg-success/10" },
+    { value: "media", label: t('app.missions.priority_medium'), icon: Shield, color: "text-yellow-400 border-yellow-400/50 bg-yellow-400/10" },
+    { value: "alta", label: t('app.missions.priority_high'), icon: Flame, color: "text-destructive border-destructive/50 bg-destructive/10" },
+  ];
+
   const { data: checklist } = useChecklistItems(missionId || '');
   const addItem = useAddChecklistItem();
   const toggleItem = useToggleChecklistItem();
