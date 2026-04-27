@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { APP_VERSION } from "@/lib/version";
+import { Capacitor } from "@capacitor/core";
 
 const DISMISS_KEY = "lifeonrpg_update_dismissed_for";
 
@@ -19,13 +20,16 @@ export function AppUpdateModal() {
   const [open, setOpen] = useState(false);
   const [show, setShow] = useState(false);
 
+  // Na web não exibimos modal de atualização — só relevante no APK nativo
+  const isNative = Capacitor.isNativePlatform();
+
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 800);
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    if (!hasUpdate || !latest || isLoading || !show) return;
+    if (!isNative || !hasUpdate || !latest || isLoading || !show) return;
     if (isMandatory) {
       setOpen(true);
       return;
@@ -33,9 +37,9 @@ export function AppUpdateModal() {
     const dismissedFor = sessionStorage.getItem(DISMISS_KEY);
     if (dismissedFor === latest.version) return;
     setOpen(true);
-  }, [hasUpdate, isMandatory, latest, isLoading, show]);
+  }, [isNative, hasUpdate, isMandatory, latest, isLoading, show]);
 
-  if (!latest || !hasUpdate) return null;
+  if (!isNative || !latest || !hasUpdate) return null;
 
   const handleDownload = () => {
     if (latest.apk_url && latest.apk_url !== "#") {

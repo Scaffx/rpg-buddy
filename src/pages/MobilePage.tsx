@@ -9,11 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
+import { Capacitor } from "@capacitor/core";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 
 export default function MobilePage() {
   const { t } = useTranslation();
   const { latest, hasUpdate } = useAppUpdate();
+  const isNative = Capacitor.isNativePlatform();
   const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
   const latestVersion = latest?.version ?? APP_VERSION;
 
@@ -65,7 +67,7 @@ export default function MobilePage() {
                     BETA
                   </Badge>
                 )}
-                {hasUpdate && (
+                {isNative && hasUpdate && (
                   <Badge className="bg-primary/20 text-primary border-primary/40">
                     <Sparkles className="w-3 h-3 mr-1" /> {t("app.mobile.new_version")}
                   </Badge>
