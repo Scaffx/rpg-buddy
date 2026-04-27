@@ -9,6 +9,7 @@ import { CharacterSprite } from '@/components/CharacterSprite';
 import { AppUpdateModal } from '@/components/AppUpdateModal';
 import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
 import { SubscriptionExpiryNotice } from '@/components/SubscriptionExpiryNotice';
+import FloatingAiChat from '@/components/FloatingAiChat';
 import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
@@ -336,6 +337,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <LevelUpCinematic />
         </div>
         <AppUpdateModal />
+        <FloatingAiChat />
       </div>
     </SidebarProvider>
   );
