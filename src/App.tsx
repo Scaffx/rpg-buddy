@@ -25,6 +25,7 @@ import PrioridadePage from "./pages/PrioridadePage";
 import Onboarding from "./pages/Onboarding";
 import SystemInfoPage from "./pages/SystemInfoPage";
 import VirtuesPage from "./pages/VirtuesPage";
+import Landing from "./pages/Landing";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -62,12 +63,27 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function LandingRoute() {
+  // Landing pública: visitantes veem o pitch; logados vão direto pro app.
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  if (user) return <Navigate to="/" replace />;
+  return <Landing />;
+}
+
 function AppRoutes() {
   useClickSound();
 
   return (
     <Routes>
       <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+      <Route path="/landing" element={<LandingRoute />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
