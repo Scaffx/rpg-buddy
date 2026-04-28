@@ -121,6 +121,19 @@ export default function MobilePage() {
           </div>
         </motion.div>
 
+        {isAdmin && (
+          <Alert className="border-amber-500/40 bg-amber-500/5">
+            <Settings className="w-4 h-4 text-amber-500" />
+            <AlertTitle className="text-amber-400">Modo Administrador</AlertTitle>
+            <AlertDescription className="flex items-center justify-between gap-2 flex-wrap">
+              <span>Você pode publicar uma nova versão do APK aqui.</span>
+              <Button asChild size="sm" variant="outline" className="border-amber-500/40">
+                <Link to="/admin/releases">Abrir painel de releases</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Subscription Paywall */}
         <SubscriptionPaywall />
 
