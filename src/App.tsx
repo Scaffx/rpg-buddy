@@ -27,6 +27,7 @@ import SystemInfoPage from "./pages/SystemInfoPage";
 import VirtuesPage from "./pages/VirtuesPage";
 import Landing from "./pages/Landing";
 import MobilePage from "./pages/MobilePage";
+import ReleasesAdminPage from "./pages/admin/ReleasesAdminPage";
 import TermsPage from "./pages/legal/TermsPage";
 import PrivacyPage from "./pages/legal/PrivacyPage";
 import RefundPage from "./pages/legal/RefundPage";
@@ -108,6 +109,7 @@ function AppRoutes() {
       <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
       <Route path="/virtues" element={<ProtectedRoute><VirtuesPage /></ProtectedRoute>} />
       <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
+      <Route path="/admin/releases" element={<ProtectedRoute><ReleasesAdminPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
