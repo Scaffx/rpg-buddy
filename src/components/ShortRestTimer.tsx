@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Play, Square, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
-import { useAttributes, useProfile, useShortRestAvailability, useShortRestRecovery, useShortRestStart } from '@/hooks/useProfile';
+import { useAttributes, useProfile, useShortRestAvailability, useShortRestRecovery, useShortRestStart, useHealthStats } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState, type ShortRestPersistentState } from '@/lib/shortRestState';
@@ -51,6 +51,7 @@ export default function ShortRestTimer({
   const shortRestStart = useShortRestStart();
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
+  const { data: healthStats } = useHealthStats();
 
   const computedMaxes = useMemo(() => {
     const levels = getAttributeLevels(attributes as any[]);
@@ -364,6 +365,17 @@ export default function ShortRestTimer({
 
       {!shortRestAvailability.isLoading && shortRestAvailability.data && !shortRestAvailability.data.canRest && (
         <p className="text-xs text-amber-300">{shortRestAvailability.data.message}</p>
+      )}
+
+      {healthStats && !isRunning && (
+        <div className="rounded-lg border border-muted-foreground/20 bg-muted/30 p-3">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold">HP:</span> {healthStats.current_hp} / {healthStats.max_hp} 
+            {' | '} 
+            <span className="font-semibold">MP:</span> {healthStats.current_mp} / {healthStats.max_mp}
+            {healthStats.fatigue > 0 && <> {' | '} <span className="font-semibold">Fadiga:</span> {healthStats.fatigue}</> }
+          </p>
+        </div>
       )}
 
       {finished && lastRecoverySummary && (

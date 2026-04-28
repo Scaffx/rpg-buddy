@@ -122,12 +122,12 @@ export function useShortRestStart() {
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
-      // Só bloqueia se o descanso já foi concluído hoje (timer esgotado).
-      // Iniciar e cancelar não bloqueia — o usuário pode tentar de novo.
-      const completedAt = await getShortRestUsageToday(user.id);
-      if (completedAt) {
+      // Bloqueia se o descanso foi iniciado OU concluído hoje (SHORT_REST_STARTED_ACTION ou SHORT_REST_ACTION).
+      // O usuário só pode iniciar uma vez por dia.
+      const startedOrCompletedAt = await getShortRestStartOrCompletionUsageToday(user.id);
+      if (startedOrCompletedAt) {
         const nextAvailableDate = getStartOfNextLocalDay();
-        throw new Error(`Você já concluiu seu descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
+        throw new Error(`Você já iniciou seu descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
       }
 
       // Log para analytics (não bloqueia disponibilidade).
