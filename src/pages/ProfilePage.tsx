@@ -1117,9 +1117,9 @@ export default function ProfilePage() {
         target_class: selectedRespecClass,
       });
 
+      const isFirstRespec = !localStorage.getItem(`respec_used_${user.id}`);
       if (error) {
         // Fallback: verifica ouro e atualiza diretamente
-        const isFirstRespec = !localStorage.getItem(`respec_used_${user.id}`);
         if (!isFirstRespec) {
           const { data: bal } = await supabase.from('user_balance').select('gold').eq('user_id', user.id).single();
           const gold = (bal as any)?.gold ?? 0;
