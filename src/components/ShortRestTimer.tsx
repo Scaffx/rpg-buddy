@@ -83,6 +83,14 @@ export default function ShortRestTimer({
       onRestComplete?.();
       setNeedsApply(false);
     } catch (error: any) {
+      // If the rest was already applied server-side (e.g., app was closed during completion),
+      // silently clear the pending state instead of showing an error.
+      const alreadyApplied = typeof error?.message === 'string' && error.message.includes('já realizou o descanso breve hoje');
+      if (alreadyApplied) {
+        setNeedsApply(false);
+        setLastRecoverySummary(null);
+        return;
+      }
       completedRef.current = false;
       setLastRecoverySummary(null);
       toast.error(error?.message || 'Não foi possível aplicar a recuperação do descanso curto.');
