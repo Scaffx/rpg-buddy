@@ -1,110 +1,150 @@
 import { useState, useRef, useEffect } from 'react';
-import { Brain, X, Send, Loader2, Sparkles } from 'lucide-react';
+import { Brain, X, Send, Loader2, Sparkles, Plus, MessageSquare, Trash2, Menu } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
+type Conversation = { id: string; title: string; updated_at: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
+const WELCOME: Msg = {
+  role: 'assistant',
+  content: '⚔️ Saudações, aventureiro! Sou o **Mestre RPG**. Posso consultar seu status, criar e concluir missões para você. Tente: *"como estou hoje?"* ou *"cria uma missão de leitura à noite, atributo Sabedoria"*.',
+};
+
 export default function FloatingAiChat() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Msg[]>([WELCOME]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
+  // Carrega lista de conversas ao abrir
   useEffect(() => {
-    if (open && messages.length === 0) {
-      setMessages([
-        {
-          role: 'assistant',
-          content: '⚔️ Saudações, aventureiro! Sou o **Mestre RPG**. Em que posso te ajudar hoje? Posso sugerir missões, motivar você ou explicar mecânicas do sistema.',
-        },
-      ]);
-    }
-  }, [open]);
+    if (!open || !user) return;
+    loadConversations();
+  }, [open, user]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, loading]);
 
-  async function streamChat(history: Msg[]) {
-    const resp = await fetch(CHAT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify({ messages: history }),
-    });
+  async function loadConversations() {
+    const { data } = await supabase
+      .from('ai_conversations')
+      .select('id,title,updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(50);
+    setConversations((data as any) ?? []);
+  }
 
-    if (resp.status === 429) {
-      toast({ title: 'Devagar, herói!', description: 'Muitas mensagens em sequência. Aguarde alguns segundos.', variant: 'destructive' });
-      return;
-    }
-    if (resp.status === 402) {
-      toast({ title: 'Créditos de IA esgotados', description: 'Avise o administrador para recarregar.', variant: 'destructive' });
-      return;
-    }
-    if (!resp.ok || !resp.body) throw new Error('Falha ao conectar com a IA');
+  async function loadConversation(id: string) {
+    setActiveId(id);
+    setShowSidebar(false);
+    const { data } = await supabase
+      .from('ai_messages')
+      .select('role,content')
+      .eq('conversation_id', id)
+      .order('created_at', { ascending: true });
+    const msgs = (data ?? [])
+      .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+      .map((m: any) => ({ role: m.role, content: m.content })) as Msg[];
+    setMessages(msgs.length ? msgs : [WELCOME]);
+  }
 
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let assistantText = '';
-    setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+  function startNewChat() {
+    setActiveId(null);
+    setMessages([WELCOME]);
+    setShowSidebar(false);
+  }
 
-    let done = false;
-    while (!done) {
-      const { value, done: streamDone } = await reader.read();
-      if (streamDone) break;
-      buffer += decoder.decode(value, { stream: true });
+  async function deleteConversation(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm('Apagar esta conversa?')) return;
+    await supabase.from('ai_conversations').delete().eq('id', id);
+    if (activeId === id) startNewChat();
+    loadConversations();
+  }
 
-      let idx: number;
-      while ((idx = buffer.indexOf('\n')) !== -1) {
-        let line = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 1);
-        if (line.endsWith('\r')) line = line.slice(0, -1);
-        if (line.startsWith(':') || line.trim() === '') continue;
-        if (!line.startsWith('data: ')) continue;
-        const json = line.slice(6).trim();
-        if (json === '[DONE]') {
-          done = true;
-          break;
-        }
-        try {
-          const parsed = JSON.parse(json);
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) {
-            assistantText += delta;
-            setMessages((prev) => {
-              const copy = [...prev];
-              copy[copy.length - 1] = { role: 'assistant', content: assistantText };
-              return copy;
-            });
-          }
-        } catch {
-          buffer = line + '\n' + buffer;
-          break;
-        }
-      }
-    }
+  async function ensureConversation(firstUserMsg: string): Promise<string | null> {
+    if (activeId) return activeId;
+    if (!user) return null;
+    const title = firstUserMsg.slice(0, 60);
+    const { data, error } = await supabase
+      .from('ai_conversations')
+      .insert({ user_id: user.id, title } as any)
+      .select('id')
+      .single();
+    if (error || !data) return null;
+    setActiveId(data.id);
+    loadConversations();
+    return data.id;
+  }
+
+  async function persistMessage(convId: string, role: 'user' | 'assistant', content: string) {
+    if (!user) return;
+    await supabase.from('ai_messages').insert({
+      conversation_id: convId, user_id: user.id, role, content,
+    } as any);
+    await supabase.from('ai_conversations').update({ updated_at: new Date().toISOString() } as any).eq('id', convId);
   }
 
   async function send() {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || !user) return;
     setInput('');
     const userMsg: Msg = { role: 'user', content: text };
-    const newHistory = [...messages, userMsg];
+    const newHistory = [...messages.filter(m => m !== WELCOME || messages.length > 1), userMsg];
     setMessages(newHistory);
     setLoading(true);
+
     try {
-      await streamChat(newHistory);
-    } catch (e) {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error('Sessão expirada');
+
+      const convId = await ensureConversation(text);
+      if (convId) await persistMessage(convId, 'user', text);
+
+      // Envia somente as mensagens reais (sem WELCOME) para a IA
+      const apiMessages = newHistory
+        .filter(m => !(m.role === 'assistant' && m.content === WELCOME.content))
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const resp = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (resp.status === 429) {
+        toast({ title: 'Devagar, herói!', description: 'Aguarde alguns segundos.', variant: 'destructive' });
+        return;
+      }
+      if (resp.status === 402) {
+        toast({ title: 'Créditos esgotados', description: 'Avise o administrador.', variant: 'destructive' });
+        return;
+      }
+      if (!resp.ok) throw new Error('Falha ao conectar com a IA');
+
+      const data = await resp.json();
+      const assistantText = data.content || '...';
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantText }]);
+      if (convId) await persistMessage(convId, 'assistant', assistantText);
+    } catch (e: any) {
       console.error(e);
-      toast({ title: 'Erro no chat', description: 'Tente novamente em instantes.', variant: 'destructive' });
+      toast({ title: 'Erro no chat', description: e?.message ?? 'Tente novamente.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -112,7 +152,6 @@ export default function FloatingAiChat() {
 
   return (
     <>
-      {/* Botão flutuante */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
@@ -127,78 +166,123 @@ export default function FloatingAiChat() {
         </button>
       )}
 
-      {/* Janela do chat */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 w-[min(380px,calc(100vw-2rem))] h-[min(560px,calc(100vh-3rem))] bg-card border border-primary/40 rounded-xl shadow-2xl flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary/20 to-transparent border-b border-border">
-            <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-primary" />
-              <div>
-                <h3 className="text-sm font-display font-bold text-primary">Mestre RPG</h3>
-                <p className="text-[10px] text-muted-foreground">Conselheiro IA</p>
+        <div className="fixed bottom-6 right-6 z-50 w-[min(420px,calc(100vw-2rem))] h-[min(620px,calc(100vh-3rem))] bg-card border border-primary/40 rounded-xl shadow-2xl flex overflow-hidden">
+          {/* Sidebar de conversas */}
+          {showSidebar && (
+            <div className="w-44 border-r border-border bg-background/40 flex flex-col">
+              <button
+                onClick={startNewChat}
+                className="m-2 flex items-center gap-2 px-2 py-1.5 text-xs rounded bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
+              >
+                <Plus className="w-3 h-3" /> Nova
+              </button>
+              <div className="flex-1 overflow-y-auto scrollbar-none px-1 pb-2 space-y-1">
+                {conversations.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground text-center mt-4 px-2">Nenhuma conversa ainda.</p>
+                )}
+                {conversations.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => loadConversation(c.id)}
+                    className={`group w-full text-left px-2 py-1.5 rounded text-[11px] flex items-center gap-1.5 transition-colors ${
+                      activeId === c.id ? 'bg-primary/20 text-primary' : 'hover:bg-muted/40 text-foreground/80'
+                    }`}
+                  >
+                    <MessageSquare className="w-3 h-3 flex-shrink-0 opacity-60" />
+                    <span className="truncate flex-1">{c.title}</span>
+                    <Trash2
+                      onClick={(e) => deleteConversation(c.id, e)}
+                      className="w-3 h-3 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-destructive flex-shrink-0"
+                    />
+                  </button>
+                ))}
               </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              aria-label="Fechar"
-              className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+          )}
 
-          {/* Mensagens */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-none">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
-                    m.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted/50 text-foreground border border-border'
-                  }`}
+          {/* Chat principal */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-primary/20 to-transparent border-b border-border">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  onClick={() => setShowSidebar(s => !s)}
+                  aria-label="Histórico"
+                  className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                 >
-                  {m.content || (loading && i === messages.length - 1 ? '...' : '')}
+                  <Menu className="w-4 h-4" />
+                </button>
+                <Brain className="w-5 h-5 text-primary flex-shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-display font-bold text-primary truncate">Mestre RPG</h3>
+                  <p className="text-[10px] text-muted-foreground">Conselheiro IA</p>
                 </div>
               </div>
-            ))}
-            {loading && messages[messages.length - 1]?.role === 'user' && (
-              <div className="flex justify-start">
-                <div className="bg-muted/50 border border-border px-3 py-2 rounded-lg">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={startNewChat}
+                  aria-label="Nova conversa"
+                  className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                  title="Nova conversa"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setOpen(false)}
+                  aria-label="Fechar"
+                  className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Input */}
-          <div className="p-3 border-t border-border bg-background/50">
-            <div className="flex gap-2">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-                placeholder="Pergunte algo ao Mestre..."
-                disabled={loading}
-                className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary/50 outline-none disabled:opacity-50"
-              />
-              <button
-                onClick={send}
-                disabled={loading || !input.trim()}
-                aria-label="Enviar"
-                className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-40"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-none">
+              {messages.map((m, i) => (
+                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-[88%] px-3 py-2 rounded-lg text-sm ${
+                      m.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50 text-foreground border border-border prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-strong:text-primary'
+                    }`}
+                  >
+                    {m.role === 'assistant'
+                      ? <ReactMarkdown>{m.content}</ReactMarkdown>
+                      : m.content}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-muted/50 border border-border px-3 py-2 rounded-lg">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-2.5 border-t border-border bg-background/50">
+              <div className="flex gap-2">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+                  }}
+                  placeholder="Pergunte ou peça uma ação..."
+                  disabled={loading || !user}
+                  className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary/50 outline-none disabled:opacity-50"
+                />
+                <button
+                  onClick={send}
+                  disabled={loading || !input.trim() || !user}
+                  aria-label="Enviar"
+                  className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-40"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
