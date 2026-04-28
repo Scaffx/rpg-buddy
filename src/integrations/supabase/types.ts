@@ -506,6 +506,78 @@ export type Database = {
         }
         Relationships: []
       }
+      friend_challenges: {
+        Row: {
+          accepted_at: string | null
+          battle_log: Json | null
+          challenge_type: string
+          challenged_completed: boolean
+          challenged_id: string
+          challenger_completed: boolean
+          challenger_id: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          duration_days: number | null
+          expires_at: string | null
+          id: string
+          status: string
+          title: string
+          winner_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          battle_log?: Json | null
+          challenge_type?: string
+          challenged_completed?: boolean
+          challenged_id: string
+          challenger_completed?: boolean
+          challenger_id: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          duration_days?: number | null
+          expires_at?: string | null
+          id?: string
+          status?: string
+          title: string
+          winner_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          battle_log?: Json | null
+          challenge_type?: string
+          challenged_completed?: boolean
+          challenged_id?: string
+          challenger_completed?: boolean
+          challenger_id?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          duration_days?: number | null
+          expires_at?: string | null
+          id?: string
+          status?: string
+          title?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_challenged"
+            columns: ["challenged_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fk_challenger"
+            columns: ["challenger_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       game_items: {
         Row: {
           agi_bonus: number
@@ -762,6 +834,39 @@ export type Database = {
           },
         ]
       }
+      npc_challenge_completions: {
+        Row: {
+          challenge_id: string
+          completed_at: string
+          gold_earned: number
+          id: string
+          npc_id: string
+          user_id: string
+          week_token: string
+          xp_earned: number
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string
+          gold_earned?: number
+          id?: string
+          npc_id: string
+          user_id: string
+          week_token: string
+          xp_earned?: number
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string
+          gold_earned?: number
+          id?: string
+          npc_id?: string
+          user_id?: string
+          week_token?: string
+          xp_earned?: number
+        }
+        Relationships: []
+      }
       personagens: {
         Row: {
           ataque_base: number
@@ -979,6 +1084,48 @@ export type Database = {
           icon_color?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      subscription_access_keys: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string | null
+          grant_months: number
+          granted_by_subscription_id: string
+          id: string
+          owner_user_id: string
+          recipient_user_id: string | null
+          redeemed_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at?: string | null
+          grant_months?: number
+          granted_by_subscription_id: string
+          id?: string
+          owner_user_id: string
+          recipient_user_id?: string | null
+          redeemed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string | null
+          grant_months?: number
+          granted_by_subscription_id?: string
+          id?: string
+          owner_user_id?: string
+          recipient_user_id?: string | null
+          redeemed_at?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1362,6 +1509,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_gold_to_user: {
+        Args: { p_gold: number; p_user_id: string }
+        Returns: undefined
+      }
+      add_xp_to_user: {
+        Args: { p_user_id: string; p_xp: number }
+        Returns: undefined
+      }
+      debug_sintonizado: {
+        Args: never
+        Returns: {
+          col_exists: boolean
+          sample_value: boolean
+        }[]
+      }
       get_rank: { Args: { user_level: number }; Returns: string }
       get_rankings: {
         Args: { p_region?: string }
@@ -1374,10 +1536,28 @@ export type Database = {
           user_id: string
         }[]
       }
+      grant_starter_items: {
+        Args: { p_class: string; p_user_id: string }
+        Returns: undefined
+      }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
       }
+      is_system_admin: { Args: never; Returns: boolean }
+      list_system_feedback_admin: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          message: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
+      perform_class_respec: { Args: { target_class: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
