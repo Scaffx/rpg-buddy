@@ -12,10 +12,14 @@ import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { Link } from "react-router-dom";
+import { Settings } from "lucide-react";
 
 export default function MobilePage() {
   const { t } = useTranslation();
   const { latest, hasUpdate } = useAppUpdate();
+  const { isAdmin } = useIsAdmin();
   const isNative = Capacitor.isNativePlatform();
   const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
   const latestVersion = latest?.version ?? APP_VERSION;
