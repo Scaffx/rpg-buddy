@@ -4,8 +4,8 @@
 // se há atualização disponível na tabela `app_releases`.
 // Sempre que publicar um novo APK, incremente AMBOS.
 // ============================================================
-export const APP_VERSION = "1.6.0";
-export const APP_VERSION_CODE = 7;
+export const APP_VERSION = "1.6.1";
+export const APP_VERSION_CODE = 8;
 
 // Marca o app como Beta. Quando true, exibimos badges "BETA"
 // em locais visíveis (landing, página mobile, modais de update).
