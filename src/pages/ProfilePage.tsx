@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
@@ -11,6 +12,14 @@ import {
   useSendFriendRequest,
   useRespondFriendRequest,
   useRemoveFriend,
+  useFriendChallenges,
+  useSendChallenge,
+  useRespondChallenge,
+  useMarkChallengeComplete,
+  useHeroVsHeroBattle,
+  getFriendStats,
+  type FriendChallenge,
+  type BattleResult,
 } from "@/hooks/useFriends";
 import { useUserAchievements, useAllAchievements } from "@/hooks/useAchievements";
 import { useGoldBalance } from "@/hooks/useGold";
@@ -28,6 +37,7 @@ import {
   ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull, Coins,
   Calendar, Upload, Trash2, ChevronLeft, ChevronRight, Pencil, Check, X as XIcon,
   Moon, Sun, UserPlus, UserCheck, UserX, Search, Trophy, Lock,
+  AlertTriangle, Sword, Scroll, Clock, CheckCircle, XCircle, Award,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
@@ -703,19 +713,34 @@ export default function ProfilePage() {
   const equipBonuses = getEquipmentBonuses(inventory as InventoryItem[]);
   const awardHealthXP = useAwardHealthXP();
   const updateDisplayName = useUpdateDisplayName();
+  const syncHealthMaxes = useSyncHealthMaxes();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
-  // Amigos e conquistas
+  // Amigos, conquistas e desafios
   const { data: friends = [] } = useFriends();
   const { data: pendingRequests = [] } = usePendingRequests();
   const { data: userAchievements = [] } = useUserAchievements();
   const { data: allAchievements = [] } = useAllAchievements();
+  const { data: friendChallenges = [] } = useFriendChallenges();
   const sendFriendRequest = useSendFriendRequest();
   const respondFriendRequest = useRespondFriendRequest();
   const removeFriend = useRemoveFriend();
+  const sendChallenge = useSendChallenge();
+  const respondChallenge = useRespondChallenge();
+  const markChallengeComplete = useMarkChallengeComplete();
+  const heroBattle = useHeroVsHeroBattle();
   const [friendSearch, setFriendSearch] = useState("");
   const { data: searchResults = [], isFetching: isSearching } = useSearchProfile(friendSearch);
+
+  // Estado para modal de desafio e resultado de batalha
+  const [challengingFriend, setChallengingFriend] = useState<{ id: string; display_name: string | null } | null>(null);
+  const [challengeTitle, setChallengeTitle] = useState("");
+  const [challengeDesc, setChallengeDesc] = useState("");
+  const [challengeDays, setChallengeDays] = useState(7);
+  const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
+  const [battleFriendName, setBattleFriendName] = useState("");
 
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState<"perfil" | "habilidades" | "inventario" | "amigos" | "conquistas">("perfil");
@@ -840,6 +865,16 @@ export default function ProfilePage() {
   const mealHalf = Math.ceil(mealsTarget / 2);
   const maxHp = playerCombatStats.hp;
   const maxMp = playerCombatStats.mp;
+
+  // Sincroniza max_hp/max_mp no banco quando o perfil é carregado ou o nível muda.
+  // Inclui bônus de equipamentos para que itens com mp_bonus sejam refletidos.
+  useEffect(() => {
+    if (!profile || !maxHp || !maxMp || syncHealthMaxes.isPending) return;
+    const computedMaxHp = maxHp + (equipBonuses.hp || 0);
+    const computedMaxMp = maxMp + (equipBonuses.mp || 0);
+    syncHealthMaxes.mutate({ computedMaxHp, computedMaxMp });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.level, maxHp, maxMp, equipBonuses.hp, equipBonuses.mp]);
 
   // Hero is "asleep" between sleep_time and wake_time. While asleep, he doesn't
   // suffer hunger penalties — he wakes up at full HP/MP and only then starts
@@ -1189,7 +1224,7 @@ export default function ProfilePage() {
             { id: "perfil",      label: t("app.profile.tabPerfil") },
             { id: "habilidades", label: t("app.profile.tabHabilidades") },
             { id: "inventario",  label: t("app.profile.tabInventario") },
-            { id: "amigos",      label: t("app.profile.tabAmigos"), badge: pendingRequests.length > 0 ? pendingRequests.length : undefined },
+            { id: "amigos",      label: t("app.profile.tabAmigos"), badge: (() => { const n = pendingRequests.length + friendChallenges.filter(c => c.challenged_id === user?.id && c.status === 'pending').length; return n > 0 ? n : undefined; })() },
             { id: "conquistas",  label: t("app.profile.tabConquistas"), badge: userAchievements.length > 0 ? userAchievements.length : undefined },
           ].map((tab) => (
             <button
@@ -1305,6 +1340,29 @@ export default function ProfilePage() {
         {/* ======== ABA: PERFIL ======== */}
         {activeTab === "perfil" && (
           <div className="space-y-6">
+            {/* Alerta de formulário inicial não concluído */}
+            {profile && (profile as any).onboarding_completed !== true && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/40 rounded-xl p-4"
+              >
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-amber-300">Configuração inicial incompleta</p>
+                  <p className="text-xs text-amber-200/70 mt-0.5">
+                    Você ainda não concluiu o formulário inicial. Escolha sua classe, região e missões iniciais para desbloquear todas as funcionalidades do jogo.
+                  </p>
+                  <button
+                    onClick={() => navigate('/onboarding')}
+                    className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold hover:bg-amber-500/30 transition-colors"
+                  >
+                    <Scroll className="w-3.5 h-3.5" /> Completar formulário inicial
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {/* XP Award Card */}
             {mealsToday >= Math.max(3, mealsTarget) && totalWaterToday >= waterTargetMl && (
               <motion.div
@@ -1944,6 +2002,134 @@ export default function ProfilePage() {
         {/* ======== ABA: AMIGOS ======== */}
         {activeTab === "amigos" && (
           <div className="space-y-5">
+            {/* Modal de desafio de rotina */}
+            {challengingFriend && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                onClick={(e) => { if (e.target === e.currentTarget) setChallengingFriend(null); }}
+              >
+                <div className="bg-card border border-primary/30 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+                  <div className="flex items-center gap-3">
+                    <Scroll className="w-6 h-6 text-primary" />
+                    <h3 className="text-base font-bold text-foreground">Desafiar {challengingFriend.display_name || 'Aventureiro'}</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Título do desafio *</label>
+                      <input
+                        type="text"
+                        value={challengeTitle}
+                        onChange={(e) => setChallengeTitle(e.target.value)}
+                        maxLength={80}
+                        placeholder="Ex: Treinar 5x na semana"
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-primary/50 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Descrição (opcional)</label>
+                      <textarea
+                        value={challengeDesc}
+                        onChange={(e) => setChallengeDesc(e.target.value)}
+                        maxLength={200}
+                        placeholder="Detalhe o desafio..."
+                        rows={3}
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-primary/50 outline-none resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Duração (dias): {challengeDays}</label>
+                      <input
+                        type="range"
+                        min={1}
+                        max={30}
+                        value={challengeDays}
+                        onChange={(e) => setChallengeDays(Number(e.target.value))}
+                        className="w-full accent-primary"
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>1 dia</span>
+                        <span>30 dias</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => setChallengingFriend(null)}
+                      className="flex-1 px-4 py-2 bg-muted border border-border rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/80 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!challengeTitle.trim()) { toast.error('Digite um título para o desafio.'); return; }
+                        sendChallenge.mutate(
+                          { challenged_id: challengingFriend.id, title: challengeTitle.trim(), description: challengeDesc.trim() || undefined, duration_days: challengeDays },
+                          {
+                            onSuccess: () => {
+                              toast.success(`Desafio enviado para ${challengingFriend.display_name || 'Aventureiro'}!`);
+                              setChallengingFriend(null);
+                              setChallengeTitle('');
+                              setChallengeDesc('');
+                              setChallengeDays(7);
+                            },
+                            onError: (err: any) => toast.error(err.message || 'Erro ao enviar desafio.'),
+                          },
+                        );
+                      }}
+                      disabled={sendChallenge.isPending}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      <Scroll className="w-4 h-4" /> Enviar Desafio
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Modal de resultado de batalha */}
+            {battleResult && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                onClick={(e) => { if (e.target === e.currentTarget) setBattleResult(null); }}
+              >
+                <div className="bg-card border border-primary/30 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl text-center">
+                  <div className="text-5xl">{battleResult.is_winner ? '🏆' : '💀'}</div>
+                  <h3 className={`text-xl font-black ${battleResult.is_winner ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {battleResult.is_winner ? 'VITÓRIA!' : 'DERROTA!'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="text-foreground font-bold">{battleResult.winner_name}</span> venceu em{' '}
+                    <span className="text-primary font-bold">{battleResult.total_rounds} rodadas</span>
+                  </p>
+                  <div className="bg-muted/30 rounded-xl p-3 text-left space-y-1.5 max-h-40 overflow-y-auto">
+                    {battleResult.rounds.slice(0, 10).map((r, i) => (
+                      <p key={i} className="text-[11px] text-muted-foreground">
+                        <span className="font-bold text-foreground">R{r.round}</span>{' '}
+                        {r.is_crit && <span className="text-yellow-400">⚡CRÍTICO! </span>}
+                        <span className={r.attacker_id === user?.id ? 'text-emerald-400' : 'text-red-400'}>
+                          {r.attacker_id === user?.id ? 'Você' : battleFriendName}
+                        </span>{' '}
+                        causou <span className="font-bold">{r.damage}</span> de dano
+                      </p>
+                    ))}
+                    {battleResult.rounds.length > 10 && (
+                      <p className="text-[10px] text-muted-foreground text-center">...e mais {battleResult.rounds.length - 10} rodadas</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setBattleResult(null)}
+                    className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {/* Buscar amigo */}
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2 mb-1">
@@ -2051,6 +2237,118 @@ export default function ProfilePage() {
               </div>
             )}
 
+            {/* Desafios pendentes recebidos */}
+            {(() => {
+              const pendingChallenges = friendChallenges.filter(
+                (c) => c.challenged_id === user?.id && c.status === 'pending' && c.challenge_type === 'routine',
+              );
+              if (pendingChallenges.length === 0) return null;
+              return (
+                <div className="bg-card border border-violet-500/30 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Scroll className="w-5 h-5 text-violet-400" />
+                    <span className="text-sm font-bold text-violet-300">Desafios recebidos ({pendingChallenges.length})</span>
+                  </div>
+                  <div className="space-y-2">
+                    {pendingChallenges.map((c) => (
+                      <div key={c.id} className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{c.title}</p>
+                            {c.description && <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>}
+                            <p className="text-[10px] text-violet-400 mt-1">
+                              De: <span className="font-bold">{c.challenger_profile?.display_name || 'Aventureiro'}</span>
+                              {c.duration_days && ` · ${c.duration_days} dias`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => respondChallenge.mutate({ challengeId: c.id, accept: true }, {
+                              onSuccess: () => toast.success('Desafio aceito! Boa sorte!'),
+                              onError: (err: any) => toast.error(err.message),
+                            })}
+                            disabled={respondChallenge.isPending}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                          >
+                            <CheckCircle className="w-3 h-3" /> Aceitar
+                          </button>
+                          <button
+                            onClick={() => respondChallenge.mutate({ challengeId: c.id, accept: false }, {
+                              onSuccess: () => toast.info('Desafio recusado.'),
+                              onError: (err: any) => toast.error(err.message),
+                            })}
+                            disabled={respondChallenge.isPending}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium hover:bg-rose-500/30 transition-colors disabled:opacity-50"
+                          >
+                            <XCircle className="w-3 h-3" /> Recusar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Desafios ativos */}
+            {(() => {
+              const activeChallenges = friendChallenges.filter(
+                (c) => c.status === 'active',
+              );
+              if (activeChallenges.length === 0) return null;
+              return (
+                <div className="bg-card border border-emerald-500/30 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-emerald-400" />
+                    <span className="text-sm font-bold text-emerald-300">Desafios em andamento ({activeChallenges.length})</span>
+                  </div>
+                  <div className="space-y-2">
+                    {activeChallenges.map((c) => {
+                      const iAmChallenger = c.challenger_id === user?.id;
+                      const iDone = iAmChallenger ? c.challenger_completed : c.challenged_completed;
+                      const otherName = iAmChallenger
+                        ? (c.challenged_profile?.display_name || 'Aventureiro')
+                        : (c.challenger_profile?.display_name || 'Aventureiro');
+                      const otherDone = iAmChallenger ? c.challenged_completed : c.challenger_completed;
+                      return (
+                        <div key={c.id} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{c.title}</p>
+                            {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
+                            <p className="text-[10px] text-muted-foreground mt-1">vs. {otherName} · {c.duration_days} dias</p>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px]">
+                            <span className={`flex items-center gap-1 ${iDone ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+                              {iDone ? <CheckCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                              Você: {iDone ? 'Concluído' : 'Em andamento'}
+                            </span>
+                            <span className="text-muted-foreground">|</span>
+                            <span className={`flex items-center gap-1 ${otherDone ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+                              {otherDone ? <CheckCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                              {otherName}: {otherDone ? 'Concluído' : 'Em andamento'}
+                            </span>
+                          </div>
+                          {!iDone && (
+                            <button
+                              onClick={() => markChallengeComplete.mutate(c.id, {
+                                onSuccess: () => toast.success('Desafio concluído! 🎉'),
+                                onError: (err: any) => toast.error(err.message),
+                              })}
+                              disabled={markChallengeComplete.isPending}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-foreground rounded-lg text-xs font-bold hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" /> Marcar como concluído
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Lista de amigos */}
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -2068,46 +2366,140 @@ export default function ProfilePage() {
                   <p className="text-xs mt-1">{t('app.profile.searchAboveHint')}</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-3">
                   {friends.map((friend) => {
                     const p = friend.other_profile;
+                    const friendId = p?.user_id;
+                    const stats = getFriendStats(user?.id, friendId, friendChallenges);
                     const classEmoji: Record<string, string> = {
                       guerreiro: '⚔️', mago: '📖', gatuno: '🌙',
                       ferreiro: '🔨', clerico: '✝️', arqueiro: '🏹',
                     };
                     return (
-                      <div key={friend.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 p-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-xl shrink-0">
-                          {p?.avatar_url ? (
-                            <img src={p.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
-                          ) : (
-                            classEmoji[p?.starter_class || ''] || '🧙'
-                          )}
+                      <div key={friend.id} className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-xl shrink-0">
+                            {p?.avatar_url ? (
+                              <img src={p.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                            ) : (
+                              classEmoji[p?.starter_class || ''] || '🧙'
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-foreground truncate">{p?.display_name || 'Aventureiro'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {t('app.profile.friendLevelInfo', { level: p?.level || 1, class: p?.starter_class || t('app.profile.noviceClassFallback') })}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() =>
+                              removeFriend.mutate(friend.id, {
+                                onSuccess: () => toast.info(t('app.profile.friendRemovedToast')),
+                                onError: (err: any) => toast.error(err.message),
+                              })
+                            }
+                            className="p-1.5 text-muted-foreground hover:text-rose-400 transition-colors rounded-lg hover:bg-rose-500/10"
+                            title={t('app.profile.removeFriendTooltip')}
+                          >
+                            <UserX className="w-4 h-4" />
+                          </button>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-foreground truncate">{p?.display_name || 'Aventureiro'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {t('app.profile.friendLevelInfo', { level: p?.level || 1, class: p?.starter_class || t('app.profile.noviceClassFallback') })}
-                          </p>
+
+                        {/* Estatísticas de batalha */}
+                        {(stats.wins > 0 || stats.losses > 0 || stats.draws > 0) && (
+                          <div className="flex items-center gap-2 px-1">
+                            <Award className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <span className="text-emerald-400 font-bold">{stats.wins}V</span>
+                              <span className="text-muted-foreground">·</span>
+                              <span className="text-red-400 font-bold">{stats.losses}D</span>
+                              {stats.draws > 0 && (
+                                <>
+                                  <span className="text-muted-foreground">·</span>
+                                  <span className="text-yellow-400 font-bold">{stats.draws}E</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Ações */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setChallengingFriend({ id: p?.user_id || '', display_name: p?.display_name || null });
+                              setChallengeTitle('');
+                              setChallengeDesc('');
+                              setChallengeDays(7);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-violet-500/15 text-violet-400 border border-violet-500/30 rounded-lg text-xs font-medium hover:bg-violet-500/25 transition-colors"
+                          >
+                            <Scroll className="w-3 h-3" /> Desafiar
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!p?.user_id) return;
+                              setBattleFriendName(p.display_name || 'Aventureiro');
+                              heroBattle.mutate(
+                                { challenged_id: p.user_id, my_level: profile?.level || 1, my_attrs: attributeLevels },
+                                {
+                                  onSuccess: (result) => {
+                                    setBattleResult(result);
+                                    toast(result.is_winner ? '⚔️ Vitória!' : '💀 Derrota!', { description: `${result.total_rounds} rodadas` });
+                                  },
+                                  onError: (err: any) => toast.error(err.message || 'Erro na batalha.'),
+                                },
+                              );
+                            }}
+                            disabled={heroBattle.isPending}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-rose-500/15 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-medium hover:bg-rose-500/25 disabled:opacity-50 transition-colors"
+                          >
+                            <Sword className="w-3 h-3" /> Batalhar
+                          </button>
                         </div>
-                        <button
-                          onClick={() =>
-                            removeFriend.mutate(friend.id, {
-                              onSuccess: () => toast.info(t('app.profile.friendRemovedToast')),
-                              onError: (err: any) => toast.error(err.message),
-                            })
-                          }
-                          className="p-1.5 text-muted-foreground hover:text-rose-400 transition-colors rounded-lg hover:bg-rose-500/10"
-                          title={t('app.profile.removeFriendTooltip')}
-                        >
-                          <UserX className="w-4 h-4" />
-                        </button>
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
+
+            {/* Histórico de batalhas recentes */}
+            {(() => {
+              const battles = friendChallenges.filter((c) => c.challenge_type === 'battle' && c.status === 'completed').slice(0, 5);
+              if (battles.length === 0) return null;
+              return (
+                <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sword className="w-5 h-5 text-primary" />
+                    <h3 className="text-sm font-bold text-foreground">Batalhas recentes</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {battles.map((b) => {
+                      const iWon = b.winner_id === user?.id;
+                      const opponentName = b.challenger_id === user?.id
+                        ? (b.challenged_profile?.display_name || 'Aventureiro')
+                        : (b.challenger_profile?.display_name || 'Aventureiro');
+                      return (
+                        <div key={b.id} className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${iWon ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+                          <span className="text-xl">{iWon ? '🏆' : '💀'}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-foreground truncate">vs. {opponentName}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {b.completed_at ? new Date(b.completed_at).toLocaleDateString('pt-BR') : ''}
+                              {b.battle_log?.total_rounds && ` · ${b.battle_log.total_rounds} rodadas`}
+                            </p>
+                          </div>
+                          <span className={`text-xs font-black ${iWon ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {iWon ? 'VITÓRIA' : 'DERROTA'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 

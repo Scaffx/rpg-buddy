@@ -191,12 +191,13 @@ export default function Onboarding() {
     if (!authLoading && !user) navigate('/auth', { replace: true });
   }, [authLoading, user, navigate]);
 
-  // Se o onboarding já foi concluído (flag no banco ou localStorage), redireciona direto
+  // Se o onboarding já foi concluído (flag no banco), redireciona direto.
+  // Intencionalmente NÃO verifica localStorage para que usuários que burlaram
+  // o formulário possam concluí-lo corretamente via alerta no Perfil.
   useEffect(() => {
     if (!user || !profile) return;
     const doneInDb = (profile as any).onboarding_completed === true;
-    const doneInLocal = localStorage.getItem(`onboarding_v1_${user.id}`) === 'done';
-    if (doneInDb || doneInLocal) {
+    if (doneInDb) {
       navigate('/', { replace: true });
     }
   }, [user, profile, navigate]);
