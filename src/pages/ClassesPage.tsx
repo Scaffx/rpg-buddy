@@ -70,6 +70,12 @@ export default function ClassesPage() {
   const [selectedDetail, setSelectedDetail] = useState<ClassNode | null>(null);
   const [expandedBranches, setExpandedBranches] = useState<Set<string>>(new Set());
   const [claimingReward, setClaimingReward] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    classId: string;
+    className: string;
+    profile: ClassProfile | null;
+    baseName: string;
+  } | null>(null);
 
   // Get starter_class from profile or localStorage
   const starterClass = useMemo(() => {
