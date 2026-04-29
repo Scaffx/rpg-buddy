@@ -169,6 +169,7 @@ export function AppSidebar() {
           {!collapsed && <span>{t('app.sidebar.logout')}</span>}
         </button>
       </SidebarFooter>
+      <HelpTutorialModal open={showHelp} onClose={() => setShowHelp(false)} />
     </Sidebar>
   );
 }
