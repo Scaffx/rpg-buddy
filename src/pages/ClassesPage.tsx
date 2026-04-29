@@ -468,6 +468,114 @@ export default function ClassesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de confirmação: mostra o "perfil moderno" da classe-base antes de aplicar */}
+      <Dialog open={!!pendingConfirm} onOpenChange={(v) => !v && !selecting && setPendingConfirm(null)}>
+        <DialogContent className="bg-card border-primary/40 max-w-md">
+          {pendingConfirm && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center justify-center mb-2">
+                  <div className="text-5xl">{pendingConfirm.profile?.emoji || '⚔️'}</div>
+                </div>
+                <DialogTitle className="text-center font-display text-xl text-primary">
+                  Você é mesmo um {pendingConfirm.className}?
+                </DialogTitle>
+                <DialogDescription className="text-center text-xs text-muted-foreground">
+                  Confirme se este perfil combina com a sua vida real.
+                </DialogDescription>
+              </DialogHeader>
+
+              {pendingConfirm.profile ? (
+                <div className="space-y-3 mt-2">
+                  {/* Card do perfil moderno */}
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{pendingConfirm.profile.emoji}</span>
+                      <div>
+                        <p className="font-display font-bold text-foreground">
+                          {pendingConfirm.baseName}
+                        </p>
+                        <p className="text-[11px] text-primary/80">
+                          {pendingConfirm.profile.modernTitle}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-foreground/80">
+                      {pendingConfirm.profile.modernDescription}
+                    </p>
+                  </div>
+
+                  {/* Exemplos de perfis */}
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase mb-2">
+                      Esta classe combina com você se você é…
+                    </p>
+                    <ul className="space-y-1">
+                      {pendingConfirm.profile.examples.map((ex, i) => (
+                        <li key={i} className="text-sm text-foreground/90 flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{ex}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Missões pré-definidas */}
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                    <p className="text-[11px] font-bold text-emerald-300 uppercase mb-2">
+                      🎯 Missões iniciais sugeridas
+                    </p>
+                    <ul className="space-y-1">
+                      {pendingConfirm.profile.missions.map((m, i) => (
+                        <li key={i} className="text-xs text-foreground/80 flex items-start gap-2">
+                          <span className="text-emerald-400 mt-0.5">✓</span>
+                          <span>{m}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Aviso */}
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-200/90">
+                      A escolha de classe <strong>não pode ser desfeita gratuitamente</strong>. Para trocar depois, você precisará gastar ouro.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+                  Esta é uma classe avançada de <strong>{pendingConfirm.baseName}</strong>. Tem certeza que deseja seguir este caminho?
+                </div>
+              )}
+
+              <DialogFooter className="flex-row gap-2 sm:justify-between">
+                <Button
+                  variant="outline"
+                  onClick={() => setPendingConfirm(null)}
+                  disabled={!!selecting}
+                  className="flex-1"
+                >
+                  Não, voltar
+                </Button>
+                <Button
+                  onClick={confirmAndSelect}
+                  disabled={!!selecting}
+                  className="flex-1 bg-primary"
+                >
+                  {selecting ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  Sim, sou {pendingConfirm.className}!
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
