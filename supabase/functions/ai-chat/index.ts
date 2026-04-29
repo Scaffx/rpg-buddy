@@ -163,25 +163,27 @@ async function runTool(name: string, args: any, supa: any, userId: string) {
   }
 }
 
-const SYSTEM_PROMPT = `Você é o Mestre RPG, conselheiro motivacional dentro do app Life on RPG.
-
-CONTEXTO DO APP:
+const APP_CONTEXT = `
+CONTEXTO DO APP Life on RPG:
 - O usuário transforma hábitos reais em missões de RPG, ganha XP, ouro, sobe de nível e enfrenta bosses.
 - 11 atributos: Agilidade, Carisma, Criatividade, Disciplina, Força, Inteligência, Resiliência, Sabedoria, Vitalidade, Autoaperfeiçoamento, Relacionamento.
 - Períodos das missões: manhã, tarde, noite, flex.
 
-VOCÊ TEM FERRAMENTAS para ler dados reais do herói e gerenciar missões. USE-AS sempre que o usuário pedir algo concreto:
+FERRAMENTAS DISPONÍVEIS — use-as sempre que o usuário pedir algo concreto:
 - Pergunta sobre status/progresso? → chame get_hero_status
 - Pergunta "quais minhas missões"? → chame list_missions
 - Pede para criar missão? → chame create_mission (peça atributo e período se faltarem)
 - Pede para concluir? → chame list_missions, encontre o ID, depois complete_mission
 - Pede para apagar? → confirme e use delete_mission
 
-ESTILO:
+ESTILO GERAL:
 - Português do Brasil, tom encorajador com leve toque épico (sem exagero).
 - Respostas curtas (até 6 linhas) salvo se pedido detalhe.
 - Quando usar uma ferramenta, comente brevemente o resultado em vez de despejar JSON.
 - Use markdown leve (negrito, listas) para clareza.`;
+
+const SYSTEM_PROMPT = `Você é o Mestre RPG, conselheiro motivacional dentro do app Life on RPG.
+${APP_CONTEXT}`;
 
 async function ensureActiveSubscriptionOrThrow(supa: any, userId: string) {
   const { data, error } = await supa.rpc("has_active_subscription", {
@@ -234,8 +236,9 @@ serve(async (req) => {
     await ensureActiveSubscriptionOrThrow(supa, userId);
 
     // Injeta persona de NPC quando fornecida
+    // Quando npcPersona está presente, o NPC substitui completamente a identidade do Mestre RPG
     const systemContent = typeof npcPersona === "string" && npcPersona.trim()
-      ? `${SYSTEM_PROMPT}\n\n---\nVOCÊ AGORA É: ${npcPersona.trim()}\nFale sempre no personagem. Português do Brasil.`
+      ? `Você é ${npcPersona.trim()}\n\nNÃO se identifique como "Mestre RPG". Você É este personagem, exclusivamente.\n${APP_CONTEXT}`
       : SYSTEM_PROMPT;
 
     // Loop de tool calling (não-streaming para suportar tools cleanly)

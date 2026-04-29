@@ -367,7 +367,9 @@ export default function NpcPage() {
   });
 
   const totalChallenges = weeklyChallenges.length;
-  const completedChallenges = completedSet.size;
+  const completedChallenges = weeklyChallenges.filter(
+    (c) => completedSet.has(`${c.npc_id}|${c.challenge_id}`)
+  ).length;
 
   // Auto-scroll no chat
   useEffect(() => {
