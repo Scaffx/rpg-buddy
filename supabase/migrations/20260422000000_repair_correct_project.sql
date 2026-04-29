@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- REPAIR COMPLETO: Garante todas as colunas e dados críticos no banco correto
--- Execute no Supabase Dashboard: https://app.supabase.com/project/jshauyvknqgxhzmslnoc/sql
+-- Execute no Supabase Dashboard: https://app.supabase.com/project/jfnospjxdkelxlhcwuia/sql
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- 1. profiles: colunas de classe e combat

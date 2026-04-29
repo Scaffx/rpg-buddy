@@ -1,7 +1,7 @@
 -- ============================================
 -- Copie e cole este SQL no Supabase Dashboard
--- Projeto: jshauyvknqgxhzmslnoc
--- Acesse: https://app.supabase.com/project/jshauyvknqgxhzmslnoc/sql
+-- Projeto: jfnospjxdkelxlhcwuia
+-- Acesse: https://app.supabase.com/project/jfnospjxdkelxlhcwuia/sql
 -- ============================================
 
 -- ============================================================
