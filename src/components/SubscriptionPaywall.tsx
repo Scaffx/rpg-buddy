@@ -15,7 +15,7 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
   const { t } = useTranslation();
   const { openCheckout, loading } = usePaddleCheckout();
   const { isActive, isTrial } = useSubscription();
-  const { monthlyFormatted, annualFormatted, monthlyUsd, loading: pricingLoading } = useLocalizedPricing();
+  const { monthlyFormatted, annualFormatted, isFixedPrice, loading: pricingLoading } = useLocalizedPricing();
 
   if (isActive) {
     return (
@@ -70,7 +70,7 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
               <span className="text-sm text-muted-foreground">{t("pricing.monthly.price_period")}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {t("pricing.monthly.desc")} • Base: USD {monthlyUsd.toFixed(2)}
+              {t("pricing.monthly.desc")}{!isFixedPrice && ` • Base: USD 1.50`}
             </p>
             <Button
               onClick={() => openCheckout({ priceId: "premium_monthly" })}
