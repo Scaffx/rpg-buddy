@@ -255,7 +255,7 @@ serve(async (req) => {
     const weekToken = typeof body?.weekToken === "string" && body.weekToken.trim() ? body.weekToken.trim() : new Date().toISOString().slice(0, 10);
 
     const { data: existingRows, error: existingError } = await supabase
-      .from("npc_weekly_challenges" as any)
+      .from("npc_weekly_challenges")
       .select("id, npc_id, challenge_id, title, description, xp_reward, gold_reward, reward_item_id, reward_item_quantity, reward_item:game_items(id, name, icon)")
       .eq("user_id", userId)
       .eq("week_token", weekToken)
@@ -309,8 +309,8 @@ serve(async (req) => {
     }));
 
     const { error: insertError } = await supabase
-      .from("npc_weekly_challenges" as any)
-      .insert(rowsToInsert as any);
+      .from("npc_weekly_challenges")
+      .insert(rowsToInsert);
 
     if (insertError) {
       throw insertError;
