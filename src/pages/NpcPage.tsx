@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2, Coins, Gift } from 'lucide-react';
+import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2, Coins, Gift, MessageCircle, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -94,6 +94,16 @@ const INITIAL_NPCS: Npc[] = [
   },
 ];
 
+// Persona textual injetada no system prompt do AI-chat por NPC
+const NPC_PERSONAS: Record<string, string> = {
+  atlas: `Atlas, O Forjador de Corpos. Personalidade: motivacional, direto, energético. Você é um treinador lendário que forjou guerreiros e atletas. Fale com entusiasmo, use metáforas de combate e treino. Comece analisando o status do herói com get_hero_status e list_missions (filtradas por Força, Vitalidade, Agilidade, Disciplina). Avalie o que o herói está falhando, elogie suas vitórias e sugira um ajuste prático. Mantenha respostas entre 3–5 linhas.`,
+  nova: `Nova, A Mente Iluminada. Personalidade: analítica, curiosa, precisa. Você é uma mestra do conhecimento e da estratégia intelectual. Use linguagem clara e estruturada. Comece analisando o status do herói com get_hero_status e list_missions (filtradas por Inteligência, Sabedoria). Identifique lacunas de estudo e padrões de missões incompletas. Dê uma dica metodológica prática. Máximo 4 linhas.`,
+  elara: `Elara, A Guardiã da Alma. Personalidade: empática, gentil, sutil. Você cuida do equilíbrio emocional e resiliência dos heróis. Fale com calma e compaixn. Comece analisando o status do herói com get_hero_status e list_missions (filtradas por Resiliência, Autoaperfeiçoamento). Observe missões falhas e ofereça uma perspectiva acolhedora, com uma ação concreta de autocuidado. Máximo 4 linhas.`,
+  zephyr: `Zephyr, O Sonhador Rebelde. Personalidade: excêntrico, criativo, imprevisível. Você inspira heróis a romperem padrões e explorarem o desconhecido. Use metafóras inusitadas e uma pitada de humor absurdo. Comece analisando o status do herói com get_hero_status e list_missions (filtradas por Criatividade, Carisma). Aponte onde o herói está estagnado e proponha um experimento ousado e divertido. Máximo 5 linhas.`,
+};
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
 function normalizeChallenge(value: unknown): NpcChallenge | null {
   if (!value || typeof value !== 'object') {
     return null;
@@ -144,6 +154,11 @@ export default function NpcPage() {
   const qc = useQueryClient();
   const weekToken = currentWeekToken();
   const [selectedNpc, setSelectedNpc] = useState<Npc | null>(null);
+  const [chatNpc, setChatNpc] = useState<Npc | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const npcWeeklyChallengesTable = 'npc_weekly_challenges' as never;
   const npcCompletionsTable = 'npc_challenge_completions' as never;
   const userInventoryTable = 'user_inventory' as never;
@@ -354,6 +369,47 @@ export default function NpcPage() {
   const totalChallenges = weeklyChallenges.length;
   const completedChallenges = completedSet.size;
 
+  // Auto-scroll no chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Ao abrir o chat, faz a análise inicial automática
+  useEffect(() => {
+    if (!chatNpc) return;
+    setChatMessages([]);
+    setChatInput('');
+    const autoMessage = `Analise meu status e missões e me dê um feedback personalizado como ${chatNpc.name}.`;
+    sendChatMessage(chatNpc, autoMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatNpc?.id]);
+
+  async function sendChatMessage(npc: Npc, overrideContent?: string) {
+    const content = overrideContent ?? chatInput.trim();
+    if (!content || chatLoading) return;
+    const persona = NPC_PERSONAS[npc.id] ?? npc.name;
+    const newMessages: ChatMessage[] = [
+      ...chatMessages,
+      { role: 'user' as const, content },
+    ];
+    setChatMessages(newMessages);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: { messages: newMessages, npcPersona: persona },
+      });
+      if (error) throw error;
+      const reply = (data as { reply?: string })?.reply ?? 'Sem resposta.';
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+    } catch (err) {
+      toast.error('Erro ao conversar com o NPC.');
+      console.error('[NpcPage] chat error:', err);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
   return (
     <AppLayout>
       <div className="min-h-screen p-4 md:p-6 space-y-6">
@@ -410,8 +466,13 @@ export default function NpcPage() {
                       style={{ width: `${total > 0 ? (done / total) * 100 : 0}%` }}
                     />
                   </div>
-                  <Button variant="outline" size="sm" className="w-full mt-1 gap-2 border-primary/30 hover:bg-primary/10" disabled={total === 0}>
-                    <Zap className="w-3.5 h-3.5" /> {t('app.npc.interact_button')}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-1 gap-2 border-primary/30 hover:bg-primary/10"
+                    onClick={(e) => { e.stopPropagation(); setChatNpc(npc); }}
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" /> Conversar
                   </Button>
                 </CardContent>
               </Card>
@@ -433,6 +494,76 @@ export default function NpcPage() {
           </div>
         </div>
       </div>
+
+      {/* Chat NPC Dialog */}
+      <Dialog open={!!chatNpc} onOpenChange={(open) => { if (!open) setChatNpc(null); }}>
+        <DialogContent className="sm:max-w-lg border-primary/20 flex flex-col" style={{ maxHeight: '90vh' }}>
+          {chatNpc && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className={`p-2 rounded-lg bg-gradient-to-br ${chatNpc.gradient} border ${chatNpc.borderColor}`}>
+                    {chatNpc.icon}
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg">{chatNpc.name}</DialogTitle>
+                    <DialogDescription className="text-xs italic">{chatNpc.title} • {chatNpc.personality}</DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1" style={{ minHeight: 200, maxHeight: 380 }}>
+                {chatMessages.length === 0 && chatLoading && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> {chatNpc.name} está analisando seu progresso...
+                  </div>
+                )}
+                {chatMessages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === 'user'
+                        ? 'bg-primary/10 border border-primary/20 ml-6 text-foreground'
+                        : `bg-gradient-to-br ${chatNpc.gradient} border ${chatNpc.borderColor} mr-6 text-foreground`
+                    }`}
+                  >
+                    {msg.role === 'assistant' && (
+                      <span className="block text-[10px] font-bold text-primary mb-1">{chatNpc.name}</span>
+                    )}
+                    {msg.content}
+                  </div>
+                ))}
+                {chatLoading && chatMessages.length > 0 && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mr-6">
+                    <Loader2 className="h-3 w-3 animate-spin" /> digitando...
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="flex gap-2 pt-2 border-t border-border">
+                <input
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder={`Pergunte algo para ${chatNpc.name}...`}
+                  value={chatInput}
+                  disabled={chatLoading}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(chatNpc); } }}
+                />
+                <Button
+                  size="icon"
+                  disabled={chatLoading || !chatInput.trim()}
+                  onClick={() => sendChatMessage(chatNpc)}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Interaction Modal */}
       <Dialog open={!!selectedNpc} onOpenChange={() => setSelectedNpc(null)}>

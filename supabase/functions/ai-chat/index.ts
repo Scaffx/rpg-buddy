@@ -194,7 +194,7 @@ serve(async (req) => {
 
   try {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
-    const { messages } = await req.json();
+    const { messages, npcPersona } = await req.json();
     if (!Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "messages deve ser array" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -213,8 +213,13 @@ serve(async (req) => {
       });
     }
 
+    // Injeta persona de NPC quando fornecida
+    const systemContent = typeof npcPersona === "string" && npcPersona.trim()
+      ? `${SYSTEM_PROMPT}\n\n---\nVOCÊ AGORA É: ${npcPersona.trim()}\nFale sempre no personagem. Português do Brasil.`
+      : SYSTEM_PROMPT;
+
     // Loop de tool calling (não-streaming para suportar tools cleanly)
-    const convo: any[] = [{ role: "system", content: SYSTEM_PROMPT }, ...messages];
+    const convo: any[] = [{ role: "system", content: systemContent }, ...messages];
 
     for (let step = 0; step < 5; step++) {
       const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

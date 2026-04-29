@@ -42,6 +42,35 @@ const NPC_DEFINITIONS = [
   },
 ] as const;
 
+// Atributos que pertencem ao domínio de cada NPC (nomes em pt-BR)
+const NPC_DOMAIN_ATTRIBUTES: Record<string, string[]> = {
+  atlas:  ["Força", "Vitalidade", "Agilidade", "Disciplina"],
+  nova:   ["Inteligência", "Sabedoria"],
+  elara:  ["Resiliência", "Autoaperfeiçoamento"],
+  zephyr: ["Criatividade", "Carisma"],
+};
+
+type AttributeRow = {
+  id: string;
+  name: string;
+  level: number;
+  xp: number;
+};
+
+type MissionRow = {
+  title: string;
+  is_failed: boolean | null;
+  attribute_id: string | null;
+  daily_status: string | null;
+};
+
+type DomainStat = {
+  npc_id: string;
+  avgAttributeLevel: number;
+  completionRate: number;  // 0–1
+  failedMissions: string[]; // títulos das missões falhas no domínio (max 3)
+};
+
 type RewardItem = {
   id: string;
   name: string;
@@ -129,7 +158,47 @@ function buildFallbackChallenges(weekToken: string, rewardItems: RewardItem[]): 
   });
 }
 
-async function generateWithAi(weekToken: string, rewardItems: RewardItem[], heroContext: { level: number; pendingMissionTitles: string[] }) {
+function computeDomainStats(
+  npcId: string,
+  attributes: AttributeRow[],
+  missions: MissionRow[],
+): DomainStat {
+  const domainAttrNames = NPC_DOMAIN_ATTRIBUTES[npcId] ?? [];
+  const domainAttrs = attributes.filter((a) =>
+    domainAttrNames.some((n) => a.name?.toLowerCase() === n.toLowerCase()),
+  );
+
+  const avgAttributeLevel =
+    domainAttrs.length > 0
+      ? domainAttrs.reduce((sum, a) => sum + (Number(a.level) || 1), 0) / domainAttrs.length
+      : 1;
+
+  const domainAttrIds = new Set(domainAttrs.map((a) => a.id));
+  const domainMissions = missions.filter((m) => m.attribute_id && domainAttrIds.has(m.attribute_id));
+
+  const totalSlots = domainMissions.length;
+  const completedSlots = domainMissions.filter(
+    (m) => m.daily_status === "done" || m.daily_status === "completed",
+  ).length;
+  const completionRate = totalSlots > 0 ? completedSlots / totalSlots : 0.5;
+
+  const failedMissions = domainMissions
+    .filter((m) => m.is_failed === true)
+    .slice(0, 3)
+    .map((m) => String(m.title || ""));
+
+  return { npc_id: npcId, avgAttributeLevel, completionRate, failedMissions };
+}
+
+async function generateWithAi(
+  weekToken: string,
+  rewardItems: RewardItem[],
+  heroContext: {
+    level: number;
+    pendingMissionTitles: string[];
+    domainStats: DomainStat[];
+  },
+) {
   if (!LOVABLE_API_KEY) {
     return null;
   }
@@ -154,7 +223,13 @@ async function generateWithAi(weekToken: string, rewardItems: RewardItem[], hero
     "Nunca use item de boss. A lista já foi filtrada para excluir boss_drop_level.",
     "Use recompensas variadas: alguns desafios só com ouro, outros com item do catálogo + ouro.",
     "Reward item quantity deve ser 0 quando reward_item_id for null.",
-    "XP deve variar entre 16 e 60. Ouro deve variar entre 6 e 25.",
+    "XP deve variar entre 16 e 80. Ouro deve variar entre 6 e 30.",
+    "CALIBRAÇÃO ADAPTATIVA por NPC (baseada em domainStats):",
+    "  - avgAttributeLevel baixo (< 3) E completionRate baixa (< 0.4): gere desafios FÁCEIS com XP ALTO (60–80) — o herói precisa de motivação.",
+    "  - avgAttributeLevel médio (3–6) E completionRate média (0.4–0.7): desafios MODERADOS, XP moderado (40–60).",
+    "  - avgAttributeLevel alto (> 6) OU completionRate alta (> 0.7): desafios DIFÍCEIS e específicos, XP menor (16–40) — o herói é veterano.",
+    "  - failedMissions não vazia: pelo menos um desafio deve ser uma versão adaptada/simplificada de uma missão falha, com dica concreta no description.",
+    "O herói ganha bônus de XP por streak diário, então o XP base do desafio não precisa compensar isso — calibre para dificuldade real.",
     "Os desafios devem soar humanos, específicos e com cara de missão semanal útil, não genérica.",
   ].join(" ");
 
@@ -162,6 +237,7 @@ async function generateWithAi(weekToken: string, rewardItems: RewardItem[], hero
     weekToken,
     heroLevel: heroContext.level,
     pendingMissionTitles: heroContext.pendingMissionTitles,
+    domainStats: heroContext.domainStats,
     npcs: NPC_DEFINITIONS,
     rewardCatalog,
   });
@@ -218,7 +294,7 @@ async function generateWithAi(weekToken: string, rewardItems: RewardItem[], hero
         challenge_id: String(challenge.challenge_id || `${npcId}-1`).toLowerCase(),
         title: String(challenge.title || "Missão de NPC"),
         description: String(challenge.description || "Conclua este desafio especial nesta semana."),
-        xp_reward: clampInt(challenge.xp_reward, 16, 60),
+        xp_reward: clampInt(challenge.xp_reward, 16, 80),
         gold_reward: clampInt(challenge.gold_reward, 6, 25),
         reward_item_id: rewardItemId,
         reward_item_quantity: rewardItemId ? clampInt(challenge.reward_item_quantity, 1, 3) : 0,
@@ -272,9 +348,17 @@ serve(async (req) => {
       });
     }
 
-    const [profileRes, missionsRes, itemsRes] = await Promise.all([
+    const [profileRes, missionsRes, attributesRes, itemsRes] = await Promise.all([
       supabase.from("profiles").select("level").eq("user_id", userId).maybeSingle(),
-      supabase.from("missions").select("title").eq("user_id", userId).eq("completed", false).limit(12),
+      supabase
+        .from("missions")
+        .select("title, is_failed, attribute_id, daily_status")
+        .eq("user_id", userId)
+        .limit(60),
+      supabase
+        .from("attributes")
+        .select("id, name, level, xp")
+        .eq("user_id", userId),
       supabase
         .from("game_items")
         .select("id, name, description, icon, rarity, effect, shop_price, stackable, category")
@@ -290,11 +374,24 @@ serve(async (req) => {
 
     const rewardItems = ((itemsRes.data ?? []) as RewardItem[]).filter((item) => item.id);
     const heroLevel = Number(profileRes.data?.level ?? 1);
-    const pendingMissionTitles = (missionsRes.data ?? []).map((mission) => String(mission.title || ""));
+    const allMissions = (missionsRes.data ?? []) as MissionRow[];
+    const allAttributes = (attributesRes.data ?? []) as AttributeRow[];
+    const pendingMissionTitles = allMissions
+      .filter((m) => !m.is_failed)
+      .slice(0, 12)
+      .map((m) => String(m.title || ""));
+
+    const domainStats = NPC_DEFINITIONS.map((npc) =>
+      computeDomainStats(npc.id, allAttributes, allMissions),
+    );
 
     let generated = buildFallbackChallenges(weekToken, rewardItems);
     try {
-      const aiGenerated = await generateWithAi(weekToken, rewardItems, { level: heroLevel, pendingMissionTitles });
+      const aiGenerated = await generateWithAi(weekToken, rewardItems, {
+        level: heroLevel,
+        pendingMissionTitles,
+        domainStats,
+      });
       if (aiGenerated && aiGenerated.length >= 12) {
         generated = aiGenerated;
       }
