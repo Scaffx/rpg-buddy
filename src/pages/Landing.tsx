@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
+import { useLocalizedPricing } from "@/hooks/useLocalizedPricing";
 import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -48,6 +49,7 @@ export default function Landing() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { latest } = useAppUpdate();
+  const { monthlyFormatted, annualFormatted, monthlyUsd, loading: pricingLoading } = useLocalizedPricing();
   const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
   const latestVersion = latest?.version ?? APP_VERSION;
   const downloadLabel = IS_BETA ? `v${latestVersion} BETA` : `v${latestVersion}`;
@@ -280,13 +282,14 @@ export default function Landing() {
               </h3>
 
               <div className="flex items-baseline justify-center gap-1 mt-2 mb-1">
-                <span className="text-base text-muted-foreground">{t("pricing.price_currency")}</span>
                 <span className="text-4xl font-black text-primary font-[var(--font-display)]">
-                  {t("pricing.monthly.price_amount")}
+                  {pricingLoading ? "..." : monthlyFormatted}
                 </span>
                 <span className="text-sm text-muted-foreground">{t("pricing.monthly.price_period")}</span>
               </div>
-              <p className="text-xs text-muted-foreground text-center mb-3">{t("pricing.monthly.desc")}</p>
+              <p className="text-xs text-muted-foreground text-center mb-3">
+                {t("pricing.monthly.desc")} • Base: USD {monthlyUsd.toFixed(2)}
+              </p>
 
               <ul className="space-y-2 mb-4 flex-1">
                 {(["f1", "f2", "f3", "f4", "f5"] as const).map((key) => (
@@ -317,9 +320,8 @@ export default function Landing() {
               </h3>
 
               <div className="flex items-baseline justify-center gap-1 mt-2 mb-1">
-                <span className="text-base text-muted-foreground">{t("pricing.price_currency")}</span>
                 <span className="text-4xl font-black text-primary font-[var(--font-display)]">
-                  {t("pricing.annual.price_amount")}
+                  {pricingLoading ? "..." : annualFormatted}
                 </span>
                 <span className="text-sm text-muted-foreground">{t("pricing.annual.price_period")}</span>
               </div>

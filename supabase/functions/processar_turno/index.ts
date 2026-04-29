@@ -1,6 +1,7 @@
 // @ts-nocheck
 // deno-lint-ignore-file
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+const SUBSCRIPTION_ENV = Deno.env.get('PADDLE_ENVIRONMENT') === 'sandbox' ? 'sandbox' : 'live';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -93,6 +94,22 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 const toNumber = (value: unknown, fallback = 0): number => {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
+};
+const ensureActiveSubscriptionOrThrow = async (supabase: ReturnType<typeof createClient>, userId: string) => {
+  const { data, error } = await supabase.rpc('has_active_subscription', {
+    user_uuid: userId,
+    check_env: SUBSCRIPTION_ENV,
+  });
+
+  if (error) {
+    throw new Error(`Falha ao validar assinatura: ${error.message}`);
+  }
+
+  if (!data) {
+    const err = new Error('Assinatura inativa. Assine para continuar.');
+    (err as Error & { code?: string }).code = 'PAYWALL_LOCKED';
+    throw err;
+  }
 };
 
 const buildPlayerSkillResolution = (body: ProcessarTurnoBody): SkillResolution => {
@@ -211,6 +228,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    await ensureActiveSubscriptionOrThrow(supabase, user.id);
 
     const body = (await req.json()) as ProcessarTurnoBody;
     const combateId = body.combate_id;
@@ -688,6 +707,13 @@ Deno.serve(async (req) => {
       },
     );
   } catch (error) {
+    if (error instanceof Error && (error as Error & { code?: string }).code === 'PAYWALL_LOCKED') {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 402,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.error('processar_turno error:', error);
     return new Response(JSON.stringify({ error: 'Erro interno ao processar turno. Tente novamente.' }), {
       status: 500,

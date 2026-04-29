@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useLocalizedPricing } from "@/hooks/useLocalizedPricing";
 
 /**
  * Card de paywall com botão de assinatura via Paddle.
@@ -14,6 +15,7 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
   const { t } = useTranslation();
   const { openCheckout, loading } = usePaddleCheckout();
   const { isActive, isTrial } = useSubscription();
+  const { monthlyFormatted, annualFormatted, monthlyUsd, loading: pricingLoading } = useLocalizedPricing();
 
   if (isActive) {
     return (
@@ -62,10 +64,14 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
               <Badge variant="outline" className="border-primary/30 text-primary">{t("pricing.monthly.badge")}</Badge>
             </div>
             <div className="mt-2 flex items-baseline gap-1">
-              <span className="font-cinzel text-2xl font-bold text-primary">{t("pricing.price_currency")} {t("pricing.monthly.price_amount")}</span>
+              <span className="font-cinzel text-2xl font-bold text-primary">
+                {pricingLoading ? "..." : monthlyFormatted}
+              </span>
               <span className="text-sm text-muted-foreground">{t("pricing.monthly.price_period")}</span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{t("pricing.monthly.desc")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("pricing.monthly.desc")} • Base: USD {monthlyUsd.toFixed(2)}
+            </p>
             <Button
               onClick={() => openCheckout({ priceId: "premium_monthly" })}
               disabled={loading}
@@ -83,7 +89,9 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
               <Badge className="bg-accent/20 text-accent border-accent/40">{t("pricing.annual.badge")}</Badge>
             </div>
             <div className="mt-2 flex items-baseline gap-1">
-              <span className="font-cinzel text-2xl font-bold text-primary">{t("pricing.price_currency")} {t("pricing.annual.price_amount")}</span>
+              <span className="font-cinzel text-2xl font-bold text-primary">
+                {pricingLoading ? "..." : annualFormatted}
+              </span>
               <span className="text-sm text-muted-foreground">{t("pricing.annual.price_period")}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{t("pricing.annual.desc")}</p>
