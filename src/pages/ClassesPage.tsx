@@ -6,10 +6,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAddGold } from '@/hooks/useGold';
 import { useClaimClassKit } from '@/hooks/useInventory';
 import AppLayout from '@/components/AppLayout';
-import { Loader2, Lock, Check, Swords, ChevronDown, ChevronRight, ArrowDown, Gift } from 'lucide-react';
+import { Loader2, Lock, Check, Swords, ChevronDown, ChevronRight, ArrowDown, Gift, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { getClassProfileByTreeName, type ClassProfile } from '@/lib/classProfiles';
 
 interface ClassNode {
   id: string;
