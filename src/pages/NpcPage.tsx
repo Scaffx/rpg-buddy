@@ -400,7 +400,7 @@ export default function NpcPage() {
         body: { messages: newMessages, npcPersona: persona },
       });
       if (error) throw error;
-      const reply = (data as { reply?: string })?.reply ?? 'Sem resposta.';
+      const reply = (data as { content?: string; reply?: string })?.content ?? (data as { reply?: string })?.reply ?? 'Sem resposta.';
       setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
     } catch (err) {
       toast.error('Erro ao conversar com o NPC.');

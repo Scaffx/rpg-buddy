@@ -193,17 +193,25 @@ export default function ClassesPage() {
 
       await selectClass.mutateAsync({ classId, starterClass });
 
+      // Fecha modais IMEDIATAMENTE após salvar a classe com sucesso.
+      // Assim, mesmo que a etapa seguinte (kit) falhe, o usuário não fica
+      // com a impressão de que a seleção falhou.
+      setPendingConfirm(null);
+      setSelectedDetail(null);
+
       if (starterClass) {
-        await claimClassKit.mutateAsync(starterClass);
-        toast({ title: `🎁 ${t('app.classes.kit_received', { name: className })}`, description: t('app.classes.kit_received_desc') });
+        try {
+          await claimClassKit.mutateAsync(starterClass);
+          toast({ title: `🎁 ${t('app.classes.kit_received', { name: className })}`, description: t('app.classes.kit_received_desc') });
+        } catch {
+          // Kit pode não existir ou já ter sido reivindicado — classe já foi selecionada, não é erro crítico
+          toast({ title: `🎉 ${t('app.classes.class_selected', { name: className })}` });
+        }
       } else {
         toast({ title: `🎉 ${t('app.classes.class_selected', { name: className })}` });
       }
-
-      setPendingConfirm(null);
-      setSelectedDetail(null);
-    } catch {
-      toast({ title: t('app.classes.error_select'), variant: 'destructive' });
+    } catch (err) {
+      toast({ title: t('app.classes.error_select'), description: err instanceof Error ? err.message : undefined, variant: 'destructive' });
     } finally {
       setSelecting(null);
     }
@@ -293,13 +301,21 @@ export default function ClassesPage() {
             )}
             {isGoldenTarget && !isSelected && (
               <span className="inline-flex items-center gap-0.5 text-[9px] text-yellow-400 font-bold">
-                ⭐ Sua classe
+                ⭐ Sugerida
               </span>
             )}
             {canClaimReward && (
               <span className="inline-flex items-center gap-0.5 text-[9px] text-yellow-300 font-bold animate-pulse">
                 <Gift className="w-2.5 h-2.5" /> Recompensa!
               </span>
+            )}
+            {isGoldenTarget && !isSelected && !profile?.current_class_id && unlocked && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleSelect(node.id, node.name); }}
+                className="mt-1 w-full text-[9px] font-bold bg-yellow-500/80 hover:bg-yellow-400 text-black rounded px-1 py-0.5 transition-colors"
+              >
+                Selecionar
+              </button>
             )}
             {!unlocked && (
               <span className="inline-flex items-center gap-0.5 text-[9px] text-muted-foreground">
