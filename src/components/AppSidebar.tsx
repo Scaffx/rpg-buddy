@@ -12,6 +12,7 @@ import {
   Sparkles, Smartphone, HelpCircle,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
+import { getLevelProgress } from '@/lib/progression';
 import {
   Sidebar,
   SidebarContent,
@@ -75,8 +76,7 @@ export function AppSidebar() {
     if (!found) return 'Aprendiz';
     return `${found.icon || ''} ${found.name}`.trim();
   }, [profile, classes]);
-  const xpForLevel = 200;
-  const currentXp = profile ? profile.total_xp % xpForLevel : 0;
+  const xpProgress = getLevelProgress(profile?.total_xp || 0);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border [&_[data-sidebar=content]]:overflow-y-auto [&_[data-sidebar=content]]:scrollbar-none [&_[data-sidebar=content]]:[-ms-overflow-style:none] [&_[data-sidebar=content]]:[-webkit-overflow-scrolling:touch]">
@@ -105,11 +105,11 @@ export function AppSidebar() {
                 <div className="rpg-stat-bar h-1.5">
                   <div
                     className="rpg-stat-fill h-full"
-                    style={{ width: `${(currentXp / xpForLevel) * 100}%` }}
+                    style={{ width: `${xpProgress.progressPercent}%` }}
                   />
                 </div>
                 <p className="text-[10px] text-sidebar-foreground/50">
-                  {currentXp}/{xpForLevel} XP
+                  {xpProgress.currentLevelXp}/{xpProgress.xpForNextLevel} XP
                 </p>
               </div>
               <div className="flex items-center gap-1.5 mt-1">

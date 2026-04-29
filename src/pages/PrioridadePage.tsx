@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { usePlans, useCreatePlan, useDeletePlan } from "@/hooks/usePlans";
+import { usePlans, useCreatePlan, useDeletePlan, type PlanView } from "@/hooks/usePlans";
 import { useMissions } from "@/hooks/useProfile";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+
+type MissionOption = {
+  id: string;
+  title: string;
+};
+
+function toMissionOption(value: unknown): MissionOption | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.id !== "string") {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    title: typeof record.title === "string" ? record.title : record.id,
+  };
+}
 
 function ProgressBar({ value, max }: { value: number; max: number }) {
   const percent = Math.min(100, Math.round((value / max) * 100));
@@ -32,7 +53,6 @@ export default function PrioridadePage() {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    target_value: 0,
     missions: [] as { mission_id: string; value_per_completion: number }[],
   });
 
@@ -63,28 +83,40 @@ export default function PrioridadePage() {
 
   const [missionToAdd, setMissionToAdd] = useState("");
   const [missionValue, setMissionValue] = useState(0);
+  const missionOptions = (missions ?? [])
+    .map(toMissionOption)
+    .filter((mission): mission is MissionOption => mission !== null);
+
+  const calculatedTargetValue = form.missions.reduce(
+    (total, mission) => total + Number(mission.value_per_completion || 0),
+    0,
+  );
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    createPlan.mutate(form, {
+    if (form.missions.length === 0 || calculatedTargetValue <= 0) {
+      return;
+    }
+
+    createPlan.mutate({ ...form, target_value: calculatedTargetValue }, {
       onSuccess: () => {
         setModalOpen(false);
-        setForm({ title: "", description: "", target_value: 0, missions: [] });
+        setForm({ title: "", description: "", missions: [] });
       },
     });
   }
 
   const TEMPLATES = [
-    { title: "Viagem dos Sonhos", description: "Juntar dinheiro para uma viagem inesquecível.", target_value: 5000, hint: "💰 valor em R$" },
-    { title: "Comprar PC Gamer", description: "Economizar para o setup ideal.", target_value: 8000, hint: "💰 valor em R$" },
-    { title: "Ler 12 livros no ano", description: "Cultivar o hábito de leitura.", target_value: 12, hint: "📚 livros" },
-    { title: "100h de Estudo", description: "Dominar uma nova habilidade ou idioma.", target_value: 100, hint: "⏱️ horas" },
-    { title: "Perder 10kg", description: "Meta de transformação física.", target_value: 10, hint: "⚖️ kg" },
-    { title: "Correr 100km", description: "Distância acumulada de corridas.", target_value: 100, hint: "🏃 km" },
+    { title: "Viagem dos Sonhos", description: "Juntar dinheiro para uma viagem inesquecível." },
+    { title: "Comprar PC Gamer", description: "Economizar para o setup ideal." },
+    { title: "Ler 12 livros no ano", description: "Cultivar o hábito de leitura." },
+    { title: "100h de Estudo", description: "Dominar uma nova habilidade ou idioma." },
+    { title: "Perder 10kg", description: "Meta de transformação física." },
+    { title: "Correr 100km", description: "Distância acumulada de corridas." },
   ];
 
   function applyTemplate(t: typeof TEMPLATES[number]) {
-    setForm((f) => ({ ...f, title: t.title, description: t.description, target_value: t.target_value }));
+    setForm((f) => ({ ...f, title: t.title, description: t.description }));
   }
 
   return (
@@ -147,32 +179,22 @@ export default function PrioridadePage() {
               />
             </div>
             <div className="space-y-2">
-            <Label htmlFor="plan-target">{t('app.priority.label_target')}</Label>
-              <Input
-                id="plan-target"
-                type="number"
-                min={1}
-                placeholder="Ex: 1200 (reais, pontos, horas...)"
-                value={form.target_value}
-                onChange={(e) => setForm((f) => ({ ...f, target_value: Number(e.target.value) }))}
-                required
-                className="bg-muted/60 border-border/60 placeholder:text-muted-foreground/80"
-              />
-            </div>
-            <div className="space-y-2">
               <Label>{t('app.priority.label_missions')}</Label>
+              <p className="text-xs text-muted-foreground">
+                Cada missão concluída soma 1 no progresso. O total do plano é a soma das quantidades definidas abaixo.
+              </p>
               <div className="space-y-2">
                 {form.missions.length === 0 && (
                   <div className="text-xs text-muted-foreground bg-muted/40 rounded p-2 border border-dashed border-border/40 text-center">{t('app.priority.no_missions')}</div>
                 )}
                 {form.missions.map((m) => {
-                  const mission = missions?.find((ms: any) => ms.id === m.mission_id);
+                  const mission = missionOptions.find((missionItem) => missionItem.id === m.mission_id);
                   return (
                     <div key={m.mission_id} className="flex items-center gap-2 bg-muted/40 rounded p-2 border border-border/40">
                       <span className="text-sm flex-1 font-semibold text-primary">{mission?.title || m.mission_id}</span>
                       <Input
                         type="number"
-                        min={0}
+                        min={1}
                         className="w-20 bg-background/80 border-border/60"
                         value={m.value_per_completion}
                         onChange={(e) => handleMissionValueChange(m.mission_id, Number(e.target.value))}
@@ -185,20 +207,22 @@ export default function PrioridadePage() {
                 })}
                 <div className="flex items-center gap-2 mt-2 bg-muted/30 rounded p-2 border border-dashed border-border/40">
                   <select
-                    className="input w-full bg-background/80 border-border/60"
+                    className="h-10 w-full rounded-md border border-primary/40 bg-slate-900/90 px-3 text-sm text-slate-100 shadow-inner outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30"
                     value={missionToAdd}
                     onChange={(e) => setMissionToAdd(e.target.value)}
                   >
-                    <option value="">{t('app.priority.select_mission')}</option>
-                    {missions?.filter((m: any) => !form.missions.some((fm) => fm.mission_id === m.id)).map((m: any) => (
-                      <option key={m.id} value={m.id}>{m.title}</option>
+                    <option value="" className="bg-slate-900 text-slate-100">{t('app.priority.select_mission')}</option>
+                    {missionOptions
+                      .filter((mission) => !form.missions.some((fm) => fm.mission_id === mission.id))
+                      .map((mission) => (
+                      <option key={mission.id} value={mission.id} className="bg-slate-900 text-slate-100">{mission.title}</option>
                     ))}
                   </select>
                   <Input
                     type="number"
                     min={1}
                     className="w-20 bg-background/80 border-border/60"
-                    placeholder="Valor"
+                    placeholder="Qtd"
                     value={missionValue || ""}
                     onChange={(e) => setMissionValue(Number(e.target.value))}
                     disabled={!missionToAdd}
@@ -218,7 +242,7 @@ export default function PrioridadePage() {
               <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
                 {t('app.priority.button_cancel')}
               </Button>
-              <Button type="submit" disabled={createPlan.isPending}>
+              <Button type="submit" disabled={createPlan.isPending || form.missions.length === 0 || calculatedTargetValue <= 0}>
                 {t('app.priority.button_save')}
               </Button>
             </DialogFooter>
@@ -233,8 +257,9 @@ export default function PrioridadePage() {
         ) : plans?.length === 0 ? (
           <div className="text-muted-foreground">{t('app.priority.empty')}</div>
         ) : (
-          plans?.map((plan: any) => {
-            const percent = Math.min(100, Math.round((plan.current_value / plan.target_value) * 100));
+          plans?.map((plan: PlanView) => {
+            const safeTargetValue = Math.max(1, Number(plan.target_value || 1));
+            const percent = Math.min(100, Math.round((Number(plan.current_value || 0) / safeTargetValue) * 100));
             return (
               <div key={plan.id} className="rpg-card-glow p-4 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
@@ -244,19 +269,19 @@ export default function PrioridadePage() {
                   </Button>
                 </div>
                 <p className="text-muted-foreground text-sm">{plan.description}</p>
-                <ProgressBar value={plan.current_value} max={plan.target_value} />
+                <ProgressBar value={Number(plan.current_value || 0)} max={safeTargetValue} />
                 <div className="flex justify-between text-xs mt-1">
                   <span>
-                    {plan.current_value} / {plan.target_value}
+                    {Number(plan.current_value || 0)} / {safeTargetValue}
                   </span>
                   <span>{percent}%</span>
                 </div>
                 <div className="mt-2">
                   <p className="font-semibold text-xs mb-1">{t('app.priority.linked_missions')}:</p>
                   <ul className="list-disc ml-4 text-xs text-muted-foreground">
-                    {plan.plan_missions?.map((pm: any) => (
+                    {plan.plan_missions?.map((pm) => (
                       <li key={pm.id}>
-                        {pm.missions?.title} (+{pm.value_per_completion} {t('app.priority.per_completion')})
+                        {pm.missions?.title} ({pm.value_per_completion} conclusoes necessarias)
                       </li>
                     ))}
                   </ul>

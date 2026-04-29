@@ -21,3 +21,35 @@ export function getLevelFromXp(totalXp: number): number {
 
   return 1;
 }
+
+export function getLevelProgress(totalXp: number) {
+  const safeXp = Math.max(0, Math.floor(totalXp));
+  const level = getLevelFromXp(safeXp);
+  const levelIndex = Math.max(0, level - 1);
+  const levelStartXp = XP_TABLE[levelIndex] ?? 0;
+  const nextLevelXp = XP_TABLE[levelIndex + 1] ?? null;
+
+  if (nextLevelXp === null) {
+    const previousLevelXp = XP_TABLE[levelIndex - 1] ?? 0;
+    const xpForNextLevel = Math.max(1, levelStartXp - previousLevelXp);
+
+    return {
+      level,
+      currentLevelXp: xpForNextLevel,
+      xpForNextLevel,
+      progressPercent: 100,
+      isMaxLevel: true,
+    };
+  }
+
+  const xpForNextLevel = Math.max(1, nextLevelXp - levelStartXp);
+  const currentLevelXp = Math.min(xpForNextLevel, Math.max(0, safeXp - levelStartXp));
+
+  return {
+    level,
+    currentLevelXp,
+    xpForNextLevel,
+    progressPercent: Math.min(100, (currentLevelXp / xpForNextLevel) * 100),
+    isMaxLevel: false,
+  };
+}

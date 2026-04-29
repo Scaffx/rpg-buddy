@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getLevelFromXp, XP_TABLE } from '@/lib/progression';
+import { getLevelFromXp, getLevelProgress, XP_TABLE } from '@/lib/progression';
 
 describe('getLevelFromXp', () => {
   it('retorna level 1 para 0 XP', () => {
@@ -41,5 +41,30 @@ describe('getLevelFromXp', () => {
     for (let i = 1; i < XP_TABLE.length; i++) {
       expect(XP_TABLE[i]).toBeGreaterThan(XP_TABLE[i - 1]);
     }
+  });
+});
+
+describe('getLevelProgress', () => {
+  it('usa os limiares reais da tabela em vez de modulo fixo', () => {
+    expect(getLevelProgress(79)).toMatchObject({
+      level: 1,
+      currentLevelXp: 79,
+      xpForNextLevel: 80,
+    });
+
+    expect(getLevelProgress(80)).toMatchObject({
+      level: 2,
+      currentLevelXp: 0,
+      xpForNextLevel: 100,
+    });
+  });
+
+  it('mantem barra cheia no level maximo', () => {
+    const maxXp = XP_TABLE[XP_TABLE.length - 1];
+    expect(getLevelProgress(maxXp)).toMatchObject({
+      level: XP_TABLE.length,
+      progressPercent: 100,
+      isMaxLevel: true,
+    });
   });
 });
