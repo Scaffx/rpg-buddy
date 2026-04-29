@@ -32,6 +32,7 @@ import TermsPage from "./pages/legal/TermsPage";
 import PrivacyPage from "./pages/legal/PrivacyPage";
 import RefundPage from "./pages/legal/RefundPage";
 import { Loader2 } from "lucide-react";
+import { hasCompletedOnboarding } from "@/lib/onboarding";
 
 const queryClient = new QueryClient();
 
@@ -50,8 +51,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/landing" replace />;
   // Redireciona para onboarding se o usuário ainda não completou o formulário inicial
   // Verifica banco primeiro, fallback para localStorage (caso a migration não tenha sido aplicada)
-  const onboardingDone = (profile as any)?.onboarding_completed === true
-    || localStorage.getItem(`onboarding_v1_${user.id}`) === 'done';
+  const onboardingDone = hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id);
   if (!onboardingDone) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }

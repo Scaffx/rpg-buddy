@@ -45,6 +45,7 @@ import HeroStatusBar from "@/components/HeroStatusBar";
 import ActiveTalentsBadge from "@/components/ActiveTalentsBadge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { hasCompletedOnboarding } from "@/lib/onboarding";
 
 const ATTRIBUTE_ICONS: Record<string, any> = {
   Agilidade: Zap, Carisma: Users, Criatividade: Palette,
@@ -754,6 +755,7 @@ export default function ProfilePage() {
   const [newName, setNewName] = useState("");
   const [selectedRespecClass, setSelectedRespecClass] = useState<string>("guerreiro");
   const [selectedCombatSkillIds, setSelectedCombatSkillIds] = useState<string[]>([]);
+  const onboardingDone = !!user && hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id);
 
   useEffect(() => {
     if (!user) return;
@@ -1341,7 +1343,7 @@ export default function ProfilePage() {
         {activeTab === "perfil" && (
           <div className="space-y-6">
             {/* Alerta de formulário inicial não concluído */}
-            {profile && (profile as any).onboarding_completed !== true && (
+            {profile && !onboardingDone && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}

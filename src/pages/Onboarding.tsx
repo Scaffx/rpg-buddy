@@ -9,6 +9,8 @@ import { useClaimStarterKit } from '@/hooks/useInventory';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { hasCompletedOnboarding, markOnboardingCompletedLocal } from '@/lib/onboarding';
 import {
   Sword,
   BookOpen,
@@ -178,6 +180,7 @@ export default function Onboarding() {
   const { toast } = useToast();
   const { data: attributes } = useAttributes();
   const { data: profile } = useProfile();
+  const queryClient = useQueryClient();
 
   const [step, setStep] = useState(0);
   const [selectedClass, setSelectedClass] = useState<ClassDef | null>(null);
@@ -191,13 +194,10 @@ export default function Onboarding() {
     if (!authLoading && !user) navigate('/auth', { replace: true });
   }, [authLoading, user, navigate]);
 
-  // Se o onboarding já foi concluído (flag no banco), redireciona direto.
-  // Intencionalmente NÃO verifica localStorage para que usuários que burlaram
-  // o formulário possam concluí-lo corretamente via alerta no Perfil.
+  // Se onboarding já foi concluído, redireciona para o app.
   useEffect(() => {
     if (!user || !profile) return;
-    const doneInDb = (profile as any).onboarding_completed === true;
-    if (doneInDb) {
+    if (hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id)) {
       navigate('/', { replace: true });
     }
   }, [user, profile, navigate]);
@@ -244,13 +244,17 @@ export default function Onboarding() {
         } as any);
       }
 
-      // Marca onboarding como concluído no banco de dados (ignora erro se coluna não existir)
-      await supabase.from('profiles').update({
+      // Marca onboarding como concluído no banco.
+      const { error: updateProfileError } = await supabase.from('profiles').update({
         onboarding_completed: true,
         region: selectedRegion,
         starter_class: selectedClass.id,
         starter_item: selectedClass.starterItem,
-      } as any).eq('user_id', user.id).then(() => {});
+      } as any).eq('user_id', user.id);
+
+      if (updateProfileError) {
+        console.error('[onboarding] falha ao atualizar perfil:', updateProfileError);
+      }
 
       // Concede kit de novato (equipamentos simples de lv1-4)
       try {
@@ -259,10 +263,21 @@ export default function Onboarding() {
         // Kit pode já ter sido concedido — ignora erro
       }
 
-      // Salva no localStorage (sempre funciona)
-      localStorage.setItem(`starter_class_v1_${user.id}`, selectedClass.id);
-      localStorage.setItem(`starter_item_v1_${user.id}`, selectedClass.starterItem);
-      localStorage.setItem(`onboarding_v1_${user.id}`, 'done');
+      // Salva no localStorage como fallback confiável.
+      markOnboardingCompletedLocal(user.id, selectedClass.id, selectedClass.starterItem);
+
+      // Atualiza cache local imediatamente para evitar alerta stale no retorno.
+      queryClient.setQueryData(['profile', user.id], (old: Record<string, unknown> | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          onboarding_completed: true,
+          region: selectedRegion,
+          starter_class: selectedClass.id,
+          starter_item: selectedClass.starterItem,
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
 
       toast({ title: t('app.onboarding.success_title'), description: t('app.onboarding.success_desc') });
       navigate('/');
