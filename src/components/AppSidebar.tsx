@@ -1,14 +1,15 @@
 import { useLocation } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile, useClasses } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
 import ActiveTalentsBadge from '@/components/ActiveTalentsBadge';
+import HelpTutorialModal from '@/components/HelpTutorialModal';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
   ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone,
+  Sparkles, Smartphone, HelpCircle,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import {
@@ -60,6 +61,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { t } = useTranslation();
   const currentGold = (goldBalance as any)?.gold ?? 100;
+  const [showHelp, setShowHelp] = useState(false);
 
   const navItems = useMemo(
     () => navItemDefs.map((item) => ({ ...item, title: t(`app.sidebar.${item.key}`) })),
@@ -138,6 +140,21 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Botão de Ajuda / Tutorial — abaixo de "Informações do Sistema" */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowHelp(true)}
+                    className="hover:bg-sidebar-accent/50 text-sidebar-foreground/70 w-full flex items-center"
+                    title="Ver tutorial e ajuda"
+                  >
+                    <HelpCircle className="mr-2 h-4 w-4 shrink-0 text-amber-400" />
+                    {!collapsed && <span className="text-sm truncate">Ajuda & Tutorial</span>}
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -152,6 +169,7 @@ export function AppSidebar() {
           {!collapsed && <span>{t('app.sidebar.logout')}</span>}
         </button>
       </SidebarFooter>
+      <HelpTutorialModal open={showHelp} onClose={() => setShowHelp(false)} />
     </Sidebar>
   );
 }
