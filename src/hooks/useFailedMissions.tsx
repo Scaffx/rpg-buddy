@@ -57,11 +57,30 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   const startOfToday = getStartOfLocalDay();
   const currentWeek = getWeekToken();
 
-  const { data: streakProfile } = await supabase
-    .from('profiles')
-    .select('streak_protector_charges, streak_protector_max, streak_protector_week')
-    .eq('user_id', userId)
-    .maybeSingle();
+  // ⚡ Carregar streak protector e TODAS as completions de uma vez (em paralelo).
+  const missionIds = missions.map((m: any) => m.id);
+  const earliestDate = new Date(startOfToday);
+  earliestDate.setDate(earliestDate.getDate() - 30);
+  const earliestDateStr = getLocalDateString(earliestDate);
+
+  const [{ data: streakProfile }, { data: allCompletions }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('streak_protector_charges, streak_protector_max, streak_protector_week')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('mission_daily_completions')
+      .select('mission_id, completion_date')
+      .in('mission_id', missionIds as any)
+      .gte('completion_date', earliestDateStr),
+  ]);
+
+  // Index completions por missionId+date para lookup O(1)
+  const completionSet = new Set<string>();
+  for (const c of (allCompletions as any[] | null) || []) {
+    completionSet.add(`${c.mission_id}|${c.completion_date}`);
+  }
 
   const maxSlots = Math.min(3, Math.max(1, Number((streakProfile as any)?.streak_protector_max ?? 3)));
   let availableProtectors =
@@ -69,7 +88,8 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       ? Number((streakProfile as any)?.streak_protector_charges ?? 2)
       : 2;
 
-  await supabase
+  // Atualiza protetor base (semana corrente) — fire-and-forget para não bloquear
+  void supabase
     .from('profiles')
     .update({
       streak_protector_week: currentWeek,
@@ -77,6 +97,11 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       streak_protector_charges: Math.min(maxSlots, Math.max(0, availableProtectors)),
     } as any)
     .eq('user_id', userId);
+
+  // Acumula updates por missão (1 update final por missão em vez de vários)
+  const missionUpdates = new Map<string, any>();
+  const protectedActivityLogs: any[] = [];
+  const xpTransactionInserts: any[] = [];
 
   for (let daysBack = 1; daysBack <= 30; daysBack++) {
     const pastDate = new Date(startOfToday);
@@ -86,85 +111,53 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     const pastDayName = DAYS_NAMES[pastDayIndex];
 
     for (const m of missions) {
+      // Se já marcamos como falha numa data anterior nesta execução, pula
+      if (missionUpdates.get(m.id)?.is_failed) continue;
+
       const days = (m.days_of_week as string[]) || [];
       if (days.length === 0) continue;
       if (!days.includes(pastDayName)) continue;
 
-      // Don't penalize if mission was created after this date
       const createdAt = (m as any).created_at?.split('T')[0];
       if (createdAt && createdAt > pastDateStr) continue;
 
-      // Check if already has a failure record for this date
       if ((m as any).failed_date === pastDateStr) continue;
 
-      // Check daily_status for completion or already-accepted failure on that date
-      const dailyStatus = (m as any).daily_status || {};
+      const dailyStatus = { ...((missionUpdates.get(m.id)?.daily_status) || (m as any).daily_status || {}) };
       if (dailyStatus[pastDateStr] === 'completed') continue;
       if (dailyStatus[pastDateStr] === 'failed_accepted') continue;
+      if (dailyStatus[pastDateStr] === 'protected') continue;
 
-      // Check mission_daily_completions
-      const { data: completions } = await supabase
-        .from('mission_daily_completions')
-        .select('id')
-        .eq('mission_id', m.id)
-        .eq('completion_date', pastDateStr)
-        .limit(1);
-
-      if (completions && completions.length > 0) continue;
+      if (completionSet.has(`${m.id}|${pastDateStr}`)) continue;
 
       if (availableProtectors > 0) {
-        const { data: missionStatusRow } = await supabase
-          .from('missions')
-          .select('daily_status')
-          .eq('id', m.id)
-          .single();
-
-        const protectedDailyStatus = (missionStatusRow as any)?.daily_status || {};
-        protectedDailyStatus[pastDateStr] = 'protected';
-
+        dailyStatus[pastDateStr] = 'protected';
         availableProtectors = Math.max(0, availableProtectors - 1);
-
-        await supabase
-          .from('profiles')
-          .update({ streak_protector_charges: availableProtectors, streak_protector_week: currentWeek } as any)
-          .eq('user_id', userId);
-
-        await supabase
-          .from('missions')
-          .update({ daily_status: protectedDailyStatus } as any)
-          .eq('id', m.id);
-
-        await supabase.from('activity_log').insert({
+        missionUpdates.set(m.id, {
+          ...(missionUpdates.get(m.id) || {}),
+          daily_status: dailyStatus,
+        });
+        protectedActivityLogs.push({
           user_id: userId,
           action: 'streak_protected',
           description: `Protetor de Streak usado em ${m.title} (${pastDateStr}). Cargas restantes: ${availableProtectors}/${maxSlots}`,
           xp_gained: 0,
         });
-
         continue;
       }
 
-      // Esta missão falhou nesta data - aplicar penalidade de XP
-      // HP/MP são consumidos apenas em batalhas de boss/masmorra (não em missões)
+      // Marca como falha (apenas a 1ª data falhada por missão)
       const xpPenalty = m.xp_reward;
       totalPenalty += xpPenalty;
+      missionUpdates.set(m.id, {
+        ...(missionUpdates.get(m.id) || {}),
+        daily_status: dailyStatus,
+        is_failed: true,
+        xp_penalized: xpPenalty,
+        failed_date: pastDateStr,
+      });
 
-      await supabase
-        .from('missions')
-        .update({
-          is_failed: true,
-          xp_penalized: xpPenalty,
-          failed_date: pastDateStr,
-        } as any)
-        .eq('id', m.id);
-
-      await supabase
-        .from('profiles')
-        .update({ streak_current_days: 0 } as any)
-        .eq('user_id', userId);
-
-      // Log estruturado da transação de XP (penalidade)
-      await supabase.from('xp_transactions' as any).insert({
+      xpTransactionInserts.push({
         user_id: userId,
         mission_id: m.id,
         reason: 'mission_failed',
@@ -175,8 +168,30 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       });
 
       failedList.push({ ...m, failed_date: pastDateStr });
-      break; // One failure per mission at a time
+      break;
     }
+  }
+
+  // ⚡ Aplicar todas as updates de missões em paralelo
+  if (missionUpdates.size > 0) {
+    await Promise.all(
+      Array.from(missionUpdates.entries()).map(([id, payload]) =>
+        supabase.from('missions').update(payload as any).eq('id', id),
+      ),
+    );
+  }
+
+  // Atualiza cargas de protetor finais
+  if (protectedActivityLogs.length > 0) {
+    void supabase
+      .from('profiles')
+      .update({ streak_protector_charges: availableProtectors, streak_protector_week: currentWeek } as any)
+      .eq('user_id', userId);
+    void supabase.from('activity_log').insert(protectedActivityLogs as any);
+  }
+
+  if (xpTransactionInserts.length > 0) {
+    void supabase.from('xp_transactions' as any).insert(xpTransactionInserts as any);
   }
 
   if (totalPenalty > 0) {
@@ -186,28 +201,29 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       .eq('user_id', userId)
       .single();
 
-    let updates: any = {};
     if (profile) {
       const newXp = Math.max(0, (profile as any).total_xp - totalPenalty);
       const calculatedLevel = getLevelFromXp(newXp);
       const newLevel = Math.max(calculatedLevel, (profile as any).level);
-      updates.total_xp = newXp;
-      updates.level = newLevel;
-      await supabase.from('profiles').update(updates).eq('user_id', userId);
+      await supabase
+        .from('profiles')
+        .update({ total_xp: newXp, level: newLevel, streak_current_days: 0 } as any)
+        .eq('user_id', userId);
     }
 
-    let desc = `Missões fracassadas! -${totalPenalty} XP`;
-    await supabase.from('activity_log').insert({
+    void supabase.from('activity_log').insert({
       user_id: userId,
       action: 'mission_failed',
-      description: desc,
+      description: `Missões fracassadas! -${totalPenalty} XP`,
       xp_gained: -totalPenalty,
     });
 
-    const toastMsg = `Missões fracassadas! Você perdeu ${totalPenalty} XP.`;
-    toast.error(toastMsg);
+    toast.error(`Missões fracassadas! Você perdeu ${totalPenalty} XP.`);
     queryClient.invalidateQueries({ queryKey: ['missions'] });
     queryClient.invalidateQueries({ queryKey: ['profile'] });
+    queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
+  } else if (missionUpdates.size > 0) {
+    queryClient.invalidateQueries({ queryKey: ['missions'] });
     queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
   }
 }
