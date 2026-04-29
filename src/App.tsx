@@ -6,8 +6,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useClickSound } from "@/hooks/useClickSound";
 import { ShortRestStatusProvider } from "@/hooks/useShortRestStatus";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Missions from "./pages/Missions";
@@ -39,8 +41,9 @@ const queryClient = new QueryClient();
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
+  const { isActive, isLoading: subscriptionLoading } = useSubscription();
 
-  if (loading || profileLoading) {
+  if (loading || profileLoading || subscriptionLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -53,6 +56,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Verifica banco primeiro, fallback para localStorage (caso a migration não tenha sido aplicada)
   const onboardingDone = hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id);
   if (!onboardingDone) return <Navigate to="/onboarding" replace />;
+
+  // Enforce de assinatura: após trial/vencimento, bloqueia acesso às rotas protegidas
+  if (!isActive) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-6 flex items-center justify-center">
+        <div className="w-full max-w-4xl">
+          <SubscriptionPaywall />
+        </div>
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }
 
