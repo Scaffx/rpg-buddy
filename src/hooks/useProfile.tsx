@@ -769,8 +769,8 @@ export const useCompleteMission = () => {
         }
       }
 
-      // Registrar atividade
-      await supabase
+      // ⚡ Logs e bônus secundários: fire-and-forget para liberar a UI mais rápido.
+      void supabase
         .from('activity_log')
         .insert({
           user_id: user!.id,
@@ -779,8 +779,7 @@ export const useCompleteMission = () => {
           xp_gained: totalXpReward,
         });
 
-      // Registrar no histórico de XP para o gráfico de progresso
-      await supabase
+      void supabase
         .from('xp_history' as any)
         .insert({
           user_id: user!.id,
@@ -788,48 +787,49 @@ export const useCompleteMission = () => {
           type: 'mission',
         } as any);
 
-      // Adicionar ouro
-      const { data: bal } = await supabase
-        .from('user_balance')
-        .select('gold')
-        .eq('user_id', user!.id)
-        .maybeSingle();
-
-      if (bal) {
-        const currentGold = (bal as any).gold ?? 100;
-
-        await supabase
+      // Atualizar ouro (read+write em paralelo com o resto)
+      void (async () => {
+        const { data: bal } = await supabase
           .from('user_balance')
-          .update({ 
-            gold: currentGold + goldReward,
-            updated_at: new Date().toISOString() 
-          } as any)
-          .eq('user_id', user!.id);
-      } else {
-        await supabase
-          .from('user_balance')
-          .insert({ 
-            user_id: user!.id, 
-            balance_percent: 100, 
-            gold: 100 + goldReward
-          } as any);
-      }
+          .select('gold')
+          .eq('user_id', user!.id)
+          .maybeSingle();
 
-      await supabase.from('gold_history').insert({
-        user_id: user!.id,
-        type: 'missao',
-        amount: goldReward,
-        reason: `Recompensa de missao: ${typedMission.title}`,
-      } as any);
+        if (bal) {
+          const currentGold = (bal as any).gold ?? 100;
+          await supabase
+            .from('user_balance')
+            .update({
+              gold: currentGold + goldReward,
+              updated_at: new Date().toISOString(),
+            } as any)
+            .eq('user_id', user!.id);
+        } else {
+          await supabase
+            .from('user_balance')
+            .insert({
+              user_id: user!.id,
+              balance_percent: 100,
+              gold: 100 + goldReward,
+            } as any);
+        }
 
-      await applyMissionTalentPostEffects({
+        await supabase.from('gold_history').insert({
+          user_id: user!.id,
+          type: 'missao',
+          amount: goldReward,
+          reason: `Recompensa de missao: ${typedMission.title}`,
+        } as any);
+      })();
+
+      void applyMissionTalentPostEffects({
         userId: user!.id,
         missionTitle: String(typedMission.title || 'Missao'),
         effects: missionTalentEffects,
       });
 
       if (hadFlowXpBuff) {
-        await consumeOneShotBuff(user!.id, ['estado_fluxo_xp']);
+        void consumeOneShotBuff(user!.id, ['estado_fluxo_xp']);
       }
 
       const inspiredGranted = await grantInspirationIfPerfectDay(user!.id, today);
