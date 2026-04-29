@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 
 type MissionOption = {
@@ -45,6 +46,7 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 
 export default function PrioridadePage() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { data: plans, isLoading } = usePlans();
   const { data: missions } = useMissions();
   const createPlan = useCreatePlan();
@@ -95,6 +97,11 @@ export default function PrioridadePage() {
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (form.missions.length === 0 || calculatedTargetValue <= 0) {
+      toast({
+        title: "Adicione ao menos uma missão",
+        description: "Selecione uma missão e defina a quantidade antes de salvar.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -102,6 +109,14 @@ export default function PrioridadePage() {
       onSuccess: () => {
         setModalOpen(false);
         setForm({ title: "", description: "", missions: [] });
+        toast({ title: "Plano criado!", description: form.title });
+      },
+      onError: (err) => {
+        toast({
+          title: "Erro ao salvar plano",
+          description: err instanceof Error ? err.message : "Tente novamente.",
+          variant: "destructive",
+        });
       },
     });
   }
@@ -242,7 +257,7 @@ export default function PrioridadePage() {
               <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
                 {t('app.priority.button_cancel')}
               </Button>
-              <Button type="submit" disabled={createPlan.isPending || form.missions.length === 0 || calculatedTargetValue <= 0}>
+              <Button type="submit" disabled={createPlan.isPending}>
                 {t('app.priority.button_save')}
               </Button>
             </DialogFooter>
