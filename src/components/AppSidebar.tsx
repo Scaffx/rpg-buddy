@@ -9,9 +9,10 @@ import HelpTutorialModal from '@/components/HelpTutorialModal';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
   ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone, HelpCircle,
+  Sparkles, Smartphone, HelpCircle, Clock,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
+import { useSubscription } from '@/hooks/useSubscription';
 import { getLevelProgress } from '@/lib/progression';
 import {
   Sidebar,
@@ -59,6 +60,7 @@ export function AppSidebar() {
   const { data: profile } = useProfile();
   const { data: classes } = useClasses();
   const { data: goldBalance } = useGoldBalance();
+  const { isTrial, daysUntilBlock } = useSubscription();
   const location = useLocation();
   const { t } = useTranslation();
   const currentGold = (goldBalance as any)?.gold ?? 100;
@@ -117,6 +119,16 @@ export function AppSidebar() {
                 <span className="text-sm font-bold text-yellow-400">{currentGold} 🪙</span>
               </div>
               <ActiveTalentsBadge compact className="mt-1" />
+              {isTrial && daysUntilBlock !== null && (
+                <div className="mt-2 flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-[10px] text-amber-300 leading-tight">
+                    {daysUntilBlock === 0
+                      ? 'Trial expira hoje!'
+                      : `${daysUntilBlock} dia${daysUntilBlock !== 1 ? 's' : ''} de trial restante${daysUntilBlock !== 1 ? 's' : ''}`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
