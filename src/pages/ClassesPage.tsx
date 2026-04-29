@@ -156,27 +156,43 @@ export default function ClassesPage() {
     });
   }, []);
 
-  const handleSelect = async (classId: string, className: string) => {
-    if (profile?.current_class_id) {
-      toast({ title: `🔒 ${t('app.classes.locked_toast')}`, description: t('app.classes.locked_toast_desc'), variant: 'destructive' });
-      return;
-    }
-    setSelecting(classId);
-    try {
-      // Resolve the starter_class id by walking up to the tier-2 ancestor
+  // Resolve o ancestral tier-2 (classe-base) de uma classe qualquer
+  const resolveBaseClass = useCallback(
+    (classId: string) => {
       const classMap = new Map<string, any>();
       (classes || []).forEach((c: any) => classMap.set(c.id, c));
       let node = classMap.get(classId);
       while (node && node.column_index > 2) {
         node = node.parent_class_id ? classMap.get(node.parent_class_id) : null;
       }
-      const starterClass = node?.column_index === 2
-        ? CLASS_NAME_TO_STARTER[node.name]
-        : undefined;
+      return node?.column_index === 2 ? node : null;
+    },
+    [classes],
+  );
+
+  // 1ª etapa: clicar em "Selecionar" abre o modal de confirmação com o perfil moderno
+  const handleSelect = (classId: string, className: string) => {
+    if (profile?.current_class_id) {
+      toast({ title: `🔒 ${t('app.classes.locked_toast')}`, description: t('app.classes.locked_toast_desc'), variant: 'destructive' });
+      return;
+    }
+    const baseNode = resolveBaseClass(classId);
+    const baseName = baseNode?.name || className;
+    const moderno = baseName ? getClassProfileByTreeName(baseName) : null;
+    setPendingConfirm({ classId, className, profile: moderno, baseName });
+  };
+
+  // 2ª etapa: usuário confirma — só agora aplica de fato
+  const confirmAndSelect = async () => {
+    if (!pendingConfirm) return;
+    const { classId, className } = pendingConfirm;
+    setSelecting(classId);
+    try {
+      const baseNode = resolveBaseClass(classId);
+      const starterClass = baseNode ? CLASS_NAME_TO_STARTER[baseNode.name] : undefined;
 
       await selectClass.mutateAsync({ classId, starterClass });
 
-      // Grant class equipment kit if a valid starter class was resolved
       if (starterClass) {
         await claimClassKit.mutateAsync(starterClass);
         toast({ title: `🎁 ${t('app.classes.kit_received', { name: className })}`, description: t('app.classes.kit_received_desc') });
@@ -184,6 +200,7 @@ export default function ClassesPage() {
         toast({ title: `🎉 ${t('app.classes.class_selected', { name: className })}` });
       }
 
+      setPendingConfirm(null);
       setSelectedDetail(null);
     } catch {
       toast({ title: t('app.classes.error_select'), variant: 'destructive' });
