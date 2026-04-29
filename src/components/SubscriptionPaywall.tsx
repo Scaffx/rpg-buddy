@@ -1,4 +1,4 @@
-import { Crown, Check, Loader2, Sparkles } from "lucide-react";
+import { Crown, Loader2, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,14 +14,6 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
   const { t } = useTranslation();
   const { openCheckout, loading } = usePaddleCheckout();
   const { isActive, isTrial } = useSubscription();
-
-  const features = [
-    t("pricing.features.f1"),
-    t("pricing.features.f2"),
-    t("pricing.features.f3"),
-    t("pricing.features.f4"),
-    t("pricing.features.f5"),
-  ];
 
   if (isActive) {
     return (
@@ -107,27 +99,6 @@ export function SubscriptionPaywall({ compact = false }: { compact?: boolean }) 
             </Button>
           </div>
         </div>
-
-        <div className="mb-4">
-          <div className="flex items-baseline gap-1">
-            <span className="font-cinzel text-3xl font-bold text-primary">{t("pricing.price_currency")} {t("pricing.monthly.price_amount")}</span>
-            <span className="text-sm text-muted-foreground">{t("pricing.monthly.price_period")}</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t("pricing.region_note")}
-          </p>
-        </div>
-
-        {!compact && (
-          <ul className="space-y-2 mb-5">
-            {features.map((f) => (
-              <li key={f} className="flex items-start gap-2 text-sm">
-                <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <span>{f}</span>
-              </li>
-            ))}
-          </ul>
-        )}
 
         <p className="text-[11px] text-center text-muted-foreground mt-2">
           {t("pricing.mor_note")}
