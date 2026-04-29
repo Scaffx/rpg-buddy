@@ -246,7 +246,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p className="text-xs">
-                      {t('app.header.streak_title')}: <strong>{streakDays} {streakDays === 1 ? 'dia' : t('app.header.streak_title') === 'Consistency Streak' ? 'days' : 'dias'}</strong>
+                      {t('app.header.streak_title')}: <strong>{streakDays} {streakDays === 1 ? (t('app.header.streak_title') === 'Consistency Streak' ? 'day' : 'dia') : (t('app.header.streak_title') === 'Consistency Streak' ? 'days' : 'dias')}</strong>
                     </p>
                     <p className="text-[10px] text-muted-foreground">{t('app.header.streak_desc')}</p>
                   </TooltipContent>

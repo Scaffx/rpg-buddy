@@ -360,7 +360,7 @@ export default function Dashboard() {
               <Flame className="w-4 h-4 text-red-400" />
               <span className="text-sm font-bold">{t('app.dashboard.streak_badge')}</span>
               <span className="text-xs text-red-300">
-                {missionStreak.days} {t('app.dashboard.streak_days', { count: missionStreak.days })}
+                {t('app.dashboard.streak_days', { n: missionStreak.days, count: missionStreak.days, defaultValue: `${missionStreak.days} dias` })}
               </span>
             </div>
           )}
