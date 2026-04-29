@@ -5,6 +5,44 @@ const BASE_MONTHLY_USD = 1.5;
 const RATES_CACHE_KEY = "lifeonrpg-usd-rates-v1";
 const RATES_TTL_MS = 1000 * 60 * 60 * 12; // 12h
 
+/**
+ * Preços mensais fixos por moeda (PPP — purchasing power parity).
+ * Quando a moeda do usuário está aqui, usamos este valor em vez de
+ * converter pelo câmbio. O valor anual é sempre 12x o mensal.
+ * Para adicionar/ajustar um preço: edite esta tabela e configure
+ * o mesmo valor como "catalog price" no painel do Paddle.
+ * Países sem suporte de moeda no Paddle caem em USD automaticamente.
+ */
+const FIXED_PRICES_MONTHLY: Record<string, number> = {
+  // América do Sul
+  BRL: 4.99,   // Brasil         — R$ 4,99
+  ARS: 1384,   // Argentina      — $ 1.384
+  CLP: 4990,   // Chile          — $ 4.990
+  COP: 19900,  // Colômbia       — $ 19.900
+  PEN: 18.90,  // Peru           — S/ 18,90
+  UYU: 199,    // Uruguai        — $ 199
+  BOB: 34.90,  // Bolívia        — Bs 34,90
+  PYG: 37900,  // Paraguai       — ₲ 37.900
+
+  // América Central
+  MXN: 89,     // México         — $ 89
+  GTQ: 38.90,  // Guatemala      — Q 38,90
+  HNL: 124.90, // Honduras       — L 124,90
+  NIO: 179,    // Nicarágua      — C$ 179
+  CRC: 2590,   // Costa Rica     — ₡ 2.590
+  DOP: 299,    // Rep. Dominicana— RD$ 299
+
+  // USD (inclui EUA + países dolarizados: Ecuador, El Salvador, Panamá, Cuba)
+  USD: 4.99,
+
+  // Resto do mundo
+  CAD: 6.99,   // Canadá         — $ 6.99
+  EUR: 4.49,   // Europa         — € 4,49
+  GBP: 3.99,   // Reino Unido    — £ 3,99
+  AUD: 7.99,   // Austrália      — $ 7,99
+  INR: 129,    // Índia          — ₹ 129
+};
+
 type RatesPayload = {
   updatedAt: number;
   rates: Record<string, number>;
@@ -127,12 +165,20 @@ export function useLocalizedPricing() {
     [i18n.resolvedLanguage, browserLocale],
   );
   const currency = useMemo(() => detectCurrency(locale), [locale]);
+
+  // Se a moeda tem preço fixo definido, não precisamos de taxa de câmbio
+  const hasFixedPrice = currency in FIXED_PRICES_MONTHLY;
+
   const [rate, setRate] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(!hasFixedPrice);
 
   useEffect(() => {
-    let mounted = true;
+    if (hasFixedPrice) {
+      setLoading(false);
+      return;
+    }
 
+    let mounted = true;
     (async () => {
       setLoading(true);
       const rates = await fetchUsdRates();
@@ -146,20 +192,24 @@ export function useLocalizedPricing() {
     return () => {
       mounted = false;
     };
-  }, [currency]);
+  }, [currency, hasFixedPrice]);
 
   const formatter = useMemo(
     () => new Intl.NumberFormat(locale, { style: "currency", currency }),
     [locale, currency],
   );
 
-  const monthlyValue = BASE_MONTHLY_USD * rate;
-  const annualValue = BASE_MONTHLY_USD * 12 * rate;
+  const monthlyValue = hasFixedPrice
+    ? FIXED_PRICES_MONTHLY[currency]
+    : BASE_MONTHLY_USD * rate;
+
+  const annualValue = monthlyValue * 12;
 
   return {
     locale,
     currency,
     loading,
+    isFixedPrice: hasFixedPrice,
     monthlyUsd: BASE_MONTHLY_USD,
     monthlyFormatted: formatter.format(monthlyValue),
     annualFormatted: formatter.format(annualValue),
