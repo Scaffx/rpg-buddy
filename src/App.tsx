@@ -30,8 +30,7 @@ import SystemInfoPage from "./pages/SystemInfoPage";
 import VirtuesPage from "./pages/VirtuesPage";
 import Landing from "./pages/Landing";
 import MobilePage from "./pages/MobilePage";
-import ReleasesAdminPage from "./pages/admin/ReleasesAdminPage";
-import TermsPage from "./pages/legal/TermsPage";
+import ReleasesAdminPage from "./pages/admin/ReleasesAdminPage";import ResetPassword from './pages/ResetPassword';import TermsPage from "./pages/legal/TermsPage";
 import PrivacyPage from "./pages/legal/PrivacyPage";
 import RefundPage from "./pages/legal/RefundPage";
 import { Loader2 } from "lucide-react";
@@ -120,6 +119,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/landing" element={<LandingRoute />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />

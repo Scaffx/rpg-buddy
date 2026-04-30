@@ -72,7 +72,11 @@ export function useInventory() {
         .select('*, game_items(*)')
         .eq('user_id', user!.id);
       if (error) throw error;
-      return (data || []) as InventoryItem[];
+      return ((data || []) as InventoryItem[]).sort((a, b) => {
+        const ra = RARITY_ORDER[a.game_items?.rarity?.toLowerCase() ?? 'comum'] ?? 0;
+        const rb = RARITY_ORDER[b.game_items?.rarity?.toLowerCase() ?? 'comum'] ?? 0;
+        return ra - rb;
+      });
     },
     enabled: !!user,
   });
@@ -122,6 +126,14 @@ export function useGameItems(category?: string) {
   });
 }
 
+const RARITY_ORDER: Record<string, number> = {
+  comum: 0,
+  incomum: 1,
+  raro: 2,
+  epico: 3,
+  lendario: 4,
+};
+
 export function useShopItems() {
   return useQuery({
     queryKey: ['shop-game-items'],
@@ -131,10 +143,15 @@ export function useShopItems() {
         .select('*')
         .not('shop_price', 'is', null)
         .order('category')
-        .order('rarity')
         .order('shop_price');
       if (error) throw error;
-      return data as GameItem[];
+      return (data as GameItem[]).sort((a, b) => {
+        if (a.category !== b.category) return a.category.localeCompare(b.category);
+        const ra = RARITY_ORDER[a.rarity?.toLowerCase() ?? 'comum'] ?? 0;
+        const rb = RARITY_ORDER[b.rarity?.toLowerCase() ?? 'comum'] ?? 0;
+        if (ra !== rb) return ra - rb;
+        return (a.shop_price ?? 0) - (b.shop_price ?? 0);
+      });
     },
   });
 }
