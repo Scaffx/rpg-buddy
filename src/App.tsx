@@ -39,7 +39,15 @@ import { hasCompletedOnboarding } from "@/lib/onboarding";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({
+  children,
+  bypassOnboarding = false,
+  bypassSubscription = false,
+}: {
+  children: React.ReactNode;
+  bypassOnboarding?: boolean;
+  bypassSubscription?: boolean;
+}) {
   const { user, loading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { isActive, isLoading: subscriptionLoading } = useSubscription();
@@ -57,11 +65,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Redireciona para onboarding se o usuário ainda não completou o formulário inicial
   // Verifica banco primeiro, fallback para localStorage (caso a migration não tenha sido aplicada)
   const onboardingDone = hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id);
-  if (!onboardingDone) return <Navigate to="/onboarding" replace />;
+  if (!bypassOnboarding && !onboardingDone) return <Navigate to="/onboarding" replace />;
 
   // Enforce de assinatura: após trial/vencimento, bloqueia acesso às rotas protegidas.
   // Admins do sistema (app_metadata.role = 'admin') ficam isentos para poder operar o painel.
-  if (!isActive && !isAdmin) {
+  if (!bypassSubscription && !isActive && !isAdmin) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-6 flex items-center justify-center">
         <div className="w-full max-w-4xl">
@@ -127,7 +135,14 @@ function AppRoutes() {
       <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
       <Route path="/virtues" element={<ProtectedRoute><VirtuesPage /></ProtectedRoute>} />
       <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
-      <Route path="/admin/releases" element={<ProtectedRoute><ReleasesAdminPage /></ProtectedRoute>} />
+      <Route
+        path="/admin/releases"
+        element={
+          <ProtectedRoute bypassOnboarding bypassSubscription>
+            <ReleasesAdminPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
