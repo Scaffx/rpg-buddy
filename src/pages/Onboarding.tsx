@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { hasCompletedOnboarding, markOnboardingCompletedLocal } from '@/lib/onboarding';
+import { AccountRecoveryModal } from '@/components/AccountRecoveryModal';
 import {
   Sword,
   BookOpen,
@@ -187,7 +188,18 @@ export default function Onboarding() {
   const [selectedMissions, setSelectedMissions] = useState<Set<number>>(new Set([0, 1, 2]));
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const claimStarterKit = useClaimStarterKit();
+
+  // Se não tem perfil no banco, verifica se há perfis órfãos para recuperação
+  useEffect(() => {
+    if (!user || profile !== null) return;
+    (supabase.rpc as any)('get_orphaned_profiles').then(({ data }: any) => {
+      if (data && (data as any[]).length > 0) {
+        setShowRecoveryModal(true);
+      }
+    });
+  }, [user, profile]);
 
   // Redireciona usuários não autenticados
   useEffect(() => {
@@ -290,6 +302,11 @@ export default function Onboarding() {
 
 
   return (
+    <>
+      <AccountRecoveryModal
+        open={showRecoveryModal}
+        onClose={() => setShowRecoveryModal(false)}
+      />
     <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
       {/* Barra de progresso */}
       <div className="w-full max-w-2xl mb-6">
@@ -642,5 +659,6 @@ export default function Onboarding() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

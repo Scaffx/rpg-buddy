@@ -122,12 +122,12 @@ export function useShortRestStart() {
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
 
-      // Bloqueia se o descanso foi iniciado OU concluído hoje (SHORT_REST_STARTED_ACTION ou SHORT_REST_ACTION).
-      // O usuário só pode iniciar uma vez por dia.
-      const startedOrCompletedAt = await getShortRestStartOrCompletionUsageToday(user.id);
-      if (startedOrCompletedAt) {
+      // Só bloqueia se o descanso já foi concluído hoje (timer esgotado).
+      // Iniciar e cancelar não bloqueia — o usuário pode tentar de novo.
+      const completedAt = await getShortRestUsageToday(user.id);
+      if (completedAt) {
         const nextAvailableDate = getStartOfNextLocalDay();
-        throw new Error(`Você já iniciou seu descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
+        throw new Error(`Você já concluiu seu descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
       }
 
       // Log para analytics (não bloqueia disponibilidade).
@@ -455,11 +455,12 @@ export function useProfile() {
   return useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single();
+      const { data, error } = await supabase.from("profiles").select("*").eq("user_id", user!.id).maybeSingle();
       if (error) throw error;
-      return data;
+      return data ?? null;
     },
     enabled: !!user,
+    retry: 1,
   });
 }
 
@@ -749,33 +750,28 @@ export const useCompleteMission = () => {
 
       // Atualizar progresso dos planos vinculados
       const { data: planLinks } = await supabase
-        .from('plan_missions')
-        .select('id, plan_id')
+        .from('plan_missions' as any)
+        .select('id, plan_id, value_per_completion')
         .eq('mission_id', missionId);
 
-      if (planLinks && planLinks.length > 0) {
-        for (const link of planLinks) {
-          if (!link.plan_id) {
-            continue;
-          }
-
+      if (planLinks && (planLinks as any[]).length > 0) {
+        for (const link of (planLinks as any[])) {
           const { data: plan } = await supabase
-            .from('plans')
+            .from('plans' as any)
             .select('current_value')
             .eq('id', link.plan_id)
             .single();
-
           if (plan) {
             await supabase
-              .from('plans')
-              .update({ current_value: Number(plan.current_value || 0) + 1 })
+              .from('plans' as any)
+              .update({ current_value: Number((plan as any).current_value) + Number(link.value_per_completion) } as any)
               .eq('id', link.plan_id);
           }
         }
       }
 
-      // ⚡ Logs e bônus secundários: fire-and-forget para liberar a UI mais rápido.
-      void supabase
+      // Registrar atividade
+      await supabase
         .from('activity_log')
         .insert({
           user_id: user!.id,
@@ -784,7 +780,8 @@ export const useCompleteMission = () => {
           xp_gained: totalXpReward,
         });
 
-      void supabase
+      // Registrar no histórico de XP para o gráfico de progresso
+      await supabase
         .from('xp_history' as any)
         .insert({
           user_id: user!.id,
@@ -792,49 +789,48 @@ export const useCompleteMission = () => {
           type: 'mission',
         } as any);
 
-      // Atualizar ouro (read+write em paralelo com o resto)
-      void (async () => {
-        const { data: bal } = await supabase
+      // Adicionar ouro
+      const { data: bal } = await supabase
+        .from('user_balance')
+        .select('gold')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      if (bal) {
+        const currentGold = (bal as any).gold ?? 100;
+
+        await supabase
           .from('user_balance')
-          .select('gold')
-          .eq('user_id', user!.id)
-          .maybeSingle();
+          .update({ 
+            gold: currentGold + goldReward,
+            updated_at: new Date().toISOString() 
+          } as any)
+          .eq('user_id', user!.id);
+      } else {
+        await supabase
+          .from('user_balance')
+          .insert({ 
+            user_id: user!.id, 
+            balance_percent: 100, 
+            gold: 100 + goldReward
+          } as any);
+      }
 
-        if (bal) {
-          const currentGold = (bal as any).gold ?? 100;
-          await supabase
-            .from('user_balance')
-            .update({
-              gold: currentGold + goldReward,
-              updated_at: new Date().toISOString(),
-            } as any)
-            .eq('user_id', user!.id);
-        } else {
-          await supabase
-            .from('user_balance')
-            .insert({
-              user_id: user!.id,
-              balance_percent: 100,
-              gold: 100 + goldReward,
-            } as any);
-        }
+      await supabase.from('gold_history').insert({
+        user_id: user!.id,
+        type: 'missao',
+        amount: goldReward,
+        reason: `Recompensa de missao: ${typedMission.title}`,
+      } as any);
 
-        await supabase.from('gold_history').insert({
-          user_id: user!.id,
-          type: 'missao',
-          amount: goldReward,
-          reason: `Recompensa de missao: ${typedMission.title}`,
-        } as any);
-      })();
-
-      void applyMissionTalentPostEffects({
+      await applyMissionTalentPostEffects({
         userId: user!.id,
         missionTitle: String(typedMission.title || 'Missao'),
         effects: missionTalentEffects,
       });
 
       if (hadFlowXpBuff) {
-        void consumeOneShotBuff(user!.id, ['estado_fluxo_xp']);
+        await consumeOneShotBuff(user!.id, ['estado_fluxo_xp']);
       }
 
       const inspiredGranted = await grantInspirationIfPerfectDay(user!.id, today);

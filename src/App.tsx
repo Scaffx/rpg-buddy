@@ -62,6 +62,11 @@ function ProtectedRoute({
   }
   // Visitantes deslogados vão pra Landing pública (raiz "/" passa a mostrar Landing).
   if (!user) return <Navigate to="/landing" replace />;
+
+  // Se o perfil não existe no banco (trigger falhou ou usuário migrado sem recovery),
+  // redireciona para onboarding independente do localStorage.
+  if (!bypassOnboarding && profile === null) return <Navigate to="/onboarding" replace />;
+
   // Redireciona para onboarding se o usuário ainda não completou o formulário inicial
   // Verifica banco primeiro, fallback para localStorage (caso a migration não tenha sido aplicada)
   const onboardingDone = hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id);
