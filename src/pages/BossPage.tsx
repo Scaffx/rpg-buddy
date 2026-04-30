@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown } from 'lucide-react';
+import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,6 +46,10 @@ export default function BossPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number; playerFatigue: number } | null>(null);
+  const [arenaVisible, setArenaVisible] = useState<boolean>(() => {
+    const stored = localStorage.getItem('rpg_combat_arena_visible');
+    return stored === null ? true : stored === 'true';
+  });
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
   const [rankingRegion, setRankingRegion] = useState<string | null>(null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(rankingRegion);
@@ -250,22 +254,60 @@ export default function BossPage() {
               <div className="space-y-6">
                 {activeCombat && (
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      Arena ativa: {activeCombat.bossIcon} {activeCombat.bossName}
-                    </p>
-                    <CombatArena
-                      combateId={activeCombat.id}
-                      initialBossHp={activeCombat.bossHp}
-                      initialPlayerHp={activeCombat.playerHp}
-                      initialPlayerMp={activeCombat.playerMp}
-                      initialPlayerMaxMp={activeCombat.playerMaxMp}
-                      initialPlayerFatigue={activeCombat.playerFatigue}
-                      bossName={activeCombat.bossName}
-                      bossElement={activeCombat.bossElement}
-                      onVictory={handleCombatVictory}
-                      onDefeat={handleCombatDefeat}
-                      onClose={handleCombatClose}
-                    />
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Arena ativa: {activeCombat.bossIcon} {activeCombat.bossName}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !arenaVisible;
+                          setArenaVisible(next);
+                          localStorage.setItem('rpg_combat_arena_visible', String(next));
+                        }}
+                        className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        title={arenaVisible ? 'Ocultar arena de combate' : 'Mostrar arena de combate'}
+                      >
+                        {arenaVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        {arenaVisible ? 'Ocultar arena' : 'Mostrar arena'}
+                      </button>
+                    </div>
+                    {arenaVisible ? (
+                      <CombatArena
+                        combateId={activeCombat.id}
+                        initialBossHp={activeCombat.bossHp}
+                        initialPlayerHp={activeCombat.playerHp}
+                        initialPlayerMp={activeCombat.playerMp}
+                        initialPlayerMaxMp={activeCombat.playerMaxMp}
+                        initialPlayerFatigue={activeCombat.playerFatigue}
+                        bossName={activeCombat.bossName}
+                        bossElement={activeCombat.bossElement}
+                        onVictory={handleCombatVictory}
+                        onDefeat={handleCombatDefeat}
+                        onClose={handleCombatClose}
+                      />
+                    ) : (
+                      <div className="rpg-card flex items-center justify-between gap-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">{activeCombat.bossIcon}</span>
+                          <div>
+                            <p className="font-semibold text-foreground">Combate em andamento</p>
+                            <p className="text-xs text-muted-foreground">Arena oculta — o combate continua normalmente</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setArenaVisible(true);
+                            localStorage.setItem('rpg_combat_arena_visible', 'true');
+                          }}
+                          className="flex items-center gap-1.5 rounded-lg bg-primary/20 border border-primary/40 px-3 py-1.5 text-xs text-primary font-semibold hover:bg-primary/30 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Abrir arena
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
