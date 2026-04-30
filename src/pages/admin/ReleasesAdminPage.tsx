@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, Package, ExternalLink, Loader2, ShieldAlert, Github, Copy, Check, Database, Download } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Package, ExternalLink, Loader2, Github, Copy, Check, Database, Download } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 type Release = {
   id: string;
@@ -29,8 +27,6 @@ type Release = {
 export default function ReleasesAdminPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { isAdmin, loading: adminLoading } = useIsAdmin();
-
   const { data: releases, isLoading } = useQuery({
     queryKey: ["app_releases_admin"],
     queryFn: async () => {
