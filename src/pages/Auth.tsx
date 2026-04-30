@@ -82,7 +82,7 @@ export default function Auth() {
       if (isLogin) {
         await signIn(email, password);
         // Checar se há perfis órfãos para recuperação antes de redirecionar
-        const { data: orphaned } = await supabase.rpc('get_orphaned_profiles');
+        const { data: orphaned } = await (supabase.rpc as any)('get_orphaned_profiles');
         if (orphaned && (orphaned as any[]).length > 0) {
           setShowRecovery(true);
         } else {
@@ -117,6 +117,7 @@ export default function Auth() {
   };
 
   return (
+    <>
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -285,5 +286,6 @@ export default function Auth() {
         navigate('/');
       }}
     />
+    </>
   );
 }
