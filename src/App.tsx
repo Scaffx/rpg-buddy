@@ -42,8 +42,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { isActive, isLoading: subscriptionLoading } = useSubscription();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
 
-  if (loading || profileLoading || subscriptionLoading) {
+  if (loading || profileLoading || subscriptionLoading || adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -57,8 +58,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const onboardingDone = hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id);
   if (!onboardingDone) return <Navigate to="/onboarding" replace />;
 
-  // Enforce de assinatura: após trial/vencimento, bloqueia acesso às rotas protegidas
-  if (!isActive) {
+  // Enforce de assinatura: após trial/vencimento, bloqueia acesso às rotas protegidas.
+  // Admins do sistema (app_metadata.role = 'admin') ficam isentos para poder operar o painel.
+  if (!isActive && !isAdmin) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-6 flex items-center justify-center">
         <div className="w-full max-w-4xl">
