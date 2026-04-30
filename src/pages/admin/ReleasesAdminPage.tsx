@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, Package, ExternalLink, Loader2, ShieldAlert, Github, Copy, Check } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Package, ExternalLink, Loader2, ShieldAlert, Github, Copy, Check, Database, Download } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
