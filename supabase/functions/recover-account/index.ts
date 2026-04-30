@@ -114,6 +114,43 @@ Deno.serve(async (req) => {
     // 5. Deletar auth.users placeholder antigo
     await admin.auth.admin.deleteUser(old_user_id);
 
+    // 6. Garantir 7 dias de trial a partir da data de recuperação
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const { data: existingTrial } = await admin
+      .from("subscriptions" as any)
+      .select("id")
+      .eq("user_id", newUserId)
+      .like("paddle_subscription_id", "trial_%")
+      .limit(1)
+      .maybeSingle();
+
+    if (existingTrial) {
+      await admin
+        .from("subscriptions" as any)
+        .update({
+          status: "trialing",
+          current_period_start: now.toISOString(),
+          current_period_end: trialEnd.toISOString(),
+          updated_at: now.toISOString(),
+        } as any)
+        .eq("id", (existingTrial as any).id);
+    } else {
+      const trialId = "trial_" + crypto.randomUUID().replace(/-/g, "");
+      await admin.from("subscriptions" as any).insert({
+        user_id: newUserId,
+        paddle_subscription_id: trialId,
+        paddle_customer_id: "trial_" + newUserId,
+        product_id: "premium_monthly",
+        price_id: "premium_monthly",
+        status: "trialing",
+        current_period_start: now.toISOString(),
+        current_period_end: trialEnd.toISOString(),
+        environment: "live",
+      } as any);
+    }
+
     return new Response(
       JSON.stringify({ success: true, errors: errors.length ? errors : undefined }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
