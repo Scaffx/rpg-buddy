@@ -1,13 +1,7 @@
-// Admin-only edge function: exports the entire `public` schema as a ZIP.
-// Each table is included as both JSON (lossless) and CSV (Excel-friendly).
-// Auth: caller must have JWT + app_metadata.role === 'admin' (checked via is_system_admin RPC).
+// Admin-only edge function: exports the entire public schema as JSON.
+// Auth: caller must have JWT + app_metadata.role === admin.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import {
-  BlobWriter,
-  TextReader,
-  ZipWriter,
-} from "jsr:@zip-js/zip-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// All tables in the public schema (41 tables).
+// All tables in the public schema.
 const TABLES = [
   "activity_log",
   "ai_conversations",
@@ -62,26 +56,6 @@ const TABLES = [
 
 const PAGE_SIZE = 1000;
 
-function toCsv(rows: Record<string, unknown>[]): string {
-  if (rows.length === 0) return "";
-  const headers = Object.keys(rows[0]);
-  const escape = (val: unknown): string => {
-    if (val === null || val === undefined) return "";
-    let s: string;
-    if (typeof val === "object") s = JSON.stringify(val);
-    else s = String(val);
-    if (s.includes('"') || s.includes(",") || s.includes("\n") || s.includes("\r")) {
-      s = '"' + s.replace(/"/g, '""') + '"';
-    }
-    return s;
-  };
-  const lines = [headers.join(",")];
-  for (const row of rows) {
-    lines.push(headers.map((h) => escape(row[h])).join(","));
-  }
-  return lines.join("\n");
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -116,11 +90,12 @@ Deno.serve(async (req) => {
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
     });
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) {
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -141,9 +116,8 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // 3. Build ZIP.
-    const zipBlobWriter = new BlobWriter("application/zip");
-    const zip = new ZipWriter(zipBlobWriter);
+    // 3. Build JSON export payload.
+    const exportData: Record<string, Record<string, unknown>[]> = {};
 
     const manifest: {
       generated_at: string;
@@ -182,63 +156,23 @@ Deno.serve(async (req) => {
         row_count: allRows.length,
         ...(tableError ? { error: tableError } : {}),
       });
-
-      // JSON (lossless: preserves jsonb, arrays, nulls, timestamps).
-      await zip.add(
-        `data/${table}.json`,
-        new TextReader(JSON.stringify(allRows, null, 2)),
-      );
-
-      // CSV (Excel-friendly).
-      await zip.add(`data/${table}.csv`, new TextReader(toCsv(allRows)));
+      exportData[table] = allRows;
     }
 
-    // Manifest + README.
-    await zip.add(
-      "manifest.json",
-      new TextReader(JSON.stringify(manifest, null, 2)),
-    );
+    const payload = {
+      manifest,
+      data: exportData,
+    };
 
-    const readme = `# Database Export
+    const filename = `rpgbuddy-export-${new Date().toISOString().slice(0, 10)}.json`;
 
-Generated: ${manifest.generated_at}
-Project ref: ${manifest.project_ref}
-Tables exported: ${manifest.tables.length}
-Total rows: ${manifest.tables.reduce((a, t) => a + t.row_count, 0)}
-
-## How to import into a new Supabase project
-
-1. Create a new Supabase project under your own account.
-2. Link your local repo: \`supabase link --project-ref <new-ref>\`
-3. Push schema (recreates all tables, RLS, functions, triggers):
-   \`supabase db push\`
-4. Import data — pick ONE per table:
-   - **Easiest (UI)**: Supabase Dashboard → Table Editor → Insert → Import data from CSV (use \`data/<table>.csv\`)
-   - **Lossless (recommended for jsonb/arrays)**: Use \`data/<table>.json\` with a custom Node/Python script that calls the Supabase REST API or \`COPY\` via psql.
-
-## Not included (recreate manually)
-
-- **Storage buckets** (e.g. \`body-photos\`): files must be re-uploaded.
-- **Edge function secrets**: configure in the new project's secrets.
-- **auth.users**: managed by Supabase Auth — users must sign up again, OR use \`supabase auth\` admin tools to import. The \`profiles\` table here references user IDs.
-
-## Per-table summary
-
-${manifest.tables.map((t) => `- \`${t.name}\`: ${t.row_count} rows${t.error ? ` (ERROR: ${t.error})` : ""}`).join("\n")}
-`;
-    await zip.add("README.md", new TextReader(readme));
-
-    await zip.close();
-    const blob = await zipBlobWriter.getData();
-
-    const filename = `rpgbuddy-export-${new Date().toISOString().slice(0, 10)}.zip`;
-
-    return new Response(blob, {
+    return new Response(JSON.stringify(payload), {
       status: 200,
       headers: {
         ...corsHeaders,
-        "Content-Type": "application/zip",
+        "Content-Type": "application/json",
         "Content-Disposition": `attachment; filename="${filename}"`,
+        "X-Export-Format": "json",
         "X-Export-Tables": String(manifest.tables.length),
         "X-Export-Rows": String(
           manifest.tables.reduce((a, t) => a + t.row_count, 0),
