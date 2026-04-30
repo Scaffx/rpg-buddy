@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GOOGLE_AI_KEY = Deno.env.get("GOOGLE_AI_KEY");
 const SUBSCRIPTION_ENV = Deno.env.get("PADDLE_ENVIRONMENT") === "sandbox" ? "sandbox" : "live";
 
 // ───────────── Tools (function calling) ─────────────
@@ -213,7 +213,7 @@ serve(async (req) => {
   }
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    if (!GOOGLE_AI_KEY) throw new Error("GOOGLE_AI_KEY não configurada");
     const { messages, npcPersona } = await req.json();
     if (!Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "messages deve ser array" }), {
@@ -245,9 +245,9 @@ serve(async (req) => {
     const convo: any[] = [{ role: "system", content: systemContent }, ...messages];
 
     for (let step = 0; step < 5; step++) {
-      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${GOOGLE_AI_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: convo,

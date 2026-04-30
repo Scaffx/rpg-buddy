@@ -51,11 +51,16 @@ const TABLES = [
 ];
 
 const PAGE_SIZE = 1000;
+const FUNCTION_VERSION = "2026-04-29-hotfix-no-getclaims-v2";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "X-Function-Version": FUNCTION_VERSION,
+    },
   });
 }
 
@@ -160,6 +165,7 @@ Deno.serve(async (req: Request) => {
         ...corsHeaders,
         "Content-Type": "application/json",
         "Content-Disposition": `attachment; filename="${filename}"`,
+        "X-Function-Version": FUNCTION_VERSION,
         "X-Export-Format": "json",
         "X-Export-Tables": String(manifest.tables.length),
         "X-Export-Rows": String(manifest.tables.reduce((acc, t) => acc + t.row_count, 0)),

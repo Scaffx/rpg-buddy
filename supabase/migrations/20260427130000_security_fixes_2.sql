@@ -107,7 +107,13 @@ END;
 $$;
 
 -- get_rankings — search_path já correto na migration anterior, reforça REVOKE de anon
-REVOKE EXECUTE ON FUNCTION public.get_rankings(text) FROM anon;
+DO $$
+BEGIN
+  IF to_regprocedure('public.get_rankings(text)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.get_rankings(text) FROM anon;
+  END IF;
+END;
+$$;
 
 -- list_system_feedback_admin — corrige search_path se necessário
 CREATE OR REPLACE FUNCTION public.list_system_feedback_admin()

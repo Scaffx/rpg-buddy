@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GOOGLE_AI_KEY = Deno.env.get("GOOGLE_AI_KEY");
 const SUBSCRIPTION_ENV = Deno.env.get("PADDLE_ENVIRONMENT") === "sandbox" ? "sandbox" : "live";
 
 const NPC_DEFINITIONS = [
@@ -217,7 +217,7 @@ async function generateWithAi(
     domainStats: DomainStat[];
   },
 ) {
-  if (!LOVABLE_API_KEY) {
+  if (!GOOGLE_AI_KEY) {
     return null;
   }
 
@@ -260,10 +260,10 @@ async function generateWithAi(
     rewardCatalog,
   });
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${GOOGLE_AI_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

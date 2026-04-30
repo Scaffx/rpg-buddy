@@ -50,12 +50,17 @@ CREATE POLICY "Users can insert own combat logs"
   TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
--- 5. Missing INSERT policy on attributes
-DROP POLICY IF EXISTS "Users can insert own attributes" ON public.attributes;
-CREATE POLICY "Users can insert own attributes"
-  ON public.attributes FOR INSERT
-  TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+-- 5. Missing INSERT policy on attributes (guarded for drifted schemas)
+DO $$
+BEGIN
+  IF to_regclass('public.attributes') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "Users can insert own attributes" ON public.attributes;
+    CREATE POLICY "Users can insert own attributes"
+      ON public.attributes FOR INSERT
+      TO authenticated
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- 6. Clean stuck combats older than 24h
 UPDATE public.combates_ativos
