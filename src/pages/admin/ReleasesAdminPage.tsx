@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, Package, ExternalLink, Loader2, ShieldAlert, Github, Copy, Check } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Package, ExternalLink, Loader2, ShieldAlert, Github, Copy, Check, Database, Download } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,6 +97,52 @@ export default function ReleasesAdminPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const [exporting, setExporting] = useState(false);
+  const [lastExport, setLastExport] = useState<{ tables: string; rows: string; sizeKb: number } | null>(null);
+
+  const handleExportDatabase = async () => {
+    setExporting(true);
+    const toastId = toast.loading("Gerando snapshot do banco... pode levar até 30s");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada. Faça login novamente.");
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-export-database`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Falha no export (${res.status}): ${text}`);
+      }
+
+      const tables = res.headers.get("X-Export-Tables") ?? "?";
+      const rows = res.headers.get("X-Export-Rows") ?? "?";
+      const blob = await res.blob();
+
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `rpgbuddy-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+
+      setLastExport({ tables, rows, sizeKb: Math.round(blob.size / 1024) });
+      toast.success(`Snapshot baixado: ${tables} tabelas, ${rows} linhas`, { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro inesperado", { id: toastId });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (adminLoading) {
     return (
@@ -237,6 +283,45 @@ export default function ReleasesAdminPage() {
               )}
               Publicar versão
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Backup & Migração */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Database className="w-5 h-5" /> Backup & Migração do Banco
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-3">
+            <p>
+              Baixe um snapshot completo de todos os dados do banco em um único arquivo <strong>.zip</strong>.
+              Cada tabela é exportada em <strong>JSON</strong> (sem perda de tipos) e <strong>CSV</strong> (Excel).
+            </p>
+            <p className="text-xs">
+              Use isso para migrar para um Supabase próprio: rode <code className="text-primary">supabase db push</code> no novo projeto
+              (recria o schema a partir das migrations) e importe os arquivos do ZIP.
+              <br />
+              <span className="text-amber-400">Não inclui: arquivos do Storage, secrets, e usuários do Auth.</span>
+            </p>
+            <Button
+              onClick={handleExportDatabase}
+              disabled={exporting}
+              variant="outline"
+              className="border-primary/40"
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Baixar snapshot completo (.zip)
+            </Button>
+            {lastExport && (
+              <p className="text-xs text-emerald-400">
+                Último export: {lastExport.tables} tabelas, {lastExport.rows} linhas, {lastExport.sizeKb} KB.
+              </p>
+            )}
           </CardContent>
         </Card>
 

@@ -926,6 +926,59 @@ export type Database = {
         }
         Relationships: []
       }
+      npc_weekly_challenges: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          description: string
+          gold_reward: number
+          id: string
+          npc_id: string
+          reward_item_id: string | null
+          reward_item_quantity: number
+          title: string
+          user_id: string
+          week_token: string
+          xp_reward: number
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          description: string
+          gold_reward?: number
+          id?: string
+          npc_id: string
+          reward_item_id?: string | null
+          reward_item_quantity?: number
+          title: string
+          user_id: string
+          week_token: string
+          xp_reward?: number
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          description?: string
+          gold_reward?: number
+          id?: string
+          npc_id?: string
+          reward_item_id?: string | null
+          reward_item_quantity?: number
+          title?: string
+          user_id?: string
+          week_token?: string
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npc_weekly_challenges_reward_item_id_fkey"
+            columns: ["reward_item_id"]
+            isOneToOne: false
+            referencedRelation: "game_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personagens: {
         Row: {
           ataque_base: number
@@ -1052,6 +1105,7 @@ export type Database = {
           onboarding_completed: boolean
           pontos_talento: number
           region: string | null
+          starter_class: string | null
           starter_kit_claimed: boolean
           total_xp: number
           updated_at: string
@@ -1073,6 +1127,7 @@ export type Database = {
           onboarding_completed?: boolean
           pontos_talento?: number
           region?: string | null
+          starter_class?: string | null
           starter_kit_claimed?: boolean
           total_xp?: number
           updated_at?: string
@@ -1094,6 +1149,7 @@ export type Database = {
           onboarding_completed?: boolean
           pontos_talento?: number
           region?: string | null
+          starter_class?: string | null
           starter_kit_claimed?: boolean
           total_xp?: number
           updated_at?: string
@@ -1233,6 +1289,36 @@ export type Database = {
           status?: string
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      system_update_logs: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          is_highlighted: boolean
+          summary: string | null
+          title: string
+          version_tag: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          is_highlighted?: boolean
+          summary?: string | null
+          title: string
+          version_tag: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          is_highlighted?: boolean
+          summary?: string | null
+          title?: string
+          version_tag?: string
         }
         Relationships: []
       }
