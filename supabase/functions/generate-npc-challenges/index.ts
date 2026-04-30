@@ -41,6 +41,13 @@ const NPC_DEFINITIONS = [
     personality: "Excêntrico e inspirador",
     focus: "criatividade, experimentação artística e expressão pessoal",
   },
+  {
+    id: "midas",
+    name: "Midas",
+    title: "O Arquiteto da Riqueza",
+    personality: "Estratégico e calculista",
+    focus: "educação financeira, disciplina orçamentária, investimentos e inteligência econômica",
+  },
 ] as const;
 
 // Atributos que pertencem ao domínio de cada NPC (nomes em pt-BR)
@@ -49,6 +56,7 @@ const NPC_DOMAIN_ATTRIBUTES: Record<string, string[]> = {
   nova:   ["Inteligência", "Sabedoria"],
   elara:  ["Resiliência", "Autoaperfeiçoamento"],
   zephyr: ["Criatividade", "Carisma"],
+  midas:  ["Disciplina", "Inteligência", "Sabedoria"],
 };
 
 type AttributeRow = {
@@ -234,7 +242,7 @@ async function generateWithAi(
   const systemPrompt = [
     "Você gera desafios semanais de NPC para um app de RPG de hábitos.",
     "Responda APENAS JSON válido no formato { \"challenges\": [...] }.",
-    "Crie exatamente 3 desafios para cada npc_id: atlas, nova, elara, zephyr.",
+    "Crie exatamente 3 desafios para cada npc_id: atlas, nova, elara, zephyr, midas.",
     "Cada desafio precisa conter: npc_id, challenge_id, title, description, xp_reward, gold_reward, reward_item_id, reward_item_quantity.",
     "Use challenge_id curto e estável, como atlas-1, atlas-2 etc.",
     "reward_item_id deve vir somente da lista de itens recebida.",

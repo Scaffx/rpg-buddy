@@ -52,14 +52,27 @@ const tools = [
             description: "Nome do atributo principal",
             enum: ["Agilidade","Carisma","Criatividade","Disciplina","Força","Inteligência","Resiliência","Sabedoria","Vitalidade","Autoaperfeiçoamento","Relacionamento"],
           },
+          secondary_attributes: {
+            type: "array",
+            description: "Atributos secundários adicionais (opcional)",
+            items: {
+              type: "string",
+              enum: ["Agilidade","Carisma","Criatividade","Disciplina","Força","Inteligência","Resiliência","Sabedoria","Vitalidade","Autoaperfeiçoamento","Relacionamento"],
+            },
+          },
+          days_of_week: {
+            type: "array",
+            description: "Dias da semana em que a missão ocorre. Use as abreviações: Seg, Ter, Qua, Qui, Sex, Sáb, Dom",
+            items: { type: "string", enum: ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"] },
+          },
           horario: {
             type: "string",
             enum: ["manha","tarde","noite","flex"],
-            description: "Período do dia",
+            description: "Período do dia (padrão: flex se não especificado)",
           },
           priority: { type: "string", enum: ["baixa","media","alta"] },
         },
-        required: ["title","attribute","horario"],
+        required: ["title","attribute"],
         additionalProperties: false,
       },
     },
@@ -128,12 +141,20 @@ async function runTool(name: string, args: any, supa: any, userId: string) {
     if (name === "create_mission") {
       const attr = await supa.from("attributes").select("id").eq("user_id", userId).eq("name", args.attribute).maybeSingle();
       if (!attr.data) return { error: `Atributo '${args.attribute}' não encontrado` };
+      // Resolve IDs dos atributos secundários
+      let secondaryIds: string[] = [];
+      if (Array.isArray(args.secondary_attributes) && args.secondary_attributes.length > 0) {
+        const secRes = await supa.from("attributes").select("id,name").eq("user_id", userId).in("name", args.secondary_attributes);
+        secondaryIds = (secRes.data ?? []).map((a: any) => a.id);
+      }
       const { data, error } = await supa.from("missions").insert({
         user_id: userId,
         title: args.title,
         description: args.description ?? null,
         attribute_id: attr.data.id,
-        horario_provavel: args.horario,
+        secondary_attribute_ids: secondaryIds.length > 0 ? secondaryIds : [],
+        horario_provavel: args.horario ?? "flex",
+        days_of_week: Array.isArray(args.days_of_week) && args.days_of_week.length > 0 ? args.days_of_week : null,
         priority: args.priority ?? "media",
         xp_reward: 25,
       }).select("id,title").single();
@@ -166,20 +187,45 @@ async function runTool(name: string, args: any, supa: any, userId: string) {
 const APP_CONTEXT = `
 CONTEXTO DO APP Life on RPG:
 - O usuário transforma hábitos reais em missões de RPG, ganha XP, ouro, sobe de nível e enfrenta bosses.
-- 11 atributos: Agilidade, Carisma, Criatividade, Disciplina, Força, Inteligência, Resiliência, Sabedoria, Vitalidade, Autoaperfeiçoamento, Relacionamento.
-- Períodos das missões: manhã, tarde, noite, flex.
+- 11 atributos disponíveis: Agilidade, Carisma, Criatividade, Disciplina, Força, Inteligência, Resiliência, Sabedoria, Vitalidade, Autoaperfeiçoamento, Relacionamento.
+- Períodos de horário: manhã, tarde, noite, flex.
+- Dias da semana (abreviações usadas no app): Seg, Ter, Qua, Qui, Sex, Sáb, Dom.
+- Prioridade: baixa, media, alta.
 
-FERRAMENTAS DISPONÍVEIS — use-as sempre que o usuário pedir algo concreto:
+═══════════════════════════════════════
+FLUXO DE CRIAÇÃO DE MISSÃO (OBRIGATÓRIO)
+═══════════════════════════════════════
+Quando o usuário pedir para criar uma missão, NÃO chame create_mission imediatamente.
+Colete os dados fazendo UMA PERGUNTA POR VEZ, na ordem abaixo, pulando o que já foi informado:
+
+1. Título — "Qual será o nome da missão?"
+2. Atributo principal — mostre a lista completa e peça para escolher um.
+   Lista: Agilidade · Carisma · Criatividade · Disciplina · Força · Inteligência · Resiliência · Sabedoria · Vitalidade · Autoaperfeiçoamento · Relacionamento
+3. Atributos secundários — "Algum atributo secundário? (até 2, ou 'nenhum')"
+4. Descrição — "Quer adicionar uma descrição? (opcional, pode pular)"
+5. Tipo — "A missão se repete em dias fixos (recorrente) ou acontece uma única vez?"
+   → Se recorrente: "Quais dias? (ex: Seg, Qua, Sex)"
+6. Horário — "Qual o período? Manhã, Tarde, Noite ou Flex?"
+7. Prioridade — "Qual a prioridade? Baixa, Média ou Alta?"
+8. Confirmação — mostre um resumo completo e pergunte "Posso criar assim?"
+   → Confirmou? → chame create_mission com todos os dados.
+   → Quer ajustar? → volte ao passo necessário.
+
+ATALHO: Se o usuário já adiantou campos (ex: "cria missão X, atributo Y, dias Z"),
+pule o que já tem e pergunte apenas o que falta.
+
+═══════════════════════════════════════
+OUTRAS FERRAMENTAS
+═══════════════════════════════════════
 - Pergunta sobre status/progresso? → chame get_hero_status
 - Pergunta "quais minhas missões"? → chame list_missions
-- Pede para criar missão? → chame create_mission (peça atributo e período se faltarem)
-- Pede para concluir? → chame list_missions, encontre o ID, depois complete_mission
+- Pede para concluir missão? → chame list_missions, encontre o ID, depois complete_mission
 - Pede para apagar? → confirme e use delete_mission
 
 ESTILO GERAL:
 - Português do Brasil, tom encorajador com leve toque épico (sem exagero).
-- Respostas curtas (até 6 linhas) salvo se pedido detalhe.
-- Quando usar uma ferramenta, comente brevemente o resultado em vez de despejar JSON.
+- Uma pergunta por vez — não sobrecarregue o usuário.
+- Respostas curtas. Quando usar ferramenta, comente o resultado brevemente.
 - Use markdown leve (negrito, listas) para clareza.`;
 
 const SYSTEM_PROMPT = `Você é o Mestre RPG, conselheiro motivacional dentro do app Life on RPG.
