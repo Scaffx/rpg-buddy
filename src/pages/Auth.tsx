@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Sword, Shield, Loader2, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { AccountRecoveryModal } from '@/components/AccountRecoveryModal';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,6 +20,7 @@ export default function Auth() {
   const [resending, setResending] = useState(false);
   const [forgotPassword, setForgotPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
   const { t } = useTranslation();
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -79,7 +81,7 @@ export default function Auth() {
     try {
       if (isLogin) {
         await signIn(email, password);
-        navigate('/');
+        setShowRecovery(true);
       } else {
         await signUp(email, password, displayName);
         setNeedsConfirmation(true);
@@ -269,5 +271,13 @@ export default function Auth() {
         </div>
       </motion.div>
     </div>
+
+    <AccountRecoveryModal
+      open={showRecovery}
+      onClose={() => {
+        setShowRecovery(false);
+        navigate('/');
+      }}
+    />
   );
 }
