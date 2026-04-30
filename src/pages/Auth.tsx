@@ -81,7 +81,13 @@ export default function Auth() {
     try {
       if (isLogin) {
         await signIn(email, password);
-        setShowRecovery(true);
+        // Checar se há perfis órfãos para recuperação antes de redirecionar
+        const { data: orphaned } = await supabase.rpc('get_orphaned_profiles');
+        if (orphaned && (orphaned as any[]).length > 0) {
+          setShowRecovery(true);
+        } else {
+          navigate('/');
+        }
       } else {
         await signUp(email, password, displayName);
         setNeedsConfirmation(true);
