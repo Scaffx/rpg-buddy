@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { Sword, Shield, Loader2, Mail } from 'lucide-react';
+import { Sword, Shield, Loader2, Mail, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AccountRecoveryModal } from '@/components/AccountRecoveryModal';
@@ -21,10 +21,43 @@ export default function Auth() {
   const [forgotPassword, setForgotPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
+  // Fluxo de redefinição de senha (token no hash da URL)
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
   const { t } = useTranslation();
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Detecta token de recovery no hash da URL: #type=recovery&access_token=...
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery')) {
+      setIsPasswordReset(true);
+    }
+  }, []);
+
+  const handleSaveNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      toast({ title: 'Senha muito curta', description: 'A senha precisa ter pelo menos 6 caracteres.', variant: 'destructive' });
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast({ title: 'Senha atualizada!', description: 'Sua nova senha foi salva com sucesso.' });
+      // Limpa o hash e redireciona para o app
+      window.history.replaceState(null, '', window.location.pathname);
+      navigate('/');
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar senha', description: err.message, variant: 'destructive' });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
 
   const isEmailConfirmationError = (message: string) =>
     message.toLowerCase().includes('email not confirmed') ||
@@ -118,174 +151,206 @@ export default function Auth() {
 
   return (
     <>
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <motion.div
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 border border-primary/30 mb-4"
-          >
-            <Sword className="w-8 h-8 text-primary" />
-          </motion.div>
-          <h1 className="text-3xl font-display font-bold text-primary text-glow">
-            {t('app.auth.app_title')}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {t('app.auth.app_subtitle')}
-          </p>
-        </div>
-
-        <div className="rpg-card-glow p-6">
-          <div className="flex mb-6 rounded-lg overflow-hidden border border-border">
-            <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
-                isLogin ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-              }`}
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-dark)' }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-md"
+        >
+          <div className="text-center mb-8">
+            <motion.div
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 3, repeat: Infinity }}
+              className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 border border-primary/30 mb-4"
             >
-              <Shield className="w-4 h-4 inline mr-1.5" />
-              {t('app.auth.tab_login')}
-            </button>
-            <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
-                !isLogin ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-              }`}
-            >
-              <Sword className="w-4 h-4 inline mr-1.5" />
-              {t('app.auth.tab_register')}
-            </button>
+              <Sword className="w-8 h-8 text-primary" />
+            </motion.div>
+            <h1 className="text-3xl font-display font-bold text-primary text-glow">
+              {t('app.auth.app_title')}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {t('app.auth.app_subtitle')}
+            </p>
           </div>
 
-          {forgotPassword ? (
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  {t('app.auth.label_registered_email')}
-                </label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="heroi@aventura.com"
-                  required
-                  className="bg-secondary border-border"
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={resetLoading}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-              >
-                {resetLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {t('app.auth.button_send_reset')}
-              </Button>
-              <button
-                type="button"
-                onClick={() => setForgotPassword(false)}
-                className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t('app.auth.link_back_to_login')}
-              </button>
-            </form>
-          ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  {t('app.auth.label_hero_name')}
-                </label>
-                <Input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder={t('app.auth.placeholder_hero_name')}
-                  className="bg-secondary border-border"
-                />
-              </div>
-            )}
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                {t('app.auth.label_email')}
-              </label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="heroi@aventura.com"
-                required
-                className="bg-secondary border-border"
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-foreground">
-                  {t('app.auth.label_password')}
-                </label>
-                {isLogin && (
-                  <button
-                    type="button"
-                    onClick={() => setForgotPassword(true)}
-                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {t('app.auth.link_forgot_password')}
-                  </button>
-                )}
-              </div>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                className="bg-secondary border-border"
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : null}
-              {isLogin ? t('app.auth.button_login') : t('app.auth.button_register')}
-            </Button>
-            {needsConfirmation && (
-              <div className="mt-3 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm text-yellow-300">
-                <p className="mb-2 flex items-center gap-1.5">
-                  <Mail className="w-4 h-4 flex-shrink-0" />
-                  {t('app.auth.notice_confirm_email')}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleResendConfirmation}
-                  disabled={resending}
-                  className="underline text-yellow-200 hover:text-yellow-100 disabled:opacity-50"
+          <div className="rpg-card-glow p-6">
+            {/* Formulário de redefinição de senha (via link do email) */}
+            {isPasswordReset ? (
+              <form onSubmit={handleSaveNewPassword} className="space-y-4">
+                <div className="flex items-center gap-2 mb-4 text-primary">
+                  <KeyRound className="w-5 h-5" />
+                  <h2 className="font-semibold text-lg">Nova senha</h2>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">
+                    Digite sua nova senha
+                  </label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={savingPassword}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
                 >
-                  {resending ? t('app.auth.button_resend_sending') : t('app.auth.button_resend')}
-                </button>
-              </div>
-            )}
-          </form>
-          )}
-        </div>
-      </motion.div>
-    </div>
+                  {savingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Salvar nova senha
+                </Button>
+              </form>
+            ) : (
+              <>
+                <div className="flex mb-6 rounded-lg overflow-hidden border border-border">
+                  <button
+                    onClick={() => setIsLogin(true)}
+                    className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
+                      isLogin ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4 inline mr-1.5" />
+                    {t('app.auth.tab_login')}
+                  </button>
+                  <button
+                    onClick={() => setIsLogin(false)}
+                    className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
+                      !isLogin ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
+                    }`}
+                  >
+                    <Sword className="w-4 h-4 inline mr-1.5" />
+                    {t('app.auth.tab_register')}
+                  </button>
+                </div>
 
-    <AccountRecoveryModal
-      open={showRecovery}
-      onClose={() => {
-        setShowRecovery(false);
-        navigate('/');
-      }}
-    />
+                {forgotPassword ? (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1.5 block">
+                        {t('app.auth.label_registered_email')}
+                      </label>
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="heroi@aventura.com"
+                        required
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={resetLoading}
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                    >
+                      {resetLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {t('app.auth.button_send_reset')}
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setForgotPassword(false)}
+                      className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {t('app.auth.link_back_to_login')}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    {!isLogin && (
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-1.5 block">
+                          {t('app.auth.label_hero_name')}
+                        </label>
+                        <Input
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder={t('app.auth.placeholder_hero_name')}
+                          className="bg-secondary border-border"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1.5 block">
+                        {t('app.auth.label_email')}
+                      </label>
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="heroi@aventura.com"
+                        required
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-sm font-medium text-foreground">
+                          {t('app.auth.label_password')}
+                        </label>
+                        {isLogin && (
+                          <button
+                            type="button"
+                            onClick={() => setForgotPassword(true)}
+                            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            {t('app.auth.link_forgot_password')}
+                          </button>
+                        )}
+                      </div>
+                      <Input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        minLength={6}
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {isLogin ? t('app.auth.button_login') : t('app.auth.button_register')}
+                    </Button>
+                    {needsConfirmation && (
+                      <div className="mt-3 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-sm text-yellow-300">
+                        <p className="mb-2 flex items-center gap-1.5">
+                          <Mail className="w-4 h-4 flex-shrink-0" />
+                          {t('app.auth.notice_confirm_email')}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleResendConfirmation}
+                          disabled={resending}
+                          className="underline text-yellow-200 hover:text-yellow-100 disabled:opacity-50"
+                        >
+                          {resending ? t('app.auth.button_resend_sending') : t('app.auth.button_resend')}
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                )}
+              </>
+            )}
+          </div>
+        </motion.div>
+      </div>
+
+      <AccountRecoveryModal
+        open={showRecovery}
+        onClose={() => {
+          setShowRecovery(false);
+          navigate('/');
+        }}
+      />
     </>
   );
 }
