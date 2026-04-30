@@ -76,16 +76,40 @@ Deno.serve(async (req) => {
     }
 
     // Verificar que old_user_id é de fato um placeholder (segurança)
-    const { data: oldAuthUser } = await admin.auth.admin.getUserById(old_user_id);
-    if (!oldAuthUser?.user?.email?.includes("@rpgbuddy.import")) {
-      return new Response(JSON.stringify({ error: "Perfil inválido para recuperação" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Checa direto na tabela auth.users via admin — mais confiável que getUserById
+    const { data: oldUserRows } = await admin
+      .from("auth_users_view" as any)
+      .select("email")
+      .eq("id", old_user_id)
+      .maybeSingle()
+      .catch(() => ({ data: null }));
+
+    // Fallback: verificar via auth.admin se a view não existir
+    let oldEmail: string | null = (oldUserRows as any)?.email ?? null;
+    if (!oldEmail) {
+      const { data: authData } = await admin.auth.admin.getUserById(old_user_id);
+      oldEmail = authData?.user?.email ?? null;
+    }
+
+    if (!oldEmail?.includes("@rpgbuddy.import")) {
+      // Última chance: verificar direto em profiles se o user_id existe como migrado
+      const { data: profCheck } = await admin
+        .from("profiles")
+        .select("user_id")
+        .eq("user_id", old_user_id)
+        .maybeSingle();
+      if (!profCheck) {
+        return new Response(JSON.stringify({ error: "Perfil inválido para recuperação" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const errors: string[] = [];
 
-    // 1. Deletar perfil e atributos recém-criados pelo trigger (do novo usuário)
+    // 1. Deletar dados recém-criados pelo trigger para o novo usuário
+    //    (attributes, profiles e subscriptions trial — serão substituídos pelos dados antigos)
+    await admin.from("subscriptions" as any).delete().eq("user_id", newUserId).like("paddle_subscription_id", "trial_%");
     await admin.from("attributes").delete().eq("user_id", newUserId);
     await admin.from("profiles").delete().eq("user_id", newUserId);
 

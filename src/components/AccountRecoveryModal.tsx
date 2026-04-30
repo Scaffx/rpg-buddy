@@ -54,7 +54,15 @@ export function AccountRecoveryModal({ open, onClose }: AccountRecoveryModalProp
         body: { old_user_id: oldUserId },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Extrair mensagem real do corpo da resposta (supabase-js esconde atrás de FunctionsHttpError)
+        let msg = error.message;
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch { /* ignora erro de parse */ }
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
 
       toast({
