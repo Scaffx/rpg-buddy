@@ -7,7 +7,7 @@ import {
   BlobWriter,
   TextReader,
   ZipWriter,
-} from "https://deno.land/x/zipjs@v2.7.45/index.js";
+} from "jsr:@zip-js/zip-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -97,9 +97,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !anonKey || !serviceKey) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Missing env vars: SUPABASE_URL, SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
