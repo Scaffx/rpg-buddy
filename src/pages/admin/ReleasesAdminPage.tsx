@@ -98,6 +98,52 @@ export default function ReleasesAdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [exporting, setExporting] = useState(false);
+  const [lastExport, setLastExport] = useState<{ tables: string; rows: string; sizeKb: number } | null>(null);
+
+  const handleExportDatabase = async () => {
+    setExporting(true);
+    const toastId = toast.loading("Gerando snapshot do banco... pode levar até 30s");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada. Faça login novamente.");
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-export-database`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Falha no export (${res.status}): ${text}`);
+      }
+
+      const tables = res.headers.get("X-Export-Tables") ?? "?";
+      const rows = res.headers.get("X-Export-Rows") ?? "?";
+      const blob = await res.blob();
+
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `rpgbuddy-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+
+      setLastExport({ tables, rows, sizeKb: Math.round(blob.size / 1024) });
+      toast.success(`Snapshot baixado: ${tables} tabelas, ${rows} linhas`, { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro inesperado", { id: toastId });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (adminLoading) {
     return (
       <AppLayout>
