@@ -41,7 +41,7 @@ export default function ReleasesAdminPage() {
       if (error) throw error;
       return data as Release[];
     },
-    enabled: isAdmin,
+    enabled: true,
   });
 
   const nextVersionCode = useMemo(
@@ -143,37 +143,6 @@ export default function ReleasesAdminPage() {
       setExporting(false);
     }
   };
-
-  if (adminLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <AppLayout>
-        <div className="container max-w-2xl mx-auto p-6">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
-          </Button>
-          <Alert variant="destructive">
-            <ShieldAlert className="w-4 h-4" />
-            <AlertTitle>Acesso restrito</AlertTitle>
-            <AlertDescription>
-              Esta área é exclusiva para administradores do sistema. Para liberar acesso,
-              defina <code className="text-xs bg-background/50 px-1 py-0.5 rounded">app_metadata.role = "admin"</code>{" "}
-              no usuário pelo painel do Supabase.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </AppLayout>
-    );
-  }
 
   return (
     <AppLayout>
