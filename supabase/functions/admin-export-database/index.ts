@@ -1,16 +1,12 @@
-// Admin-only edge function: exports the entire public schema as JSON.
-// Auth: caller must have JWT + app_metadata.role === admin.
-
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+// Admin-only edge function: exports all public tables as a single JSON snapshot.
+// This version intentionally avoids external imports to reduce runtime incompatibilities.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// All tables in the public schema.
 const TABLES = [
   "activity_log",
   "ai_conversations",
@@ -56,114 +52,106 @@ const TABLES = [
 
 const PAGE_SIZE = 1000;
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // 1. Validate JWT and admin role.
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
+    const accessToken = authHeader.slice("Bearer ".length).trim();
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !anonKey || !serviceKey) {
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           error:
             "Missing env vars: SUPABASE_URL, SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY",
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
+        500,
       );
     }
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false },
+    // Validate caller token and check app_metadata.role.
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      method: "GET",
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!userRes.ok) {
+      return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
-    // Use the user-scoped client so is_system_admin() reads the caller's JWT.
-    const { data: isAdmin, error: adminErr } = await userClient.rpc("is_system_admin");
-    if (adminErr || isAdmin !== true) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin only" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const userJson = await userRes.json();
+    const role = userJson?.app_metadata?.role;
+    if (role !== "admin") {
+      return jsonResponse({ error: "Forbidden: admin only" }, 403);
     }
 
-    // 2. Service-role client to bypass RLS.
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false },
-    });
-
-    // 3. Build JSON export payload.
-    const exportData: Record<string, Record<string, unknown>[]> = {};
-
+    const projectRef = supabaseUrl.replace(/^https?:\/\//, "").split(".")[0];
     const manifest: {
       generated_at: string;
       project_ref: string;
       tables: { name: string; row_count: number; error?: string }[];
     } = {
       generated_at: new Date().toISOString(),
-      project_ref: supabaseUrl.replace(/^https?:\/\//, "").split(".")[0],
+      project_ref: projectRef,
       tables: [],
     };
 
+    const data: Record<string, unknown[]> = {};
+
     for (const table of TABLES) {
-      const allRows: Record<string, unknown>[] = [];
-      let from = 0;
+      let offset = 0;
       let tableError: string | undefined;
+      const rows: unknown[] = [];
 
-      // Paginate to bypass the 1000-row default limit.
       while (true) {
-        const { data, error } = await admin
-          .from(table)
-          .select("*")
-          .range(from, from + PAGE_SIZE - 1);
+        const restUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent(table)}?select=*&limit=${PAGE_SIZE}&offset=${offset}`;
+        const tableRes = await fetch(restUrl, {
+          method: "GET",
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        });
 
-        if (error) {
-          tableError = error.message;
+        if (!tableRes.ok) {
+          tableError = `${tableRes.status} ${await tableRes.text()}`;
           break;
         }
-        if (!data || data.length === 0) break;
-        allRows.push(...data);
-        if (data.length < PAGE_SIZE) break;
-        from += PAGE_SIZE;
+
+        const batch = await tableRes.json();
+        if (!Array.isArray(batch) || batch.length === 0) break;
+
+        rows.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
       }
 
       manifest.tables.push({
         name: table,
-        row_count: allRows.length,
+        row_count: rows.length,
         ...(tableError ? { error: tableError } : {}),
       });
-      exportData[table] = allRows;
+      data[table] = rows;
     }
 
-    const payload = {
-      manifest,
-      data: exportData,
-    };
-
+    const payload = { manifest, data };
     const filename = `rpgbuddy-export-${new Date().toISOString().slice(0, 10)}.json`;
 
     return new Response(JSON.stringify(payload), {
@@ -174,19 +162,12 @@ Deno.serve(async (req) => {
         "Content-Disposition": `attachment; filename="${filename}"`,
         "X-Export-Format": "json",
         "X-Export-Tables": String(manifest.tables.length),
-        "X-Export-Rows": String(
-          manifest.tables.reduce((a, t) => a + t.row_count, 0),
-        ),
+        "X-Export-Rows": String(manifest.tables.reduce((acc, t) => acc + t.row_count, 0)),
       },
     });
-  } catch (err) {
-    console.error("admin-export-database error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("admin-export-database error:", message);
+    return jsonResponse({ error: message }, 500);
   }
 });
