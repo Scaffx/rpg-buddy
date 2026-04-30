@@ -286,6 +286,45 @@ export default function ReleasesAdminPage() {
           </CardContent>
         </Card>
 
+        {/* Backup & Migração */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Database className="w-5 h-5" /> Backup & Migração do Banco
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-3">
+            <p>
+              Baixe um snapshot completo de todos os dados do banco em um único arquivo <strong>.zip</strong>.
+              Cada tabela é exportada em <strong>JSON</strong> (sem perda de tipos) e <strong>CSV</strong> (Excel).
+            </p>
+            <p className="text-xs">
+              Use isso para migrar para um Supabase próprio: rode <code className="text-primary">supabase db push</code> no novo projeto
+              (recria o schema a partir das migrations) e importe os arquivos do ZIP.
+              <br />
+              <span className="text-amber-400">Não inclui: arquivos do Storage, secrets, e usuários do Auth.</span>
+            </p>
+            <Button
+              onClick={handleExportDatabase}
+              disabled={exporting}
+              variant="outline"
+              className="border-primary/40"
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Baixar snapshot completo (.zip)
+            </Button>
+            {lastExport && (
+              <p className="text-xs text-emerald-400">
+                Último export: {lastExport.tables} tabelas, {lastExport.rows} linhas, {lastExport.sizeKb} KB.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Lista de releases */}
         <Card>
           <CardHeader>
