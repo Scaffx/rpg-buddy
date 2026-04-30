@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useClickSound } from "@/hooks/useClickSound";
 import { ShortRestStatusProvider } from "@/hooks/useShortRestStatus";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
