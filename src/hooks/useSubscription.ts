@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
@@ -26,6 +26,7 @@ export function useSubscription() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const env = getPaddleEnvironment();
+  const ensuredRef = useRef(false);
 
   const query = useQuery({
     queryKey: ["subscription", user?.id, env],
@@ -43,6 +44,18 @@ export function useSubscription() {
       return (data as unknown as SubscriptionRow) ?? null;
     },
   });
+
+  // Safety net: se o usuário não tiver subscription, cria o trial automaticamente (uma única vez)
+  useEffect(() => {
+    if (!user || query.isLoading || query.data !== null || ensuredRef.current) return;
+    // query.data === null significa que buscou e não encontrou nada
+    if (query.fetchStatus === "idle") {
+      ensuredRef.current = true;
+      (supabase.rpc as any)("ensure_trial_subscription").then(() => {
+        queryClient.invalidateQueries({ queryKey: ["subscription", user.id, env] });
+      });
+    }
+  }, [user, query.isLoading, query.data, query.fetchStatus, env, queryClient]);
 
   // Realtime
   useEffect(() => {
