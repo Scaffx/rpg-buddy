@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -58,44 +60,45 @@ export function useUserAchievements() {
 }
 
 /**
- * Tenta desbloquear conquistas com base nos dados atuais do usuário.
- * Deve ser chamado após events importantes (completar missão, subir nível, etc.)
+ * Verifica e desbloqueia conquistas automaticamente, buscando todos os dados
+ * necessários do banco. Concede XP e ouro das conquistas desbloqueadas.
  */
 export function useCheckAchievements() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (context: {
-      missionsTotal?: number;
-      missionsStreak?: number;
-      bossKills?: number;
-      level?: number;
-      journalEntries?: number;
-      friendsTotal?: number;
-      loadoutSize?: number;
-    }) => {
+    mutationFn: async () => {
       if (!user) return [];
 
-      const { data: allAchievements } = await supabase
-        .from('achievements' as any)
-        .select('*');
-
-      const { data: alreadyUnlocked } = await supabase
-        .from('user_achievements' as any)
-        .select('achievement_id')
-        .eq('user_id', user.id);
+      const [
+        { data: allAchievements },
+        { data: alreadyUnlocked },
+        { data: profileData },
+        { count: journalCount },
+        { count: bossKillCount },
+        { count: friendsCount },
+      ] = await Promise.all([
+        supabase.from('achievements' as any).select('*'),
+        supabase.from('user_achievements' as any).select('achievement_id').eq('user_id', user.id),
+        supabase.from('profiles').select('missions_completed, level, current_streak, combat_skill_loadout').eq('user_id', user.id).single(),
+        supabase.from('adventure_journal' as any).select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('boss_battles' as any).select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('won', true),
+        supabase.from('friend_requests' as any).select('*', { count: 'exact', head: true }).eq('status', 'accepted').or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`),
+      ]);
 
       const unlockedIds = new Set((alreadyUnlocked || []).map((a: any) => a.achievement_id));
+      const profile = profileData as any;
+      const loadout = Array.isArray(profile?.combat_skill_loadout) ? profile.combat_skill_loadout : [];
 
-      const conditionMap: Record<string, number | undefined> = {
-        missions_total:  context.missionsTotal,
-        missions_streak: context.missionsStreak,
-        boss_kills:      context.bossKills,
-        level_reached:   context.level,
-        journal_entries: context.journalEntries,
-        friends_total:   context.friendsTotal,
-        loadout_full:    context.loadoutSize,
+      const conditionMap: Record<string, number> = {
+        missions_total:  Number(profile?.missions_completed ?? 0),
+        missions_streak: Number(profile?.current_streak ?? 0),
+        boss_kills:      Number(bossKillCount ?? 0),
+        level_reached:   Number(profile?.level ?? 1),
+        journal_entries: Number(journalCount ?? 0),
+        friends_total:   Number(friendsCount ?? 0),
+        loadout_full:    loadout.length,
       };
 
       const toUnlock = ((allAchievements || []).filter((a: any) => {
@@ -110,12 +113,51 @@ export function useCheckAchievements() {
         toUnlock.map((a) => ({ user_id: user.id, achievement_id: a.id } as any)),
       );
 
+      const totalXP = toUnlock.reduce((s, a) => s + (a.xp_reward || 0), 0);
+      const totalGold = toUnlock.reduce((s, a) => s + (a.gold_reward || 0), 0);
+
+      if (totalXP > 0 || totalGold > 0) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('total_xp, xp_today, gold')
+          .eq('user_id', user.id)
+          .single();
+        const p = prof as any;
+        await supabase.from('profiles').update({
+          total_xp: (p?.total_xp || 0) + totalXP,
+          xp_today: (p?.xp_today || 0) + totalXP,
+          gold: (p?.gold || 0) + totalGold,
+        } as any).eq('user_id', user.id);
+      }
+
       return toUnlock;
     },
     onSuccess: (unlocked) => {
       if (unlocked.length > 0) {
         qc.invalidateQueries({ queryKey: ['user_achievements', user?.id] });
+        qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+        unlocked.forEach((a) => {
+          toast.success(`🏆 Conquista desbloqueada: ${a.title}!`, {
+            description: `+${a.xp_reward} XP  +${a.gold_reward} ouro`,
+            duration: 5000,
+          });
+        });
       }
     },
   });
+}
+
+/**
+ * Verifica conquistas automaticamente ao montar e a cada 5 minutos.
+ * Coloque este hook em AppLayout para cobertura global.
+ */
+export function useAutoCheckAchievements() {
+  const checkAchievements = useCheckAchievements();
+
+  useEffect(() => {
+    checkAchievements.mutate();
+    const interval = setInterval(() => checkAchievements.mutate(), 5 * 60_000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }

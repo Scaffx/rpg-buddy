@@ -330,7 +330,10 @@ export default function CompanionPage() {
   const { data: companion,         isLoading: loadingCompanion   } = useCompanion();
   const { data: skeletonCompanion, isLoading: loadingSkeletonPup } = useSkeletonCompanion();
 
-  const isLoading = profileLoading || loadingCompanion || loadingSkeletonPup;
+  // Only show full-screen loader when there's no cached data at all
+  const isLoading = (profileLoading && profile === undefined)
+    || (loadingCompanion && companion === undefined)
+    || (loadingSkeletonPup && skeletonCompanion === undefined);
   const level     = (profile as any)?.level ?? 0;
 
   if (isLoading) {

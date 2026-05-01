@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
 import { useSleepWakeAlerts } from '@/hooks/useSleepWakeAlerts';
+import { useAutoCheckAchievements } from '@/hooks/useAchievements';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -52,6 +53,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   useMidnightReset();
   useSleepWakeAlerts();
+  useAutoCheckAchievements();
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
   const [showDailyResetNotice, setShowDailyResetNotice] = useState(false);

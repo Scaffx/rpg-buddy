@@ -107,7 +107,8 @@ export function useCompanion() {
       return (data as CompanionRow | null) ?? null;
     },
     enabled: !!user,
-    staleTime: 30 * 1000,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 }
 
@@ -127,7 +128,8 @@ export function useSkeletonCompanion() {
       return (data as CompanionRow | null) ?? null;
     },
     enabled: !!user,
-    staleTime: 30 * 1000,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 }
 
