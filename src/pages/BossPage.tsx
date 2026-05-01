@@ -20,14 +20,14 @@ import { useAdoptSkeletonPup } from '@/hooks/useCompanion';
 const SKELETON_BOSS_PATTERN  = /esquelet/i;
 const MANTIROCA_BOSS_PATTERN = /mantiroca/i;
 
-const RANKING_REGIONS = [
-  { id: null, name: 'Ranking Mundial', icon: '🌐' },
-  { id: 'south_america', name: 'América do Sul', icon: '🌎' },
-  { id: 'north_america', name: 'América do Norte', icon: '🌎' },
-  { id: 'europe', name: 'Europa', icon: '🌍' },
-  { id: 'africa', name: 'África', icon: '🌍' },
-  { id: 'asia', name: 'Ásia', icon: '🌏' },
-];
+const REGION_LABELS: Record<string, string> = {
+  south_america: 'América do Sul',
+  north_america: 'América do Norte',
+  europe: 'Europa',
+  africa: 'África',
+  asia: 'Ásia',
+  oceania: 'Oceania',
+};
 
 function useRankings(region: string | null) {
   return useQuery({
@@ -71,8 +71,9 @@ export default function BossPage() {
     return stored === null ? true : stored === 'true';
   });
   const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
-  const [rankingRegion, setRankingRegion] = useState<string | null>(null);
-  const { data: rankings, isLoading: rankingsLoading } = useRankings(rankingRegion);
+  const [rankingView, setRankingView] = useState<'mundial' | 'regional'>('mundial');
+  const effectiveRegion = rankingView === 'mundial' ? null : (profile?.region ?? null);
+  const { data: rankings, isLoading: rankingsLoading } = useRankings(effectiveRegion);
   const attrLevels = getAttributeLevels(attributes as any[]);
   const playerStats = getPlayerCombatStats(profile?.level || 1, attrLevels);
 
@@ -605,22 +606,37 @@ export default function BossPage() {
         {/* ========== ABA: RANKING ========== */}
         {activeTab === "ranking" && (
           <div className="space-y-6">
-            {/* Region selector */}
-            <div className="flex gap-2 flex-wrap">
-              {RANKING_REGIONS.map((r) => (
-                <button
-                  key={r.id ?? 'mundial'}
-                  onClick={() => setRankingRegion(r.id)}
-                  className={`px-3 py-1.5 rounded-lg border text-sm font-semibold transition-all ${
-                    rankingRegion === r.id
-                      ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
-                      : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {r.icon} {r.name}
-                </button>
-              ))}
+            {/* Sub-tabs: Mundial / Minha Região */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRankingView('mundial')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold transition-all ${
+                  rankingView === 'mundial'
+                    ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                    : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Globe className="w-4 h-4" /> Mundial
+              </button>
+              <button
+                onClick={() => setRankingView('regional')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold transition-all ${
+                  rankingView === 'regional'
+                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                    : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                🌎 Minha Região
+                {profile?.region && rankingView === 'regional' && (
+                  <span className="text-xs font-normal opacity-75">({REGION_LABELS[profile.region] ?? profile.region})</span>
+                )}
+              </button>
             </div>
+            {rankingView === 'regional' && !profile?.region && (
+              <div className="rpg-card bg-yellow-500/10 border-yellow-500/30">
+                <p className="text-sm text-yellow-400">⚠️ Você ainda não definiu sua região. Configure no seu perfil para ver o ranking regional.</p>
+              </div>
+            )}
 
             {/* Power Level Formula */}
             <div className="rpg-card bg-secondary/50 border-border/50">

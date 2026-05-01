@@ -379,4 +379,68 @@ $$;
 GRANT EXECUTE ON FUNCTION public.add_xp_to_user(uuid, int)  TO authenticated;
 GRANT EXECUTE ON FUNCTION public.add_gold_to_user(uuid, int) TO authenticated;
 
+-- ============================================================
+-- PASSO EXTRA: Companions + Hero Story Choices
+-- Resolve: "Erro ao criar companheiro. Tente novamente."
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.companions (
+  id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  companion_type    text        NOT NULL DEFAULT 'dog',
+  origin            text        NOT NULL DEFAULT 'lvl3_choice',
+  name              text        NOT NULL DEFAULT 'Companheiro',
+  level             integer     NOT NULL DEFAULT 1,
+  xp                integer     NOT NULL DEFAULT 0,
+  mood              integer     NOT NULL DEFAULT 80,
+  equipped_item_id  uuid        NULL,
+  last_fed_at       timestamptz,
+  last_played_at    timestamptz,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id, origin)
+);
+
+ALTER TABLE public.companions ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'companions' AND policyname = 'Users manage own companion'
+  ) THEN
+    CREATE POLICY "Users manage own companion"
+      ON public.companions
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.companions TO anon, authenticated;
+
+CREATE TABLE IF NOT EXISTS public.hero_story_choices (
+  user_id           uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  skeleton_champion text        NULL CHECK (skeleton_champion IN ('adopt', 'reject')),
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.hero_story_choices ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'hero_story_choices' AND policyname = 'Users manage own story choices'
+  ) THEN
+    CREATE POLICY "Users manage own story choices"
+      ON public.hero_story_choices
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.hero_story_choices TO anon, authenticated;
+
 NOTIFY pgrst, 'reload schema';
