@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { useProfile } from '@/hooks/useProfile';
-import { useAvailableTalents, useBuyTalent, usePlayerTalents, type Talent } from '@/hooks/useTalents';
+import { useAvailableTalents, useBuyTalent, usePlayerTalents, useToggleEquipTalent, MAX_EQUIPPED_TALENTS, type Talent } from '@/hooks/useTalents';
 
 const TALENT_UI: Record<string, { icon: any; accent: string; title: string; synergy: string }> = {
   madrugador: {
@@ -130,11 +130,16 @@ export default function FeatsTree() {
   const { data: available = [] } = useAvailableTalents();
   const { data: ownedRows = [] } = usePlayerTalents();
   const buyTalent = useBuyTalent();
+  const toggleEquip = useToggleEquipTalent();
 
   const talentos = available.length > 0 ? available : FALLBACK_TALENTS;
-  const ownedEffects = new Set<string>(
-    (ownedRows || []).map((r: any) => String(r?.talentos_disponiveis?.efeito || '')),
+  const ownedMap = new Map<string, { rowId: string; equipped: boolean }>(
+    (ownedRows || []).map((r: any) => [
+      String(r?.talentos_disponiveis?.efeito || ''),
+      { rowId: r.id, equipped: !!r.equipped },
+    ]),
   );
+  const equippedCount = (ownedRows || []).filter((r: any) => r.equipped).length;
 
   const pontos = Number((profile as any)?.pontos_talento ?? 0);
   const level = Number(profile?.level ?? 1);
@@ -152,6 +157,15 @@ export default function FeatsTree() {
     });
   };
 
+  const handleToggleEquip = (efeito: string) => {
+    const row = ownedMap.get(efeito);
+    if (!row) return;
+    toggleEquip.mutate(
+      { rowId: row.rowId, currentlyEquipped: row.equipped, equippedCount },
+      { onError: (err: any) => toast.error(err?.message || 'Erro ao equipar talento.') },
+    );
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -165,16 +179,25 @@ export default function FeatsTree() {
             <p className="text-sm text-muted-foreground">{t('app.feats.available_points')}</p>
             <p className="text-2xl font-bold text-primary">{pontos}</p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {t('app.feats.points_hint', { n: nextMilestone })}
-          </p>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">
+              {t('app.feats.points_hint', { n: nextMilestone })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Equipados: <span className={`font-bold ${equippedCount >= MAX_EQUIPPED_TALENTS ? 'text-yellow-400' : 'text-foreground'}`}>{equippedCount}/{MAX_EQUIPPED_TALENTS}</span>
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {talentos.map((talento, index) => {
             const ui = TALENT_UI[talento.efeito] || TALENT_UI.madrugador;
             const Icon = ui.icon;
-            const owned = ownedEffects.has(talento.efeito);
+            const ownedData = ownedMap.get(talento.efeito);
+            const owned = !!ownedData;
+            const equipped = owned && ownedData!.equipped;
+            const canEquip = owned && !equipped && equippedCount < MAX_EQUIPPED_TALENTS;
+            const canUnequip = owned && equipped;
 
             return (
               <motion.div
@@ -182,14 +205,15 @@ export default function FeatsTree() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.08 }}
-                className={`rounded-xl border bg-gradient-to-br p-5 ${ui.accent}`}
+                className={`rounded-xl border bg-gradient-to-br p-5 ${ui.accent} ${equipped ? 'ring-2 ring-primary/40' : ''}`}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Icon className="w-5 h-5 text-primary" />
                     <h2 className="text-lg font-bold text-foreground">{ui.title}</h2>
                   </div>
-                  {owned && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+                  {equipped && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold">ATIVO</span>}
+                  {owned && !equipped && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
                 </div>
 
                 <p className="text-sm text-muted-foreground mb-5">{talento.descricao}</p>
@@ -199,13 +223,33 @@ export default function FeatsTree() {
                 </div>
                 <p className="text-xs text-primary mb-5">{t('app.feats.cost_label')}</p>
 
-                <button
-                  onClick={() => handleBuy(talento)}
-                  disabled={owned || pontos <= 0 || buyTalent.isPending}
-                  className="w-full rounded-lg border border-primary/40 bg-primary/20 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {owned ? t('app.feats.button_owned') : t('app.feats.button_buy')}
-                </button>
+                {!owned ? (
+                  <button
+                    onClick={() => handleBuy(talento)}
+                    disabled={pontos <= 0 || buyTalent.isPending}
+                    className="w-full rounded-lg border border-primary/40 bg-primary/20 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t('app.feats.button_buy')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleToggleEquip(talento.efeito)}
+                    disabled={toggleEquip.isPending || (!canEquip && !canUnequip)}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                      equipped
+                        ? 'border-primary/40 bg-primary/20 text-primary hover:bg-primary/10'
+                        : canEquip
+                          ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                          : 'border-border bg-muted/20 text-muted-foreground cursor-not-allowed'
+                    }`}
+                  >
+                    {equipped
+                      ? 'Desequipar'
+                      : canEquip
+                        ? 'Equipar'
+                        : `Limite (${MAX_EQUIPPED_TALENTS}) atingido`}
+                  </button>
+                )}
               </motion.div>
             );
           })}

@@ -30,7 +30,7 @@ export function usePlayerTalents() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('talentos_jogador')
-        .select('id, talento_id, talentos_disponiveis(id, nome, descricao, efeito)')
+        .select('id, talento_id, equipped, talentos_disponiveis(id, nome, descricao, efeito)')
         .eq('personagem_id', user!.id);
       if (error) throw error;
       return (data || []) as any[];
@@ -110,6 +110,34 @@ export function useBuyTalent() {
       queryClient.invalidateQueries({ queryKey: ['talentos-jogador'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
+    },
+  });
+}
+
+export const MAX_EQUIPPED_TALENTS = 5;
+
+export function useToggleEquipTalent() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ rowId, currentlyEquipped, equippedCount }: { rowId: string; currentlyEquipped: boolean; equippedCount: number }) => {
+      if (!user) throw new Error('Nao autenticado');
+
+      if (!currentlyEquipped && equippedCount >= MAX_EQUIPPED_TALENTS) {
+        throw new Error(`Limite de ${MAX_EQUIPPED_TALENTS} talentos equipados atingido.`);
+      }
+
+      const { error } = await (supabase as any)
+        .from('talentos_jogador')
+        .update({ equipped: !currentlyEquipped })
+        .eq('id', rowId)
+        .eq('personagem_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['talentos-jogador'] });
     },
   });
 }

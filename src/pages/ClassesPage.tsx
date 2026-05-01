@@ -122,12 +122,25 @@ export default function ClassesPage() {
 
   // Compute the golden path from root to the starter class node
   const { goldenPath, goldenTargetId } = useMemo(() => {
-    if (!starterClass || !classes) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
-    const targetName = STARTER_TO_CLASS_NAME[starterClass];
-    if (!targetName) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
+    if (!classes) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
 
     const map = new Map<string, any>();
     classes.forEach((c: any) => map.set(c.id, c));
+
+    // If user already selected a class, highlight only that branch (avoids showing two branches)
+    if (profile?.current_class_id) {
+      const path = new Set<string>();
+      let current = map.get(profile.current_class_id);
+      while (current) {
+        path.add(current.id);
+        current = current.parent_class_id ? map.get(current.parent_class_id) : null;
+      }
+      return { goldenPath: path, goldenTargetId: profile.current_class_id as string };
+    }
+
+    if (!starterClass) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
+    const targetName = STARTER_TO_CLASS_NAME[starterClass];
+    if (!targetName) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
 
     // Find the target class node by name
     let targetNode: any = null;
@@ -143,7 +156,7 @@ export default function ClassesPage() {
       current = current.parent_class_id ? map.get(current.parent_class_id) : null;
     }
     return { goldenPath: path, goldenTargetId: targetNode.id as string };
-  }, [starterClass, classes]);
+  }, [starterClass, classes, profile?.current_class_id]);
 
   const userLevel = profile?.level || 1;
 
