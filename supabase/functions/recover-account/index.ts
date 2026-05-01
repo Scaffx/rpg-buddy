@@ -75,24 +75,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verificar que old_user_id é de fato um placeholder (segurança)
-    // Checa direto na tabela auth.users via admin — mais confiável que getUserById
-    const { data: oldUserRows } = await admin
-      .from("auth_users_view" as any)
-      .select("email")
-      .eq("id", old_user_id)
-      .maybeSingle()
-      .catch(() => ({ data: null }));
-
-    // Fallback: verificar via auth.admin se a view não existir
-    let oldEmail: string | null = (oldUserRows as any)?.email ?? null;
-    if (!oldEmail) {
+    // Verificar que old_user_id pertence a um placeholder migrado (segurança)
+    let oldEmail: string | null = null;
+    try {
       const { data: authData } = await admin.auth.admin.getUserById(old_user_id);
       oldEmail = authData?.user?.email ?? null;
-    }
+    } catch { /* ignora — fallback abaixo */ }
 
     if (!oldEmail?.includes("@rpgbuddy.import")) {
-      // Última chance: verificar direto em profiles se o user_id existe como migrado
+      // Fallback: verifica se o perfil existe na tabela (pode ter sido deletado do auth)
       const { data: profCheck } = await admin
         .from("profiles")
         .select("user_id")

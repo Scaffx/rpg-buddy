@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2, Coins, Gift, MessageCircle, Send, TrendingUp } from 'lucide-react';
+import { useNpcAffinity, useIncrementNpcAffinity, getAffinityTier } from '@/hooks/useNpcAffinity';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -214,9 +215,19 @@ export default function NpcPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [coachInsight, setCoachInsight] = useState<string | null>(null);
+  const [coachLoading, setCoachLoading] = useState(false);
   const npcWeeklyChallengesTable = 'npc_weekly_challenges' as never;
   const npcCompletionsTable = 'npc_challenge_completions' as never;
   const userInventoryTable = 'user_inventory' as never;
+
+  const { data: affinityRows = [] } = useNpcAffinity();
+  const incrementAffinity = useIncrementNpcAffinity();
+
+  const affinityMap = useMemo(
+    () => new Map(affinityRows.map((r) => [r.npc_id, r])),
+    [affinityRows],
+  );
 
   const { data: weeklyChallenges = [], isLoading: loadingChallenges, refetch: refetchChallenges } = useQuery<NpcChallenge[]>({
     queryKey: ['npc_weekly_challenges', user?.id, weekToken],
@@ -409,6 +420,7 @@ export default function NpcPage() {
       qc.invalidateQueries({ queryKey: ['inventory', user?.id] });
 
       if (!wasCompleted) {
+        incrementAffinity.mutate({ npcId: challenge.npc_id, xpAmount: 25 });
         toast.success(t('app.npc.challenge_done'), {
           description: buildRewardText(challenge),
         });
@@ -497,6 +509,8 @@ export default function NpcPage() {
             const npcChallenges = challengesByNpc.get(npc.id) ?? [];
             const done = npcChallenges.filter((challenge) => isCompleted(npc.id, challenge.challenge_id)).length;
             const total = npcChallenges.length;
+            const affRow = affinityMap.get(npc.id);
+            const affTier = getAffinityTier(affRow?.affinity_xp ?? 0);
             return (
               <Card
                 key={npc.id}
@@ -518,6 +532,15 @@ export default function NpcPage() {
                     <span className="text-[11px] text-muted-foreground">🎭 {npc.personality}</span>
                     <span className="text-[11px] font-semibold text-primary">{done}/{total} ✓</span>
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">Afinidade:</span>
+                    <span className={`text-[10px] font-semibold ${affTier.color}`}>
+                      {affTier.icon} {affTier.label}
+                    </span>
+                    {affRow && (
+                      <span className="text-[10px] text-muted-foreground ml-auto">{affRow.affinity_xp} XP</span>
+                    )}
+                  </div>
                   <div className="h-1.5 rounded-full bg-background/30 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-primary transition-all"
@@ -536,6 +559,64 @@ export default function NpcPage() {
               </Card>
             );
           })}
+        </div>
+
+        {/* AI Coach Insights */}
+        <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-card/60 p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-sm">Coach IA — Análise de Padrões</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-primary/30 hover:bg-primary/10"
+              disabled={coachLoading}
+              onClick={async () => {
+                if (!user) return;
+                setCoachLoading(true);
+                setCoachInsight(null);
+                try {
+                  const since = new Date();
+                  since.setDate(since.getDate() - 30);
+                  const { data: missions } = await supabase
+                    .from('missions' as never)
+                    .select('title, status, category, due_date, completed_at' as never)
+                    .eq('user_id' as never, user.id as never)
+                    .gte('created_at' as never, since.toISOString() as never)
+                    .limit(60);
+                  const missionSummary = JSON.stringify(missions ?? []);
+                  const prompt = `Analise os dados de missões do usuário dos últimos 30 dias e identifique padrões de falha, horários mais produtivos e categorias mais negligenciadas. Gere 3 insights concisos (1 linha cada) e 1 missão personalizada sugerida. Dados: ${missionSummary}`;
+                  const { data, error } = await supabase.functions.invoke('ai-chat', {
+                    body: {
+                      messages: [{ role: 'user', content: prompt }],
+                      npcPersona: 'Você é um coach de produtividade direto e eficaz. Responda em português com no máximo 200 palavras.',
+                    },
+                  });
+                  if (error) throw error;
+                  const reply = (data as { content?: string; reply?: string })?.content ?? (data as { reply?: string })?.reply ?? '';
+                  setCoachInsight(reply);
+                } catch {
+                  setCoachInsight('Não foi possível gerar a análise no momento. Tente novamente.');
+                } finally {
+                  setCoachLoading(false);
+                }
+              }}
+            >
+              {coachLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              {coachLoading ? 'Analisando...' : 'Analisar'}
+            </Button>
+          </div>
+          {coachInsight ? (
+            <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap rounded-lg bg-background/30 p-3 border border-border/50">
+              {coachInsight}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Clique em “Analisar” para o Coach IA identificar seus padrões das últimas 4 semanas e sugerir missões personalizadas.
+            </p>
+          )}
         </div>
 
         {/* Footer Stats */}
