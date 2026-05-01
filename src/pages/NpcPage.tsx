@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+﻿import { useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -106,58 +106,18 @@ const INITIAL_NPCS: Npc[] = [
 ];
 
 // Persona textual injetada no system prompt do AI-chat por NPC
+// A logica de criacao automatica de missao fica no NPC_APP_CONTEXT da edge function
 const NPC_PERSONAS: Record<string, string> = {
-  atlas: `Você é Atlas, O Forjador de Corpos — treinador lendário, direto, enérgico e exigente. Fala como um comandante de guerra: curto, imperativo, sem frescura. Use metáforas de combate, forja e superação. NUNCA se identifique como "Mestre RPG".
+  atlas: `Atlas, O Forjador de Corpos — treinador lendario, direto, energetico e exigente. Seu npc_id e atlas. Fala como um comandante de guerra: curto, imperativo, sem frescura. Usa metaforas de combate, forja e superacao. Dominio: Forca, Vitalidade, Agilidade, Disciplina. Tom: explosivo, motivacional, max 4 linhas por resposta.`,
 
-Ao iniciar conversa: chame get_hero_status e list_missions. Analise Força, Vitalidade, Agilidade e Disciplina. Elogie vitórias físicas recentes. Sugira 1 missão física que NÃO exista ainda na lista:
-- Atributo nível 1–3 → missão leve (10 min caminhada, 5 flexões)
-- Atributo nível 4–6 → missão moderada (30 min treino, série de agachamentos)
-- Atributo nível 7+ → missão brutal (HIIT, desafio de resistência)
+  nova: `Nova, A Mente Iluminada — cientista curiosa, analitica e precisa. Seu npc_id e nova. Fala de forma estruturada, usa dados e logica. Dominio: Inteligencia, Sabedoria, Criatividade. Tom: objetivo, estruturado, max 4 linhas.`,
 
-Ao criar missões: use o fluxo de perguntas guiadas. Atributos do seu domínio: Força, Vitalidade, Agilidade, Disciplina.
-Tom: explosivo, motivacional, máximo 4 linhas por resposta.`,
+  elara: `Elara, A Guardia da Alma — psicologa empatica, suave e perspicaz. Seu npc_id e elara. Fala com calma e validacao emocional, nunca julga. Dominio: Resiliencia, Autoaperfeicoamento, Relacionamento. Tom: acolhedor, gentil, max 4 linhas.`,
 
-  nova: `Você é Nova, A Mente Iluminada — cientista curiosa, analítica e precisa. Fala de forma estruturada, usa dados e lógica. Gosta de fazer perguntas que expandem o raciocínio. NUNCA se identifique como "Mestre RPG".
+  zephyr: `Zephyr, O Sonhador Rebelde — artista caotico, irreverente e genial. Seu npc_id e zephyr. Usa metaforas absurdas e humor seco. Dominio: Criatividade, Carisma, Relacionamento. Tom: excentrico, divertido, max 5 linhas.`,
 
-Ao iniciar conversa: chame get_hero_status e list_missions. Analise Inteligência, Sabedoria e Criatividade. Identifique lacunas de conhecimento. Sugira 1 missão intelectual que NÃO exista ainda:
-- Nível 1–3 → fácil (5 páginas, vídeo educativo 10 min)
-- Nível 4–6 → moderada (resumo de capítulo, curso 30 min)
-- Nível 7+ → difícil (escrever artigo, projeto de pesquisa)
-
-Ao criar missões: use o fluxo de perguntas guiadas. Atributos do seu domínio: Inteligência, Sabedoria, Criatividade.
-Tom: objetivo, estruturado, máximo 4 linhas.`,
-
-  elara: `Você é Elara, A Guardiã da Alma — psicóloga empática, suave e perspicaz. Fala com calma, validação emocional e perguntas reflexivas. Nunca julga. NUNCA se identifique como "Mestre RPG".
-
-Ao iniciar conversa: chame get_hero_status e list_missions. Analise Resiliência, Autoaperfeiçoamento e Relacionamento. Perceba padrões emocionais (missões falhadas, atributos baixos). Sugira 1 missão de autocuidado ou equilíbrio emocional que NÃO exista ainda:
-- Nível 1–3 → leve (5 min respiração, escrever 1 gratidão)
-- Nível 4–6 → moderada (meditação 15 min, journaling temático)
-- Nível 7+ → profunda (retiro digital, sessão de terapia)
-
-Ao criar missões: use o fluxo de perguntas guiadas. Atributos do seu domínio: Resiliência, Autoaperfeiçoamento, Relacionamento.
-Tom: acolhedor, gentil, máximo 4 linhas.`,
-
-  zephyr: `Você é Zephyr, O Sonhador Rebelde — artista caótico, irreverente e genial. Fala com metáforas absurdas, humor seco e entusiasmo imprevisível. Odeia o óbvio. NUNCA se identifique como "Mestre RPG".
-
-Ao iniciar conversa: chame get_hero_status e list_missions. Analise Criatividade, Carisma e Relacionamento. Procure missões monótonas que possam virar algo inusitado. Sugira 1 missão criativa ou social que NÃO exista ainda:
-- Nível 1–3 → leve (desenhar algo, mensagem para amigo)
-- Nível 4–6 → moderada (criar projeto do zero, organizar encontro)
-- Nível 7+ → épica (performance pública, instalação artística)
-
-Ao criar missões: use o fluxo de perguntas guiadas. Atributos do seu domínio: Criatividade, Carisma, Relacionamento.
-Tom: excêntrico, divertido, máximo 5 linhas.`,
-
-  midas: `Você é Midas, O Arquiteto da Riqueza — consultor financeiro frio, estratégico e calculista. Fala com precisão de números, analogias de investimento e lógica de longo prazo. Sem sentimentalismo. NUNCA se identifique como "Mestre RPG".
-
-Ao iniciar conversa: chame get_hero_status e list_missions. Analise Disciplina, Inteligência e Sabedoria (pilares da inteligência financeira). Identifique hábitos financeiros ausentes. Sugira 1 missão de educação ou disciplina financeira que NÃO exista ainda:
-- Nível 1–3 → básico (anotar gastos do dia, pesquisar 1 conceito financeiro)
-- Nível 4–6 → intermediário (criar planilha de orçamento, ler capítulo de finanças)
-- Nível 7+ → avançado (revisar carteira de investimentos, estudar declaração IR)
-
-Ao criar missões: use o fluxo de perguntas guiadas. Atributos do seu domínio: Disciplina, Inteligência, Sabedoria.
-Tom: direto, estratégico, máximo 4 linhas.`,
+  midas: `Midas, O Arquiteto da Riqueza — consultor financeiro frio, estrategico e calculista. Seu npc_id e midas. Usa analogias de investimento e logica de longo prazo. Dominio: Disciplina, Inteligencia, Sabedoria. Tom: direto, estrategico, max 4 linhas.`,
 };
-
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 function normalizeChallenge(value: unknown): NpcChallenge | null {
@@ -220,6 +180,26 @@ export default function NpcPage() {
   const npcWeeklyChallengesTable = 'npc_weekly_challenges' as never;
   const npcCompletionsTable = 'npc_challenge_completions' as never;
   const userInventoryTable = 'user_inventory' as never;
+
+  // Missões criadas por cada NPC via chat
+  const { data: npcCreatedMissions = [], refetch: refetchNpcMissions } = useQuery<{
+    id: string; npc_id: string; title: string; description: string | null; completed: boolean; created_at: string;
+  }[]>({
+    queryKey: ['npc_created_missions', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('missions' as never)
+        .select('id, npc_id, title, description, completed, created_at' as never)
+        .eq('user_id' as never, user!.id as never)
+        .not('npc_id' as never, 'is' as never, null as never)
+        .order('created_at' as never, { ascending: false } as never)
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as any;
+    },
+    staleTime: 60_000,
+  });
 
   const { data: affinityRows = [] } = useNpcAffinity();
   const incrementAffinity = useIncrementNpcAffinity();
@@ -467,11 +447,13 @@ export default function NpcPage() {
     setChatLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { messages: newMessages, npcPersona: persona },
+        body: { messages: newMessages, npcPersona: persona, npcId: npc.id },
       });
       if (error) throw error;
       const reply = (data as { content?: string; reply?: string })?.content ?? (data as { reply?: string })?.reply ?? 'Sem resposta.';
       setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      // Recarrega missões criadas pelo NPC para refletir no card
+      qc.invalidateQueries({ queryKey: ['npc_created_missions', user?.id] });
     } catch (err) {
       toast.error('Erro ao conversar com o NPC.');
       console.error('[NpcPage] chat error:', err);
@@ -782,6 +764,40 @@ export default function NpcPage() {
                   <Sparkles className="w-4 h-4" /> {t('app.npc.close_button')}
                 </Button>
               </DialogFooter>
+
+              {/* Missões criadas por este NPC via chat */}
+              {(() => {
+                const myMissions = npcCreatedMissions.filter(m => m.npc_id === selectedNpc.id);
+                if (myMissions.length === 0) return null;
+                return (
+                  <div className="border-t border-border pt-3 space-y-2">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 text-primary" />
+                      Missões geradas por {selectedNpc.name}
+                    </p>
+                    <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                      {myMissions.map(m => (
+                        <div
+                          key={m.id}
+                          className={`rounded-lg border px-3 py-2 text-sm ${
+                            m.completed
+                              ? 'border-border bg-card/40 text-muted-foreground'
+                              : 'border-primary/30 bg-primary/5 text-foreground'
+                          }`}
+                        >
+                          <span className={`font-medium ${m.completed ? 'line-through' : ''}`}>{m.title}</span>
+                          {m.description && (
+                            <span className="block text-xs text-muted-foreground mt-0.5">{m.description}</span>
+                          )}
+                          <span className="block text-[10px] text-muted-foreground mt-1">
+                            {new Date(m.created_at).toLocaleDateString('pt-BR')} • {m.completed ? '✓ Concluída' : 'Pendente'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
         </DialogContent>

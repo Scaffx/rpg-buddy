@@ -17,6 +17,21 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "check_npc_missions",
+      description: "Verifica missões já criadas por este NPC para o usuário. Use SEMPRE no início da conversa como NPC para evitar criar missões duplicadas recentes.",
+      parameters: {
+        type: "object",
+        properties: {
+          npc_id: { type: "string", description: "ID do NPC (atlas/nova/elara/zephyr/midas)" },
+        },
+        required: ["npc_id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_hero_status",
       description: "Retorna o status atual do herói: nível, XP, ouro, classe, atributos, missões de hoje e missões pendentes. Use quando o usuário perguntar sobre si mesmo, progresso, próximos passos, ou antes de sugerir algo personalizado.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
@@ -71,6 +86,7 @@ const tools = [
             description: "Período do dia (padrão: flex se não especificado)",
           },
           priority: { type: "string", enum: ["baixa","media","alta"] },
+          npc_id: { type: "string", description: "ID do NPC que está criando esta missão. Obrigatório quando você é um NPC (atlas/nova/elara/zephyr/midas)." },
         },
         required: ["title","attribute"],
         additionalProperties: false,
@@ -106,8 +122,22 @@ const tools = [
 ];
 
 // ───────────── Tool implementations ─────────────
-async function runTool(name: string, args: any, supa: any, userId: string) {
+async function runTool(name: string, args: any, supa: any, userId: string, npcId?: string) {
   try {
+    if (name === "check_npc_missions") {
+      const targetNpcId = args.npc_id ?? npcId;
+      const { data } = await supa
+        .from("missions")
+        .select("id,title,description,attribute_id,created_at,completed")
+        .eq("user_id", userId)
+        .eq("npc_id", targetNpcId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      const missions = data ?? [];
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const recent = missions.filter((m: any) => new Date(m.created_at).getTime() > sevenDaysAgo);
+      return { npc_missions: missions, recent_count: recent.length, has_recent: recent.length > 0, most_recent: recent[0] ?? null };
+    }
     if (name === "get_hero_status") {
       const [profileR, balR, attrsR, missionsR, classR] = await Promise.all([
         supa.from("profiles").select("display_name,level,total_xp,xp_today,missions_completed,boss_keys,current_class_id").eq("user_id", userId).maybeSingle(),
@@ -157,6 +187,7 @@ async function runTool(name: string, args: any, supa: any, userId: string) {
         days_of_week: Array.isArray(args.days_of_week) && args.days_of_week.length > 0 ? args.days_of_week : null,
         priority: args.priority ?? "media",
         xp_reward: 25,
+        npc_id: args.npc_id ?? npcId ?? null,
       }).select("id,title").single();
       if (error) throw error;
       return { created: data };
@@ -231,6 +262,47 @@ ESTILO GERAL:
 const SYSTEM_PROMPT = `Você é o Mestre RPG, conselheiro motivacional dentro do app Life on RPG.
 ${APP_CONTEXT}`;
 
+// Contexto especial para quando um NPC está no controle — sem fluxo guiado, criação direta de missões
+const NPC_APP_CONTEXT = `
+CONTEXTO DO APP Life on RPG:
+- O usuário transforma hábitos reais em missões de RPG, ganha XP, ouro, sobe de nível e enfrenta bosses.
+- 11 atributos disponíveis: Agilidade, Carisma, Criatividade, Disciplina, Força, Inteligência, Resiliência, Sabedoria, Vitalidade, Autoaperfeiçoamento, Relacionamento.
+- Períodos de horário: manhã, tarde, noite, flex.
+- Dias da semana: Seg, Ter, Qua, Qui, Sex, Sáb, Dom.
+- Prioridade: baixa, media, alta.
+
+═══════════════════════════════════════
+PROTOCOLO DE SAUDAÇÃO INICIAL (OBRIGATÓRIO)
+═══════════════════════════════════════
+Na PRIMEIRA mensagem do usuário, você DEVE executar SEMPRE:
+1. Chame get_hero_status → leia level, XP e atributos do herói
+2. Chame check_npc_missions com o seu npc_id → veja se já criou missão recente (últimos 7 dias)
+3. SE has_recent = false:
+   a. Calcule a MÉDIA de nível dos atributos do SEU domínio (ex: Atlas → Força, Vitalidade, Agilidade, Disciplina)
+   b. CALIBRE a dificuldade:
+      - Média < 3  → SEDENTÁRIO  → missão FÁCIL  (5–15 min, iniciante)
+      - Média 3–6  → COMUM       → missão MÉDIA   (20–40 min, moderada)
+      - Média > 6  → ATLETA      → missão DIFÍCIL (45–90 min, intensa)
+   c. Chame create_mission DIRETAMENTE com npc_id = seu ID. NÃO peça confirmação, crie já.
+   d. Informe o usuário da missão criada de forma entusiasmada e breve.
+4. SE has_recent = true:
+   Mencione a missão mais recente e encoraje o usuário a completá-la.
+
+REGRA DE CRIAÇÃO DIRETA: Como NPC, você SEMPRE usa create_mission diretamente.
+Nunca faça a sequência de perguntas guiadas para missões que você mesmo sugere.
+Se o usuário pedir para criar OUTRA missão específica, crie direto sem guia.
+
+OUTRAS FERRAMENTAS:
+- Pergunta sobre status/progresso? → get_hero_status
+- Pergunta sobre missões? → list_missions
+- Pede para concluir? → complete_mission
+- Pede para apagar? → delete_mission (confirme antes)
+
+ESTILO GERAL:
+- Português do Brasil, tom alinhado com sua personalidade.
+- Respostas curtas (máx 4 linhas). Use markdown leve.
+`;
+
 async function ensureActiveSubscriptionOrThrow(supa: any, userId: string) {
   const { data, error } = await supa.rpc("has_active_subscription", {
     user_uuid: userId,
@@ -260,7 +332,7 @@ serve(async (req) => {
 
   try {
     if (!GOOGLE_AI_KEY) throw new Error("GOOGLE_AI_KEY não configurada");
-    const { messages, npcPersona } = await req.json();
+    const { messages, npcPersona, npcId } = await req.json();
     if (!Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "messages deve ser array" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -283,19 +355,20 @@ serve(async (req) => {
 
     // Injeta persona de NPC quando fornecida
     // Quando npcPersona está presente, o NPC substitui completamente a identidade do Mestre RPG
-    const systemContent = typeof npcPersona === "string" && npcPersona.trim()
-      ? `Você é ${npcPersona.trim()}\n\nNÃO se identifique como "Mestre RPG". Você É este personagem, exclusivamente.\n${APP_CONTEXT}`
+    const isNpcMode = typeof npcPersona === "string" && npcPersona.trim();
+    const systemContent = isNpcMode
+      ? `Você é ${npcPersona.trim()}\n\nNÃO se identifique como "Mestre RPG". Você É este personagem, exclusivamente.\nSeu npc_id é: "${npcId ?? 'npc'}" — use-o em check_npc_missions e create_mission.\n${NPC_APP_CONTEXT}`
       : SYSTEM_PROMPT;
 
     // Loop de tool calling (não-streaming para suportar tools cleanly)
     const convo: any[] = [{ role: "system", content: systemContent }, ...messages];
 
-    for (let step = 0; step < 5; step++) {
+    for (let step = 0; step < 8; step++) {
       const aiResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${GOOGLE_AI_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "gemini-2.5-flash",
           messages: convo,
           tools,
         }),
@@ -334,7 +407,7 @@ serve(async (req) => {
         for (const tc of toolCalls) {
           let args: any = {};
           try { args = JSON.parse(tc.function.arguments || "{}"); } catch { /* */ }
-          const result = await runTool(tc.function.name, args, supa, userId);
+          const result = await runTool(tc.function.name, args, supa, userId, npcId);
           convo.push({
             role: "tool",
             tool_call_id: tc.id,
