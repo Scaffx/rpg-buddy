@@ -509,6 +509,24 @@ export function useUpdateDisplayName() {
   });
 }
 
+export function useUpdateRegion() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (region: string | null) => {
+      if (!user) throw new Error("Não autenticado");
+      const { error } = await supabase
+        .from("profiles")
+        .update({ region } as any)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
 export function useAttributes() {
   const { user } = useAuth();
   return useQuery({

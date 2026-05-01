@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useClasses, useSyncHealthMaxes } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useUpdateRegion, useClasses, useSyncHealthMaxes } from "@/hooks/useProfile";
 import {
   useFriends,
   usePendingRequests,
@@ -75,6 +75,15 @@ const RESPEC_CLASSES = [
   { id: "clerico", label: "Clerico" },
   { id: "arqueiro", label: "Arqueiro" },
 ] as const;
+
+const REGIONS = [
+  { id: 'south_america', name: 'América do Sul', icon: '🌎' },
+  { id: 'north_america', name: 'América do Norte', icon: '🌎' },
+  { id: 'europe', name: 'Europa', icon: '🌍' },
+  { id: 'africa', name: 'África', icon: '🌍' },
+  { id: 'asia', name: 'Ásia', icon: '🌏' },
+  { id: 'oceania', name: 'Oceania', icon: '🌏' },
+];
 
 // Returns "HH:MM" -> minutes from midnight (default fallbacks)
 function timeStringToMinutes(value: string | null | undefined, fallback: number): number {
@@ -714,6 +723,7 @@ export default function ProfilePage() {
   const equipBonuses = getEquipmentBonuses(inventory as InventoryItem[]);
   const awardHealthXP = useAwardHealthXP();
   const updateDisplayName = useUpdateDisplayName();
+  const updateRegion = useUpdateRegion();
   const syncHealthMaxes = useSyncHealthMaxes();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -750,6 +760,7 @@ export default function ProfilePage() {
   const [sleepTime, setSleepTime] = useState('23:00');
   const [wakeTime, setWakeTime] = useState('07:00');
   const [volume, setVolume] = useState(100);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [xpAwarded, setXpAwarded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
@@ -773,6 +784,13 @@ export default function ProfilePage() {
       setWakeTime(rawWake.slice(0, 5));
     }
   }, [healthStats]);
+
+  // Sync region from profile
+  useEffect(() => {
+    if (profile) {
+      setSelectedRegion((profile as any)?.region ?? null);
+    }
+  }, [profile]);
 
   // Load volume setting
   useEffect(() => {
@@ -1327,10 +1345,36 @@ export default function ProfilePage() {
             {/* Theme Toggle */}
             <ThemeToggleSettings />
 
+            {/* Region Selector */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-2 block">🌐 Região (afeta ranking regional)</label>
+              <div className="flex flex-wrap gap-2">
+                {REGIONS.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => setSelectedRegion(r.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                      selectedRegion === r.id
+                        ? 'border-primary bg-primary/20 text-primary'
+                        : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    <span>{r.icon}</span> {r.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
               onClick={() => {
                 saveSettings.mutate();
                 setVolume(volume);
+                if (selectedRegion !== ((profile as any)?.region ?? null)) {
+                  updateRegion.mutate(selectedRegion, {
+                    onSuccess: () => toast.success('Região atualizada!'),
+                    onError: (err: any) => toast.error(err.message || 'Erro ao salvar região'),
+                  });
+                }
               }}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90"
             >
