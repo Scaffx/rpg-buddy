@@ -15,10 +15,13 @@ import CombatArena from '@/components/CombatArena';
 import HeroStatusBar from '@/components/HeroStatusBar';
 import { useHeroStoryChoices, useSaveSkeletonChoice } from '@/hooks/useHeroStoryChoices';
 import { useAdoptSkeletonPup } from '@/hooks/useCompanion';
+import { useAuth } from '@/hooks/useAuth';
+import { useInventory } from '@/hooks/useInventory';
 
 /** Boss name patterns for story events (case-insensitive match) */
-const SKELETON_BOSS_PATTERN  = /esquelet/i;
-const MANTIROCA_BOSS_PATTERN = /mantiroca/i;
+const SKELETON_BOSS_PATTERN   = /esquelet/i;
+const MANTIROCA_BOSS_PATTERN  = /mantiroca/i;
+const IMMORTAL_BOSS_PATTERN   = /guerreiro\s+imortal/i;
 
 const REGION_LABELS: Record<string, string> = {
   south_america: 'América do Sul',
@@ -45,11 +48,13 @@ function useRankings(region: string | null) {
 
 export default function BossPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { data: bosses, isLoading } = useBosses();
   const { data: battles } = useBossBattles();
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
   const { data: healthStats } = useHealthStats();
+  const { data: inventory } = useInventory();
   const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -65,7 +70,7 @@ export default function BossPage() {
   const [boostedMantirocaHp,   setBoostedMantirocaHp]   = useState(0);
   // ────────────────────────────────────────────────────────────────────────
 
-  const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number; playerFatigue: number } | null>(null);
+  const [activeCombat, setActiveCombat] = useState<{ id: string; bossId: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number; playerFatigue: number } | null>(null);
   const [arenaVisible, setArenaVisible] = useState<boolean>(() => {
     const stored = localStorage.getItem('rpg_combat_arena_visible');
     return stored === null ? true : stored === 'true';
@@ -86,15 +91,117 @@ export default function BossPage() {
     // Skeleton story: fires once after defeating an "Esquelet…" boss
     const bossName = activeCombat?.bossName?.toLowerCase() ?? '';
     if (SKELETON_BOSS_PATTERN.test(bossName) && !storyChoices?.skeleton_champion) {
-      // small delay so victory screen is seen first
       setTimeout(() => setSkeletonStoryOpen(true), 1500);
     }
   };
 
-  const handleCombatDefeat = () => {
+  const handleCombatDefeat = async () => {
+    // ── Penalidade de morte: -1 nível + fadiga 100 ──────────────────────────
+    if (user && profile) {
+      const currentLevel = (profile as any).level ?? 1;
+      const newLevel = Math.max(1, currentLevel - 1);
+      try {
+        await Promise.all([
+          supabase.from('profiles' as never).update({ level: newLevel } as never).eq('user_id' as never, user.id as never),
+          supabase.from('user_health_stats' as never).update({ fatigue: 100 } as never).eq('user_id' as never, user.id as never),
+        ]);
+        toast({
+          title: '💀 Derrota Severa',
+          description: `Você perdeu 1 nível! Agora está no nível ${newLevel}. Fadiga máxima pelo resto do dia.`,
+          variant: 'destructive',
+        });
+      } catch {
+        // silent — UI still updates via invalidate
+      }
+    }
     queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['health_stats'] });
-    // Não fechar a arena automaticamente — usuário fecha pelo botão "Sair da Arena".
+  };
+
+  /** Guerreiro Imortal: player usa a Cabeça de Basilisco → derrota verdadeira */
+  const handleImmortalTrueDefeat = async () => {
+    if (!user || !activeCombat) return;
+    try {
+      // 1. Remover Cabeça de Basilisco do inventário
+      const basiliscoInv = inventory?.find(
+        (inv) => (inv.game_items as any)?.effect === 'derrota_guerreiro_imortal',
+      );
+      if (basiliscoInv) {
+        await supabase.from('user_inventory' as never).delete().eq('id' as never, basiliscoInv.id as never);
+        queryClient.invalidateQueries({ queryKey: ['inventory', user.id] });
+      }
+
+      // 2. Registrar vitória verdadeira em boss_battles
+      await supabase.from('boss_battles' as never).insert({
+        user_id: user.id,
+        boss_id: activeCombat.bossId,
+        damage_dealt: 1,
+        won: true,
+      } as never);
+
+      // 3. Recompensas de XP (boss lv * 50 + 200 bônus)
+      const bossData = (bosses as any[])?.find((b: any) => b.id === activeCombat.bossId);
+      if (bossData) {
+        const xpReward = Math.max(200, (bossData.level || 10) * 50);
+        const goldReward = Math.max(50, (bossData.gold_reward || (bossData.level || 10) * 10));
+        const { data: profileRow } = await supabase
+          .from('profiles' as never)
+          .select('total_xp, level' as never)
+          .eq('user_id' as never, user.id as never)
+          .maybeSingle();
+        if (profileRow) {
+          const newXp = ((profileRow as any).total_xp || 0) + xpReward;
+          const newLevel = Math.max((profileRow as any).level || 1, Math.floor(newXp / 200) + 1);
+          await supabase.from('profiles' as never).update({ total_xp: newXp, level: newLevel } as never).eq('user_id' as never, user.id as never);
+        }
+        const { data: balRow } = await supabase.from('user_balance' as never).select('gold' as never).eq('user_id' as never, user.id as never).maybeSingle();
+        if (balRow) {
+          await supabase.from('user_balance' as never).update({ gold: ((balRow as any).gold || 0) + goldReward } as never).eq('user_id' as never, user.id as never);
+        }
+      }
+
+      // 4. Drop Fragmento I do Pergaminho Ancestral
+      const { data: fragmentItem } = await supabase
+        .from('game_items' as never)
+        .select('id' as never)
+        .eq('effect' as never, 'quest_scroll_fragment_1' as never)
+        .maybeSingle();
+      if (fragmentItem) {
+        await supabase.from('user_inventory' as never).insert({
+          user_id: user.id,
+          item_id: (fragmentItem as any).id,
+          quantity: 1,
+          equipped: false,
+        } as never);
+      }
+
+      // 5. Marcar como verdadeiramente derrotado
+      await supabase.from('hero_story_choices' as never).upsert({
+        user_id: user.id,
+        guerreiro_imortal_defeated: true,
+      } as never, { onConflict: 'user_id' });
+
+      queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+
+      toast({
+        title: '💀 O Guerreiro Imortal foi derrotado!',
+        description: '🗿 A Cabeça de Basilisco o petrificou. Ele se transformou em pedra e desmoronou!',
+      });
+      setTimeout(() => {
+        toast({
+          title: '📜 Fragmento obtido!',
+          description: '"Fragmento I — A Arma Proibida" adicionado ao inventário.',
+        });
+      }, 2200);
+
+      setActiveCombat(null);
+    } catch (err: any) {
+      toast({ title: 'Erro ao aplicar derrota verdadeira', description: err?.message, variant: 'destructive' });
+    }
   };
 
   const handleCombatClose = () => {
@@ -187,6 +294,7 @@ export default function BossPage() {
 
       setActiveCombat({
         id: combat.id,
+        bossId: boss.id,
         bossName: boss.name,
         bossIcon: boss.icon,
         bossElement: boss.element ?? null,
@@ -320,6 +428,11 @@ export default function BossPage() {
                         onVictory={handleCombatVictory}
                         onDefeat={handleCombatDefeat}
                         onClose={handleCombatClose}
+                        hasBasiliscoHead={Boolean(
+                          inventory?.some((inv) => (inv.game_items as any)?.effect === 'derrota_guerreiro_imortal'),
+                        )}
+                        onImmortalFlee={handleCombatClose}
+                        onImmortalTrueDefeat={handleImmortalTrueDefeat}
                       />
                     ) : (
                       <div className="rpg-card flex items-center justify-between gap-4 py-4">

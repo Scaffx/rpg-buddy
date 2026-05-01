@@ -86,6 +86,12 @@ type CombatArenaProps = {
   onVictory?: () => void;
   onDefeat?: () => void;
   onClose?: () => void;
+  /** True se o jogador tem a Cabeça de Basilisco no inventário */
+  hasBasiliscoHead?: boolean;
+  /** Chamado quando o jogador foge do Guerreiro Imortal */
+  onImmortalFlee?: () => void;
+  /** Chamado quando o jogador usa a Cabeça de Basilisco para derrota verdadeira */
+  onImmortalTrueDefeat?: () => void;
 };
 
 type CombatSkill = {
@@ -210,6 +216,9 @@ export default function CombatArena({
   onVictory,
   onDefeat,
   onClose,
+  hasBasiliscoHead = false,
+  onImmortalFlee,
+  onImmortalTrueDefeat,
 }: CombatArenaProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -220,6 +229,13 @@ export default function CombatArena({
     [bossName, bossElement],
   );
   const bossResourceMax = useMemo(() => Math.max(40, Math.round(initialBossHp * 0.5)), [initialBossHp]);
+
+  // Guerreiro Imortal: detectar pelo nome
+  const isImmortalBoss = useMemo(() => /guerreiro\s+imortal/i.test(bossName ?? ''), [bossName]);
+  // 'none' = combate normal | 'reborn' = mostrando overlay de renascimento
+  const [immortalPhase, setImmortalPhase] = useState<'none' | 'reborn'>('none');
+  // Conta quantas vezes o imortal renasceu nesta sessão (0 = primeira vez)
+  const immortalRebirthCountRef = useRef(0);
 
   const [turn, setTurn] = useState<Turn>('idle');
   const [isRolling, setIsRolling] = useState(false);
@@ -403,6 +419,36 @@ export default function CombatArena({
     onDefeat?.();
   };
 
+  /** Reinicia o combate contra o Guerreiro Imortal após o renascimento (mantém HP do jogador). */
+  const handleImmortalFightAgain = async () => {
+    // Resetar HP do boss no banco de dados para que processar_turno use o valor correto
+    if (combateId && user) {
+      void supabase
+        .from('combates_ativos' as never)
+        .update({ hp_atual_boss: initialBossHp } as never)
+        .eq('id' as never, combateId as never);
+    }
+    setImmortalPhase('none');
+    currentBattleTokenRef.current += 1;
+    skillCursorRef.current = 0;
+    setBossHp(initialBossHp);
+    setBossResource(bossResourceMax);
+    setRollValue(null);
+    setDamagePopups([]);
+    setHitEffects([]);
+    setArenaShake(false);
+    setScreenFlash(false);
+    setLootDrop(null);
+    setBattleLog([]);
+    setCritParticles([]);
+    setConfetti([]);
+    setShowVictory(false);
+    setShowDefeat(false);
+    setInsufficientResourceWarning(null);
+    // Mantém HP/MP do jogador (sem chamar startBattle que os resetaria)
+    setTurn('player');
+  };
+
   const startBattle = () => {
     // Resume the WebAudio context from a user gesture so SFX play reliably.
     resumeAudioContext();
@@ -573,7 +619,28 @@ export default function CombatArena({
         if (turnResult.loot_drop) {
           setLootDrop(turnResult.loot_drop);
         }
-        launchVictoryCinematic();
+
+        if (isImmortalBoss) {
+          // Mostrar vitória brevemente, depois acionar renascimento
+          setShowVictory(true);
+          sfx.victory();
+          const isFirstTime = immortalRebirthCountRef.current === 0;
+          immortalRebirthCountRef.current += 1;
+          setTimeout(() => {
+            if (!mountedRef.current) return;
+            setShowVictory(false);
+            setImmortalPhase('reborn');
+            // Resetar HP do boss no client (DB será resetado ao clicar em Enfrentar Novamente)
+            setBossHp(initialBossHp);
+            setBossResource(bossResourceMax);
+            // Avisar se é a primeira vez (para estilo diferente no overlay)
+            if (!isFirstTime) {
+              // Reutilizamos immortalRebirthCountRef; o overlay lê o ref
+            }
+          }, 2000);
+        } else {
+          launchVictoryCinematic();
+        }
         setTurn('finished');
         return;
       }
@@ -977,6 +1044,95 @@ export default function CombatArena({
             >
               Continuar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Overlay de Renascimento do Guerreiro Imortal ───────────────────────── */}
+      {immortalPhase === 'reborn' && (
+        <div className="pointer-events-auto fixed inset-0 z-50 overflow-hidden flex flex-col items-center justify-center">
+          <div className="absolute inset-0 bg-black" />
+          <div
+            className="absolute inset-0 animate-defeat-shake"
+            style={{
+              background: 'radial-gradient(ellipse at center, hsl(0 90% 20% / 0.5) 0%, transparent 70%)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'conic-gradient(from 0deg, transparent 0deg, hsl(0 90% 40% / 0.15) 10deg, transparent 20deg, transparent 50deg, hsl(0 90% 30% / 0.12) 60deg, transparent 70deg)',
+            }}
+          />
+          <div className="relative z-10 text-center space-y-8 px-6 max-w-2xl">
+            <motion.div
+              initial={{ scale: 0.05, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.9, type: 'spring', stiffness: 150, damping: 12 }}
+            >
+              {immortalRebirthCountRef.current <= 1 ? (
+                <p className="font-cinzel font-black text-5xl md:text-8xl text-red-500 drop-shadow-[0_0_50px_hsl(0_90%_50%/1)] leading-tight uppercase">
+                  O GUERREIRO<br />IMORTAL<br />RENASCE
+                </p>
+              ) : (
+                <p className="font-cinzel font-black text-4xl md:text-6xl text-red-400 drop-shadow-[0_0_30px_hsl(0_80%_45%/0.9)] leading-tight uppercase">
+                  Ele Renasce<br />Novamente...
+                </p>
+              )}
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="text-red-200/70 text-sm md:text-base tracking-widest"
+            >
+              {immortalRebirthCountRef.current <= 1
+                ? 'A força bruta não é suficiente para derrotá-lo...'
+                : 'Ele não conhece o fim. Apenas a Cabeça de Basilisco pode pará-lo.'}
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.2 }}
+              className="flex flex-col items-center gap-3"
+            >
+              {hasBasiliscoHead && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImmortalPhase('none');
+                    onImmortalTrueDefeat?.();
+                  }}
+                  className="w-72 rounded-xl border border-purple-400/70 bg-purple-700/60 px-6 py-3.5 font-bold text-purple-100 hover:bg-purple-600/80 transition text-base shadow-[0_0_20px_hsl(270_80%_50%/0.4)]"
+                >
+                  🗿 Usar Cabeça de Basilisco
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleImmortalFightAgain}
+                className="w-72 rounded-xl border border-red-500/50 bg-red-800/50 px-6 py-3.5 font-bold text-red-100 hover:bg-red-700/70 transition text-base"
+              >
+                ⚔️ Enfrentar Novamente
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImmortalPhase('none');
+                  if (onImmortalFlee) {
+                    onImmortalFlee();
+                  } else {
+                    onClose?.();
+                  }
+                }}
+                className="w-72 rounded-xl border border-zinc-600/50 bg-zinc-800/60 px-6 py-3 text-zinc-300 hover:bg-zinc-700/70 transition text-sm"
+              >
+                🏃 Fugir (Abandonar)
+              </button>
+            </motion.div>
           </div>
         </div>
       )}

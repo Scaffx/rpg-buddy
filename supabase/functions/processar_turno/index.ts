@@ -751,7 +751,12 @@ Deno.serve(async (req) => {
     }
 
     // On victory: register boss battle, grant rewards and loot
-    if (status === 'vitoria' && combat.bosses) {
+    // ⚠️ Guerreiro Imortal: when HP hits 0 he REBIRTHS — client handles the rebirth overlay.
+    //    Do NOT register boss_battles or grant rewards here; the client does it only after
+    //    the player uses the "Cabeça de Basilisco" to truly defeat him.
+    const isImmortalBoss = /guerreiro\s+imortal/i.test(String(combat.bosses?.name || ''));
+
+    if (status === 'vitoria' && combat.bosses && !isImmortalBoss) {
       const bossLevel = combat.bosses.level || 1;
 
       // Register victory in boss_battles (for "isDefeated" tracking on BossPage)
