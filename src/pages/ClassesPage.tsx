@@ -86,10 +86,10 @@ export default function ClassesPage() {
   }, [profile, user]);
 
   // Check if class reward was already claimed
-  const rewardClaimed = useMemo(() => {
+  const [rewardClaimed, setRewardClaimed] = useState(() => {
     if (!user) return false;
-    return localStorage.getItem(`class_reward_claimed_${user.id}`) === 'true';
-  }, [user]);
+    return localStorage.getItem(`class_reward_claimed_${user?.id}`) === 'true';
+  });
 
   // Build tree from flat list
   const tree = useMemo(() => {
@@ -223,6 +223,7 @@ export default function ClassesPage() {
     try {
       await addGold.mutateAsync({ amount: 50, reason: 'Recompensa de classe inicial', type: 'class_reward' });
       localStorage.setItem(`class_reward_claimed_${user.id}`, 'true');
+      setRewardClaimed(true);
       toast({ title: `🎉 ${t('app.classes.reward_collected')}`, description: t('app.classes.reward_collected_desc') });
       setSelectedDetail(null);
     } catch {

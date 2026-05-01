@@ -40,15 +40,17 @@ export function useAddGold() {
         .from('user_balance')
         .select('gold')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
-      const currentGold = (bal as any)?.gold ?? 100;
+      const currentGold = (bal as any)?.gold ?? 0;
       const newGold = currentGold + amount;
       
       await supabase
         .from('user_balance')
-        .update({ gold: newGold, updated_at: new Date().toISOString() } as any)
-        .eq('user_id', user.id);
+        .upsert(
+          { user_id: user.id, gold: newGold, updated_at: new Date().toISOString() } as any,
+          { onConflict: 'user_id' }
+        );
 
       await supabase.from('gold_history' as any).insert({
         user_id: user.id,
