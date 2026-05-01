@@ -19,9 +19,10 @@ type ProcessarTurnoBody = {
 
 // Custo de MP de uma habilidade do jogador, derivado do "power".
 // Mantido em sincronia com src/components/CombatArena.tsx -> getSkillMpCost.
+// Cada ~15 de poder custa 1 MP (mín. 2, máx. 16) — gestão de mana relevante.
 const getSkillMpCost = (power: number): number => {
   if (!power || power <= 0) return 0;
-  return Math.max(1, Math.min(8, Math.ceil(power / 30)));
+  return Math.max(2, Math.min(16, Math.ceil(power / 15)));
 };
 
 type CombatRow = {
@@ -56,13 +57,40 @@ type SkillResolution = {
   reduceIncomingPct: number;
   slowBossPct: number;
   effects: string[];
+  /** Element (fogo/gelo/sagrado/trevas/natureza/agua/neutro) inferred from name/id */
+  element: SkillElement;
+  /** Magical skills bypass physical mitigations like stone_skin */
+  isMagical: boolean;
 };
+
+type BossSkillKind =
+  | 'attack'
+  | 'stone_skin'
+  | 'damage_reduction'
+  | 'regen'
+  | 'dark_curse'
+  | 'slow'
+  | 'fire_aura';
 
 type BossSkillResolution = {
   name: string;
   damageMultiplier: number;
   effects: string[];
+  kind: BossSkillKind;
+  /** % de dano físico do jogador a ser ignorado neste turno (0..1) */
+  physicalResistPct: number;
+  /** % de dano TOTAL do jogador a ser reduzido neste turno (0..1) */
+  damageReductionPct: number;
+  /** % de HP máximo do boss a ser regenerado neste turno (0..1) */
+  selfHealPct: number;
+  /** % do dano final do boss reduzido por confusão/maldição que ele aplicou em si — não, isso é debuff no PLAYER */
+  /** % de redução do dano que o BOSS irá causar (boss enfraquece a si por focar em controle, 0..1) */
+  bossDamageSelfPenaltyPct: number;
+  /** % de redução de dano causado PELO PLAYER no próximo ataque (debuff persistente, 0..1) */
+  playerDamageDebuffPct: number;
 };
+
+type SkillElement = 'fogo' | 'gelo' | 'sagrado' | 'trevas' | 'natureza' | 'agua' | 'arcano' | 'neutro';
 
 type BossItem = {
   id: string;
@@ -112,16 +140,31 @@ const ensureActiveSubscriptionOrThrow = async (supabase: ReturnType<typeof creat
   }
 };
 
+const detectSkillElement = (text: string): SkillElement => {
+  const t = text.toLowerCase();
+  if (/fogo|chama|igni|brasa|inferno|piro|flamej|incendi/.test(t)) return 'fogo';
+  if (/gelo|frio|neve|cristal|congel|crio|glaci/.test(t)) return 'gelo';
+  if (/sagrad|santo|luz|raio sereno|divino|holy|cleric/.test(t)) return 'sagrado';
+  if (/trevas|sombra|escurid|abismo|necro|amaldi/.test(t)) return 'trevas';
+  if (/natur|raiz|seiva|verde|floresta|veneno|toxic/.test(t)) return 'natureza';
+  if (/agua|onda|mare|tsun|aqu/.test(t)) return 'agua';
+  if (/arcan|lucid|vetor|runa|magic|mistic/.test(t)) return 'arcano';
+  return 'neutro';
+};
+
 const buildPlayerSkillResolution = (body: ProcessarTurnoBody): SkillResolution => {
   const idAndName = `${String(body.skill_id || '')} ${String(body.skill_name || '')}`.toLowerCase();
   const skillPower = Math.max(0, toNumber(body.skill_power, 0));
   const powerBonus = clamp(skillPower / 240, 0, 0.55);
   const isDefensive = /escudo|guarda|postura|oracao|amparo|voto/.test(idAndName);
   const isSlow = /lateral|passo|fantasma|vetor|cortina|selo|ritmo|finta/.test(idAndName);
+  const isMagical = /lanca|raio|magia|arcan|igni|piro|crio|necro|trevas|sombra|sagrad|luz|runa|encant|magic|lucid|vetor/.test(idAndName);
+  const element = detectSkillElement(idAndName);
 
   const effects: string[] = [];
   if (isDefensive) effects.push('damage_reduction');
   if (isSlow) effects.push('slow');
+  if (element !== 'neutro') effects.push(`element:${element}`);
 
   return {
     name: String(body.skill_name || 'Ataque Basico'),
@@ -129,36 +172,123 @@ const buildPlayerSkillResolution = (body: ProcessarTurnoBody): SkillResolution =
     reduceIncomingPct: isDefensive ? 0.18 : 0,
     slowBossPct: isSlow ? 0.15 : 0,
     effects,
+    element,
+    isMagical,
   };
+};
+
+/** Detect boss skill kind from explicit effect tags + name keywords. */
+const resolveBossSkillKind = (name: string, explicitEffects: string[]): BossSkillKind => {
+  // Explicit tags win
+  if (explicitEffects.includes('stone_skin') || explicitEffects.includes('pele_de_pedra')) return 'stone_skin';
+  if (explicitEffects.includes('regen') || explicitEffects.includes('heal') || explicitEffects.includes('cura')) return 'regen';
+  if (explicitEffects.includes('dark_curse') || explicitEffects.includes('curse')) return 'dark_curse';
+  if (explicitEffects.includes('fire_aura') || explicitEffects.includes('fire_immune') || explicitEffects.includes('imunidade_fogo')) return 'fire_aura';
+  if (explicitEffects.includes('slow')) return 'slow';
+  if (explicitEffects.includes('damage_reduction')) return 'damage_reduction';
+
+  // Name heuristics
+  const t = name.toLowerCase();
+  if (/pele de pedra|pele.{0,3}pedra|granito|petrif|rocha viva/.test(t)) return 'stone_skin';
+  if (/regener|cura|cicatriz|sangue vivo|drenar|absor.{0,4}vital|recuper/.test(t)) return 'regen';
+  if (/maldi|curse|trevas|sombra|escurid|cegueira|cega|amaldi/.test(t)) return 'dark_curse';
+  if (/imunidade.{0,8}fogo|aura.{0,6}flama|chama.{0,6}interna|inferno|cor.{0,3}o de fogo/.test(t)) return 'fire_aura';
+  if (/lento|teia|gelo|torpor|congel|crio|paralis/.test(t)) return 'slow';
+  if (/postura|barreira|escudo|guarda|defesa|reflex|muralha/.test(t)) return 'damage_reduction';
+  return 'attack';
 };
 
 const parseBossSkills = (raw: unknown): BossSkillResolution[] => {
   const fallback: BossSkillResolution[] = [
-    { name: 'Golpe Selvagem', damageMultiplier: 1.1, effects: [] },
-    { name: 'Acoite Pesado', damageMultiplier: 1.2, effects: [] },
-    { name: 'Pressao Brutal', damageMultiplier: 0.95, effects: ['damage_reduction'] },
+    makeBossSkill('Golpe Selvagem',  1.10, [], 'attack'),
+    makeBossSkill('Acoite Pesado',   1.20, [], 'attack'),
+    makeBossSkill('Pressao Brutal',  0.90, ['damage_reduction'], 'damage_reduction'),
   ];
 
   if (!Array.isArray(raw) || raw.length === 0) return fallback;
 
   return raw.map((entry: any) => {
     const name = String(entry?.name || 'Golpe Selvagem');
-    const multiplier = clamp(toNumber(entry?.damage_multiplier, 1.05), 0.75, 2.5);
+    const multiplier = clamp(toNumber(entry?.damage_multiplier, 1.05), 0.6, 2.5);
     const explicitEffects = Array.isArray(entry?.effects)
       ? entry.effects.map((e: unknown) => String(e).toLowerCase())
       : [];
-
-    const derivedEffects = [...explicitEffects];
-    const normalizedName = name.toLowerCase();
-    if (derivedEffects.length === 0 && /lento|teia|gel|torpor/.test(normalizedName)) derivedEffects.push('slow');
-    if (derivedEffects.length === 0 && /postura|barreira|pedra|escudo/.test(normalizedName)) derivedEffects.push('damage_reduction');
-
-    return {
-      name,
-      damageMultiplier: multiplier,
-      effects: derivedEffects,
-    };
+    const kind = resolveBossSkillKind(name, explicitEffects);
+    return makeBossSkill(name, multiplier, explicitEffects, kind);
   });
+};
+
+/** Build a fully-resolved BossSkillResolution given a kind. */
+const makeBossSkill = (
+  name: string,
+  damageMultiplier: number,
+  explicitEffects: string[],
+  kind: BossSkillKind,
+): BossSkillResolution => {
+  const effects = [...explicitEffects];
+  let physicalResistPct      = 0;
+  let damageReductionPct     = 0;
+  let selfHealPct            = 0;
+  let bossDamageSelfPenaltyPct = 0;
+  let playerDamageDebuffPct  = 0;
+  let mult = damageMultiplier;
+
+  switch (kind) {
+    case 'stone_skin':
+      // Pele de Pedra: aguenta o golpe físico, mas ataque sai mais fraco
+      physicalResistPct = 0.6;
+      damageReductionPct = 0.15;
+      bossDamageSelfPenaltyPct = 0.35; // boss focado em defender
+      mult = Math.min(mult, 0.85);
+      if (!effects.includes('stone_skin')) effects.push('stone_skin');
+      break;
+    case 'damage_reduction':
+      // Postura/Barreira/Escudo: reduz dano genérico
+      damageReductionPct = 0.4;
+      bossDamageSelfPenaltyPct = 0.25;
+      mult = Math.min(mult, 0.9);
+      if (!effects.includes('damage_reduction')) effects.push('damage_reduction');
+      break;
+    case 'regen':
+      // Boss se cura no turno em que usa
+      selfHealPct = 0.08;
+      bossDamageSelfPenaltyPct = 0.4; // gasto de turno
+      mult = Math.min(mult, 0.8);
+      if (!effects.includes('regen')) effects.push('regen');
+      break;
+    case 'dark_curse':
+      // Maldição: enfraquece o próximo dano do jogador (debuff aplicado já neste turno)
+      playerDamageDebuffPct = 0.35;
+      bossDamageSelfPenaltyPct = 0.2;
+      if (!effects.includes('dark_curse')) effects.push('dark_curse');
+      break;
+    case 'fire_aura':
+      // Aura/imunidade ao fogo: se for atacado por fogo NEGA o dano e ganha cura
+      // Esses efeitos são processados na execução, não aqui
+      mult = Math.max(mult, 1.1); // ataque com fogo
+      if (!effects.includes('fire_aura')) effects.push('fire_aura');
+      break;
+    case 'slow':
+      // Lentidão: efeito mantido como antes
+      bossDamageSelfPenaltyPct = 0.1;
+      if (!effects.includes('slow')) effects.push('slow');
+      break;
+    case 'attack':
+    default:
+      break;
+  }
+
+  return {
+    name,
+    damageMultiplier: mult,
+    effects,
+    kind,
+    physicalResistPct,
+    damageReductionPct,
+    selfHealPct,
+    bossDamageSelfPenaltyPct,
+    playerDamageDebuffPct,
+  };
 };
 
 const canBossUseItem = (boss: CombatRow['bosses'], item: BossItem | null): boolean => {
@@ -365,14 +495,79 @@ Deno.serve(async (req) => {
     const effectiveBossDefense =
       combat.bosses.defesa_base + (bossItemEnabled ? Math.floor(toNumber(bossItem?.def_bonus, 0) * 0.5) : 0);
 
-    const danoPlayer = calculateDamage(
+    let danoPlayer = calculateDamage(
       playerAttackBase,
       dadoPlayer,
       effectiveBossDefense,
       2 * playerSkill.damageMultiplier,
     );
 
+    // ── Boss MECHANICS APPLIED TO PLAYER DAMAGE ──────────────────────────
+    const bossEffectLog: string[] = [...bossSkill.effects];
+    let bossSelfHeal = 0;
+    let elementalReaction: 'immune' | 'absorb' | 'weak' | null = null;
+
+    // 1) Pele de Pedra: bloqueia ~60% de dano FÍSICO (não-mágico)
+    if (bossSkill.physicalResistPct > 0 && !playerSkill.isMagical) {
+      const before = danoPlayer;
+      danoPlayer = Math.max(1, Math.floor(danoPlayer * (1 - bossSkill.physicalResistPct)));
+      bossEffectLog.push(`stone_skin_blocked:${before - danoPlayer}`);
+    }
+
+    // 2) Damage reduction genérica (Postura/Barreira/Escudo)
+    if (bossSkill.damageReductionPct > 0) {
+      const before = danoPlayer;
+      danoPlayer = Math.max(1, Math.floor(danoPlayer * (1 - bossSkill.damageReductionPct)));
+      bossEffectLog.push(`reduced:${before - danoPlayer}`);
+    }
+
+    // 3) Elemento: matchup de afinidade (boss.element vs playerSkill.element)
+    const bossElement = String(combat.bosses?.element || '').toLowerCase();
+    const playerElement = playerSkill.element;
+
+    // Aura/Imunidade ao Fogo: nega dano se ataque é fogo + cura o boss
+    if (bossSkill.kind === 'fire_aura' && playerElement === 'fogo') {
+      bossSelfHeal += Math.floor(danoPlayer * 0.5);
+      danoPlayer = 0;
+      elementalReaction = 'absorb';
+      bossEffectLog.push('fire_immune_absorbed');
+    }
+    // Boss elemental absorvendo seu próprio elemento (e.g. boss "Fogo" recebe ataque de "fogo")
+    else if (bossElement && playerElement !== 'neutro' && bossElement.includes(playerElement)) {
+      const before = danoPlayer;
+      danoPlayer = Math.max(0, Math.floor(danoPlayer * 0.5));
+      elementalReaction = 'immune';
+      bossEffectLog.push(`element_resist:${playerElement}:${before - danoPlayer}`);
+    }
+    // Fraqueza elemental: trevas/morto-vivo -> sagrado, fogo -> gelo, gelo -> fogo
+    else if (
+      (bossElement.includes('trevas') || bossElement.includes('morto') || bossElement.includes('demonio')) && playerElement === 'sagrado' ||
+      bossElement.includes('fogo')  && playerElement === 'gelo' ||
+      bossElement.includes('gelo')  && playerElement === 'fogo' ||
+      bossElement.includes('natur') && playerElement === 'fogo' ||
+      bossElement.includes('agua')  && playerElement === 'natureza'
+    ) {
+      const before = danoPlayer;
+      danoPlayer = Math.floor(danoPlayer * 1.5);
+      elementalReaction = 'weak';
+      bossEffectLog.push(`element_weak:${playerElement}:+${danoPlayer - before}`);
+    }
+
     let hpBossRestante = Math.max(combat.hp_atual_boss - danoPlayer, 0);
+
+    // 4) Boss Regen: cura uma fração do HP máximo
+    if (bossSkill.selfHealPct > 0 && hpBossRestante > 0) {
+      const maxBossHp = toNumber(combat.bosses?.hp, hpBossRestante);
+      const healAmount = Math.max(1, Math.floor(maxBossHp * bossSkill.selfHealPct));
+      bossSelfHeal += healAmount;
+    }
+    if (bossSelfHeal > 0 && hpBossRestante > 0) {
+      const maxBossHp = toNumber(combat.bosses?.hp, hpBossRestante);
+      const healed = Math.min(bossSelfHeal, Math.max(0, maxBossHp - hpBossRestante));
+      hpBossRestante = Math.min(maxBossHp, hpBossRestante + bossSelfHeal);
+      if (healed > 0) bossEffectLog.push(`heal:+${healed}`);
+    }
+
     let dadoBoss = 0;
     let danoBoss = 0;
     let hpPlayerRestante = combat.hp_atual_personagem;
@@ -388,7 +583,11 @@ Deno.serve(async (req) => {
       const bossAttackBase =
         combat.bosses.ataque_base +
         (bossItemEnabled ? toNumber(bossItem?.atk_bonus, 0) + Math.floor(toNumber(bossItem?.matk_bonus, 0) * 0.5) : 0);
-      const bossMultiplier = Math.max(0.6, 1.5 * bossSkill.damageMultiplier * (1 - playerSkill.slowBossPct));
+      // Skill defensiva/regen reduz o ataque do boss neste turno
+      let bossMultiplier = Math.max(0.4, 1.5 * bossSkill.damageMultiplier * (1 - playerSkill.slowBossPct));
+      if (bossSkill.bossDamageSelfPenaltyPct > 0) {
+        bossMultiplier = bossMultiplier * (1 - bossSkill.bossDamageSelfPenaltyPct);
+      }
 
       danoBoss = calculateDamage(
         bossAttackBase,
@@ -396,6 +595,18 @@ Deno.serve(async (req) => {
         combat.personagens.defesa_base,
         bossMultiplier,
       );
+      // 5) Maldição da Escuridão: reduz o dano final do jogador no PRÓXIMO ataque (aplicado já neste turno via debuff de eficácia geral) — porém, como turn é atômico, aplicamos a redução AO DANO FINAL do boss para representar a aura debilitante? Não: a maldição reduz o dano que O JOGADOR causou neste turno. Aplicamos retroativamente.
+      if (bossSkill.playerDamageDebuffPct > 0) {
+        const before = danoPlayer;
+        const newDano = Math.max(0, Math.floor(danoPlayer * (1 - bossSkill.playerDamageDebuffPct)));
+        const blocked = before - newDano;
+        if (blocked > 0) {
+          bossEffectLog.push(`curse_debuff:${blocked}`);
+          // re-ajusta hp do boss já calculado
+          hpBossRestante = Math.min(toNumber(combat.bosses?.hp, hpBossRestante), hpBossRestante + blocked);
+          danoPlayer = newDano;
+        }
+      }
       if (playerSkill.reduceIncomingPct > 0) {
         danoBoss = Math.max(1, Math.floor(danoBoss * (1 - playerSkill.reduceIncomingPct)));
       }
@@ -411,7 +622,8 @@ Deno.serve(async (req) => {
     }
 
     const playerEffects = [...playerSkill.effects];
-    const bossEffects = [...bossSkill.effects];
+    const bossEffects = bossEffectLog;
+    if (elementalReaction) bossEffects.push(`reaction:${elementalReaction}`);
     if (bossItemEnabled && bossItem?.name) {
       bossEffects.push(`item:${bossItem.name}`);
     }
