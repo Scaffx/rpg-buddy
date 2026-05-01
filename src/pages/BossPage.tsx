@@ -4,13 +4,21 @@ import { motion } from 'framer-motion';
 import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown, Eye, EyeOff } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CombatArena from '@/components/CombatArena';
 import HeroStatusBar from '@/components/HeroStatusBar';
+import { useHeroStoryChoices, useSaveSkeletonChoice } from '@/hooks/useHeroStoryChoices';
+import { useAdoptSkeletonPup } from '@/hooks/useCompanion';
+
+/** Boss name patterns for story events (case-insensitive match) */
+const SKELETON_BOSS_PATTERN  = /esquelet/i;
+const MANTIROCA_BOSS_PATTERN = /mantiroca/i;
 
 const RANKING_REGIONS = [
   { id: null, name: 'Ranking Mundial', icon: '🌐' },
@@ -45,6 +53,18 @@ export default function BossPage() {
   const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // ── Story hooks ─────────────────────────────────────────────────────────
+  const { data: storyChoices }    = useHeroStoryChoices();
+  const saveSkeletonChoice        = useSaveSkeletonChoice();
+  const adoptSkeletonPup          = useAdoptSkeletonPup();
+
+  const [skeletonStoryOpen,    setSkeletonStoryOpen]    = useState(false);
+  const [skeletonPupName,      setSkeletonPupName]      = useState('Ossinho');
+  const [mantirocaWarningBoss, setMantirocaWarningBoss] = useState<any | null>(null);
+  const [boostedMantirocaHp,   setBoostedMantirocaHp]   = useState(0);
+  // ────────────────────────────────────────────────────────────────────────
+
   const [activeCombat, setActiveCombat] = useState<{ id: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number; playerFatigue: number } | null>(null);
   const [arenaVisible, setArenaVisible] = useState<boolean>(() => {
     const stored = localStorage.getItem('rpg_combat_arena_visible');
@@ -61,7 +81,13 @@ export default function BossPage() {
     queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['health_stats'] });
     queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-    // Não fechar a arena automaticamente — usuário fecha pelo botão "Sair da Arena".
+
+    // Skeleton story: fires once after defeating an "Esquelet…" boss
+    const bossName = activeCombat?.bossName?.toLowerCase() ?? '';
+    if (SKELETON_BOSS_PATTERN.test(bossName) && !storyChoices?.skeleton_champion) {
+      // small delay so victory screen is seen first
+      setTimeout(() => setSkeletonStoryOpen(true), 1500);
+    }
   };
 
   const handleCombatDefeat = () => {
@@ -131,7 +157,15 @@ export default function BossPage() {
       toast({ title: `✨ ${t('app.boss.joined_dungeon', { name: dungeonName })}`, description: t('app.boss.waiting_players') });
   };
 
-  const handleStartArenaCombat = async (boss: any) => {
+  const handleStartArenaCombat = async (boss: any, overrideBossHp?: number) => {
+    // Mantiroca + skeleton rejection = skeleton rides it and boss gets +40% HP
+    if (MANTIROCA_BOSS_PATTERN.test(boss.name ?? '') && storyChoices?.skeleton_champion === 'reject' && !overrideBossHp) {
+      const baseBossHp = boss.hp_max ?? boss.hp ?? 100;
+      setBoostedMantirocaHp(Math.round(baseBossHp * 1.4));
+      setMantirocaWarningBoss(boss);
+      return;
+    }
+
     try {
       const combat = await startActiveCombat.mutateAsync({ bossId: boss.id });
 
@@ -155,7 +189,7 @@ export default function BossPage() {
         bossName: boss.name,
         bossIcon: boss.icon,
         bossElement: boss.element ?? null,
-        bossHp: Number(combat.hp_atual_boss ?? boss.hp_max ?? boss.hp ?? 100),
+        bossHp: overrideBossHp ?? Number(combat.hp_atual_boss ?? boss.hp_max ?? boss.hp ?? 100),
         playerHp: currentHp,
         playerMp: currentMp,
         playerMaxMp: maxMp,
@@ -676,6 +710,128 @@ export default function BossPage() {
           </div>
         )}
       </div>
+
+      {/* ── Skeleton Story Dialog ──────────────────────────────────────────── */}
+      <Dialog open={skeletonStoryOpen} onOpenChange={setSkeletonStoryOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              💀 Um Último Segredo…
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
+                <p>
+                  Enquanto o Esqueletão Campeão desmorona, algo se mexe entre os ossos espalhados
+                  no chão…
+                </p>
+                <p>
+                  Um <span className="text-violet-400 font-semibold">filhote de esqueleto</span> —
+                  pequeno, confuso, olhos-de-fogo piscando — emerge da névoa.
+                  Era o filho do campeão. Agora está sozinho.
+                </p>
+                <p>
+                  Ele olha para você. Não com raiva. Com curiosidade.
+                </p>
+                <p className="font-semibold text-foreground">
+                  Você deseja treinar esse filhote e levá-lo como companheiro?
+                </p>
+                <div className="pt-1">
+                  <p className="text-xs">Que nome você daria a ele?</p>
+                  <Input
+                    value={skeletonPupName}
+                    onChange={(e) => setSkeletonPupName(e.target.value)}
+                    placeholder="Ex: Ossinho, Fang, Sombra…"
+                    className="mt-1.5"
+                    maxLength={32}
+                  />
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                saveSkeletonChoice.mutate('reject', {
+                  onSuccess: () => toast({ title: 'O filhote desapareceu na escuridão… Por ora. 💀' }),
+                });
+                setSkeletonStoryOpen(false);
+              }}
+            >
+              Deixar partir
+            </Button>
+            <Button
+              className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700"
+              disabled={adoptSkeletonPup.isPending || saveSkeletonChoice.isPending}
+              onClick={() => {
+                const name = skeletonPupName.trim() || 'Ossinho';
+                saveSkeletonChoice.mutate('adopt', {
+                  onSuccess: () => {
+                    adoptSkeletonPup.mutate(name, {
+                      onSuccess: () => toast({ title: `💀 ${name} decidiu seguir você! Cuide bem dele.` }),
+                      onError: () => toast({ title: 'Erro ao adotar o filhote. Tente novamente.', variant: 'destructive' }),
+                    });
+                  },
+                });
+                setSkeletonStoryOpen(false);
+              }}
+            >
+              💀 Adotar {skeletonPupName || 'Ossinho'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Mantiroca Warning Dialog ───────────────────────────────────────── */}
+      <Dialog open={!!mantirocaWarningBoss} onOpenChange={(open) => { if (!open) setMantirocaWarningBoss(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              Aliança Inesperada!
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
+                <p>
+                  Quando você se aproxima da <span className="font-semibold text-foreground">Mantiroca Venenosa</span>,
+                  uma figura familiar surge montada em seu dorso…
+                </p>
+                <p>
+                  É o <span className="text-violet-400 font-semibold">filhote do Esqueletão</span> —
+                  o mesmo que você recusou acolher. Ele encontrou um novo lar… e um novo propósito.
+                </p>
+                <p>
+                  Juntos, eles são mais perigosos.{' '}
+                  <span className="font-semibold text-red-400">A Mantiroca tem +40% de HP!</span>
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setMantirocaWarningBoss(null)}
+            >
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              className="w-full sm:w-auto"
+              disabled={startActiveCombat.isPending}
+              onClick={() => {
+                const boss = mantirocaWarningBoss;
+                setMantirocaWarningBoss(null);
+                handleStartArenaCombat(boss, boostedMantirocaHp);
+              }}
+            >
+              Enfrentar assim mesmo ⚔️
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
+

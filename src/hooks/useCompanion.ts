@@ -6,32 +6,60 @@ export interface CompanionRow {
   id: string;
   user_id: string;
   companion_type: string;
+  origin: string;
   name: string;
   level: number;
   xp: number;
   mood: number;
+  equipped_item_id: string | null;
   last_fed_at: string | null;
   last_played_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
+// ── Animal companions (lv 3 unlock, one-time choice) ─────────────────────────
+
 export const COMPANION_TYPES = [
-  { id: 'fox',        name: 'Raposa',       emoji: '🦊', description: 'Esperta e ágil, perfeita para aventureiros inquietos.' },
-  { id: 'owl',        name: 'Coruja',       emoji: '🦉', description: 'Sábia e vigilante, guia nos caminhos do conhecimento.' },
-  { id: 'wolf',       name: 'Lobo',         emoji: '🐺', description: 'Fiel e corajoso, companheiro inabalável em batalhas.' },
-  { id: 'dragon_pup', name: 'Dragãozinho',  emoji: '🐲', description: 'Raro e poderoso, cresce com cada vitória do herói.' },
-  { id: 'golem',      name: 'Golem',        emoji: '🪨', description: 'Inabalável e disciplinado, ganha força com a rotina.' },
+  {
+    id: 'dog',
+    name: 'Cachorro',
+    emoji: '🐕',
+    description: 'Leal e energético, sempre pronto para explorar cada nova aventura com você.',
+  },
+  {
+    id: 'cat',
+    name: 'Gato',
+    emoji: '🐈',
+    description: 'Independente e misterioso, com uma intuição afiada que revela segredos ocultos.',
+  },
+  {
+    id: 'calopsita',
+    name: 'Calopsita',
+    emoji: '🐦',
+    description: 'Esperta e barulhenta, aprende habilidades raras e repete feitiços que ouve nas batalhas.',
+  },
 ] as const;
 
-export type CompanionTypeId = (typeof COMPANION_TYPES)[number]['id'];
+export type AnimalCompanionId = (typeof COMPANION_TYPES)[number]['id'];
+
+// ── Skeleton companion (boss story reward) ────────────────────────────────────
+
+export const SKELETON_PUP = {
+  id: 'skeleton_pup',
+  name: 'Filhote de Esqueleto',
+  emoji: '💀',
+  description: 'Filho do Esqueletão Campeão. Pequeno, mas de osso duro. Cresce com cada batalha do herói.',
+} as const;
+
+// ── Mood system ───────────────────────────────────────────────────────────────
 
 export const MOOD_TIERS = [
-  { label: 'Deprimido',  min: 0,  max: 19, color: 'text-red-500',    bg: 'bg-red-500' },
-  { label: 'Triste',     min: 20, max: 39, color: 'text-orange-500', bg: 'bg-orange-500' },
-  { label: 'Neutro',     min: 40, max: 69, color: 'text-yellow-400', bg: 'bg-yellow-400' },
+  { label: 'Deprimido',  min: 0,  max: 19, color: 'text-red-500',     bg: 'bg-red-500' },
+  { label: 'Triste',     min: 20, max: 39, color: 'text-orange-500',  bg: 'bg-orange-500' },
+  { label: 'Neutro',     min: 40, max: 69, color: 'text-yellow-400',  bg: 'bg-yellow-400' },
   { label: 'Feliz',      min: 70, max: 89, color: 'text-emerald-400', bg: 'bg-emerald-400' },
-  { label: 'Eufórico',   min: 90, max: 100, color: 'text-cyan-400',  bg: 'bg-cyan-400' },
+  { label: 'Eufórico',   min: 90, max: 100, color: 'text-cyan-400',   bg: 'bg-cyan-400' },
 ] as const;
 
 export function getMoodTier(mood: number) {
@@ -61,6 +89,9 @@ export function isCooldownDone(timestamp: string | null, cooldownMinutes: number
   return elapsed >= cooldownMinutes;
 }
 
+// ── Queries ───────────────────────────────────────────────────────────────────
+
+/** Returns the lv-3 animal companion (origin = 'lvl3_choice'), or null */
 export function useCompanion() {
   const { user } = useAuth();
   return useQuery<CompanionRow | null>({
@@ -70,6 +101,7 @@ export function useCompanion() {
         .from('companions' as never)
         .select('*')
         .eq('user_id' as never, user!.id as never)
+        .eq('origin' as never, 'lvl3_choice' as never)
         .maybeSingle();
       if (error) throw error;
       return (data as CompanionRow | null) ?? null;
@@ -79,6 +111,28 @@ export function useCompanion() {
   });
 }
 
+/** Returns the skeleton pup companion (origin = 'boss_story'), or null */
+export function useSkeletonCompanion() {
+  const { user } = useAuth();
+  return useQuery<CompanionRow | null>({
+    queryKey: ['companion_skeleton', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companions' as never)
+        .select('*')
+        .eq('user_id' as never, user!.id as never)
+        .eq('origin' as never, 'boss_story' as never)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as CompanionRow | null) ?? null;
+    },
+    enabled: !!user,
+    staleTime: 30 * 1000,
+  });
+}
+
+// ── Mutations ─────────────────────────────────────────────────────────────────
+
 export function useCreateCompanion() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -87,10 +141,30 @@ export function useCreateCompanion() {
       if (!user) throw new Error('Não autenticado');
       const { error } = await supabase
         .from('companions' as never)
-        .insert({ user_id: user.id, companion_type: type, name } as never);
+        .insert({ user_id: user.id, companion_type: type, origin: 'lvl3_choice', name } as never);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companion', user?.id] }),
+  });
+}
+
+export function useAdoptSkeletonPup() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      if (!user) throw new Error('Não autenticado');
+      const { error } = await supabase
+        .from('companions' as never)
+        .insert({
+          user_id: user.id,
+          companion_type: 'skeleton_pup',
+          origin: 'boss_story',
+          name,
+        } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companion_skeleton', user?.id] }),
   });
 }
 
@@ -136,7 +210,10 @@ export function useInteractCompanion() {
       if (error) throw error;
       return { didLevel, newLevel };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['companion', user?.id] }),
+    onSuccess: (_res, vars) => {
+      const isSkeletonOrigin = vars.currentCompanion.origin === 'boss_story';
+      qc.invalidateQueries({ queryKey: [isSkeletonOrigin ? 'companion_skeleton' : 'companion', user?.id] });
+    },
   });
 }
 
@@ -147,25 +224,32 @@ export function useMissionRewardCompanion() {
   return useMutation({
     mutationFn: async () => {
       if (!user) return;
-      const { data } = await supabase
+      // Update all companions of this user
+      const { data: allCompanions } = await supabase
         .from('companions' as never)
         .select('id, xp, level, mood, updated_at, last_fed_at, last_played_at')
-        .eq('user_id' as never, user.id as never)
-        .maybeSingle();
-      if (!data) return;
-      const companion = data as CompanionRow;
-      const liveMood = computeLiveMood(companion);
-      const newMood  = Math.min(100, liveMood + 5);
-      const newXp    = Number(companion.xp ?? 0) + 15;
-      const xpNeeded = xpForNextLevel(Number(companion.level ?? 1));
-      const didLevel = newXp >= xpNeeded;
-      const newLevel = didLevel ? Number(companion.level ?? 1) + 1 : Number(companion.level ?? 1);
-      const finalXp  = didLevel ? newXp - xpNeeded : newXp;
-      await supabase
-        .from('companions' as never)
-        .update({ xp: finalXp, level: newLevel, mood: newMood, updated_at: new Date().toISOString() } as never)
-        .eq('id' as never, companion.id as never);
+        .eq('user_id' as never, user.id as never);
+
+      for (const c of (allCompanions ?? []) as CompanionRow[]) {
+        const liveMood = computeLiveMood(c);
+        const newMood  = Math.min(100, liveMood + 5);
+        const newXp    = Number(c.xp ?? 0) + 15;
+        const xpNeeded = xpForNextLevel(Number(c.level ?? 1));
+        const didLevel = newXp >= xpNeeded;
+        const newLevel = didLevel ? Number(c.level ?? 1) + 1 : Number(c.level ?? 1);
+        const finalXp  = didLevel ? newXp - xpNeeded : newXp;
+        await supabase
+          .from('companions' as never)
+          .update({ xp: finalXp, level: newLevel, mood: newMood, updated_at: new Date().toISOString() } as never)
+          .eq('id' as never, c.id as never);
+      }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['companion', user?.id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['companion', user?.id] });
+      qc.invalidateQueries({ queryKey: ['companion_skeleton', user?.id] });
+    },
   });
 }
+
+
+
