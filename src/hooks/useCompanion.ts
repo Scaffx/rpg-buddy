@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -89,23 +89,37 @@ export function isCooldownDone(timestamp: string | null, cooldownMinutes: number
   return elapsed >= cooldownMinutes;
 }
 
-// ── Queries ───────────────────────────────────────────────────────────────────
+// ── Queries ──────────────────────────────────────────────────────────────────
+
+async function fetchAllCompanions(userId: string): Promise<CompanionRow[]> {
+  const { data, error } = await supabase
+    .from('companions' as never)
+    .select('*')
+    .eq('user_id' as never, userId as never)
+    .order('created_at' as never, { ascending: true } as never);
+  if (error) throw error;
+  return (data ?? []) as CompanionRow[];
+}
+
+/** Fetches ALL companions for the user in a single round-trip. */
+export function useAllCompanions() {
+  const { user } = useAuth();
+  return useQuery<CompanionRow[], Error, CompanionRow[]>({
+    queryKey: ['companions_all', user?.id],
+    queryFn: () => fetchAllCompanions(user!.id),
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+  });
+}
 
 /** Returns the lv-3 animal companion (origin = 'lvl3_choice'), or null */
 export function useCompanion() {
   const { user } = useAuth();
-  return useQuery<CompanionRow | null>({
-    queryKey: ['companion', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('companions' as never)
-        .select('*')
-        .eq('user_id' as never, user!.id as never)
-        .eq('origin' as never, 'lvl3_choice' as never)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as CompanionRow | null) ?? null;
-    },
+  return useQuery<CompanionRow[], Error, CompanionRow | null>({
+    queryKey: ['companions_all', user?.id],
+    queryFn: () => fetchAllCompanions(user!.id),
+    select: (rows) => rows.find((c) => c.origin === 'lvl3_choice') ?? null,
     enabled: !!user,
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,
@@ -115,24 +129,15 @@ export function useCompanion() {
 /** Returns the skeleton pup companion (origin = 'boss_story'), or null */
 export function useSkeletonCompanion() {
   const { user } = useAuth();
-  return useQuery<CompanionRow | null>({
-    queryKey: ['companion_skeleton', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('companions' as never)
-        .select('*')
-        .eq('user_id' as never, user!.id as never)
-        .eq('origin' as never, 'boss_story' as never)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as CompanionRow | null) ?? null;
-    },
+  return useQuery<CompanionRow[], Error, CompanionRow | null>({
+    queryKey: ['companions_all', user?.id],
+    queryFn: () => fetchAllCompanions(user!.id),
+    select: (rows) => rows.find((c) => c.origin === 'boss_story') ?? null,
     enabled: !!user,
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,
   });
 }
-
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useCreateCompanion() {
@@ -141,12 +146,15 @@ export function useCreateCompanion() {
   return useMutation({
     mutationFn: async ({ type, name }: { type: string; name: string }) => {
       if (!user) throw new Error('Não autenticado');
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('companions' as never)
-        .insert({ user_id: user.id, companion_type: type, origin: 'lvl3_choice', name } as never);
+        .insert({ user_id: user.id, companion_type: type, origin: 'lvl3_choice', name } as never)
+        .select('*')
+        .single();
       if (error) throw error;
+      return data as CompanionRow;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['companion', user?.id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
   });
 }
 
@@ -166,7 +174,7 @@ export function useAdoptSkeletonPup() {
         } as never);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['companion_skeleton', user?.id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
   });
 }
 
@@ -213,8 +221,7 @@ export function useInteractCompanion() {
       return { didLevel, newLevel };
     },
     onSuccess: (_res, vars) => {
-      const isSkeletonOrigin = vars.currentCompanion.origin === 'boss_story';
-      qc.invalidateQueries({ queryKey: [isSkeletonOrigin ? 'companion_skeleton' : 'companion', user?.id] });
+      qc.invalidateQueries({ queryKey: ['companions_all', user?.id] });
     },
   });
 }
@@ -247,8 +254,7 @@ export function useMissionRewardCompanion() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['companion', user?.id] });
-      qc.invalidateQueries({ queryKey: ['companion_skeleton', user?.id] });
+      qc.invalidateQueries({ queryKey: ['companions_all', user?.id] });
     },
   });
 }

@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  useAllCompanions,
   useCompanion,
   useSkeletonCompanion,
   useCreateCompanion,
@@ -77,7 +78,11 @@ function SelectionScreen() {
       { type: picked, name: name.trim() },
       {
         onSuccess: () => toast.success(`${name} acordou e está pronto para aventuras! 🎉`),
-        onError:   () => toast.error('Erro ao criar companheiro. Tente novamente.'),
+        onError: (err: unknown) => {
+          const msg = (err as any)?.message ?? '';
+          console.error('[CompanionPage] create error:', err);
+          toast.error('Erro ao criar companheiro.', { description: msg || 'Tente novamente.' });
+        },
       },
     );
   }
@@ -183,7 +188,7 @@ function CompanionCard({
       .update({ name: nameInput.trim() } as never)
       .eq('id' as never, companion.id as never);
     if (error) { toast.error('Erro ao salvar nome.'); return; }
-    qc.invalidateQueries({ queryKey: [queryKey, user.id] });
+    qc.invalidateQueries({ queryKey: ['companions_all', user.id] });
     setEditingName(false);
     toast.success('Nome atualizado!');
   }
@@ -326,14 +331,16 @@ function CompanionCard({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CompanionPage() {
+  const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: companion,         isLoading: loadingCompanion   } = useCompanion();
-  const { data: skeletonCompanion, isLoading: loadingSkeletonPup } = useSkeletonCompanion();
+  // Single query — useCompanion() e useSkeletonCompanion() compartilham o mesmo cache 'companions_all'
+  const { isLoading: loadingCompanions, data: _allCompanions } = useAllCompanions();
+  const { data: companion }         = useCompanion();
+  const { data: skeletonCompanion } = useSkeletonCompanion();
 
-  // Only show full-screen loader when there's no cached data at all
+  // Show full-screen loader only when there is no cached data yet
   const isLoading = (profileLoading && profile === undefined)
-    || (loadingCompanion && companion === undefined)
-    || (loadingSkeletonPup && skeletonCompanion === undefined);
+    || (loadingCompanions && _allCompanions === undefined);
   const level     = (profile as any)?.level ?? 0;
 
   if (isLoading) {
