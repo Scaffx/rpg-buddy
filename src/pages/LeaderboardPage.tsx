@@ -1,18 +1,31 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Flame, Swords, Crown, Medal, Loader2 } from 'lucide-react';
+import { Trophy, Flame, Swords, Crown, Medal, Loader2, Globe, MapPin } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import {
   useGlobalLeaderboard,
   useWeeklyLeaderboard,
   useClassLeaderboard,
+  useRegionalLeaderboard,
+  useRegionalWeeklyLeaderboard,
+  useRegionalClassLeaderboard,
   type LeaderboardEntry,
   type WeeklyLeaderboardEntry,
 } from '@/hooks/useLeaderboard';
+
+const REGION_LABELS: Record<string, string> = {
+  south_america: 'América do Sul',
+  north_america: 'América do Norte',
+  europe: 'Europa',
+  africa: 'África',
+  asia: 'Ásia',
+  oceania: 'Oceania',
+};
 
 const CLASS_OPTIONS = [
   'Guerreiro', 'Mago', 'Assassino', 'Paladino', 'Arqueiro',
@@ -109,16 +122,37 @@ function LoadingState() {
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
+  const [scope, setScope] = useState<'global' | 'regional'>('global');
   const [selectedClass, setSelectedClass] = useState<string>(CLASS_OPTIONS[0]);
 
+  const userRegion = (profile as any)?.region as string | null ?? null;
+  const regionLabel = userRegion ? (REGION_LABELS[userRegion] ?? userRegion) : null;
+
+  // Global data
   const { data: global = [],  isLoading: loadingGlobal  } = useGlobalLeaderboard();
   const { data: weekly = [],  isLoading: loadingWeekly  } = useWeeklyLeaderboard();
   const { data: byClass = [], isLoading: loadingClass   } = useClassLeaderboard(selectedClass);
+
+  // Regional data
+  const { data: regional = [],       isLoading: loadingRegional       } = useRegionalLeaderboard(userRegion);
+  const { data: weeklyRegional = [], isLoading: loadingWeeklyRegional } = useRegionalWeeklyLeaderboard(userRegion);
+  const { data: byClassRegional = [],isLoading: loadingClassRegional  } = useRegionalClassLeaderboard(userRegion, selectedClass);
+
+  // Pick active data set based on scope
+  const activeGlobal  = scope === 'global' ? global        : regional;
+  const activeWeekly  = scope === 'global' ? weekly        : weeklyRegional;
+  const activeClass   = scope === 'global' ? byClass       : byClassRegional;
+  const loadingG      = scope === 'global' ? loadingGlobal : loadingRegional;
+  const loadingW      = scope === 'global' ? loadingWeekly : loadingWeeklyRegional;
+  const loadingC      = scope === 'global' ? loadingClass  : loadingClassRegional;
 
   const myRankGlobal = useMemo(
     () => global.findIndex((e) => e.user_id === user?.id) + 1,
     [global, user],
   );
+
+  const noRegion = scope === 'regional' && !userRegion;
 
   return (
     <AppLayout>
@@ -132,7 +166,7 @@ export default function LeaderboardPage() {
           </div>
         </div>
 
-        {/* Quick stats banner (only if user is in global ranking) */}
+        {/* Quick stats banner */}
         {myRankGlobal > 0 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
@@ -153,21 +187,57 @@ export default function LeaderboardPage() {
           </motion.div>
         )}
 
-        <Tabs defaultValue="global">
+        {/* ── Scope switcher: Global | Regional ── */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setScope('global')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold transition-all ${
+              scope === 'global'
+                ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Globe className="w-4 h-4" /> Global
+          </button>
+          <button
+            onClick={() => setScope('regional')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold transition-all ${
+              scope === 'regional'
+                ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            Regional
+            {regionLabel && scope === 'regional' && (
+              <span className="text-xs font-normal opacity-75">({regionLabel})</span>
+            )}
+          </button>
+        </div>
+
+        {/* No-region warning */}
+        {noRegion && (
+          <div className="rpg-card bg-yellow-500/10 border-yellow-500/30">
+            <p className="text-sm text-yellow-400">⚠️ Você ainda não definiu sua região. Configure no seu perfil para ver o ranking regional.</p>
+          </div>
+        )}
+
+        {/* ── Inner tabs: Geral | Semanal | Por Classe ── */}
+        <Tabs defaultValue="geral">
           <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="global"    className="gap-1.5"><Trophy  className="w-4 h-4" />Global</TabsTrigger>
-            <TabsTrigger value="weekly"    className="gap-1.5"><Flame   className="w-4 h-4" />Semanal</TabsTrigger>
-            <TabsTrigger value="byclass"   className="gap-1.5"><Swords  className="w-4 h-4" />Por Classe</TabsTrigger>
+            <TabsTrigger value="geral"    className="gap-1.5"><Trophy  className="w-4 h-4" />Geral</TabsTrigger>
+            <TabsTrigger value="semanal"  className="gap-1.5"><Flame   className="w-4 h-4" />Semanal</TabsTrigger>
+            <TabsTrigger value="porclasse" className="gap-1.5"><Swords  className="w-4 h-4" />Por Classe</TabsTrigger>
           </TabsList>
 
-          {/* ── Global tab ── */}
-          <TabsContent value="global" className="mt-4 space-y-2">
-            {loadingGlobal ? (
+          {/* ── Geral ── */}
+          <TabsContent value="geral" className="mt-4 space-y-2">
+            {noRegion ? null : loadingG ? (
               <LoadingState />
-            ) : global.length === 0 ? (
+            ) : activeGlobal.length === 0 ? (
               <EmptyState text="Nenhum aventureiro encontrado." />
             ) : (
-              global.map((entry, i) => (
+              activeGlobal.map((entry, i) => (
                 <LeaderboardRow
                   key={entry.user_id}
                   rank={i + 1}
@@ -180,17 +250,17 @@ export default function LeaderboardPage() {
             )}
           </TabsContent>
 
-          {/* ── Weekly tab ── */}
-          <TabsContent value="weekly" className="mt-4 space-y-2">
+          {/* ── Semanal ── */}
+          <TabsContent value="semanal" className="mt-4 space-y-2">
             <p className="text-xs text-muted-foreground mb-3 px-1">
               Missões concluídas nos últimos 7 dias
             </p>
-            {loadingWeekly ? (
+            {noRegion ? null : loadingW ? (
               <LoadingState />
-            ) : weekly.length === 0 ? (
+            ) : activeWeekly.length === 0 ? (
               <EmptyState text="Nenhuma atividade semanal registrada ainda." />
             ) : (
-              (weekly as WeeklyLeaderboardEntry[]).map((entry, i) => (
+              (activeWeekly as WeeklyLeaderboardEntry[]).map((entry, i) => (
                 <LeaderboardRow
                   key={entry.user_id}
                   rank={i + 1}
@@ -203,8 +273,8 @@ export default function LeaderboardPage() {
             )}
           </TabsContent>
 
-          {/* ── By class tab ── */}
-          <TabsContent value="byclass" className="mt-4 space-y-3">
+          {/* ── Por Classe ── */}
+          <TabsContent value="porclasse" className="mt-4 space-y-3">
             <Select value={selectedClass} onValueChange={setSelectedClass}>
               <SelectTrigger className="w-full sm:w-52">
                 <SelectValue placeholder="Escolha uma classe" />
@@ -219,12 +289,12 @@ export default function LeaderboardPage() {
             </Select>
 
             <div className="space-y-2">
-              {loadingClass ? (
+              {noRegion ? null : loadingC ? (
                 <LoadingState />
-              ) : byClass.length === 0 ? (
-                <EmptyState text={`Nenhum aventureiro da classe ${selectedClass} encontrado.`} />
+              ) : activeClass.length === 0 ? (
+                <EmptyState text={`Nenhum aventureiro da classe ${selectedClass} encontrado${scope === 'regional' ? ' nesta região' : ''}.`} />
               ) : (
-                byClass.map((entry, i) => (
+                activeClass.map((entry, i) => (
                   <LeaderboardRow
                     key={entry.user_id}
                     rank={i + 1}
@@ -242,3 +312,4 @@ export default function LeaderboardPage() {
     </AppLayout>
   );
 }
+
