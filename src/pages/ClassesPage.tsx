@@ -184,10 +184,29 @@ export default function ClassesPage() {
   );
 
   // 1ª etapa: clicar em "Selecionar" abre o modal de confirmação com o perfil moderno
+  const isDescendantOfCurrent = useCallback(
+    (classId: string) => {
+      if (!profile?.current_class_id || profile.current_class_id === classId) return false;
+      const classMap = new Map<string, any>();
+      (classes || []).forEach((c: any) => classMap.set(c.id, c));
+      let node = classMap.get(classId);
+      while (node?.parent_class_id) {
+        if (node.parent_class_id === profile.current_class_id) return true;
+        node = classMap.get(node.parent_class_id);
+      }
+      return false;
+    },
+    [classes, profile?.current_class_id],
+  );
+
   const handleSelect = (classId: string, className: string) => {
-    if (profile?.current_class_id) {
-      toast({ title: `🔒 ${t('app.classes.locked_toast')}`, description: t('app.classes.locked_toast_desc'), variant: 'destructive' });
-      return;
+    // Permite avançar para um descendente da classe atual (evolução de tier),
+    // mas bloqueia mudar para um ramo diferente.
+    if (profile?.current_class_id && profile.current_class_id !== classId) {
+      if (!isDescendantOfCurrent(classId)) {
+        toast({ title: `🔒 ${t('app.classes.locked_toast')}`, description: t('app.classes.locked_toast_desc'), variant: 'destructive' });
+        return;
+      }
     }
     const baseNode = resolveBaseClass(classId);
     const baseName = baseNode?.name || className;
@@ -473,7 +492,7 @@ export default function ClassesPage() {
                   <div className="flex items-center justify-center gap-1 text-sm text-primary font-bold py-2">
                     <Check className="w-4 h-4" /> {t('app.classes.current_class')}
                   </div>
-                ) : profile?.current_class_id ? (
+                ) : profile?.current_class_id && !isDescendantOfCurrent(selectedDetail.id) ? (
                   <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground py-2">
                     <Lock className="w-4 h-4" /> {t('app.classes.class_locked')}
                   </div>
@@ -486,7 +505,9 @@ export default function ClassesPage() {
                     {selecting === selectedDetail.id ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : null}
-                    {t('app.classes.select_button', { name: selectedDetail.name })}
+                    {profile?.current_class_id && isDescendantOfCurrent(selectedDetail.id)
+                      ? `⚔ Evoluir para ${selectedDetail.name}`
+                      : t('app.classes.select_button', { name: selectedDetail.name })}
                   </Button>
                 ) : (
                   <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground py-2">
