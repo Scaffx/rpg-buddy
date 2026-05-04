@@ -59,6 +59,7 @@ function LeaderboardRow({
   isCurrentUser: boolean;
 }) {
   const name = entry.display_name ?? 'Aventureiro';
+  const displayClass = entry.current_class_name ?? entry.starter_class ?? 'Sem classe';
   const classIcon = (entry.starter_class && CLASS_ICONS[entry.starter_class]) ?? '🗡️';
 
   return (
@@ -90,7 +91,7 @@ function LeaderboardRow({
           )}
         </p>
         <p className="text-[11px] text-muted-foreground">
-          Nv. {entry.level} · {entry.starter_class ?? 'Sem classe'}
+          Nv. {entry.level} · {displayClass}
         </p>
       </div>
 

@@ -7,6 +7,7 @@ export interface LeaderboardEntry {
   total_xp: number;
   level: number;
   starter_class: string | null;
+  current_class_name: string | null;
   avatar_url: string | null;
 }
 

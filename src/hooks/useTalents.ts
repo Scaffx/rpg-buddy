@@ -136,8 +136,26 @@ export function useToggleEquipTalent() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['talentos-jogador'] });
+    onMutate: async ({ rowId, currentlyEquipped }) => {
+      // Optimistic update: toggle equipado imediatamente na cache
+      await queryClient.cancelQueries({ queryKey: ['talentos-jogador', user?.id] });
+      const previous = queryClient.getQueryData(['talentos-jogador', user?.id]);
+      queryClient.setQueryData(['talentos-jogador', user?.id], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((r: any) =>
+          r.id === rowId ? { ...r, equipped: !currentlyEquipped } : r
+        );
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context: any) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['talentos-jogador', user?.id], context.previous);
+      }
+    },
+    onSettled: () => {
+      // Usa a mesma queryKey com user.id que usePlayerTalents usa
+      queryClient.invalidateQueries({ queryKey: ['talentos-jogador', user?.id] });
     },
   });
 }
