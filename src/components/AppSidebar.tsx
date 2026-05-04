@@ -9,7 +9,7 @@ import HelpTutorialModal from '@/components/HelpTutorialModal';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
   ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound,
+  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Hammer,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -73,6 +73,9 @@ export function AppSidebar() {
     () => navItemDefs.map((item) => ({ ...item, title: t(`app.sidebar.${item.key}`) })),
     [t],
   );
+
+  const CRAFTING_CLASSES = ['Alquimista', 'Mecânico', 'Mestre-Ferreiro', 'Criador'];
+  const hasCrafting = CRAFTING_CLASSES.includes(currentClass);
 
   const currentClass = useMemo(() => {
     const id = (profile as any)?.current_class_id;
@@ -154,6 +157,22 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Aba de Craft — visível apenas para Alquimista, Mecânico e evoluções */}
+              {hasCrafting && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/crafting"
+                      className="hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
+                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                    >
+                      <Hammer className="mr-2 h-4 w-4 shrink-0 text-amber-400" />
+                      {!collapsed && <span className="text-sm truncate">Craft</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {/* Botão de Ajuda / Tutorial — abaixo de "Informações do Sistema" */}
               <SidebarMenuItem>

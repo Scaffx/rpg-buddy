@@ -296,14 +296,14 @@ export default function BossPage() {
     try {
       const combat = await startActiveCombat.mutateAsync({ bossId: boss.id });
 
-      // Usa HP/MP atuais do banco (refletindo hidratação, short rest, etc.)
-      // Fallback para os valores calculados por nível/atributos se o banco não tiver registro.
-      const currentHp = healthStats?.current_hp != null
-        ? Number(healthStats.current_hp)
-        : Number(combat.hp_atual_personagem ?? playerStats.hp ?? 120);
-      const currentMp = healthStats?.current_mp != null
-        ? Number(healthStats.current_mp)
-        : Number((playerStats as any).mp ?? 40);
+      // Prioriza o HP/MP retornado diretamente pela mutation (valor fresco gravado no servidor).
+      // healthStats pode estar desatualizado no cache entre batalhas, causando HP incorreto.
+      const currentHp = combat.hp_atual_personagem != null
+        ? Number(combat.hp_atual_personagem)
+        : Number(healthStats?.current_hp ?? playerStats.hp ?? 120);
+      const currentMp = combat.mp_atual_personagem != null
+        ? Number(combat.mp_atual_personagem)
+        : Number(healthStats?.current_mp ?? (playerStats as any).mp ?? 40);
       const maxMp = healthStats?.max_mp != null
         ? Number(healthStats.max_mp)
         : Number((playerStats as any).mp ?? 40);

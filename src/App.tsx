@@ -31,7 +31,8 @@ import VirtuesPage from "./pages/VirtuesPage";
 import Landing from "./pages/Landing";
 import MobilePage from "./pages/MobilePage";import LeaderboardPage from './pages/LeaderboardPage';
 import SocialPage from './pages/SocialPage';
-import CompanionPage from './pages/CompanionPage';import ReleasesAdminPage from "./pages/admin/ReleasesAdminPage";import ResetPassword from './pages/ResetPassword';import TermsPage from "./pages/legal/TermsPage";
+import CompanionPage from './pages/CompanionPage';
+import CraftingPage from './pages/CraftingPage';import ReleasesAdminPage from "./pages/admin/ReleasesAdminPage";import ResetPassword from './pages/ResetPassword';import TermsPage from "./pages/legal/TermsPage";
 import PrivacyPage from "./pages/legal/PrivacyPage";
 import RefundPage from "./pages/legal/RefundPage";
 import { Loader2 } from "lucide-react";
@@ -144,6 +145,7 @@ function AppRoutes() {
       <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
       <Route path="/companheiro" element={<ProtectedRoute><CompanionPage /></ProtectedRoute>} />
       <Route path="/social" element={<ProtectedRoute><SocialPage /></ProtectedRoute>} />
+      <Route path="/crafting" element={<ProtectedRoute><CraftingPage /></ProtectedRoute>} />
       <Route
         path="/admin/releases"
         element={

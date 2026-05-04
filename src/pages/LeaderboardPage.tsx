@@ -28,14 +28,21 @@ const REGION_LABELS: Record<string, string> = {
 };
 
 const CLASS_OPTIONS = [
-  'Guerreiro', 'Mago', 'Assassino', 'Paladino', 'Arqueiro',
-  'Druida', 'Monge', 'Bardo', 'Necromante', 'Clérigo',
+  { value: 'guerreiro', label: 'Guerreiro / Espadachim', icon: '⚔️' },
+  { value: 'mago',      label: 'Mago / Bruxo',           icon: '🔮' },
+  { value: 'gatuno',   label: 'Gatuno / Mercenário',     icon: '🌙' },
+  { value: 'ferreiro', label: 'Ferreiro / Mecânico',     icon: '🔨' },
+  { value: 'clerico',  label: 'Noviço / Monge',          icon: '✝️' },
+  { value: 'arqueiro', label: 'Arqueiro / Caçador',      icon: '🏹' },
 ];
 
 const CLASS_ICONS: Record<string, string> = {
-  Guerreiro: '⚔️', Mago: '🧙', Assassino: '🗡️', Paladino: '🛡️',
-  Arqueiro: '🏹', Druida: '🌿', Monge: '👊', Bardo: '🎶',
-  Necromante: '💀', Clérigo: '✝️',
+  guerreiro: '⚔️',
+  mago:      '🔮',
+  gatuno:    '🌙',
+  ferreiro:  '🔨',
+  clerico:   '✝️',
+  arqueiro:  '🏹',
 };
 
 function RankBadge({ rank }: { rank: number }) {
@@ -125,7 +132,7 @@ export default function LeaderboardPage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const [scope, setScope] = useState<'global' | 'regional'>('global');
-  const [selectedClass, setSelectedClass] = useState<string>(CLASS_OPTIONS[0]);
+  const [selectedClass, setSelectedClass] = useState<string>(CLASS_OPTIONS[0].value);
 
   const userRegion = (profile as any)?.region as string | null ?? null;
   const regionLabel = userRegion ? (REGION_LABELS[userRegion] ?? userRegion) : null;
@@ -281,9 +288,9 @@ export default function LeaderboardPage() {
                 <SelectValue placeholder="Escolha uma classe" />
               </SelectTrigger>
               <SelectContent>
-                {CLASS_OPTIONS.map((cls) => (
-                  <SelectItem key={cls} value={cls}>
-                    {CLASS_ICONS[cls]} {cls}
+                {CLASS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.icon} {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -293,7 +300,7 @@ export default function LeaderboardPage() {
               {noRegion ? null : loadingC ? (
                 <LoadingState />
               ) : activeClass.length === 0 ? (
-                <EmptyState text={`Nenhum aventureiro da classe ${selectedClass} encontrado${scope === 'regional' ? ' nesta região' : ''}.`} />
+                <EmptyState text={`Nenhum aventureiro de ${CLASS_OPTIONS.find(o => o.value === selectedClass)?.label ?? selectedClass} encontrado${scope === 'regional' ? ' nesta região' : ''}.`} />
               ) : (
                 activeClass.map((entry, i) => (
                   <LeaderboardRow
