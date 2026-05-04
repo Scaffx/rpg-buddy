@@ -200,7 +200,28 @@ const mockProvider: CombatDataProvider = {
       });
 
       if (error) {
-        throw error;
+        // supabase-js v2 retorna FunctionsHttpError com mensagem genérica.
+        // O corpo JSON com a mensagem real está em error.context (Response).
+        let realMessage = error.message || 'Erro desconhecido';
+        try {
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const body = await ctx.json();
+            if (body?.error) realMessage = String(body.error);
+            if (body?.message) realMessage = String(body.message);
+          } else if (ctx && typeof ctx.text === 'function') {
+            const txt = await ctx.text();
+            if (txt) realMessage = txt;
+          }
+        } catch {
+          /* ignore parse failure, keep generic message */
+        }
+        throw new Error(realMessage);
+      }
+
+      // Edge function pode retornar 2xx com payload de erro (ex.: insufficient_mp).
+      if (data && typeof data === 'object' && 'error' in (data as any)) {
+        throw new Error(String((data as any).message || (data as any).error));
       }
 
       return data as TurnSummary;

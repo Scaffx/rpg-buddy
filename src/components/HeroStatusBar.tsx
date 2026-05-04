@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Swords } from "lucide-react";
-import { useProfile, useAttributes } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useHealthStats } from "@/hooks/useProfile";
 import { useInventory, getEquipmentBonuses, type InventoryItem } from "@/hooks/useInventory";
 import { getAttributeLevels, getPlayerCombatStats } from "@/lib/combat";
 
@@ -12,6 +12,7 @@ export default function HeroStatusBar({ className = "" }: { className?: string }
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
   const { data: rawInventory = [] } = useInventory();
+  const { data: healthStats } = useHealthStats();
 
   const inventory = rawInventory as InventoryItem[];
 
@@ -37,6 +38,15 @@ export default function HeroStatusBar({ className = "" }: { className?: string }
     { label: "MP",   base: base.mp,   bonus: equip.mp },
   ];
 
+  const fatigue = Math.max(0, Math.min(100, Number(healthStats?.fatigue ?? 0)));
+  const fatigueColor =
+    fatigue >= 100 ? "bg-red-500"
+    : fatigue >= 75 ? "bg-orange-500"
+    : fatigue >= 50 ? "bg-amber-500"
+    : "bg-emerald-500";
+  const fatigueLocked = fatigue >= 100;
+  const fatigueWarning = fatigue >= 50 && fatigue < 100;
+
   return (
     <div className={`bg-card border border-border rounded-xl p-4 space-y-3 ${className}`}>
       <div className="flex items-center gap-2">
@@ -56,6 +66,38 @@ export default function HeroStatusBar({ className = "" }: { className?: string }
             )}
           </div>
         ))}
+      </div>
+
+      {/* Fadiga — chave para combate de boss */}
+      <div className={`rounded-lg border p-2.5 ${
+        fatigueLocked
+          ? "bg-red-500/10 border-red-500/40"
+          : fatigueWarning
+          ? "bg-amber-500/10 border-amber-500/40"
+          : "bg-muted/40 border-border/50"
+      }`}>
+        <div className="flex items-center justify-between text-xs mb-1.5">
+          <span className="font-semibold text-foreground">FADIGA</span>
+          <span className={`font-mono font-bold ${
+            fatigueLocked ? "text-red-400" : fatigueWarning ? "text-amber-400" : "text-foreground"
+          }`}>{fatigue}%</span>
+        </div>
+        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className={`h-full transition-all ${fatigueColor}`}
+            style={{ width: `${fatigue}%` }}
+          />
+        </div>
+        {fatigueLocked && (
+          <p className="text-[11px] text-red-400 mt-1.5">
+            🔒 Bosses bloqueados. Reduza para ≤50% via Short Rest 🔥 (topo da tela).
+          </p>
+        )}
+        {fatigueWarning && !fatigueLocked && (
+          <p className="text-[11px] text-amber-400/90 mt-1.5">
+            ⚠️ Fadiga alta. Em 100% bosses ficam bloqueados até cair a ≤50%.
+          </p>
+        )}
       </div>
 
       {base.focus && (

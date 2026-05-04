@@ -1379,7 +1379,11 @@ export function useStartActiveCombat() {
       }
 
       if (fatigueLocked) {
-        throw new Error('Fadiga alta: boss bloqueado. Reduza a fadiga para 50 ou menos com Short Rest para voltar a lutar.');
+        throw new Error(
+          `Seu herói está exausto (fadiga ${Math.round(Number(fatigue) || 0)}%). ` +
+          `Bosses ficam bloqueados quando a fadiga chega a 100% e só liberam quando ela volta a ≤50%. ` +
+          `Use o Short Rest 🔥 (no topo da tela) para descansar.`
+        );
       }
 
       const hpAtualPersistido = Number((healthStats as any)?.current_hp ?? hpMaxPersonagem);

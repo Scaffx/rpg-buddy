@@ -325,11 +325,23 @@ export default function BossPage() {
       });
       toast({ title: `⚔️ ${t('app.boss.combat_started')}`, description: t('app.boss.arena_opened', { name: boss.name }) });
     } catch (err: any) {
-      toast({
-        title: t('app.boss.error_start_combat'),
-        description: err?.message || t('app.boss.error_start_combat_desc'),
-        variant: 'destructive',
-      });
+      const msg: string = err?.message || '';
+      // Avisos "soft block" — não são bugs, são mecânicas do jogo.
+      // Mostra como aviso amarelo, não como erro vermelho.
+      const isSoftWarning = /fadiga|short rest|descanse|cooldown|aguarde|sem chaves|sem energia/i.test(msg);
+      if (isSoftWarning) {
+        toast({
+          title: '⚠️ Aviso do herói',
+          description: msg,
+          // sem variant destructive — usa o estilo padrão (amarelado/info)
+        });
+      } else {
+        toast({
+          title: t('app.boss.error_start_combat'),
+          description: msg || t('app.boss.error_start_combat_desc'),
+          variant: 'destructive',
+        });
+      }
     }
   };
 

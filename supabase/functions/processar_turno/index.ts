@@ -932,9 +932,18 @@ Deno.serve(async (req) => {
     }
 
     console.error('processar_turno error:', error);
-    return new Response(JSON.stringify({ error: 'Erro interno ao processar turno. Tente novamente.' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return new Response(
+      JSON.stringify({
+        error: 'Erro ao processar turno',
+        message: errMsg,
+        // contexto útil para o cliente diagnosticar; não vaza nada sensível.
+        hint: 'Tente novamente. Se persistir, recarregue a arena.',
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 });
