@@ -9,7 +9,7 @@ import HelpTutorialModal from '@/components/HelpTutorialModal';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users, Camera,
   ListOrdered, TrendingUp, Circle, Brain, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint,
+  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -42,6 +42,7 @@ const navItemDefs = [
   { key: 'boss_arena',    url: '/boss',        icon: Skull },
   { key: 'leaderboard',   url: '/leaderboard', icon: Trophy },
   { key: 'companheiro',   url: '/companheiro', icon: PawPrint },
+  { key: 'social',        url: '/social',      icon: UsersRound },
   { key: 'mobile',        url: '/mobile',      icon: Smartphone },
   { key: 'system_info',   url: '/system-info', icon: ScrollText },
 ];

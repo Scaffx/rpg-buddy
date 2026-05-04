@@ -30,6 +30,7 @@ import SystemInfoPage from "./pages/SystemInfoPage";
 import VirtuesPage from "./pages/VirtuesPage";
 import Landing from "./pages/Landing";
 import MobilePage from "./pages/MobilePage";import LeaderboardPage from './pages/LeaderboardPage';
+import SocialPage from './pages/SocialPage';
 import CompanionPage from './pages/CompanionPage';import ReleasesAdminPage from "./pages/admin/ReleasesAdminPage";import ResetPassword from './pages/ResetPassword';import TermsPage from "./pages/legal/TermsPage";
 import PrivacyPage from "./pages/legal/PrivacyPage";
 import RefundPage from "./pages/legal/RefundPage";
@@ -142,6 +143,7 @@ function AppRoutes() {
       <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
       <Route path="/companheiro" element={<ProtectedRoute><CompanionPage /></ProtectedRoute>} />
+      <Route path="/social" element={<ProtectedRoute><SocialPage /></ProtectedRoute>} />
       <Route
         path="/admin/releases"
         element={

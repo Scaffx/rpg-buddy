@@ -95,19 +95,18 @@ export function usePendingRequests() {
   });
 }
 
-/** Busca um perfil público por nome de exibição (para adicionar amigos). */
+/** Busca um perfil público por nome de exibição (usa RPC SECURITY DEFINER para bypasear RLS). */
 export function useSearchProfile(query: string) {
   const { user } = useAuth();
-  return useQuery<Array<{ user_id: string; display_name: string; level: number; starter_class: string | null }>>({
+  return useQuery<Array<{ user_id: string; display_name: string; level: number; starter_class: string | null; avatar_url: string | null }>>({
     queryKey: ['profile_search', query],
     enabled: query.trim().length >= 2 && !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, level, starter_class')
-        .ilike('display_name', `%${query.trim()}%`)
-        .neq('user_id', user!.id)
-        .limit(10);
+      const { data, error } = await (supabase.rpc as any)('search_profiles', {
+        p_query: query.trim(),
+        p_exclude_id: user!.id,
+        p_limit: 10,
+      });
       if (error) throw error;
       return (data || []) as any[];
     },
@@ -562,4 +561,123 @@ export function getFriendStats(myId: string | undefined, friendId: string | unde
   }
 
   return { wins, losses, draws };
+}
+
+// ============================================================
+// CO-OP MISSIONS
+// ============================================================
+
+export type CoOpMission = {
+  id: string;
+  creator_id: string;
+  title: string;
+  description: string;
+  xp_per_player: number;
+  max_players: number;
+  status: 'open' | 'active' | 'completed' | 'cancelled';
+  created_at: string;
+  completed_at: string | null;
+  members?: CoOpMember[];
+};
+
+export type CoOpMember = {
+  id: string;
+  mission_id: string;
+  user_id: string;
+  joined_at: string;
+  completed: boolean;
+  xp_claimed: boolean;
+  profile?: { display_name: string; level: number; starter_class: string | null };
+};
+
+/** Lista as missões em conjunto (ativas/abertas) do usuário atual. */
+export function useCoOpMissions() {
+  const { user } = useAuth();
+  return useQuery<CoOpMission[]>({
+    queryKey: ['co_op_missions', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: memberRows, error: mErr } = await supabase
+        .from('co_op_mission_members' as any)
+        .select('mission_id')
+        .eq('user_id', user!.id);
+      if (mErr) throw mErr;
+
+      const missionIds = ((memberRows || []) as any[]).map((r) => r.mission_id);
+      if (missionIds.length === 0) return [];
+
+      const { data: missions, error } = await supabase
+        .from('co_op_missions' as any)
+        .select('*')
+        .in('id', missionIds)
+        .in('status', ['open', 'active'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const rows = ((missions || []) as unknown) as CoOpMission[];
+
+      // Busca membros
+      const { data: allMembers } = await supabase
+        .from('co_op_mission_members' as any)
+        .select('*')
+        .in('mission_id', missionIds);
+      const memberList = ((allMembers || []) as unknown) as CoOpMember[];
+
+      // Busca perfis dos membros
+      const allUserIds = [...new Set(memberList.map((m) => m.user_id))];
+      const { data: profiles } = allUserIds.length > 0
+        ? await supabase.from('profiles').select('user_id, display_name, level, starter_class').in('user_id', allUserIds)
+        : { data: [] };
+      const profileMap = new Map(((profiles || []) as any[]).map((p) => [p.user_id, p]));
+
+      return rows.map((m) => ({
+        ...m,
+        members: memberList
+          .filter((mb) => mb.mission_id === m.id)
+          .map((mb) => ({ ...mb, profile: profileMap.get(mb.user_id) })),
+      }));
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+/** Cria uma missão em conjunto e convida amigos. */
+export function useCreateCoOpMission() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (params: { title: string; description: string; memberIds: string[] }) => {
+      if (!user) throw new Error('Não autenticado');
+      const { data, error } = await (supabase.rpc as any)('create_co_op_mission', {
+        p_title: params.title,
+        p_description: params.description,
+        p_member_ids: params.memberIds,
+      });
+      if (error) throw error;
+      return data as string; // mission id
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['co_op_missions'] });
+    },
+  });
+}
+
+/** Marca o membro atual como concluído e reivindica o XP. */
+export function useCompleteCoOpMission() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (missionId: string) => {
+      if (!user) throw new Error('Não autenticado');
+      const { error } = await (supabase.rpc as any)('complete_co_op_mission', {
+        p_mission_id: missionId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['co_op_missions', user?.id] });
+      qc.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
 }
