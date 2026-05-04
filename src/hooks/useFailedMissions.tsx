@@ -226,6 +226,109 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     }
   }
 
+  // Missões únicas (one-shot) com due_date vencido devem sair de "pendente"
+  // e ser marcadas como fracassadas, igual ao fluxo recorrente.
+  const todayStr = getLocalDateString();
+  for (const m of missions) {
+    const days = (m.days_of_week as string[]) || [];
+    if (days.length > 0) continue; // recorrentes já tratadas acima
+    const dueDate = (m as any).due_date as string | null | undefined;
+    if (!dueDate) continue;
+    if (dueDate >= todayStr) continue; // ainda no prazo
+
+    // Quantos dias atrasada (1 = ontem)
+    const dueAtMs = new Date(dueDate + 'T00:00:00').getTime();
+    const daysLate = Math.max(1, Math.round((startOfToday.getTime() - dueAtMs) / 86400000));
+
+    // Tenta usar protetor de streak (mesma lógica das recorrentes)
+    if (availableProtectors > 0) {
+      availableProtectors = Math.max(0, availableProtectors - 1);
+      await supabase
+        .from('profiles')
+        .update({ streak_protector_charges: availableProtectors, streak_protector_week: currentWeek } as any)
+        .eq('user_id', userId);
+      const dailyStatus = { ...(((m as any).daily_status) || {}), [dueDate]: 'protected' };
+      await supabase
+        .from('missions')
+        .update({ daily_status: dailyStatus } as any)
+        .eq('id', m.id);
+      await supabase.from('activity_log').insert({
+        user_id: userId,
+        action: 'streak_protected',
+        description: `Protetor de Streak usado em ${m.title} (${dueDate}). Cargas restantes: ${availableProtectors}/${maxSlots}`,
+        xp_gained: 0,
+      });
+      continue;
+    }
+
+    // Calcular penalidade dinâmica (mesma fórmula)
+    const xpPenalty = m.xp_reward;
+    let hpPenalty = 0;
+    let mpPenalty = 0;
+    const { data: profileLv } = await supabase
+      .from('profiles')
+      .select('level')
+      .eq('user_id', userId)
+      .single();
+    let maxHp = 100;
+    let maxMp = 40;
+    if (profileLv && (profileLv as any).level > 15) {
+      const { data: attrs } = await supabase
+        .from('attributes')
+        .select('name, level')
+        .eq('user_id', userId);
+      if (attrs) {
+        const attrLevels = getAttributeLevels(attrs);
+        const stats = getPlayerCombatStats((profileLv as any).level, attrLevels);
+        maxHp = stats.hp;
+        maxMp = stats.mp;
+      }
+      hpPenalty = Math.round(0.05 * maxHp);
+      mpPenalty = Math.round(0.10 * maxMp);
+      totalHpPenalty += hpPenalty;
+      totalMpPenalty += mpPenalty;
+    }
+    totalPenalty += xpPenalty;
+
+    await supabase
+      .from('profiles')
+      .update({ streak_current_days: 0 } as any)
+      .eq('user_id', userId);
+
+    await supabase.from('xp_transactions' as any).insert({
+      user_id: userId,
+      mission_id: m.id,
+      reason: 'mission_failed',
+      xp_delta: -xpPenalty,
+      gold_delta: 0,
+      local_date: dueDate,
+      description: `Missão única fracassada (D+${daysLate}): ${m.title}`,
+    });
+
+    if (daysLate === 1) {
+      // Ontem: mostrar no diálogo
+      await supabase
+        .from('missions')
+        .update({
+          is_failed: true,
+          xp_penalized: xpPenalty,
+          failed_date: dueDate,
+        } as any)
+        .eq('id', m.id);
+    } else {
+      // Mais antiga: marcar como fracassada silenciosamente (sai de pendente)
+      totalSilentPenalty += xpPenalty;
+      await supabase
+        .from('missions')
+        .update({
+          is_failed: true,
+          xp_penalized: xpPenalty,
+          failed_date: dueDate,
+        } as any)
+        .eq('id', m.id);
+    }
+  }
+
   if (totalPenalty > 0) {
     const { data: profile } = await supabase
       .from('profiles')

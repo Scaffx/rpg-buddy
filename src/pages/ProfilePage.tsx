@@ -794,6 +794,29 @@ export default function ProfilePage() {
   const waterTargetMl = Math.round(weight * 35);
   const totalWaterToday = (todayWater || []).reduce((s: number, w: any) => s + (w.amount_ml || 0), 0);
   const mealsToday = (todayMeals || []).length;
+
+  // Cooldown de 1h entre refeições
+  const MEAL_COOLDOWN_MS = 60 * 60 * 1000;
+  const lastMealAt = useMemo(() => {
+    const arr = (todayMeals || []) as any[];
+    if (arr.length === 0) return null;
+    const times = arr
+      .map((m) => new Date(m.logged_at).getTime())
+      .filter((n) => Number.isFinite(n));
+    return times.length ? Math.max(...times) : null;
+  }, [todayMeals]);
+  const [mealNowTick, setMealNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!lastMealAt) return;
+    if (Date.now() - lastMealAt >= MEAL_COOLDOWN_MS) return;
+    const id = setInterval(() => setMealNowTick(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [lastMealAt]);
+  const mealCooldownRemainingMs = lastMealAt
+    ? Math.max(0, lastMealAt + MEAL_COOLDOWN_MS - mealNowTick)
+    : 0;
+  const mealCooldownActive = mealCooldownRemainingMs > 0;
+  const mealCooldownMinLeft = Math.ceil(mealCooldownRemainingMs / 60000);
   const attributeLevels = useMemo(() => getAttributeLevels(attributes as any[]), [attributes]);
   const starterClass = useMemo(() => {
     // Priority 1: resolve from current_class_id in the class progression tree
@@ -997,6 +1020,11 @@ export default function ProfilePage() {
       if (!user) {
         console.error("[logMeal] Usuário não autenticado");
         throw new Error("Usuário não autenticado");
+      }
+      // Guard: respeitar cooldown de 1h entre refeições
+      if (lastMealAt && Date.now() - lastMealAt < MEAL_COOLDOWN_MS) {
+        const minLeft = Math.ceil((MEAL_COOLDOWN_MS - (Date.now() - lastMealAt)) / 60000);
+        throw new Error(`Aguarde ${minLeft} min para a próxima refeição (mínimo 1h entre refeições).`);
       }
       const payload = { user_id: user.id, meal_date: today, meal_number: mealsToday + 1 };
       console.debug("[logMeal] Inserindo refeição:", payload);
@@ -1447,14 +1475,18 @@ export default function ProfilePage() {
                   <span className="text-xs text-muted-foreground">{t('app.profile.mealsCountText', { current: mealsToday, target: mealsTarget })}</span>
                   <button
                     onClick={() => logMeal.mutate()}
-                    disabled={mealsToday >= mealsTarget || logMeal.isPending}
-                    className={`flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/30 transition-colors ${mealsToday >= mealsTarget || logMeal.isPending ? "opacity-40 cursor-not-allowed" : ""}`}
+                    disabled={mealsToday >= mealsTarget || logMeal.isPending || mealCooldownActive}
+                    title={mealCooldownActive ? `Aguarde ${mealCooldownMinLeft} min para a próxima refeição` : undefined}
+                    className={`flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg text-xs font-medium hover:bg-orange-500/30 transition-colors ${mealsToday >= mealsTarget || logMeal.isPending || mealCooldownActive ? "opacity-40 cursor-not-allowed" : ""}`}
                   >
                     {logMeal.isPending ? (
                       <span className="animate-spin mr-1 w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full"></span>
                     ) : <Plus className="w-3 h-3" />} {t('app.profile.mealButton')}
                   </button>
                 </div>
+                {mealCooldownActive && (
+                  <p className="text-[10px] text-amber-400">⏱️ Próxima refeição em {mealCooldownMinLeft} min (mínimo 1h entre refeições).</p>
+                )}
                 {mealsToday < mealHalf && (
                   <p className="text-[10px] text-red-400">{t('app.profile.eatMinimumWarning', { count: mealHalf })}</p>
                 )}
