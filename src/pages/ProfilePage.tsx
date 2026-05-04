@@ -21,7 +21,7 @@ import {
   type FriendChallenge,
   type BattleResult,
 } from "@/hooks/useFriends";
-import { useUserAchievements, useAllAchievements } from "@/hooks/useAchievements";
+import { useUserAchievements, useAllAchievements, useClaimAchievement } from "@/hooks/useAchievements";
 import { useGoldBalance } from "@/hooks/useGold";
 import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { supabase } from "@/integrations/supabase/client";
@@ -734,6 +734,7 @@ export default function ProfilePage() {
   const { data: pendingRequests = [] } = usePendingRequests();
   const { data: userAchievements = [] } = useUserAchievements();
   const { data: allAchievements = [] } = useAllAchievements();
+  const claimAchievement = useClaimAchievement();
   const { data: friendChallenges = [] } = useFriendChallenges();
   const sendFriendRequest = useSendFriendRequest();
   const respondFriendRequest = useRespondFriendRequest();
@@ -2571,11 +2572,14 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {allAchievements.map((ach) => {
                 const unlocked = userAchievements.find((ua) => ua.achievement_id === ach.id);
+                const claimed = !!unlocked?.claimed_at;
                 return (
                   <div
                     key={ach.id}
                     className={`rounded-xl border p-4 flex items-start gap-3 transition-all ${
-                      unlocked
+                      unlocked && !claimed
+                        ? 'border-amber-400/60 bg-amber-500/10 shadow-md shadow-amber-500/10'
+                        : unlocked
                         ? 'border-primary/30 bg-primary/5'
                         : 'border-border bg-muted/20 opacity-60 grayscale'
                     }`}
@@ -2588,17 +2592,26 @@ export default function ProfilePage() {
                         {ach.title}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">{ach.description}</p>
-                      <div className="flex items-center gap-2 mt-1.5">
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-xp/20 text-primary border border-primary/20 font-bold">
                           +{ach.xp_reward} XP
                         </span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">
                           +{ach.gold_reward} 🪙
                         </span>
-                        {unlocked && (
-                          <span className="text-[10px] text-emerald-400 font-semibold">{t('app.profile.achievementUnlocked')}</span>
+                        {claimed && (
+                          <span className="text-[10px] text-emerald-400 font-semibold">✓ Resgatada</span>
                         )}
                       </div>
+                      {unlocked && !claimed && (
+                        <button
+                          onClick={() => claimAchievement.mutate(unlocked)}
+                          disabled={claimAchievement.isPending}
+                          className="mt-2.5 w-full flex items-center justify-center gap-1.5 rounded-lg border border-amber-400/50 bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/30 transition-colors disabled:opacity-50"
+                        >
+                          🎁 Pegar Recompensa!
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

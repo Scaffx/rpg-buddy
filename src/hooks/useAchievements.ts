@@ -21,6 +21,7 @@ export type UserAchievement = {
   user_id: string;
   achievement_id: string;
   unlocked_at: string;
+  claimed_at: string | null;
   achievement: Achievement;
 };
 
@@ -113,30 +114,62 @@ export function useCheckAchievements() {
         toUnlock.map((a) => ({ user_id: user.id, achievement_id: a.id } as any)),
       );
 
-      const totalXP = toUnlock.reduce((s, a) => s + (a.xp_reward || 0), 0);
-      const totalGold = toUnlock.reduce((s, a) => s + (a.gold_reward || 0), 0);
-
-      if (totalXP > 0) {
-        await supabase.rpc('add_xp_to_user' as never, { p_user_id: user.id, p_xp: totalXP } as never);
-      }
-      if (totalGold > 0) {
-        await supabase.rpc('add_gold_to_user' as never, { p_user_id: user.id, p_gold: totalGold } as never);
-      }
-
       return toUnlock;
     },
     onSuccess: (unlocked) => {
       if (unlocked.length > 0) {
         qc.invalidateQueries({ queryKey: ['user_achievements', user?.id] });
-        qc.invalidateQueries({ queryKey: ['profile', user?.id] });
-        qc.invalidateQueries({ queryKey: ['gold-balance', user?.id] });
         unlocked.forEach((a) => {
           toast.success(`🏆 Conquista desbloqueada: ${a.title}!`, {
-            description: `+${a.xp_reward} XP  +${a.gold_reward} ouro`,
-            duration: 5000,
+            description: `Vá em Conquistas para resgatar +${a.xp_reward} XP e +${a.gold_reward} ouro!`,
+            duration: 6000,
           });
         });
       }
+    },
+  });
+}
+
+/** Resgata a recompensa de uma conquista desbloqueada (XP + ouro). */
+export function useClaimAchievement() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userAchievement: UserAchievement) => {
+      if (!user) throw new Error('Não autenticado');
+      if (userAchievement.claimed_at) throw new Error('Conquista já resgatada');
+
+      const ach = userAchievement.achievement;
+
+      // Concede XP e ouro
+      if (ach.xp_reward > 0) {
+        await supabase.rpc('add_xp_to_user' as never, { p_user_id: user.id, p_xp: ach.xp_reward } as never);
+      }
+      if (ach.gold_reward > 0) {
+        await supabase.rpc('add_gold_to_user' as never, { p_user_id: user.id, p_gold: ach.gold_reward } as never);
+      }
+
+      // Marca como resgatada
+      const { error } = await supabase
+        .from('user_achievements' as any)
+        .update({ claimed_at: new Date().toISOString() } as any)
+        .eq('id', userAchievement.id);
+      if (error) throw error;
+
+      return ach;
+    },
+    onSuccess: (ach) => {
+      qc.invalidateQueries({ queryKey: ['user_achievements', user?.id] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+      qc.invalidateQueries({ queryKey: ['gold-balance', user?.id] });
+      toast.success(`🎁 Recompensa resgatada!`, {
+        description: `+${ach.xp_reward} XP  +${ach.gold_reward} 🪙`,
+        duration: 5000,
+      });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Erro ao resgatar conquista.');
     },
   });
 }
