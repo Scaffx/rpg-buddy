@@ -108,15 +108,15 @@ const INITIAL_NPCS: Npc[] = [
 // Persona textual injetada no system prompt do AI-chat por NPC
 // A logica de criacao automatica de missao fica no NPC_APP_CONTEXT da edge function
 const NPC_PERSONAS: Record<string, string> = {
-  atlas: `Atlas, O Forjador de Corpos — treinador lendario, direto, energetico e exigente. Seu npc_id e atlas. Fala como um comandante de guerra: curto, imperativo, sem frescura. Usa metaforas de combate, forja e superacao. Dominio: Forca, Vitalidade, Agilidade, Disciplina. Tom: explosivo, motivacional, max 4 linhas por resposta.`,
+  atlas: `Atlas, O Forjador de Corpos — treinador fisico lendario, direto, energetico e exigente. Seu npc_id e atlas. Fala como um comandante de guerra: curto, imperativo, sem frescura. Dominio EXCLUSIVO: saude fisica, exercicios, treinos musculares, vitalidade, agilidade, disciplina corporal. SOMENTE crie missoes de atividade fisica e saude corporal. Tom: explosivo, motivacional, max 4 linhas.`,
 
-  nova: `Nova, A Mente Iluminada — cientista curiosa, analitica e precisa. Seu npc_id e nova. Fala de forma estruturada, usa dados e logica. Dominio: Inteligencia, Sabedoria, Criatividade. Tom: objetivo, estruturado, max 4 linhas.`,
+  nova: `Nova, A Mente Iluminada — cientista curiosa, analitica e precisa. Seu npc_id e nova. Fala de forma estruturada, usa dados e logica. Dominio EXCLUSIVO: raciocinio logico, matematica, ciencias, programacao, leitura tecnica, estudo sistematico, inteligencia aplicada. SOMENTE crie missoes de desenvolvimento intelectual e logico. Tom: objetivo, estruturado, max 4 linhas.`,
 
-  elara: `Elara, A Guardia da Alma — psicologa empatica, suave e perspicaz. Seu npc_id e elara. Fala com calma e validacao emocional, nunca julga. Dominio: Resiliencia, Autoaperfeicoamento, Relacionamento. Tom: acolhedor, gentil, max 4 linhas.`,
+  elara: `Elara, A Guardia da Alma — psicologa empatica, suave e perspicaz. Seu npc_id e elara. Fala com calma e validacao emocional, nunca julga. Dominio EXCLUSIVO: psicologia, saude emocional, autoaperfeicoamento, resiliencia, relacionamentos, autoconhecimento, journaling. SOMENTE crie missoes de desenvolvimento psicologico e emocional. Tom: acolhedor, gentil, max 4 linhas.`,
 
-  zephyr: `Zephyr, O Sonhador Rebelde — artista caotico, irreverente e genial. Seu npc_id e zephyr. Usa metaforas absurdas e humor seco. Dominio: Criatividade, Carisma, Relacionamento. Tom: excentrico, divertido, max 5 linhas.`,
+  zephyr: `Zephyr, O Sonhador Rebelde — artista caotico, irreverente e genial. Seu npc_id e zephyr. Usa metaforas absurdas e humor seco. Dominio EXCLUSIVO: arte, musica, escrita criativa, expressao artistica, brainstorming, design, criatividade, expressao pessoal. SOMENTE crie missoes de arte e criatividade. Tom: excentrico, divertido, max 5 linhas.`,
 
-  midas: `Midas, O Arquiteto da Riqueza — consultor financeiro frio, estrategico e calculista. Seu npc_id e midas. Usa analogias de investimento e logica de longo prazo. Dominio: Disciplina, Inteligencia, Sabedoria. Tom: direto, estrategico, max 4 linhas.`,
+  midas: `Midas, O Arquiteto da Riqueza — consultor financeiro frio, estrategico e calculista. Seu npc_id e midas. Usa analogias de investimento e logica de longo prazo. Dominio EXCLUSIVO: financas pessoais, orcamento, investimentos, poupanca, educacao financeira, controle de gastos, construcao de riqueza. SOMENTE crie missoes de gestao financeira e educacao economica. Tom: direto, estrategico, max 4 linhas.`,
 };
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -169,14 +169,22 @@ export default function NpcPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const weekToken = currentWeekToken();
+  const weekStart = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday.toISOString();
+  }, []);
   const [selectedNpc, setSelectedNpc] = useState<Npc | null>(null);
   const [chatNpc, setChatNpc] = useState<Npc | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const [coachInsight, setCoachInsight] = useState<string | null>(null);
-  const [coachLoading, setCoachLoading] = useState(false);
+  const conversationHistoryRef = useRef<ChatMessage[]>([]);
   const npcWeeklyChallengesTable = 'npc_weekly_challenges' as never;
   const npcCompletionsTable = 'npc_challenge_completions' as never;
   const userInventoryTable = 'user_inventory' as never;
@@ -193,13 +201,17 @@ export default function NpcPage() {
         .select('id, npc_id, title, description, completed, created_at' as never)
         .eq('user_id' as never, user!.id as never)
         .not('npc_id' as never, 'is' as never, null as never)
+        .gte('created_at' as never, weekStart as never)
         .order('created_at' as never, { ascending: false } as never)
-        .limit(50);
+        .limit(20);
       if (error) throw error;
       return (data ?? []) as any;
     },
     staleTime: 60_000,
   });
+
+  const weeklyNpcCount = npcCreatedMissions.length;
+  const atWeeklyLimit = weeklyNpcCount >= 3;
 
   const { data: affinityRows = [] } = useNpcAffinity();
   const incrementAffinity = useIncrementNpcAffinity();
@@ -423,39 +435,91 @@ export default function NpcPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // Ao abrir o chat, faz a análise inicial automática
+  // Ao abrir o chat, o NPC inicia a conversa (saudação oculta ao usuário)
   useEffect(() => {
     if (!chatNpc) return;
     setChatMessages([]);
     setChatInput('');
-    // Passa [] explicitamente para evitar closure obsoleta com mensagens do NPC anterior
-    sendChatMessage(chatNpc, 'Olá!', []);
+    conversationHistoryRef.current = [];
+    initNpcChat(chatNpc);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatNpc?.id]);
 
-  async function sendChatMessage(npc: Npc, overrideContent?: string, historyOverride?: ChatMessage[]) {
-    const content = overrideContent ?? chatInput.trim();
+  async function initNpcChat(npc: Npc) {
+    const persona = NPC_PERSONAS[npc.id] ?? npc.name;
+    setChatLoading(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error('Sessão expirada. Faça login novamente.');
+      // "Olá!" fica oculto no histórico — o usuário só vê a resposta do NPC
+      const initHistory: ChatMessage[] = [{ role: 'user', content: 'Olá!' }];
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ messages: initHistory, npcPersona: persona, npcId: npc.id }),
+        },
+      );
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({})) as { error?: string };
+        if (resp.status === 402) toast.error('Assinatura necessária para conversar com NPCs.');
+        else toast.error(errData?.error ?? `Erro ${resp.status}`);
+        return;
+      }
+      const data = await resp.json() as { content?: string; reply?: string };
+      const reply = data?.content ?? data?.reply ?? 'Olá, aventureiro!';
+      const assistantMsg: ChatMessage = { role: 'assistant', content: reply };
+      conversationHistoryRef.current = [...initHistory, assistantMsg];
+      setChatMessages([assistantMsg]);
+      qc.invalidateQueries({ queryKey: ['npc_created_missions', user?.id] });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao iniciar conversa.';
+      toast.error(msg);
+      console.error('[NpcPage] initChat error:', err);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
+  async function sendChatMessage(npc: Npc) {
+    const content = chatInput.trim();
     if (!content || chatLoading) return;
     const persona = NPC_PERSONAS[npc.id] ?? npc.name;
-    const baseMessages = historyOverride ?? chatMessages;
-    const newMessages: ChatMessage[] = [
-      ...baseMessages,
-      { role: 'user' as const, content },
-    ];
-    setChatMessages(newMessages);
+    const userMsg: ChatMessage = { role: 'user', content };
+    const newHistory: ChatMessage[] = [...conversationHistoryRef.current, userMsg];
+    setChatMessages((prev) => [...prev, userMsg]);
     setChatInput('');
     setChatLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { messages: newMessages, npcPersona: persona, npcId: npc.id },
-      });
-      if (error) throw error;
-      const reply = (data as { content?: string; reply?: string })?.content ?? (data as { reply?: string })?.reply ?? 'Sem resposta.';
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-      // Recarrega missões criadas pelo NPC para refletir no card
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error('Sessão expirada. Faça login novamente.');
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ messages: newHistory, npcPersona: persona, npcId: npc.id }),
+        },
+      );
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({})) as { error?: string };
+        const errMsg = errData?.error ?? `Erro ${resp.status}`;
+        if (resp.status === 402) toast.error('Assinatura necessária para conversar com NPCs.');
+        else toast.error(errMsg);
+        return;
+      }
+      const data = await resp.json() as { content?: string; reply?: string };
+      const reply = data?.content ?? data?.reply ?? 'Sem resposta.';
+      const assistantMsg: ChatMessage = { role: 'assistant', content: reply };
+      conversationHistoryRef.current = [...newHistory, assistantMsg];
+      setChatMessages((prev) => [...prev, assistantMsg]);
       qc.invalidateQueries({ queryKey: ['npc_created_missions', user?.id] });
-    } catch (err) {
-      toast.error('Erro ao conversar com o NPC.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao conversar com o NPC.';
+      toast.error(msg);
       console.error('[NpcPage] chat error:', err);
     } finally {
       setChatLoading(false);
@@ -543,65 +607,7 @@ export default function NpcPage() {
           })}
         </div>
 
-        {/* AI Coach Insights */}
-        <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-card/60 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-sm">Coach IA — Análise de Padrões</span>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 border-primary/30 hover:bg-primary/10"
-              disabled={coachLoading}
-              onClick={async () => {
-                if (!user) return;
-                setCoachLoading(true);
-                setCoachInsight(null);
-                try {
-                  const since = new Date();
-                  since.setDate(since.getDate() - 30);
-                  const { data: missions } = await supabase
-                    .from('missions' as never)
-                    .select('title, status, category, due_date, completed_at' as never)
-                    .eq('user_id' as never, user.id as never)
-                    .gte('created_at' as never, since.toISOString() as never)
-                    .limit(60);
-                  const missionSummary = JSON.stringify(missions ?? []);
-                  const prompt = `Analise os dados de missões do usuário dos últimos 30 dias e identifique padrões de falha, horários mais produtivos e categorias mais negligenciadas. Gere 3 insights concisos (1 linha cada) e 1 missão personalizada sugerida. Dados: ${missionSummary}`;
-                  const { data, error } = await supabase.functions.invoke('ai-chat', {
-                    body: {
-                      messages: [{ role: 'user', content: prompt }],
-                      npcPersona: 'Você é um coach de produtividade direto e eficaz. Responda em português com no máximo 200 palavras.',
-                    },
-                  });
-                  if (error) throw error;
-                  const reply = (data as { content?: string; reply?: string })?.content ?? (data as { reply?: string })?.reply ?? '';
-                  setCoachInsight(reply);
-                } catch {
-                  setCoachInsight('Não foi possível gerar a análise no momento. Tente novamente.');
-                } finally {
-                  setCoachLoading(false);
-                }
-              }}
-            >
-              {coachLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-              {coachLoading ? 'Analisando...' : 'Analisar'}
-            </Button>
-          </div>
-          {coachInsight ? (
-            <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap rounded-lg bg-background/30 p-3 border border-border/50">
-              {coachInsight}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Clique em “Analisar” para o Coach IA identificar seus padrões das últimas 4 semanas e sugerir missões personalizadas.
-            </p>
-          )}
-        </div>
-
-        {/* Footer Stats */}
+                {/* Footer Stats */}
         <div className="flex items-center justify-center gap-6 p-4 rounded-xl border border-border bg-card/50">
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-primary" />
@@ -626,11 +632,19 @@ export default function NpcPage() {
                   <div className={`p-2 rounded-lg bg-gradient-to-br ${chatNpc.gradient} border ${chatNpc.borderColor}`}>
                     {chatNpc.icon}
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <DialogTitle className="text-lg">{chatNpc.name}</DialogTitle>
                     <DialogDescription className="text-xs italic">{chatNpc.title} • {chatNpc.personality}</DialogDescription>
                   </div>
+                  <div className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-bold tabular-nums ${atWeeklyLimit ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-primary/30 bg-primary/10 text-primary'}`}>
+                    {weeklyNpcCount}/3
+                  </div>
                 </div>
+                {atWeeklyLimit && (
+                  <p className="text-[11px] text-rose-400/80 mt-1">
+                    ⚠️ Limite semanal atingido — peça ao NPC para trocar uma missão existente
+                  </p>
+                )}
               </DialogHeader>
 
               {/* Messages */}

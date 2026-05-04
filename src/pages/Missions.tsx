@@ -59,6 +59,7 @@ import {
   Shield,
   Flame,
   Lock,
+  AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUndoMission } from '@/hooks/useUndoMission'; 
@@ -600,6 +601,16 @@ const handleSave = async () => {
                 </button>
               )}
             </div>
+
+            {/* Alerta: missões principais falhadas */}
+            {failedMissions.some((m: any) => m.priority === 'alta') && (
+              <div className="flex items-center gap-2 rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-orange-400" />
+                <p className="text-xs font-semibold text-orange-400">
+                  ⚠️ Missões falhas em missões principais — resolva com prioridade!
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {failedMissions.map((m: any) => {

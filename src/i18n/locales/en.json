@@ -430,7 +430,7 @@
       "threat_label": "Threat",
       "boss_defeated": "Boss defeated!",
       "requires_level": "Requires level {{n}}",
-      "needs_keys": "Needs {{n}} keys",
+      "needs_keys": "Needs {{need}} keys (you have {{have}})",
       "fight_boss": "Fight Boss",
       "battle_history": "Battle History",
       "damage_dealt": "Damage",

@@ -14,7 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CombatArena from '@/components/CombatArena';
 import HeroStatusBar from '@/components/HeroStatusBar';
 import { useHeroStoryChoices, useSaveSkeletonChoice } from '@/hooks/useHeroStoryChoices';
-import { useAdoptSkeletonPup } from '@/hooks/useCompanion';
+import { useAdoptSkeletonPup, useSkeletonCompanion, computeLiveMood } from '@/hooks/useCompanion';
 import { useAuth } from '@/hooks/useAuth';
 import { useInventory } from '@/hooks/useInventory';
 
@@ -63,6 +63,7 @@ export default function BossPage() {
   const { data: storyChoices }    = useHeroStoryChoices();
   const saveSkeletonChoice        = useSaveSkeletonChoice();
   const adoptSkeletonPup          = useAdoptSkeletonPup();
+  const { data: skeletonCompanion } = useSkeletonCompanion();
 
   const [skeletonStoryOpen,    setSkeletonStoryOpen]    = useState(false);
   const [skeletonPupName,      setSkeletonPupName]      = useState('Ossinho');
@@ -433,6 +434,11 @@ export default function BossPage() {
                         )}
                         onImmortalFlee={handleCombatClose}
                         onImmortalTrueDefeat={handleImmortalTrueDefeat}
+                        companionData={skeletonCompanion ? {
+                          name: skeletonCompanion.name,
+                          level: skeletonCompanion.level,
+                          mood: computeLiveMood(skeletonCompanion),
+                        } : undefined}
                       />
                     ) : (
                       <div className="rpg-card flex items-center justify-between gap-4 py-4">

@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
 import { useToast } from '@/hooks/use-toast';
 
-type Turn = 'idle' | 'player' | 'boss' | 'finished';
+type Turn = 'idle' | 'player' | 'boss' | 'finished' | 'rancor_challenge';
 
 type TurnSummary = {
   dado_player: number;
@@ -73,6 +73,15 @@ type Confetti = {
   size: number;
 };
 
+type SummonedUnit = {
+  id: number;
+  name: string;
+  hp: number;
+  maxHp: number;
+  rollValue: number | null;
+  isRolling: boolean;
+};
+
 type CombatArenaProps = {
   combateId?: string;
   initialBossHp?: number;
@@ -92,6 +101,8 @@ type CombatArenaProps = {
   onImmortalFlee?: () => void;
   /** Chamado quando o jogador usa a Cabeça de Basilisco para derrota verdadeira */
   onImmortalTrueDefeat?: () => void;
+  /** Companheiro de boss (ex: Ossinho) que duela ao lado do herói */
+  companionData?: { name: string; level: number; mood: number };
 };
 
 type CombatSkill = {
@@ -102,7 +113,7 @@ type CombatSkill = {
 
 type BattleLogEntry = {
   id: number;
-  actor: 'player' | 'boss';
+  actor: 'player' | 'boss' | 'companion';
   skill: string;
   damage: number;
   roll: number;
@@ -139,6 +150,39 @@ export function getSkillMpCost(power: number): number {
 }
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const SUMMON_NAMES = ['Clone', 'Sombra', 'Fragmento', 'Espectro', 'Avatar', 'Minion'];
+
+const RANCOR_QUESTIONS_POOL: ((mission?: string) => string)[] = [
+  (m) => m
+    ? `"${m}" continua pendente. O que realmente te impede de concluir isso?`
+    : 'O que você está evitando enfrentar? Escreva agora, com honestidade.',
+  (m) => m
+    ? `Você falhou em "${m}" mais de uma vez. Qual é o real motivo por trás disso?`
+    : 'Quantas vezes você prometeu a si mesmo que faria diferente? O que vai mudar agora?',
+  (m) => m
+    ? `"${m}" representa algo maior. O que você ganha ao finalmente completá-la?`
+    : 'Se não for hoje, quando? O que vai ser diferente desta vez?',
+  (m) => m
+    ? `Cada vez que "${m}" fica pendente, uma parte de você se perde. O que vai fazer HOJE?`
+    : 'Olhe para o que você adiou esta semana. Comprometa-se com uma ação concreta agora.',
+];
+
+/** Calcula ataque do companheiro com base em level e mood */
+function computeCompanionAttack(level: number, mood: number): { roll: number; damage: number; skillName: string } {
+  const roll = Math.floor(Math.random() * 20) + 1;
+  const moodMod = mood >= 70 ? 1.2 : mood < 40 ? 0.8 : 1.0;
+  const basePower = 2 + level * 1.5;
+  const damage = Math.max(1, Math.round((roll * basePower / 10) * moodMod));
+  const lowSkills  = ['Mordida', 'Osso Afiado', 'Arranhar'];
+  const midSkills  = ['Garra Sombria', 'Dentada Funda', 'Uivo Sombrio'];
+  const highSkills = ['Explosão Óssea', 'Golpe Espectral', 'Investida Fúnebre'];
+  const pool = level <= 2 ? lowSkills : level <= 5 ? midSkills : highSkills;
+  return { roll, damage, skillName: pool[Math.floor(Math.random() * pool.length)] };
+}
+
+const isSummonSkill = (skillName?: string): boolean =>
+  /invocar|invoca[cç]|clone|fragmento|minion|sombra\s*gê|sombra\s*ge|desdobra|avatar|despertar|prolifera|divis[aã]o|ativar\s*cr/i.test(skillName ?? '');
 
 // Default provider with Supabase integration and local mock fallback.
 const mockProvider: CombatDataProvider = {
@@ -219,6 +263,7 @@ export default function CombatArena({
   hasBasiliscoHead = false,
   onImmortalFlee,
   onImmortalTrueDefeat,
+  companionData,
 }: CombatArenaProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -232,6 +277,8 @@ export default function CombatArena({
 
   // Guerreiro Imortal: detectar pelo nome
   const isImmortalBoss = useMemo(() => /guerreiro\s+imortal/i.test(bossName ?? ''), [bossName]);
+  // Rancor Sombrio: confronta o heroi com suas falhas
+  const isRancorBoss = useMemo(() => /rancor\s+sombrio/i.test(bossName ?? ''), [bossName]);
   // 'none' = combate normal | 'reborn' = mostrando overlay de renascimento
   const [immortalPhase, setImmortalPhase] = useState<'none' | 'reborn'>('none');
   // Conta quantas vezes o imortal renasceu nesta sessão (0 = primeira vez)
@@ -257,11 +304,29 @@ export default function CombatArena({
   const [showVictory, setShowVictory] = useState(false);
   const [showDefeat, setShowDefeat] = useState(false);
   const [insufficientResourceWarning, setInsufficientResourceWarning] = useState<string | null>(null);
+  const [summonedUnits, setSummonedUnits] = useState<SummonedUnit[]>([]);
+  // Rancor Sombrio
+  const [rancorPhase, setRancorPhase] = useState<'none' | 'reconstituted'>('none');
+  const [rancorQuestion, setRancorQuestion] = useState('');
+  const [rancorAnswerText, setRancorAnswerText] = useState('');
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [rancorBoostBadge, setRancorBoostBadge] = useState(false);
+  // Companion combat state
+  const [companionRoll, setCompanionRoll] = useState<number | null>(null);
+  const [companionIsRolling, setCompanionIsRolling] = useState(false);
+  const [companionSkillName, setCompanionSkillName] = useState<string | null>(null);
   const bossHpRef = useRef(bossHp);
   const playerHpRef = useRef(playerHp);
   const playerMpRef = useRef(playerMp);
   const playerFatigueRef = useRef(playerFatigue);
   const bossResourceRef = useRef(bossResource);
+  const summonedUnitsRef = useRef<SummonedUnit[]>([]);
+  // Rancor refs
+  const questionsAnsweredRef = useRef(0);
+  const rancorTurnCountRef = useRef(0);
+  const rancorMissionIdxRef = useRef(0);
+  const rancorReconstitutedRef = useRef(false);
+  const failedMissionTitlesRef = useRef<string[]>([]);
   const currentBattleTokenRef = useRef(0);
   const mountedRef = useRef(true);
   const skillCursorRef = useRef(0);
@@ -287,10 +352,15 @@ export default function CombatArena({
   }, [bossResource]);
 
   useEffect(() => {
+    summonedUnitsRef.current = summonedUnits;
+  }, [summonedUnits]);
+
+  useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       currentBattleTokenRef.current += 1;
+      sfx.stopRancorBattle();
     };
   }, []);
 
@@ -338,6 +408,21 @@ export default function CombatArena({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [combateId]);
+
+  // Rancor Sombrio: jogador confirma sua resposta
+  const handleRancorAnswerSubmit = () => {
+    if (!rancorAnswerText.trim()) return;
+    questionsAnsweredRef.current += 1;
+    setQuestionsAnswered(questionsAnsweredRef.current);
+    setRancorBoostBadge(true);
+    setTimeout(() => setRancorBoostBadge(false), 4500);
+    toast({
+      title: '⚡ Você enfrentou seus medos!',
+      description: 'Uma onda de determinação te impulsiona. Continue lutando!',
+      duration: 3500,
+    });
+    setTurn('player');
+  };
 
   const appendBattleLog = (entry: Omit<BattleLogEntry, 'id'>) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -445,13 +530,31 @@ export default function CombatArena({
     setShowVictory(false);
     setShowDefeat(false);
     setInsufficientResourceWarning(null);
+    setSummonedUnits([]);
+    summonedUnitsRef.current = [];
     // Mantém HP/MP do jogador (sem chamar startBattle que os resetaria)
+    setTurn('player');
+  };
+
+  /** Rancor Sombrio: heroi escolhe continuar após reconstituição. */
+  const handleRancorContinueFight = () => {
+    const newHp = Math.ceil(initialBossHp * 0.5);
+    if (combateId && user) {
+      void supabase
+        .from('combates_ativos' as never)
+        .update({ hp_atual_boss: newHp, status: 'em_andamento' } as never)
+        .eq('id' as never, combateId as never);
+    }
+    setRancorPhase('none');
+    currentBattleTokenRef.current += 1;
+    sfx.rancorBattle();
     setTurn('player');
   };
 
   const startBattle = () => {
     // Resume the WebAudio context from a user gesture so SFX play reliably.
     resumeAudioContext();
+    sfx.stopRancorBattle();
     currentBattleTokenRef.current += 1;
     skillCursorRef.current = 0;
     setBossHp(initialBossHp);
@@ -471,6 +574,40 @@ export default function CombatArena({
     setShowVictory(false);
     setShowDefeat(false);
     setInsufficientResourceWarning(null);
+    setSummonedUnits([]);
+    summonedUnitsRef.current = [];
+    // Rancor Sombrio: música épica + carregar missões com mais falhas
+    if (isRancorBoss) {
+      questionsAnsweredRef.current = 0;
+      rancorTurnCountRef.current = 0;
+      rancorMissionIdxRef.current = 0;
+      rancorReconstitutedRef.current = false;
+      setQuestionsAnswered(0);
+      setRancorPhase('none');
+      setRancorQuestion('');
+      setRancorAnswerText('');
+      setRancorBoostBadge(false);
+      if (user) {
+        void supabase
+          .from('missions' as never)
+          .select('title' as never)
+          .eq('user_id' as never, user.id as never)
+          .or('is_failed.eq.true,status.eq.failed' as never)
+          .limit(60)
+          .then(({ data }) => {
+            if (!data) return;
+            const counts = new Map<string, number>();
+            (data as { title: string }[]).forEach((m) => {
+              counts.set(m.title, (counts.get(m.title) ?? 0) + 1);
+            });
+            failedMissionTitlesRef.current = [...counts.entries()]
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([title]) => title);
+          });
+      }
+      sfx.rancorBattle();
+    }
     setTurn('player');
   };
 
@@ -513,7 +650,7 @@ export default function CombatArena({
   };
 
   useEffect(() => {
-    if (turn === 'idle' || turn === 'finished') {
+    if (turn === 'idle' || turn === 'finished' || turn === 'rancor_challenge') {
       return;
     }
 
@@ -599,6 +736,16 @@ export default function CombatArena({
         effects: turnResult.efeitos_player || [],
       });
 
+      // Dano em área (splash) nas unidades invocadas
+      if (summonedUnitsRef.current.length > 0) {
+        const splashDmg = Math.max(1, Math.floor(turnResult.dano_player * 0.25));
+        const nextUnits = summonedUnitsRef.current
+          .map((u) => ({ ...u, hp: Math.max(0, u.hp - splashDmg) }))
+          .filter((u) => u.hp > 0);
+        setSummonedUnits(nextUnits);
+        summonedUnitsRef.current = nextUnits;
+      }
+
       // Toast de fim do turno: mostra MP restante e se o servidor bloqueou alguma habilidade.
       const serverBlocked = turnResult.skill_blocked;
       toast({
@@ -615,7 +762,99 @@ export default function CombatArena({
         return;
       }
 
+      // ── Turno do companheiro (boss-story, ex: Ossinho) ──────────────────────
+      let currentBossHpAfterCompanion = turnResult.hp_boss_restante;
+      if (companionData && currentBossHpAfterCompanion > 0) {
+        setCompanionIsRolling(true);
+        setCompanionRoll(null);
+        setCompanionSkillName(null);
+        sfx.diceRoll();
+        await wait(700);
+        if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
+        const { roll: cRoll, damage: cDmg, skillName: cSkill } = computeCompanionAttack(
+          companionData.level,
+          companionData.mood,
+        );
+        setCompanionIsRolling(false);
+        setCompanionRoll(cRoll);
+        setCompanionSkillName(cSkill);
+        currentBossHpAfterCompanion = Math.max(0, currentBossHpAfterCompanion - cDmg);
+        setBossHp(currentBossHpAfterCompanion);
+        pushDamage('boss', cDmg, cRoll);
+        appendBattleLog({ actor: 'companion', skill: cSkill, damage: cDmg, roll: cRoll, effects: [] });
+        toast({
+          title: `💀 ${companionData.name} ataca!`,
+          description: `${cSkill} • D20: ${cRoll} • Dano: ${cDmg}`,
+          duration: 2000,
+        });
+        await wait(700);
+        if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
+        // Companheiro matou o boss
+        if (currentBossHpAfterCompanion <= 0) {
+          if (isRancorBoss) {
+            if (questionsAnsweredRef.current < 2 && !rancorReconstitutedRef.current) {
+              rancorReconstitutedRef.current = true;
+              const newHp = Math.ceil(initialBossHp * 0.5);
+              setBossHp(newHp);
+              if (combateId && user) {
+                void supabase
+                  .from('combates_ativos' as never)
+                  .update({ hp_atual_boss: newHp, status: 'em_andamento' } as never)
+                  .eq('id' as never, combateId as never);
+              }
+              sfx.stopRancorBattle();
+              setRancorPhase('reconstituted');
+              setTurn('finished');
+              return;
+            }
+            sfx.stopRancorBattle();
+          }
+          if (isImmortalBoss) {
+            setShowVictory(true);
+            sfx.victory();
+            immortalRebirthCountRef.current += 1;
+            setTimeout(() => {
+              if (!mountedRef.current) return;
+              setShowVictory(false);
+              setImmortalPhase('reborn');
+              setBossHp(initialBossHp);
+              setBossResource(bossResourceMax);
+            }, 2000);
+          } else {
+            if (turnResult.loot_drop) setLootDrop(turnResult.loot_drop);
+            launchVictoryCinematic();
+          }
+          setTurn('finished');
+          return;
+        }
+      }
+
       if (turnResult.status === 'vitoria') {
+        // Rancor Sombrio: ressurge se o her\u00f3i ainda n\u00e3o enfrentou suas falhas
+        if (isRancorBoss) {
+          if (questionsAnsweredRef.current < 2 && !rancorReconstitutedRef.current) {
+            rancorReconstitutedRef.current = true;
+            const newHp = Math.ceil(initialBossHp * 0.5);
+            setBossHp(newHp);
+            if (combateId && user) {
+              void supabase
+                .from('combates_ativos' as never)
+                .update({ hp_atual_boss: newHp, status: 'em_andamento' } as never)
+                .eq('id' as never, combateId as never);
+            }
+            sfx.stopRancorBattle();
+            setRancorPhase('reconstituted');
+            setTurn('finished');
+            return;
+          }
+          // Vit\u00f3ria verdadeira \u2014 her\u00f3i enfrentou suas falhas
+          if (turnResult.loot_drop) setLootDrop(turnResult.loot_drop);
+          sfx.stopRancorBattle();
+          launchVictoryCinematic();
+          setTurn('finished');
+          return;
+        }
+
         if (turnResult.loot_drop) {
           setLootDrop(turnResult.loot_drop);
         }
@@ -690,8 +929,71 @@ export default function CombatArena({
         return;
       }
 
+      // ── Invocar unidades / ataques de unidades invocadas ───────────────────────────────
+      let currentHpForSummons = nextHp;
+      {
+        const hasSummonSkill = isSummonSkill(turnResult.habilidade_boss);
+        let workingUnits = [...summonedUnitsRef.current];
+
+        if (hasSummonSkill && workingUnits.length < 3) {
+          const count = 1 + Math.floor(Math.random() * 2);
+          const newUnits: SummonedUnit[] = Array.from({ length: count }).map((_, i) => {
+            const name = SUMMON_NAMES[(Math.floor(Math.random() * SUMMON_NAMES.length) + i) % SUMMON_NAMES.length];
+            const hp = 25 + Math.floor(Math.random() * 16);
+            return { id: Date.now() + i, name, hp, maxHp: hp, rollValue: null, isRolling: false };
+          });
+          workingUnits = [...workingUnits, ...newUnits].slice(0, 4);
+          setSummonedUnits(workingUnits);
+          summonedUnitsRef.current = workingUnits;
+          toast({
+            title: '⚠️ Unidades Invocadas!',
+            description: `${newUnits.length} unidade(s) entram no combate!`,
+            duration: 2800,
+          });
+          await wait(700);
+          if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
+        }
+
+        if (workingUnits.length > 0 && turnResult.status !== 'derrota') {
+          for (const unit of workingUnits) {
+            if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) break;
+            if (unit.hp <= 0) continue;
+            setSummonedUnits((prev) =>
+              prev.map((u) => u.id === unit.id ? { ...u, isRolling: true, rollValue: null } : u),
+            );
+            sfx.diceRoll();
+            await wait(550);
+            if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) break;
+            const unitRoll = Math.floor(Math.random() * 20) + 1;
+            const unitDamage = Math.max(1, Math.floor(unitRoll * 0.6));
+            currentHpForSummons = Math.max(0, currentHpForSummons - unitDamage);
+            setPlayerHp(currentHpForSummons);
+            const updatedUnit: SummonedUnit = { ...unit, isRolling: false, rollValue: unitRoll };
+            workingUnits = workingUnits.map((u) => u.id === unit.id ? updatedUnit : u);
+            summonedUnitsRef.current = workingUnits;
+            setSummonedUnits(workingUnits);
+            pushDamage('player', unitDamage, unitRoll);
+            appendBattleLog({
+              actor: 'boss',
+              skill: `${unit.name} Ataca`,
+              damage: unitDamage,
+              roll: unitRoll,
+              effects: [],
+            });
+            await wait(450);
+          }
+          if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
+          if (currentHpForSummons <= 0) {
+            persistPlayerVitals(0, mpAfterTurn, nextFatigue);
+            launchDefeatCinematic();
+            setTurn('finished');
+            return;
+          }
+        }
+      }
+
       if (turnResult.status === 'derrota') {
-        persistPlayerVitals(nextHp, mpAfterTurn, nextFatigue);
+        persistPlayerVitals(currentHpForSummons, mpAfterTurn, nextFatigue);
         launchDefeatCinematic();
         setTurn('finished');
         return;
@@ -700,7 +1002,24 @@ export default function CombatArena({
       // Jogador regenera 1 MP por turno (não em vitória/derrota)
       const regeneratedMp = Math.min(initialPlayerMaxMp, playerMpRef.current + 1);
       setPlayerMp(regeneratedMp);
-      persistPlayerVitals(nextHp, regeneratedMp, nextFatigue);
+      persistPlayerVitals(currentHpForSummons, regeneratedMp, nextFatigue);
+
+      // Rancor Sombrio: provocação a cada 3 turnos do boss
+      if (isRancorBoss) {
+        rancorTurnCountRef.current += 1;
+        if (rancorTurnCountRef.current % 3 === 0 && questionsAnsweredRef.current < 5) {
+          const mIdx = rancorMissionIdxRef.current % Math.max(1, failedMissionTitlesRef.current.length);
+          const missionTitle = failedMissionTitlesRef.current.length > 0
+            ? failedMissionTitlesRef.current[mIdx]
+            : undefined;
+          rancorMissionIdxRef.current += 1;
+          const questionFn = RANCOR_QUESTIONS_POOL[questionsAnsweredRef.current % RANCOR_QUESTIONS_POOL.length];
+          setRancorQuestion(questionFn(missionTitle));
+          setRancorAnswerText('');
+          setTurn('rancor_challenge');
+          return;
+        }
+      }
 
       setTurn('player');
     };
@@ -784,6 +1103,18 @@ export default function CombatArena({
       {insufficientResourceWarning && (
         <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           ⚠️ {insufficientResourceWarning}
+        </div>
+      )}
+
+      {/* ── Rancor Sombrio: progresso de respostas ────────────────────────── */}
+      {isRancorBoss && turn !== 'idle' && (
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-violet-700/40 bg-violet-950/50 px-3 py-2 text-xs">
+          <span className="text-violet-300 font-semibold">☠️ Rancor Sombrio</span>
+          <span className="text-zinc-400">— Verdades para a vitória:</span>
+          <span className="font-mono font-bold text-violet-200 ml-auto">{questionsAnswered}/2 ✓</span>
+          {rancorBoostBadge && (
+            <span className="rounded bg-amber-500/20 px-2 py-0.5 text-amber-300 font-bold">⚡ Determinação Ativa!</span>
+          )}
         </div>
       )}
 
@@ -974,6 +1305,87 @@ export default function CombatArena({
         </div>
       </div>
 
+      {/* ── Companheiro de Combate (boss-story) ─────────────────────────────── */}
+      {companionData && turn !== 'idle' && (
+        <div className="mt-4 rounded-xl border border-violet-700/40 bg-violet-950/40 p-3 flex items-center gap-4">
+          <motion.div
+            animate={companionIsRolling ? { rotate: [-12, 12, -12, 12, 0], scale: [1, 1.2, 1] } : { rotate: 0, scale: 1 }}
+            transition={companionIsRolling ? { repeat: Infinity, duration: 0.35 } : {}}
+            className="text-4xl select-none shrink-0"
+          >
+            💀
+          </motion.div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-violet-300">
+              {companionData.name}
+              <span className="ml-2 text-[10px] font-normal text-zinc-400">
+                Nv.{companionData.level} · Humor {companionData.mood}%
+              </span>
+            </p>
+            {companionIsRolling && (
+              <p className="text-xs text-violet-400 animate-pulse">Rolando dado…</p>
+            )}
+            {!companionIsRolling && companionSkillName && (
+              <p className="text-xs text-violet-200">{companionSkillName}</p>
+            )}
+            {!companionIsRolling && !companionSkillName && (
+              <p className="text-xs text-zinc-500">Aguardando turno…</p>
+            )}
+          </div>
+          {companionRoll !== null && !companionIsRolling && (
+            <div className="shrink-0 rounded-lg border border-violet-500/30 bg-violet-900/50 px-3 py-1.5 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-violet-400">D20</p>
+              <p className="text-lg font-black text-violet-200 font-mono">{companionRoll}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Unidades Invocadas ────────────────────────────────────────────────── */}
+      {summonedUnits.length > 0 && (
+        <div className="mt-4 rounded-xl border border-rose-700/50 bg-zinc-900/70 p-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-rose-400">
+            ⚠️ Unidades Invocadas
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {summonedUnits.map((unit) => (
+              <div
+                key={unit.id}
+                className="rounded-lg border border-zinc-700/60 bg-zinc-800/80 p-2.5"
+              >
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-rose-300">{unit.name}</span>
+                  <span className="font-mono text-xs text-zinc-400">
+                    {unit.hp}/{unit.maxHp} HP
+                  </span>
+                </div>
+                <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-700/70">
+                  <div
+                    className="h-full bg-gradient-to-r from-rose-600 to-rose-800 transition-all duration-500"
+                    style={{ width: `${(unit.hp / unit.maxHp) * 100}%` }}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <motion.div
+                    animate={unit.isRolling ? { rotate: [0, 360, 720] } : { rotate: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Dices className="h-3 w-3 text-amber-400" />
+                  </motion.div>
+                  <span className="font-mono text-xs text-amber-300">
+                    {unit.isRolling
+                      ? '…'
+                      : unit.rollValue !== null
+                        ? `D20: ${unit.rollValue}`
+                        : '—'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showVictory && (
         <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden animate-victory-overlay">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/30 via-purple-900/40 to-rose-600/30" />
@@ -1137,6 +1549,94 @@ export default function CombatArena({
         </div>
       )}
 
+      {/* ── Rancor Sombrio: Reconstitui\u00e7\u00e3o ─────────────────────────────────── */}
+      {rancorPhase === 'reconstituted' && (
+        <div className="pointer-events-auto fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 bg-black/93" />
+          <div
+            className="absolute inset-0"
+            style={{ background: 'radial-gradient(ellipse at center, hsl(270 80% 12% / 0.7) 0%, transparent 68%)' }}
+          />
+          <div className="relative z-10 text-center space-y-6 px-6 max-w-xl">
+            <motion.div
+              initial={{ scale: 0.05, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.85, type: 'spring', stiffness: 130, damping: 13 }}
+            >
+              <p className="font-cinzel font-black text-4xl md:text-6xl text-violet-400 drop-shadow-[0_0_50px_hsl(270_80%_55%/0.95)] leading-tight uppercase">
+                Rancor Sombrio<br />Ressurge!
+              </p>
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="text-rose-200/80 text-sm md:text-base leading-relaxed italic"
+            >
+              "Voc\u00ea me ataca com o corpo, mas sua mente ainda foge das suas falhas.<br />
+              Responda \u00e0s minhas perguntas — apenas a verdade pode me destruir."
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.0 }}
+              className="text-violet-300 text-xs font-mono"
+            >
+              Rancor reconstitui com 50% HP — responda mais {Math.max(0, 2 - questionsAnswered)} pergunta(s) para a vit\u00f3ria verdadeira
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.35 }}
+            >
+              <button
+                type="button"
+                onClick={handleRancorContinueFight}
+                className="rounded-xl border border-violet-500/60 bg-violet-800/60 px-8 py-3.5 font-bold text-violet-100 hover:bg-violet-700/80 transition text-base shadow-[0_0_24px_hsl(270_80%_40%/0.45)]"
+              >
+                ⚔️ Enfrentar meus medos
+              </button>
+            </motion.div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Rancor Sombrio: Di\u00e1logo de Provoca\u00e7\u00e3o ───────────────────────────── */}
+      {turn === 'rancor_challenge' && (
+        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/88 px-4">
+          <div className="w-full max-w-lg rounded-2xl border border-violet-700/60 bg-zinc-900 p-6 shadow-[0_0_70px_hsl(270_80%_25%/0.7)]">
+            <div className="mb-4 text-center">
+              <p className="text-xs uppercase tracking-widest text-violet-400 mb-3">☠️ Rancor Sombrio fala:</p>
+              <p className="text-base font-semibold text-rose-200 italic leading-relaxed">
+                "{rancorQuestion}"
+              </p>
+            </div>
+            <p className="mb-3 text-center text-xs text-zinc-400">
+              Responda com honestidade — sua determina\u00e7\u00e3o \u00e9 a \u00fanica arma contra ele.
+              <br />
+              <span className="text-violet-400">({questionsAnswered}/2 respostas dadas para a vit\u00f3ria verdadeira)</span>
+            </p>
+            <textarea
+              value={rancorAnswerText}
+              onChange={(e) => setRancorAnswerText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) handleRancorAnswerSubmit(); }}
+              placeholder="Escreva sua resposta com sinceridade..."
+              className="w-full h-28 rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 resize-none focus:outline-none focus:ring-1 focus:ring-violet-500"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+            />
+            <button
+              type="button"
+              disabled={!rancorAnswerText.trim()}
+              onClick={handleRancorAnswerSubmit}
+              className="mt-3 w-full rounded-lg bg-violet-600 px-4 py-2.5 font-bold text-white hover:bg-violet-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ⚡ Comprometo-me com isso! (Ctrl+Enter)
+            </button>
+          </div>
+        </div>
+      )}
+
       <footer className="mt-8 flex flex-col items-center gap-3">
         {winnerLabel ? <p className="text-lg font-bold text-amber-200">{winnerLabel}</p> : null}
 
@@ -1187,8 +1687,8 @@ export default function CombatArena({
           ) : (
             battleLog.map((entry) => (
               <div key={entry.id} className="rounded-lg border border-zinc-700/60 bg-zinc-900/80 p-2">
-                <p className={entry.actor === 'player' ? 'text-emerald-300 font-semibold' : 'text-rose-300 font-semibold'}>
-                  {entry.actor === 'player' ? 'Heroi' : 'Boss'} usou {entry.skill}
+                <p className={entry.actor === 'player' ? 'text-emerald-300 font-semibold' : entry.actor === 'companion' ? 'text-violet-300 font-semibold' : 'text-rose-300 font-semibold'}>
+                  {entry.actor === 'player' ? 'Herói' : entry.actor === 'companion' ? (companionData?.name ?? 'Companheiro') : 'Boss'} usou {entry.skill}
                 </p>
                 <p className="text-zinc-300">D20: {entry.roll} | Dano: {entry.damage}</p>
                 {entry.effects.length > 0 ? (

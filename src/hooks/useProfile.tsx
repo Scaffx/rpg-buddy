@@ -611,6 +611,8 @@ export const useCompleteMission = () => {
       const scaledXpReward = Math.round(xpReward * xpMultiplier);
 
       const typedMission = mission as any;
+      // Missões criadas por NPC não concedem XP — apenas ouro
+      const isNpcMission = !!typedMission.npc_id;
 
       const missionCategory = deriveMissionCategory({
         mission: typedMission,
@@ -705,7 +707,7 @@ export const useCompleteMission = () => {
         .filter((item: any) => item.completed)
         .reduce((sum: number, item: any) => sum + (item.xp_bonus || 2), 0);
 
-      const totalXpReward = scaledXpReward + checklistBonus;
+      const totalXpReward = isNpcMission ? 0 : scaledXpReward + checklistBonus;
 
       // Atualizar atributo primário
       const { data: attr } = await supabase

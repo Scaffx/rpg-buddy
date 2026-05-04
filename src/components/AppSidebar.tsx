@@ -77,8 +77,7 @@ export function AppSidebar() {
     const id = (profile as any)?.current_class_id;
     if (!id || !classes) return 'Aprendiz';
     const found = (classes as any[]).find((c) => c.id === id);
-    if (!found) return 'Aprendiz';
-    return `${found.icon || ''} ${found.name}`.trim();
+    return found?.name ?? 'Aprendiz';
   }, [profile, classes]);
   const xpProgress = getLevelProgress(profile?.total_xp || 0);
 
@@ -100,10 +99,10 @@ export function AppSidebar() {
                 {profile?.display_name || user?.email?.split('@')[0] || 'Aventureiro'}
               </p>
               <p className="text-[11px] text-sidebar-foreground/70">
-                {t('app.sidebar.level')} {profile?.level || 1} • {t(`app.rank.${getRankKey(profile?.level || 1)}`)}
+                {t('app.sidebar.level')} {profile?.level || 1}
               </p>
               <p className="text-[11px] text-sidebar-foreground/60">
-                {t('app.sidebar.class')}: {currentClass}
+                {t('app.sidebar.class')}: {(profile as any)?.current_class_id && (classes as any[])?.find((c: any) => c.id === (profile as any).current_class_id)?.name || 'Aprendiz'}
               </p>
               <div className="space-y-1">
                 <div className="rpg-stat-bar h-1.5">

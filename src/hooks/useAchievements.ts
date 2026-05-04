@@ -116,18 +116,11 @@ export function useCheckAchievements() {
       const totalXP = toUnlock.reduce((s, a) => s + (a.xp_reward || 0), 0);
       const totalGold = toUnlock.reduce((s, a) => s + (a.gold_reward || 0), 0);
 
-      if (totalXP > 0 || totalGold > 0) {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('total_xp, xp_today, gold')
-          .eq('user_id', user.id)
-          .single();
-        const p = prof as any;
-        await supabase.from('profiles').update({
-          total_xp: (p?.total_xp || 0) + totalXP,
-          xp_today: (p?.xp_today || 0) + totalXP,
-          gold: (p?.gold || 0) + totalGold,
-        } as any).eq('user_id', user.id);
+      if (totalXP > 0) {
+        await supabase.rpc('add_xp_to_user' as never, { p_user_id: user.id, p_xp: totalXP } as never);
+      }
+      if (totalGold > 0) {
+        await supabase.rpc('add_gold_to_user' as never, { p_user_id: user.id, p_gold: totalGold } as never);
       }
 
       return toUnlock;
@@ -136,6 +129,7 @@ export function useCheckAchievements() {
       if (unlocked.length > 0) {
         qc.invalidateQueries({ queryKey: ['user_achievements', user?.id] });
         qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+        qc.invalidateQueries({ queryKey: ['gold-balance', user?.id] });
         unlocked.forEach((a) => {
           toast.success(`🏆 Conquista desbloqueada: ${a.title}!`, {
             description: `+${a.xp_reward} XP  +${a.gold_reward} ouro`,

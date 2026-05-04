@@ -132,11 +132,49 @@ async function runTool(name: string, args: any, supa: any, userId: string, npcId
         .eq("user_id", userId)
         .eq("npc_id", targetNpcId)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
       const missions = data ?? [];
-      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      const recent = missions.filter((m: any) => new Date(m.created_at).getTime() > sevenDaysAgo);
-      return { npc_missions: missions, recent_count: recent.length, has_recent: recent.length > 0, most_recent: recent[0] ?? null };
+
+      // Janela semanal (segunda-feira 00:00 UTC)
+      const now = new Date();
+      const dow = now.getUTCDay();
+      const monday = new Date(now);
+      monday.setUTCDate(now.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+      monday.setUTCHours(0, 0, 0, 0);
+      const weekStart = monday.toISOString();
+
+      const weeklyThisNpc = missions.filter((m: any) => m.created_at >= weekStart);
+
+      // Conta TODAS as missões NPC desta semana (todos os NPCs)
+      const { count: allCount } = await supa
+        .from("missions")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .not("npc_id", "is", null)
+        .gte("created_at", weekStart);
+
+      // Lista TODAS as missões NPC desta semana
+      const { data: allWeekly } = await supa
+        .from("missions")
+        .select("id,title,npc_id,completed,created_at")
+        .eq("user_id", userId)
+        .not("npc_id", "is", null)
+        .gte("created_at", weekStart)
+        .order("created_at", { ascending: true });
+
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const recent = missions.filter((m: any) => m.created_at >= sevenDaysAgo);
+
+      return {
+        npc_missions_this_npc: weeklyThisNpc,
+        recent_count: recent.length,
+        has_recent: recent.length > 0,
+        most_recent: recent[0] ?? null,
+        weekly_count_total: allCount ?? 0,
+        weekly_limit: 3,
+        can_create_more: (allCount ?? 0) < 3,
+        all_weekly_npc_missions: allWeekly ?? [],
+      };
     }
     if (name === "get_hero_status") {
       const [profileR, balR, attrsR, missionsR, classR] = await Promise.all([
@@ -169,6 +207,28 @@ async function runTool(name: string, args: any, supa: any, userId: string, npcId
       return { missions: data };
     }
     if (name === "create_mission") {
+      // Verifica limite semanal de missões NPC (máx 3 por semana, todos os NPCs)
+      if (args.npc_id ?? npcId) {
+        const now = new Date();
+        const dow = now.getUTCDay();
+        const monday = new Date(now);
+        monday.setUTCDate(now.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+        monday.setUTCHours(0, 0, 0, 0);
+        const { count } = await supa
+          .from("missions")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .not("npc_id", "is", null)
+          .gte("created_at", monday.toISOString());
+        if ((count ?? 0) >= 3) {
+          return {
+            error: "WEEKLY_LIMIT_REACHED",
+            weekly_count: count,
+            weekly_limit: 3,
+            message: "Limite semanal de 3 missões NPC atingido. Próximo reset: próxima segunda-feira.",
+          };
+        }
+      }
       const attr = await supa.from("attributes").select("id").eq("user_id", userId).eq("name", args.attribute).maybeSingle();
       if (!attr.data) return { error: `Atributo '${args.attribute}' não encontrado` };
       // Resolve IDs dos atributos secundários
@@ -193,16 +253,18 @@ async function runTool(name: string, args: any, supa: any, userId: string, npcId
       return { created: data };
     }
     if (name === "complete_mission") {
-      const { data: m, error: mErr } = await supa.from("missions").select("id,title,xp_reward,attribute_id,completed").eq("id", args.mission_id).eq("user_id", userId).maybeSingle();
+      const { data: m, error: mErr } = await supa.from("missions").select("id,title,xp_reward,attribute_id,completed,npc_id").eq("id", args.mission_id).eq("user_id", userId).maybeSingle();
       if (mErr) throw mErr;
       if (!m) return { error: "Missão não encontrada" };
-      if (m.completed) return { error: "Missão já estava concluída" };
+      if (m.completed) return { error: "Missão já estava conclufda" };
       await supa.from("missions").update({ completed: true, completed_at: new Date().toISOString(), status: "concluida" }).eq("id", m.id);
-      // XP & ouro
-      await supa.rpc("add_xp_to_user", { p_user_id: userId, p_xp: m.xp_reward ?? 25 });
+      // Missões NPC não concedem XP — apenas ouro
+      if (!m.npc_id) {
+        await supa.rpc("add_xp_to_user", { p_user_id: userId, p_xp: m.xp_reward ?? 25 });
+        await supa.from("xp_history").insert({ user_id: userId, xp_gained: m.xp_reward ?? 25, type: "mission" });
+      }
       await supa.rpc("add_gold_to_user", { p_user_id: userId, p_gold: 2 });
-      await supa.from("xp_history").insert({ user_id: userId, xp_gained: m.xp_reward ?? 25, type: "mission" });
-      return { completed: m.title, xp: m.xp_reward ?? 25, gold: 2 };
+      return { completed: m.title, xp: m.npc_id ? 0 : (m.xp_reward ?? 25), gold: 2, note: m.npc_id ? "Missão NPC: sem bônus de XP." : undefined };
     }
     if (name === "delete_mission") {
       const { error } = await supa.from("missions").delete().eq("id", args.mission_id).eq("user_id", userId);
@@ -262,45 +324,75 @@ ESTILO GERAL:
 const SYSTEM_PROMPT = `Você é o Mestre RPG, conselheiro motivacional dentro do app Life on RPG.
 ${APP_CONTEXT}`;
 
-// Contexto especial para quando um NPC está no controle — sem fluxo guiado, criação direta de missões
+// Contexto especial para quando um NPC está no controle — conversa primeiro, missão depois
 const NPC_APP_CONTEXT = `
 CONTEXTO DO APP Life on RPG:
 - O usuário transforma hábitos reais em missões de RPG, ganha XP, ouro, sobe de nível e enfrenta bosses.
-- 11 atributos disponíveis: Agilidade, Carisma, Criatividade, Disciplina, Força, Inteligência, Resiliência, Sabedoria, Vitalidade, Autoaperfeiçoamento, Relacionamento.
-- Períodos de horário: manhã, tarde, noite, flex.
-- Dias da semana: Seg, Ter, Qua, Qui, Sex, Sáb, Dom.
-- Prioridade: baixa, media, alta.
+- 11 atributos: Agilidade, Carisma, Criatividade, Disciplina, Força, Inteligência, Resiliência, Sabedoria, Vitalidade, Autoaperfeiçoamento, Relacionamento.
+- Períodos: manhã, tarde, noite, flex. Dias: Seg, Ter, Qua, Qui, Sex, Sáb, Dom. Prioridade: baixa, media, alta.
 
 ═══════════════════════════════════════
-PROTOCOLO DE SAUDAÇÃO INICIAL (OBRIGATÓRIO)
+PROTOCOLO DE CONVERSA NPC (OBRIGATÓRIO)
 ═══════════════════════════════════════
-Na PRIMEIRA mensagem do usuário, você DEVE executar SEMPRE:
-1. Chame get_hero_status → leia level, XP e atributos do herói
-2. Chame check_npc_missions com o seu npc_id → veja se já criou missão recente (últimos 7 dias)
-3. SE has_recent = false:
-   a. Calcule a MÉDIA de nível dos atributos do SEU domínio (ex: Atlas → Força, Vitalidade, Agilidade, Disciplina)
-   b. CALIBRE a dificuldade:
-      - Média < 3  → SEDENTÁRIO  → missão FÁCIL  (5–15 min, iniciante)
-      - Média 3–6  → COMUM       → missão MÉDIA   (20–40 min, moderada)
-      - Média > 6  → ATLETA      → missão DIFÍCIL (45–90 min, intensa)
-   c. Chame create_mission DIRETAMENTE com npc_id = seu ID. NÃO peça confirmação, crie já.
-   d. Informe o usuário da missão criada de forma entusiasmada e breve.
-4. SE has_recent = true:
-   Mencione a missão mais recente e encoraje o usuário a completá-la.
+Na PRIMEIRA mensagem, execute SEMPRE:
+1. get_hero_status → conheça nível, classe, atributos e missões do herói
+2. check_npc_missions (npc_id = seu ID) → leia weekly_count_total e can_create_more
 
-REGRA DE CRIAÇÃO DIRETA: Como NPC, você SEMPRE usa create_mission diretamente.
-Nunca faça a sequência de perguntas guiadas para missões que você mesmo sugere.
-Se o usuário pedir para criar OUTRA missão específica, crie direto sem guia.
+Depois, INICIE UMA CONVERSA REAL — NÃO crie missão imediatamente:
+- Cumprimente com personalidade (mencione o nível ou classe do herói se disponível)
+- Pergunte sobre o dia, energia atual e tempo disponível
+- Identifique o horário (manhã/tarde/noite) e o dia da semana através do contexto
+- Ouça e entenda o momento do usuário antes de propor qualquer missão
 
-OUTRAS FERRAMENTAS:
-- Pergunta sobre status/progresso? → get_hero_status
-- Pergunta sobre missões? → list_missions
-- Pede para concluir? → complete_mission
-- Pede para apagar? → delete_mission (confirme antes)
+═══════════════════════════════════════
+LIMITE SEMANAL — 3 MISSÕES POR SEMANA
+═══════════════════════════════════════
+Máximo 3 missões de NPC (todos os NPCs juntos) por semana.
+
+Se can_create_more = false (weekly_count_total = 3):
+→ NÃO tente criar — o sistema bloqueará.
+→ Informe com personalidade: ex: "Você já tem 3 missões minhas esta semana, guerreiro."
+→ Diga quando reseta: "Na próxima segunda-feira posso te desafiar novamente."
+→ Ofereça trocar: "Quer substituir alguma das missões atuais?"
+
+Ao criar com vagas disponíveis, mencione: "Você tem mais X vaga(s) esta semana."
+
+═══════════════════════════════════════
+QUANDO E COMO CRIAR MISSÕES
+═══════════════════════════════════════
+- Crie SOMENTE depois de entender o contexto (mínimo 2 trocas de mensagem)
+- Personalize com: horário real, dia da semana, energia relatada, nível dos atributos do SEU domínio
+- Calibre a dificuldade pela média dos atributos do SEU domínio:
+    Média < 3 → SEDENTÁRIO → missão FÁCIL (5–15 min, iniciante)
+    Média 3–6 → COMUM     → missão MÉDIA  (20–40 min, moderada)
+    Média > 6 → VETERANO  → missão DIFÍCIL (45–90 min, intensa)
+- Antes de criar, mostre um breve resumo e confirme: "Posso criar assim?"
+- IMPORTANTE: Missões NPC NÃO concedem XP. Mencione de forma motivadora:
+    "Esta missão não dá XP direto — mas forja algo mais valioso."
+- Use create_mission diretamente com npc_id = seu ID.
+- NUNCA use o fluxo de perguntas guiadas (título → atributo → etc.) para suas próprias missões.
+
+═══════════════════════════════════════
+TROCA DE MISSÃO
+═══════════════════════════════════════
+Se o usuário quiser trocar uma das 3 missões:
+1. Liste all_weekly_npc_missions (retornado por check_npc_missions)
+2. Peça confirmação de qual deseja remover
+3. delete_mission no ID antigo → create_mission para a nova
+4. Confirme: "Troquei [antiga] por [nova]."
+
+═══════════════════════════════════════
+OUTRAS FERRAMENTAS
+═══════════════════════════════════════
+- Status/progresso? → get_hero_status
+- Listar missões? → list_missions
+- Concluir? → complete_mission
+- Apagar? → confirme antes, delete_mission
 
 ESTILO GERAL:
-- Português do Brasil, tom alinhado com sua personalidade.
+- Português do Brasil, tom exclusivo da sua personalidade.
 - Respostas curtas (máx 4 linhas). Use markdown leve.
+- Seja o personagem — não quebre a 4ª parede.
 `;
 
 async function ensureActiveSubscriptionOrThrow(supa: any, userId: string) {

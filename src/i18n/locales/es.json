@@ -443,7 +443,7 @@
       "threat_label": "Amenaza",
       "boss_defeated": "¡Jefe derrotado!",
       "requires_level": "Requiere nivel {{n}}",
-      "needs_keys": "Necesita {{n}} llaves",
+      "needs_keys": "Necesita {{need}} llaves (tienes {{have}})",
       "fight_boss": "Luchar contra el Jefe",
       "battle_history": "Historial de Batallas",
       "damage_dealt": "Daño",

@@ -430,7 +430,7 @@
       "threat_label": "Ameaça",
       "boss_defeated": "Boss derrotado!",
       "requires_level": "Requer nível {{n}}",
-      "needs_keys": "Precisa de {{n}} chaves",
+      "needs_keys": "Precisa de {{need}} chaves (você tem {{have}})",
       "fight_boss": "Lutar contra o Boss",
       "battle_history": "Histórico de Batalhas",
       "damage_dealt": "Dano",

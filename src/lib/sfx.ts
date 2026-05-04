@@ -10,6 +10,7 @@ let ctx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 let campfireAudioElement: HTMLAudioElement | null = null;
 let levelupAudioElement: HTMLAudioElement | null = null;
+let rancorBattleMusicElement: HTMLAudioElement | null = null;
 let campfireTimeoutId: number | null = null;
 let campfireIntervalId: number | null = null;
 
@@ -350,5 +351,29 @@ export const sfx = {
     setTimeout(() => {
       playTone({ freqStart: 440, freqEnd: 440, duration: 0.5, type: 'sine', envelope: { peak: 0.3, attack: 0.1, release: 0.2 } });
     }, 150);
+  },
+  /** Toca música épica (loop) para o duelo contra o Rancor Sombrio.
+   *  Arquivo: /public/sounds/rancor-battle.mp3
+   *  Sugestão gratuita: "Epic Battle" de Alexander Nakarada (CC BY 4.0)
+   *  Download: https://freemusicarchive.org/music/Alexander_Nakarada */
+  rancorBattle() {
+    if (typeof window === 'undefined') return;
+    if (!rancorBattleMusicElement) {
+      rancorBattleMusicElement = new Audio('/sounds/rancor-battle.mp3');
+      rancorBattleMusicElement.crossOrigin = 'anonymous';
+    }
+    const volume = getVolume();
+    const muted = isMuted();
+    rancorBattleMusicElement.volume = muted ? 0 : (volume / 100) * 0.45;
+    rancorBattleMusicElement.loop = true;
+    rancorBattleMusicElement.currentTime = 0;
+    rancorBattleMusicElement.play().catch(() => {});
+  },
+  stopRancorBattle() {
+    if (rancorBattleMusicElement) {
+      rancorBattleMusicElement.pause();
+      rancorBattleMusicElement.currentTime = 0;
+      rancorBattleMusicElement.loop = false;
+    }
   },
 };
