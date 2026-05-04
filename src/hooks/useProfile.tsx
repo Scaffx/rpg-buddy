@@ -735,7 +735,7 @@ export const useCompleteMission = () => {
           .single();
 
         if (secAttr) {
-          const newXp = secAttr.xp + 1;
+          const newXp = secAttr.xp + 12;
           const newLevel = getLevelFromXp(newXp);
 
           await supabase
@@ -897,7 +897,7 @@ export const useCompleteMission = () => {
         if (!Array.isArray(old)) return old;
         return old.map((a: any) => {
           if (a.id === attributeId) return { ...a, xp: (a.xp || 0) + xpReward };
-          if (secondaryAttributeIds.includes(a.id)) return { ...a, xp: (a.xp || 0) + 1 };
+          if (secondaryAttributeIds.includes(a.id)) return { ...a, xp: (a.xp || 0) + 12 };
           return a;
         });
       });

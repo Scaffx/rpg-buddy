@@ -14,15 +14,13 @@ export interface WeeklyLeaderboardEntry extends LeaderboardEntry {
   weekly_count: number;
 }
 
+// All hooks use SECURITY DEFINER RPC functions to bypass RLS and show all users.
+
 export function useGlobalLeaderboard() {
   return useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard_global'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles' as never)
-        .select('user_id, display_name, total_xp, level, starter_class, avatar_url')
-        .order('total_xp', { ascending: false })
-        .limit(100);
+      const { data, error } = await (supabase.rpc as any)('get_global_leaderboard', { p_limit: 100 });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
@@ -34,45 +32,9 @@ export function useWeeklyLeaderboard() {
   return useQuery<WeeklyLeaderboardEntry[]>({
     queryKey: ['leaderboard_weekly'],
     queryFn: async () => {
-      const since = new Date();
-      since.setDate(since.getDate() - 7);
-
-      const { data: logs, error: logsError } = await supabase
-        .from('activity_log' as never)
-        .select('user_id')
-        .eq('action' as never, 'mission_completed' as never)
-        .gte('created_at' as never, since.toISOString());
-
-      if (logsError) {
-        // Fallback: use global leaderboard sorted by total_xp
-        const { data: fallback, error: fbError } = await supabase
-          .from('profiles' as never)
-          .select('user_id, display_name, total_xp, level, starter_class, avatar_url')
-          .order('total_xp', { ascending: false })
-          .limit(100);
-        if (fbError) throw fbError;
-        return ((fallback ?? []) as LeaderboardEntry[]).map((p) => ({ ...p, weekly_count: 0 }));
-      }
-
-      const countMap: Record<string, number> = {};
-      for (const log of (logs ?? []) as { user_id: string }[]) {
-        countMap[log.user_id] = (countMap[log.user_id] ?? 0) + 1;
-      }
-
-      const userIds = Object.keys(countMap);
-      if (userIds.length === 0) return [];
-
-      const { data: profiles, error: profError } = await supabase
-        .from('profiles' as never)
-        .select('user_id, display_name, total_xp, level, starter_class, avatar_url')
-        .in('user_id' as never, userIds);
-
-      if (profError) throw profError;
-
-      return ((profiles ?? []) as LeaderboardEntry[])
-        .map((p) => ({ ...p, weekly_count: countMap[p.user_id] ?? 0 }))
-        .sort((a, b) => b.weekly_count - a.weekly_count)
-        .slice(0, 100);
+      const { data, error } = await (supabase.rpc as any)('get_weekly_leaderboard', { p_limit: 100 });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r: any) => ({ ...r, weekly_count: Number(r.weekly_count ?? 0) }));
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -83,12 +45,7 @@ export function useClassLeaderboard(starterClass: string | null) {
     queryKey: ['leaderboard_class', starterClass],
     queryFn: async () => {
       if (!starterClass) return [];
-      const { data, error } = await supabase
-        .from('profiles' as never)
-        .select('user_id, display_name, total_xp, level, starter_class, avatar_url')
-        .eq('starter_class' as never, starterClass as never)
-        .order('total_xp', { ascending: false })
-        .limit(100);
+      const { data, error } = await (supabase.rpc as any)('get_class_leaderboard', { p_class: starterClass, p_limit: 100 });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
@@ -104,12 +61,7 @@ export function useRegionalLeaderboard(region: string | null) {
     queryKey: ['leaderboard_regional', region],
     queryFn: async () => {
       if (!region) return [];
-      const { data, error } = await supabase
-        .from('profiles' as never)
-        .select('user_id, display_name, total_xp, level, starter_class, avatar_url')
-        .eq('region' as never, region as never)
-        .order('total_xp', { ascending: false })
-        .limit(100);
+      const { data, error } = await (supabase.rpc as any)('get_regional_leaderboard', { p_region: region, p_limit: 100 });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
@@ -123,46 +75,9 @@ export function useRegionalWeeklyLeaderboard(region: string | null) {
     queryKey: ['leaderboard_regional_weekly', region],
     queryFn: async () => {
       if (!region) return [];
-      const since = new Date();
-      since.setDate(since.getDate() - 7);
-
-      const { data: logs, error: logsError } = await supabase
-        .from('activity_log' as never)
-        .select('user_id')
-        .eq('action' as never, 'mission_completed' as never)
-        .gte('created_at' as never, since.toISOString());
-
-      if (logsError) {
-        const { data: fallback, error: fbError } = await supabase
-          .from('profiles' as never)
-          .select('user_id, display_name, total_xp, level, starter_class, avatar_url')
-          .eq('region' as never, region as never)
-          .order('total_xp', { ascending: false })
-          .limit(100);
-        if (fbError) throw fbError;
-        return ((fallback ?? []) as LeaderboardEntry[]).map((p) => ({ ...p, weekly_count: 0 }));
-      }
-
-      const countMap: Record<string, number> = {};
-      for (const log of (logs ?? []) as { user_id: string }[]) {
-        countMap[log.user_id] = (countMap[log.user_id] ?? 0) + 1;
-      }
-
-      const userIds = Object.keys(countMap);
-      if (userIds.length === 0) return [];
-
-      const { data: profiles, error: profError } = await supabase
-        .from('profiles' as never)
-        .select('user_id, display_name, total_xp, level, starter_class, avatar_url')
-        .in('user_id' as never, userIds as never)
-        .eq('region' as never, region as never);
-
-      if (profError) throw profError;
-
-      return ((profiles ?? []) as LeaderboardEntry[])
-        .map((p) => ({ ...p, weekly_count: countMap[p.user_id] ?? 0 }))
-        .sort((a, b) => b.weekly_count - a.weekly_count)
-        .slice(0, 100);
+      const { data, error } = await (supabase.rpc as any)('get_regional_weekly_leaderboard', { p_region: region, p_limit: 100 });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r: any) => ({ ...r, weekly_count: Number(r.weekly_count ?? 0) }));
     },
     enabled: !!region,
     staleTime: 5 * 60 * 1000,
@@ -174,13 +89,7 @@ export function useRegionalClassLeaderboard(region: string | null, starterClass:
     queryKey: ['leaderboard_regional_class', region, starterClass],
     queryFn: async () => {
       if (!starterClass || !region) return [];
-      const { data, error } = await supabase
-        .from('profiles' as never)
-        .select('user_id, display_name, total_xp, level, starter_class, avatar_url')
-        .eq('starter_class' as never, starterClass as never)
-        .eq('region' as never, region as never)
-        .order('total_xp', { ascending: false })
-        .limit(100);
+      const { data, error } = await (supabase.rpc as any)('get_regional_class_leaderboard', { p_region: region, p_class: starterClass, p_limit: 100 });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
