@@ -142,12 +142,52 @@ export function useClaimAchievement() {
 
       const ach = userAchievement.achievement;
 
-      // Concede XP e ouro
+      // Concede XP via RPC (com verificação de erro)
       if (ach.xp_reward > 0) {
-        await supabase.rpc('add_xp_to_user' as never, { p_user_id: user.id, p_xp: ach.xp_reward } as never);
+        const { error: xpErr } = await (supabase.rpc as any)('add_xp_to_user', {
+          p_user_id: user.id,
+          p_xp: ach.xp_reward,
+        });
+        if (xpErr) {
+          // Fallback: atualiza diretamente no perfil
+          const { data: prof } = await supabase
+            .from('profiles' as never)
+            .select('total_xp, level' as never)
+            .eq('user_id' as never, user.id as never)
+            .single();
+          if (prof) {
+            const newXp = ((prof as any).total_xp || 0) + ach.xp_reward;
+            const newLevel = Math.max((prof as any).level || 1, Math.floor(newXp / 200) + 1);
+            const { error: upErr } = await supabase
+              .from('profiles' as never)
+              .update({ total_xp: newXp, level: newLevel } as never)
+              .eq('user_id' as never, user.id as never);
+            if (upErr) throw upErr;
+          }
+        }
       }
+
+      // Concede ouro via RPC (com verificação de erro)
       if (ach.gold_reward > 0) {
-        await supabase.rpc('add_gold_to_user' as never, { p_user_id: user.id, p_gold: ach.gold_reward } as never);
+        const { error: goldErr } = await (supabase.rpc as any)('add_gold_to_user', {
+          p_user_id: user.id,
+          p_gold: ach.gold_reward,
+        });
+        if (goldErr) {
+          // Fallback: atualiza diretamente no saldo
+          const { data: bal } = await supabase
+            .from('user_balance' as never)
+            .select('gold' as never)
+            .eq('user_id' as never, user.id as never)
+            .maybeSingle();
+          if (bal) {
+            const { error: upErr } = await supabase
+              .from('user_balance' as never)
+              .update({ gold: ((bal as any).gold || 0) + ach.gold_reward, updated_at: new Date().toISOString() } as never)
+              .eq('user_id' as never, user.id as never);
+            if (upErr) throw upErr;
+          }
+        }
       }
 
       // Marca como resgatada
