@@ -199,6 +199,27 @@ export function useClaimAchievement() {
 
       return ach;
     },
+    onMutate: async (userAchievement) => {
+      // Optimistic update: marca como resgatada imediatamente na cache
+      await qc.cancelQueries({ queryKey: ['user_achievements', user?.id] });
+      const previous = qc.getQueryData(['user_achievements', user?.id]);
+      qc.setQueryData(['user_achievements', user?.id], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((ua: UserAchievement) =>
+          ua.id === userAchievement.id
+            ? { ...ua, claimed_at: new Date().toISOString() }
+            : ua,
+        );
+      });
+      return { previous };
+    },
+    onError: (err: any, _vars, context: any) => {
+      // Reverte optimistic update em caso de erro
+      if (context?.previous) {
+        qc.setQueryData(['user_achievements', user?.id], context.previous);
+      }
+      toast.error(err.message || 'Erro ao resgatar conquista.');
+    },
     onSuccess: (ach) => {
       qc.invalidateQueries({ queryKey: ['user_achievements', user?.id] });
       qc.invalidateQueries({ queryKey: ['profile', user?.id] });
@@ -207,9 +228,6 @@ export function useClaimAchievement() {
         description: `+${ach.xp_reward} XP  +${ach.gold_reward} 🪙`,
         duration: 5000,
       });
-    },
-    onError: (err: any) => {
-      toast.error(err.message || 'Erro ao resgatar conquista.');
     },
   });
 }
