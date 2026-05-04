@@ -12,6 +12,7 @@ import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CombatArena from '@/components/CombatArena';
+import DungeonArena, { type PotionItem } from '@/components/DungeonArena';
 import HeroStatusBar from '@/components/HeroStatusBar';
 import { useHeroStoryChoices, useSaveSkeletonChoice } from '@/hooks/useHeroStoryChoices';
 import { useAdoptSkeletonPup, useSkeletonCompanion, computeLiveMood } from '@/hooks/useCompanion';
@@ -71,6 +72,7 @@ export default function BossPage() {
   const [boostedMantirocaHp,   setBoostedMantirocaHp]   = useState(0);
   // ────────────────────────────────────────────────────────────────────────
 
+  const [activeDungeon, setActiveDungeon] = useState<{ id: string; name: string; friendCount: number } | null>(null);
   const [activeCombat, setActiveCombat] = useState<{ id: string; bossId: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number; playerFatigue: number } | null>(null);
   const [arenaVisible, setArenaVisible] = useState<boolean>(() => {
     const stored = localStorage.getItem('rpg_combat_arena_visible');
@@ -262,8 +264,24 @@ export default function BossPage() {
     battles?.filter((b) => b.won).map((b) => b.boss_id) || []
   );
 
-  const handleJoinDungeon = (dungeonName: string) => {
-      toast({ title: `✨ ${t('app.boss.joined_dungeon', { name: dungeonName })}`, description: t('app.boss.waiting_players') });
+  const handleOpenDungeon = (dungeon: { id: string; name: string; currentPlayers: number }) => {
+    setActiveDungeon({ id: dungeon.id, name: dungeon.name, friendCount: Math.max(0, dungeon.currentPlayers - 1) });
+  };
+
+  const handleDungeonVictory = ({ xpGained, goldGained, loot, rescued }: { xpGained: number; goldGained: number; loot: any[]; rescued: number }) => {
+    setActiveDungeon(null);
+    toast({
+      title: '🏆 Dungeon Conquistada!',
+      description: `+${xpGained} XP | +${goldGained} 🪙 | ${rescued > 0 ? `${rescued} NPC(s) resgatados | ` : ''}${loot.length} tipos de materiais coletados`,
+    });
+    queryClient.invalidateQueries({ queryKey: ['profile'] });
+    queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+    queryClient.invalidateQueries({ queryKey: ['inventory'] });
+  };
+
+  const handleDungeonDefeat = () => {
+    setActiveDungeon(null);
+    toast({ title: '💀 Derrota na Dungeon', description: 'Você foi derrotado. Prepare-se melhor e tente novamente.', variant: 'destructive' });
   };
 
   const handleStartArenaCombat = async (boss: any, overrideBossHp?: number) => {
@@ -616,8 +634,9 @@ export default function BossPage() {
             {profile && (
               <div className="rpg-card bg-purple-500/10 border-purple-500/30">
                 <p className="text-sm text-muted-foreground">
-                  Seu nível: <span className="text-purple-400 font-bold">{profile.level}</span> • Seu poder: <span className="text-purple-400 font-bold">{profile.level * 15}</span>
+                  Seu nível: <span className="text-purple-400 font-bold">{profile.level}</span> • Poder: <span className="text-purple-400 font-bold">{profile.level * 15}</span>
                 </p>
+                <p className="text-xs text-purple-300 mt-1">⚔️ Dungeons são desafios em grupo — bosses são extremamente fortes. Cada aliado dá +18% de dano!</p>
               </div>
             )}
 
@@ -694,24 +713,20 @@ export default function BossPage() {
                     </div>
 
                     <Button
-                      onClick={() => handleJoinDungeon(dungeon.name)}
-                      disabled={!canJoin || isFull}
+                      onClick={() => handleOpenDungeon({ id: dungeon.id, name: dungeon.name, currentPlayers: dungeon.currentPlayers })}
+                      disabled={!canJoin}
                       className={`w-full font-semibold ${
                         !canJoin
                           ? 'opacity-50 cursor-not-allowed'
-                          : isFull
-                          ? 'bg-muted text-muted-foreground'
                           : 'bg-purple-600 hover:bg-purple-700 text-white'
                       }`}
                     >
                       {!canJoin ? (
                         `❌ Nível insuficiente (${dungeon.minLevel} req)`
-                      ) : isFull ? (
-                        '🔒 Grupo cheio'
                       ) : (
                         <>
-                          <Users className="w-4 h-4 mr-2" />
-                          Entrar no grupo
+                          <Skull className="w-4 h-4 mr-2" />
+                          Entrar na Dungeon
                         </>
                       )}
                     </Button>
@@ -966,6 +981,46 @@ export default function BossPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── DungeonArena overlay ───────────────────────────────────────── */}
+      {activeDungeon && (() => {
+        const hpPotions = (inventory || []).filter(inv =>
+          inv.game_items?.is_consumable &&
+          (String(inv.game_items?.effect || '').startsWith('heal_') ||
+           String(inv.game_items?.effect || '').startsWith('mana_') ||
+           String(inv.game_items?.effect || '') === 'full_rest')
+        ).map<PotionItem>(inv => ({
+          invId: inv.id,
+          name: String(inv.game_items?.name || 'Poção'),
+          effect: String(inv.game_items?.effect || 'heal_hp_small'),
+          icon: String(inv.game_items?.icon || '🧪'),
+          qty: inv.quantity,
+        }));
+
+        const curHp  = healthStats?.current_hp  != null ? Number(healthStats.current_hp)  : playerStats.hp ?? 120;
+        const curMp  = healthStats?.current_mp  != null ? Number(healthStats.current_mp)  : (playerStats as any).mp ?? 40;
+        const maxHp  = healthStats?.max_hp      != null ? Number(healthStats.max_hp)      : playerStats.hp ?? 120;
+        const maxMp  = healthStats?.max_mp      != null ? Number(healthStats.max_mp)      : (playerStats as any).mp ?? 40;
+
+        return (
+          <DungeonArena
+            dungeonId={activeDungeon.id}
+            dungeonName={activeDungeon.name}
+            initialPlayerHp={curHp}
+            initialPlayerMaxHp={maxHp}
+            initialPlayerMp={curMp}
+            initialPlayerMaxMp={maxMp}
+            playerLevel={profile?.level || 1}
+            playerAtk={playerStats.atk ?? 15}
+            playerDef={playerStats.def ?? 8}
+            potions={hpPotions}
+            friendCount={activeDungeon.friendCount}
+            onVictory={handleDungeonVictory}
+            onDefeat={handleDungeonDefeat}
+            onFlee={() => setActiveDungeon(null)}
+          />
+        );
+      })()}
     </AppLayout>
   );
 }
