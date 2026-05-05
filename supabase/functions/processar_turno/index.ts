@@ -15,6 +15,10 @@ type ProcessarTurnoBody = {
   skill_name?: string;
   skill_power?: number;
   current_mp?: number;
+  /** Custo fixo de MP enviado pelo cliente (T3+). Se presente, substitui getSkillMpCost(power). */
+  skill_mp_cost?: number;
+  /** Tipo de efeito da habilidade (T3+). 'dano' usa fluxo normal; outros têm efeitos especiais. */
+  skill_effect_type?: 'dano' | 'heal' | 'buff' | 'debuff' | 'cc' | 'utility';
 };
 
 // Custo de MP de uma habilidade do jogador, derivado do "power".
@@ -375,7 +379,9 @@ Deno.serve(async (req) => {
     // Server-side validation: bloquear habilidades pagas com custo de MP maior que o MP atual.
     // O cliente envia current_mp; se ausente, assumimos custo 0 (Ataque Básico).
     const requestedSkillPower = Math.max(0, toNumber(body.skill_power, 0));
-    const requestedSkillCost = getSkillMpCost(requestedSkillPower);
+    const requestedSkillCost = body.skill_mp_cost !== undefined
+      ? Math.max(0, toNumber(body.skill_mp_cost, 0))
+      : getSkillMpCost(requestedSkillPower);
     const currentMp = Math.max(0, toNumber(body.current_mp, 0));
 
     if (requestedSkillCost > 0 && requestedSkillCost > currentMp) {
@@ -475,6 +481,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    const skillEffectType = String(body.skill_effect_type || 'dano');
+    const isHealSkill = skillEffectType === 'heal';
+    const isCcSkill   = skillEffectType === 'cc';
+    const isBuffSkill = skillEffectType === 'buff';
+    const isNonDamageSkill = isHealSkill || isCcSkill || isBuffSkill ||
+      skillEffectType === 'debuff' || skillEffectType === 'utility';
+
     const playerSkill = buildPlayerSkillResolution(body);
     const bossSkillPool = parseBossSkills(combat.bosses?.skills);
     const bossSkill = bossSkillPool[Math.floor(Math.random() * bossSkillPool.length)];
@@ -553,6 +566,16 @@ Deno.serve(async (req) => {
       bossEffectLog.push(`element_weak:${playerElement}:+${danoPlayer - before}`);
     }
 
+    // ── Efeito de CURA: habilidades heal restauram HP do jogador em vez de danificar o boss ──
+    let playerHealAmount = 0;
+    if (isHealSkill) {
+      playerHealAmount = Math.max(0, requestedSkillPower); // power = valor fixo de cura
+      danoPlayer = 0; // heal não causa dano
+    }
+
+    // ── CC: stun boss — o boss não ataca este turno ──
+    const bossStunned = isCcSkill;
+
     let hpBossRestante = Math.max(combat.hp_atual_boss - danoPlayer, 0);
 
     // 4) Boss Regen: cura uma fração do HP máximo
@@ -589,12 +612,18 @@ Deno.serve(async (req) => {
         bossMultiplier = bossMultiplier * (1 - bossSkill.bossDamageSelfPenaltyPct);
       }
 
-      danoBoss = calculateDamage(
-        bossAttackBase,
-        dadoBoss,
-        combat.personagens.defesa_base,
-        bossMultiplier,
-      );
+      // CC: boss atordoado não ataca
+      if (bossStunned) {
+        danoBoss = 0;
+        bossEffectLog.push('stunned_by_player_cc');
+      } else {
+        danoBoss = calculateDamage(
+          bossAttackBase,
+          dadoBoss,
+          combat.personagens.defesa_base,
+          bossMultiplier,
+        );
+      }
       // 5) Maldição da Escuridão: reduz o dano final do jogador no PRÓXIMO ataque (aplicado já neste turno via debuff de eficácia geral) — porém, como turn é atômico, aplicamos a redução AO DANO FINAL do boss para representar a aura debilitante? Não: a maldição reduz o dano que O JOGADOR causou neste turno. Aplicamos retroativamente.
       if (bossSkill.playerDamageDebuffPct > 0) {
         const before = danoPlayer;
@@ -692,8 +721,12 @@ Deno.serve(async (req) => {
 
     if (currentHealth) {
       const maxHp = Number(currentHealth.max_hp ?? hpPlayerRestante);
+      // Aplica cura de habilidade heal ao HP final do jogador
+      const hpAfterHeal = playerHealAmount > 0
+        ? Math.min(maxHp, hpPlayerRestante + playerHealAmount)
+        : hpPlayerRestante;
       const updatePayload: Record<string, unknown> = {
-        current_hp: Math.max(0, Math.min(maxHp, hpPlayerRestante)),
+        current_hp: Math.max(0, Math.min(maxHp, hpAfterHeal)),
       };
 
       // Apply fatigue only when combat ends (vitoria or derrota)
@@ -907,8 +940,10 @@ Deno.serve(async (req) => {
       JSON.stringify({
         dado_player: dadoPlayer,
         dano_player: danoPlayer,
+        heal_amount: playerHealAmount,
         dado_boss: dadoBoss,
         dano_boss: danoBoss,
+        boss_stunned: bossStunned,
         hp_boss_restante: hpBossRestante,
         hp_player_restante: hpPlayerRestante,
         status,

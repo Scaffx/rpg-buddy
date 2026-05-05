@@ -11,8 +11,10 @@ type Turn = 'idle' | 'player' | 'boss' | 'finished' | 'rancor_challenge';
 type TurnSummary = {
   dado_player: number;
   dano_player: number;
+  heal_amount?: number;
   dado_boss: number;
   dano_boss: number;
+  boss_stunned?: boolean;
   hp_boss_restante: number;
   hp_player_restante: number;
   status: 'em_andamento' | 'vitoria' | 'derrota';
@@ -37,6 +39,8 @@ type CombatDataProvider = {
     skillId?: string;
     skillName?: string;
     skillPower?: number;
+    skillEffectType?: string;
+    skillMpCost?: number;
   }) => Promise<TurnSummary>;
 };
 
@@ -186,7 +190,7 @@ const isSummonSkill = (skillName?: string): boolean =>
 
 // Default provider with Supabase integration and local mock fallback.
 const mockProvider: CombatDataProvider = {
-  async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower }) {
+  async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower, skillEffectType, skillMpCost }) {
     if (combateId) {
       const { data, error } = await supabase.functions.invoke('processar_turno', {
         body: {
@@ -196,6 +200,8 @@ const mockProvider: CombatDataProvider = {
           skill_name: skillName,
           skill_power: skillPower,
           current_mp: currentPlayerMp,
+          ...(skillEffectType ? { skill_effect_type: skillEffectType } : {}),
+          ...(skillMpCost !== undefined ? { skill_mp_cost: skillMpCost } : {}),
         },
       });
 
@@ -655,7 +661,7 @@ export default function CombatArena({
     for (let i = 0; i < selectedSkills.length; i += 1) {
       const idx = (start + i) % selectedSkills.length;
       const candidate = selectedSkills[idx];
-      const cost = getSkillMpCost(candidate.power);
+      const cost = candidate.mpCost !== undefined ? candidate.mpCost : getSkillMpCost(candidate.power);
       if (cost <= currentMp) {
         skillCursorRef.current = idx + 1;
         return { skill: candidate, warning: null };
@@ -665,7 +671,7 @@ export default function CombatArena({
 
     skillCursorRef.current += 1;
     const warning = skippedHigh
-      ? `MP insuficiente para "${skippedHigh.name}" (custa ${getSkillMpCost(skippedHigh.power)} MP). Usando Ataque Básico.`
+      ? `MP insuficiente para "${skippedHigh.name}" (custa ${skippedHigh.mpCost !== undefined ? skippedHigh.mpCost : getSkillMpCost(skippedHigh.power)} MP). Usando Ataque Básico.`
       : null;
     return { skill: null, warning };
   };
@@ -684,7 +690,7 @@ export default function CombatArena({
       const { skill: chosenSkill, warning } = pickAffordableSkill(playerMpRef.current);
       setInsufficientResourceWarning(warning);
 
-      const skillCost = chosenSkill ? getSkillMpCost(chosenSkill.power) : 0;
+      const skillCost = chosenSkill ? (chosenSkill.mpCost !== undefined ? chosenSkill.mpCost : getSkillMpCost(chosenSkill.power)) : 0;
 
       // Toast de início de turno: mostra MP atual e aviso se alguma skill foi bloqueada.
       toast({
@@ -706,6 +712,8 @@ export default function CombatArena({
           skillId: chosenSkill?.id,
           skillName: chosenSkill?.name,
           skillPower: chosenSkill?.power,
+          skillEffectType: chosenSkill?.effectType,
+          skillMpCost: chosenSkill?.mpCost,
         });
       } catch (err: unknown) {
         if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
@@ -1089,7 +1097,7 @@ export default function CombatArena({
         {selectedSkills.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {selectedSkills.map((skill) => {
-              const cost = getSkillMpCost(skill.power);
+              const cost = skill.mpCost !== undefined ? skill.mpCost : getSkillMpCost(skill.power);
               const canAfford = playerMp >= cost || turn === 'idle';
               return (
                 <span

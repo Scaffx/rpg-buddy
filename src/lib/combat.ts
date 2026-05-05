@@ -36,6 +36,8 @@ export type BossCombatStats = {
   weakness: string;
 };
 
+export type SkillEffectType = 'dano' | 'heal' | 'buff' | 'debuff' | 'cc' | 'utility';
+
 export type SkillNode = {
   id: string;
   name: string;
@@ -50,6 +52,14 @@ export type SkillNode = {
   tier: 'novato' | 'classe';
   category: 'fisica' | 'magica' | 'hibrida';
   requiredItem?: string;
+  /** Custo fixo de MP (substitui o cálculo dinâmico por power/15). */
+  mpCost?: number;
+  /** Tipo de efeito da habilidade. */
+  effectType?: SkillEffectType;
+  /** Descrição legível do efeito. */
+  effectLabel?: string;
+  /** Texto de sinergia com outra classe. */
+  synergy?: string;
 };
 
 type SkillBlueprint = {
@@ -65,11 +75,19 @@ type SkillBlueprint = {
   tier: 'novato' | 'classe';
   category: 'fisica' | 'magica' | 'hibrida';
   requiredItem?: string;
+  /** Se definido, power = fixedPower (sem escala por atributos). */
+  fixedPower?: number;
+  mpCost?: number;
+  effectType?: SkillEffectType;
+  effectLabel?: string;
+  synergy?: string;
 };
 
 export type SkillLoadout = {
   noviceSkills: SkillNode[];
   classSkills: SkillNode[];
+  /** Habilidades de especialidade (T3+). Vazias se classe ainda for T2. */
+  specialtySkills: SkillNode[];
 };
 
 const ATTR_NAME_MAP: Record<string, keyof AttrLevels> = {
@@ -658,6 +676,96 @@ const CLASS_SKILLS: Record<StarterClassId, SkillBlueprint[]> = {
   ],
 };
 
+// ================================================================
+// T3 CLASS SKILLS — Especialidades (Alquimista, Mecânico, Bardo…)
+// ================================================================
+const T3_CLASS_SKILLS: Record<string, SkillBlueprint[]> = {
+  'Alquimista': [
+    { id: 'alq-elixir-simples', name: 'Elixir Simples', archetype: 'Alquimista', fantasy: 'Poção curativa básica', description: '+25 HP instantâneo.', basedOn: ['Sabedoria', 'Inteligencia'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 5, effectType: 'heal', effectLabel: '+25 HP para aliado', fixedPower: 25, synergy: 'Com Sacerdote: +40 HP' },
+    { id: 'alq-catalisador-mental', name: 'Catalisador Mental', archetype: 'Alquimista', fantasy: 'Reduz custo mágico', description: 'Próxima habilidade custa -50% MP.', basedOn: ['Inteligencia', 'Disciplina'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 10, effectType: 'buff', effectLabel: 'Próxima habilidade custa -50% MP', fixedPower: 50, synergy: 'Com Sábio: -75% MP' },
+    { id: 'alq-pocao-aprimorada', name: 'Poção Aprimorada', archetype: 'Alquimista', fantasy: 'Cura purificante', description: '+40 HP + remove 1 debuff.', basedOn: ['Sabedoria', 'Vitalidade'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 12, effectType: 'heal', effectLabel: '+40 HP + remove 1 debuff', fixedPower: 40, synergy: 'Com Monge: Remove 2 debuffs' },
+    { id: 'alq-transmutacao', name: 'Transmutação', archetype: 'Alquimista', fantasy: 'Conversão alquímica', description: 'Converte item em consumível épico.', basedOn: ['Inteligencia', 'Criatividade'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 16, effectType: 'utility', effectLabel: 'Converte item em consumível épico', fixedPower: 0, synergy: 'Com Mecânico: Cria 2 consumíveis' },
+    { id: 'alq-essencia-vitalizada', name: 'Essência Vitalizada', archetype: 'Alquimista', fantasy: 'Restauração total de mana', description: 'Restaura 100% MP (1x/combate).', basedOn: ['Sabedoria', 'Relacionamento'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 18, effectType: 'utility', effectLabel: 'Restaura 100% MP (1x/combate)', fixedPower: 100, synergy: 'Com Bardo: +20 HP também' },
+  ],
+  'Mecânico': [
+    { id: 'mec-engrenagem-protecao', name: 'Engrenagem de Proteção', archetype: 'Mecânico', fantasy: 'Escudo mecânico básico', description: 'Escudo 40 DMG.', basedOn: ['Resiliencia', 'Disciplina'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 6, effectType: 'buff', effectLabel: 'Escudo 40 DMG', fixedPower: 40, synergy: 'Com Cavaleiro: Escudo 60 DMG' },
+    { id: 'mec-armadilha-simples', name: 'Armadilha Simples', archetype: 'Mecânico', fantasy: 'Imobilização mecânica', description: 'Imobiliza inimigo 1 turno.', basedOn: ['Inteligencia', 'Disciplina'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 11, effectType: 'cc', effectLabel: 'Imobiliza inimigo 1 turno', fixedPower: 1, synergy: 'Com Arruaceiro: Imobiliza 2 turnos' },
+    { id: 'mec-blindagem-reforcada', name: 'Blindagem Reforçada', archetype: 'Mecânico', fantasy: 'Defesa aprimorada', description: 'Escudo 80 DMG + -20% dano recebido.', basedOn: ['Resiliencia', 'Forca'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 13, effectType: 'buff', effectLabel: 'Escudo 80 DMG + -20% dano recebido', fixedPower: 80, synergy: 'Com Templário: +50% defesa aliado' },
+    { id: 'mec-mecanismo-perfeito', name: 'Mecanismo Perfeito', archetype: 'Mecânico', fantasy: 'Contraofensiva mecânica', description: 'Absorve 150 DMG + contra-ataca 50.', basedOn: ['Forca', 'Inteligencia'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 15, effectType: 'buff', effectLabel: 'Absorve 150 DMG + contra-ataca 50', fixedPower: 150, synergy: 'Com Caçador: Contra-ataque crítico' },
+    { id: 'mec-fortaleza-viva', name: 'Fortaleza Viva', archetype: 'Mecânico', fantasy: 'Canalizador de defesa', description: '+1 ARM/turno por 5 turnos.', basedOn: ['Resiliencia', 'Vitalidade'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 17, effectType: 'buff', effectLabel: '+1 ARM/turno (máx 5 turnos)', fixedPower: 1, synergy: 'Com Cavaleiro: +2 ARM/turno' },
+  ],
+  'Bardo': [
+    { id: 'brd-melodia-agilidade', name: 'Melodia de Agilidade', archetype: 'Bardo', fantasy: 'Melodia que aprimora reflexos', description: '+50% esquiva por 3 turnos.', basedOn: ['Agilidade', 'Carisma'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 10, effectType: 'buff', effectLabel: '+50% esquiva por 3 turnos', fixedPower: 50, synergy: 'Com Caçador: +80% esquiva' },
+    { id: 'brd-dissonancia-mental', name: 'Dissonância Mental', archetype: 'Bardo', fantasy: 'Som discordante que enfraquece', description: '-3 defesa inimigo por 2 turnos.', basedOn: ['Carisma', 'Inteligencia'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 12, effectType: 'debuff', effectLabel: '-3 defesa inimigo por 2 turnos', fixedPower: 3, synergy: 'Com Sábio: -5 defesa + confusão' },
+    { id: 'brd-cantico-restaurador', name: 'Cântico Restaurador', archetype: 'Bardo', fantasy: 'Melodia curativa suave', description: '+20 HP/turno por 2 turnos.', basedOn: ['Sabedoria', 'Carisma'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 8, effectType: 'heal', effectLabel: '+20 HP/turno por 2 turnos', fixedPower: 40, synergy: 'Com Sacerdote: +35 HP/turno' },
+    { id: 'brd-harmonia-perfeita', name: 'Harmonia Perfeita', archetype: 'Bardo', fantasy: 'Sincronização de ritmo', description: 'Aliados sincronizam turno.', basedOn: ['Relacionamento', 'Carisma'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 14, effectType: 'buff', effectLabel: 'Aliados sincronizam turno (1 turno)', fixedPower: 30, synergy: 'Com Monge: Sincronizam 2 turnos' },
+    { id: 'brd-sinfonia-de-guerra', name: 'Sinfonia de Guerra', archetype: 'Bardo', fantasy: 'Canção épica de batalha', description: '+30% dano para todos por 3 turnos.', basedOn: ['Carisma', 'Disciplina'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 16, effectType: 'buff', effectLabel: '+30% dano para time por 3 turnos', fixedPower: 30, synergy: 'Com Templário: +50% dano' },
+  ],
+  'Caçador': [
+    { id: 'cac-golpe-certeiro', name: 'Golpe Certeiro', archetype: 'Caçador', fantasy: 'Mira aprimorada', description: 'Próximo ataque crítico +80% dano.', basedOn: ['Agilidade', 'Disciplina'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 11, effectType: 'buff', effectLabel: 'Próximo ataque crítico +80% dano', fixedPower: 80, synergy: 'Com Bardo: Crítico +120% dano' },
+    { id: 'cac-rastreador-implacavel', name: 'Rastreador Implacável', archetype: 'Caçador', fantasy: 'Marcação de caça', description: 'Marca inimigo: +25% dano por 4 turnos.', basedOn: ['Agilidade', 'Inteligencia'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 9, effectType: 'debuff', effectLabel: 'Marca inimigo: +25% dano por 4 turnos', fixedPower: 25, synergy: 'Com Mercenário: +40% dano' },
+    { id: 'cac-investida-predatoria', name: 'Investida Predatória', archetype: 'Caçador', fantasy: 'Ataque com vampirismo', description: 'Ataque + cura 30% do dano causado.', basedOn: ['Agilidade', 'Forca'], unlockLevel: 19, cooldown: 3, factor: 0.45, tier: 'classe', category: 'fisica', mpCost: 13, effectType: 'dano', effectLabel: 'Ataque + cura 30% do dano', synergy: 'Com Templário: Cura 50% do dano' },
+    { id: 'cac-multiplos-disparos', name: 'Múltiplos Disparos', archetype: 'Caçador', fantasy: 'Chuva de flechas', description: '3 ataques de 70 dano cada.', basedOn: ['Agilidade', 'Criatividade'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 14, effectType: 'dano', effectLabel: '3 ataques aleatórios — 70 dano cada', fixedPower: 210, synergy: 'Com Arruaceiro: 5 ataques' },
+    { id: 'cac-instinto-de-caca', name: 'Instinto de Caça', archetype: 'Caçador', fantasy: 'Fraqueza exposta', description: 'Inimigo marcado sofre -40% defesa.', basedOn: ['Agilidade', 'Sabedoria'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 15, effectType: 'debuff', effectLabel: 'Inimigo marcado sofre -40% defesa', fixedPower: 40, synergy: 'Com Mercenário: -60% defesa' },
+  ],
+  'Cavaleiro': [
+    { id: 'cav-escudo-da-fe', name: 'Escudo da Fé', archetype: 'Cavaleiro', fantasy: 'Barreira sagrada de aço', description: 'Absorve 120 DMG + transfere 50% dano.', basedOn: ['Resiliencia', 'Sabedoria'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 9, effectType: 'buff', effectLabel: 'Absorve 120 DMG + transfere 50% dano', fixedPower: 120, synergy: 'Com Alquimista: Transfere 100% dano' },
+    { id: 'cav-investida-defensiva', name: 'Investida Defensiva', archetype: 'Cavaleiro', fantasy: 'Avanço protetor', description: 'Ataque + -30% dano recebido por 2 turnos.', basedOn: ['Forca', 'Resiliencia'], unlockLevel: 17, cooldown: 3, factor: 0.35, tier: 'classe', category: 'fisica', mpCost: 10, effectType: 'dano', effectLabel: 'Ataque + -30% dano recebido por 2 turnos', synergy: 'Com Monge: -50% dano' },
+    { id: 'cav-parede-de-aco', name: 'Parede de Aço', archetype: 'Cavaleiro', fantasy: 'Barreira intransponível', description: 'Provoca inimigos, +1 ARM/turno.', basedOn: ['Resiliencia', 'Disciplina'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 11, effectType: 'buff', effectLabel: 'Provoca inimigos, +1 ARM/turno', fixedPower: 30, synergy: 'Com Mecânico: +2 ARM/turno' },
+    { id: 'cav-contragolpe-absoluto', name: 'Contragolpe Absoluto', archetype: 'Cavaleiro', fantasy: 'Espelho de dano', description: 'Reflete 100% do dano recebido.', basedOn: ['Forca', 'Disciplina'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 13, effectType: 'buff', effectLabel: 'Reflete 100% dano recebido', fixedPower: 100, synergy: 'Com Templário: Reflete + 50 dano' },
+    { id: 'cav-ultimo-suspiro', name: 'Último Suspiro', archetype: 'Cavaleiro', fantasy: 'Resistência inabalável', description: 'HP<50%: -80% dano inimigo.', basedOn: ['Resiliencia', 'Vitalidade'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 16, effectType: 'buff', effectLabel: 'Quando perde >50% HP: -80% dano inimigo', fixedPower: 80, synergy: 'Com Sacerdote: +40 HP automático' },
+  ],
+  'Templário': [
+    { id: 'tmp-golpe-sagrado', name: 'Golpe Sagrado', archetype: 'Templário', fantasy: 'Lâmina abençoada', description: '70 dano + cura AOE 40 HP.', basedOn: ['Forca', 'Sabedoria'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 12, effectType: 'dano', effectLabel: '70 dano + cura AOE 40 HP', fixedPower: 70, synergy: 'Com Sacerdote: Cura 60 HP' },
+    { id: 'tmp-bencao-da-luta', name: 'Benção da Luta', archetype: 'Templário', fantasy: 'Vigor sagrado em batalha', description: '+20% dano + lifesteal 50%.', basedOn: ['Sabedoria', 'Forca'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 10, effectType: 'buff', effectLabel: '+20% dano + lifesteal 50%', fixedPower: 20, synergy: 'Com Caçador: Lifesteal 70%' },
+    { id: 'tmp-julgamento-divino', name: 'Julgamento Divino', archetype: 'Templário', fantasy: 'Sentença celestial', description: 'Remove buffs inimigo + 100 dano.', basedOn: ['Sabedoria', 'Disciplina'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 14, effectType: 'dano', effectLabel: 'Remove buffs inimigo + 100 dano', fixedPower: 100, synergy: 'Com Sábio: 150 dano' },
+    { id: 'tmp-purificacao-sagrada', name: 'Purificação Sagrada', archetype: 'Templário', fantasy: 'Limpeza divina', description: 'Remove debuffs + +30% defesa.', basedOn: ['Sabedoria', 'Resiliencia'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 13, effectType: 'buff', effectLabel: 'Remove debuffs aliados + +30% defesa', fixedPower: 30, synergy: 'Com Monge: +50% defesa' },
+    { id: 'tmp-ira-retardataria', name: 'Ira Retardatária', archetype: 'Templário', fantasy: 'Maldição de combate', description: 'Inimigo sofre +25% dano por 4 turnos.', basedOn: ['Forca', 'Sabedoria'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 15, effectType: 'debuff', effectLabel: 'Inimigo sofre +25% dano por 4 turnos', fixedPower: 25, synergy: 'Com Mercenário: +40% dano' },
+  ],
+  'Mercenário': [
+    { id: 'mer-roubo-de-essencia', name: 'Roubo de Essência', archetype: 'Mercenário', fantasy: 'Drenagem arcana', description: 'Rouba 20% MP do inimigo.', basedOn: ['Agilidade', 'Inteligencia'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 11, effectType: 'utility', effectLabel: 'Rouba 20% MP máximo do inimigo', fixedPower: 20, synergy: 'Com Alquimista: Rouba 30% MP' },
+    { id: 'mer-golpe-duplo', name: 'Golpe Duplo', archetype: 'Mercenário', fantasy: 'Lâminas gêmeas', description: '2 ataques rápidos, crítico 50%.', basedOn: ['Agilidade', 'Forca'], unlockLevel: 17, cooldown: 3, factor: 0.4, tier: 'classe', category: 'fisica', mpCost: 10, effectType: 'dano', effectLabel: '2 ataques rápidos — crítico 50%', synergy: 'Com Caçador: Crítico 100%' },
+    { id: 'mer-ganancia', name: 'Ganância', archetype: 'Mercenário', fantasy: 'Cobiça energizante', description: 'Crítico restaura 40 MP.', basedOn: ['Agilidade', 'Carisma'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 8, effectType: 'utility', effectLabel: 'Crítico restaura 40 MP', fixedPower: 40, synergy: 'Com Sábio: Crítico restaura 60 MP' },
+    { id: 'mer-furto-aereo', name: 'Furto Aéreo', archetype: 'Mercenário', fantasy: 'Roubo acrobático', description: 'Rouba item + 80 dano.', basedOn: ['Agilidade', 'Criatividade'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 12, effectType: 'dano', effectLabel: 'Rouba item inimigo + 80 dano', fixedPower: 80, synergy: 'Com Arruaceiro: Rouba 2 itens' },
+    { id: 'mer-morte-subita', name: 'Morte Súbita', archetype: 'Mercenário', fantasy: 'Golpe que apaga esperança', description: 'Crítico = -20% HP máximo inimigo.', basedOn: ['Agilidade', 'Disciplina'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 16, effectType: 'dano', effectLabel: 'Crítico = -20% HP máximo inimigo', fixedPower: 20, synergy: 'Com Bruxo: Crítico = -40% HP' },
+  ],
+  'Arruaceiro': [
+    { id: 'arr-cortina-de-fumaca', name: 'Cortina de Fumaça', archetype: 'Arruaceiro', fantasy: 'Névoa confusora', description: '-30% acurácia AOE por 2 turnos.', basedOn: ['Agilidade', 'Criatividade'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 9, effectType: 'debuff', effectLabel: '-30% acurácia AOE por 2 turnos', fixedPower: 30, synergy: 'Com Bardo: -50% acurácia' },
+    { id: 'arr-sapato-de-chumbo', name: 'Sapato de Chumbo', archetype: 'Arruaceiro', fantasy: 'Golpe imobilizador', description: 'Imobiliza + 60 dano.', basedOn: ['Forca', 'Agilidade'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 10, effectType: 'cc', effectLabel: 'Imobiliza + 60 dano', fixedPower: 60, synergy: 'Com Mecânico: Imobiliza 2 turnos' },
+    { id: 'arr-caos-descontrolado', name: 'Caos Descontrolado', archetype: 'Arruaceiro', fantasy: 'Explosão caótica', description: 'AOE 50–100 dano aleatório.', basedOn: ['Criatividade', 'Forca'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 13, effectType: 'dano', effectLabel: 'AOE 50–100 dano aleatório', fixedPower: 75, synergy: 'Com Mercenário: AOE 80–150 dano' },
+    { id: 'arr-explosao-de-fumaca', name: 'Explosão de Fumaça', archetype: 'Arruaceiro', fantasy: 'Cortina de fuga', description: 'Fuga garantida + aliados escapam.', basedOn: ['Agilidade', 'Carisma'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 14, effectType: 'utility', effectLabel: 'Fuga garantida + aliados escapam', fixedPower: 0, synergy: 'Com Bardo: Aliados levam bônus' },
+    { id: 'arr-zona-de-desordem', name: 'Zona de Desordem', archetype: 'Arruaceiro', fantasy: 'Caos total em área', description: 'Inimigos confusos por 3 turnos.', basedOn: ['Carisma', 'Criatividade'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 15, effectType: 'cc', effectLabel: 'Inimigos confusos por 3 turnos', fixedPower: 3, synergy: 'Com Sábio: Confusão + silêncio' },
+  ],
+  'Sacerdote': [
+    { id: 'sac-graca-divina', name: 'Graça Divina', archetype: 'Sacerdote', fantasy: 'Bênção curativa divina', description: '+60 HP + remove 1 debuff.', basedOn: ['Sabedoria', 'Relacionamento'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 8, effectType: 'heal', effectLabel: '+60 HP + remove 1 debuff', fixedPower: 60, synergy: 'Com Alquimista: +80 HP' },
+    { id: 'sac-protecao-sagrada', name: 'Proteção Sagrada', archetype: 'Sacerdote', fantasy: 'Escudo divino temporário', description: '-50% dano próximo turno.', basedOn: ['Sabedoria', 'Resiliencia'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 10, effectType: 'buff', effectLabel: '-50% dano próximo turno', fixedPower: 50, synergy: 'Com Cavaleiro: -70% dano' },
+    { id: 'sac-ressurreicao-menor', name: 'Ressurreição Menor', archetype: 'Sacerdote', fantasy: 'Retorno da morte', description: 'Revive aliado com 30 HP (1x/combate).', basedOn: ['Sabedoria', 'Vitalidade'], unlockLevel: 19, cooldown: 4, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 16, effectType: 'heal', effectLabel: 'Revive aliado com 30 HP (1x/combate)', fixedPower: 30, synergy: 'Com Monge: Revive com 50 HP' },
+    { id: 'sac-escudo-divino', name: 'Escudo Divino', archetype: 'Sacerdote', fantasy: 'Barreira de luz sagrada', description: 'Aliado ganha escudo 80 DMG.', basedOn: ['Sabedoria', 'Disciplina'], unlockLevel: 21, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 12, effectType: 'buff', effectLabel: 'Aliado ganha escudo 80 DMG', fixedPower: 80, synergy: 'Com Templário: Escudo 120 DMG' },
+    { id: 'sac-cura-em-massa', name: 'Cura em Massa', archetype: 'Sacerdote', fantasy: 'Onda de cura divina', description: 'Cura todos aliados +50 HP.', basedOn: ['Relacionamento', 'Sabedoria'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 14, effectType: 'heal', effectLabel: 'Cura todos aliados +50 HP', fixedPower: 50, synergy: 'Com Bardo: +70 HP' },
+  ],
+  'Monge': [
+    { id: 'mnk-equilibrio-perfeito', name: 'Equilíbrio Perfeito', archetype: 'Monge', fantasy: 'Harmonia vital', description: 'Iguala HP aliados (mín 50%).', basedOn: ['Sabedoria', 'Vitalidade'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 9, effectType: 'heal', effectLabel: 'Iguala HP aliados (mínimo 50%)', fixedPower: 50, synergy: 'Com Sacerdote: Iguala 70% HP' },
+    { id: 'mnk-meditacao-profunda', name: 'Meditação Profunda', archetype: 'Monge', fantasy: 'Foco meditativo', description: '+50% regen MP + imunidade 1 turno.', basedOn: ['Sabedoria', 'Disciplina'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 7, effectType: 'utility', effectLabel: '+50% regen MP + imunidade 1 turno', fixedPower: 50, synergy: 'Com Alquimista: +75% regen MP' },
+    { id: 'mnk-punho-da-serenidade', name: 'Punho da Serenidade', archetype: 'Monge', fantasy: 'Golpe paralisante zen', description: 'Desabilita inimigo 1 turno.', basedOn: ['Forca', 'Sabedoria'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'fisica', mpCost: 11, effectType: 'cc', effectLabel: 'Desabilita inimigo 1 turno', fixedPower: 1, synergy: 'Com Templário: Desabilita 2 turnos' },
+    { id: 'mnk-fluxo-harmonico', name: 'Fluxo Harmônico', archetype: 'Monge', fantasy: 'Ritmo de batalha', description: 'Aliados ganham +30% velocidade.', basedOn: ['Agilidade', 'Sabedoria'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 13, effectType: 'buff', effectLabel: 'Aliados ganham +30% velocidade', fixedPower: 30, synergy: 'Com Bardo: +50% velocidade' },
+    { id: 'mnk-despertar-espiritual', name: 'Despertar Espiritual', archetype: 'Monge', fantasy: 'Iluminação de batalha', description: 'Aliados ganham +40% dano por 3 turnos.', basedOn: ['Disciplina', 'Sabedoria'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'hibrida', mpCost: 15, effectType: 'buff', effectLabel: 'Aliados ganham +40% dano por 3 turnos', fixedPower: 40, synergy: 'Com Templário: +60% dano' },
+  ],
+  'Sábio': [
+    { id: 'sab-palavra-de-poder', name: 'Palavra de Poder', archetype: 'Sábio', fantasy: 'Verbo incapacitante', description: 'Silencia inimigo 2 turnos.', basedOn: ['Inteligencia', 'Carisma'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 13, effectType: 'cc', effectLabel: 'Silencia inimigo por 2 turnos', fixedPower: 2, synergy: 'Com Cavaleiro: +50% dano ao silenciado' },
+    { id: 'sab-prisao-eterea', name: 'Prisão Etérea', archetype: 'Sábio', fantasy: 'Gaiola arcana', description: 'Imobiliza + -40% defesa por 3 turnos.', basedOn: ['Inteligencia', 'Disciplina'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 15, effectType: 'cc', effectLabel: 'Imobiliza + -40% defesa por 3 turnos', fixedPower: 3, synergy: 'Com Mercenário: +30% crítico ao alvo' },
+    { id: 'sab-analise-critica', name: 'Análise Crítica', archetype: 'Sábio', fantasy: 'Leitura de ponto fraco', description: '+40% dano próximos 3 turnos.', basedOn: ['Inteligencia', 'Sabedoria'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 10, effectType: 'buff', effectLabel: '+40% dano próximos 3 turnos', fixedPower: 40, synergy: 'Com Caçador: Crítico 100%' },
+    { id: 'sab-disrupcao-arcana', name: 'Disrupção Arcana', archetype: 'Sábio', fantasy: 'Cancelamento mágico', description: 'Desativa habilidades inimigo 2 turnos.', basedOn: ['Inteligencia', 'Criatividade'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 14, effectType: 'cc', effectLabel: 'Desativa habilidades inimigo por 2 turnos', fixedPower: 2, synergy: 'Com Arruaceiro: Desativa 3 turnos' },
+    { id: 'sab-visao-penetrante', name: 'Visão Penetrante', archetype: 'Sábio', fantasy: 'Percepção profunda de falhas', description: 'Revela fraquezas: +60% dano.', basedOn: ['Inteligencia', 'Sabedoria'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 12, effectType: 'buff', effectLabel: 'Revela fraquezas: +60% dano ao inimigo', fixedPower: 60, synergy: 'Com Bruxo: +80% dano' },
+  ],
+  'Bruxo': [
+    { id: 'brx-maldicao-profunda', name: 'Maldição Profunda', archetype: 'Bruxo', fantasy: 'Pragas das sombras', description: '+25% dano recebido pelo inimigo por 4 turnos.', basedOn: ['Inteligencia', 'Disciplina'], unlockLevel: 15, cooldown: 2, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 14, effectType: 'debuff', effectLabel: '+25% dano recebido pelo inimigo por 4 turnos', fixedPower: 25, synergy: 'Com Mercenário: +40% dano' },
+    { id: 'brx-dreno-de-vida', name: 'Dreno de Vida', archetype: 'Bruxo', fantasy: 'Absorção sombria', description: '90 dano + cura 50% do dano.', basedOn: ['Inteligencia', 'Vitalidade'], unlockLevel: 17, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 12, effectType: 'dano', effectLabel: '90 dano + cura 50% do dano', fixedPower: 90, synergy: 'Com Templário: Cura 75%' },
+    { id: 'brx-noite-eterna', name: 'Noite Eterna', archetype: 'Bruxo', fantasy: 'Trevas infinitas', description: 'AOE 80 dano + nega buffs inimigo.', basedOn: ['Inteligencia', 'Criatividade'], unlockLevel: 19, cooldown: 3, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 16, effectType: 'dano', effectLabel: 'AOE 80 dano + nega buffs inimigo', fixedPower: 80, synergy: 'Com Arruaceiro: AOE 120 dano' },
+    { id: 'brx-corrupcao-lenta', name: 'Corrupção Lenta', archetype: 'Bruxo', fantasy: 'Veneno de sombra', description: 'Inimigo perde 5% HP/turno por 3 turnos.', basedOn: ['Inteligencia', 'Disciplina'], unlockLevel: 21, cooldown: 4, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 13, effectType: 'debuff', effectLabel: 'Inimigo perde 5% HP/turno por 3 turnos', fixedPower: 5, synergy: 'Sem sinergia (efeito solo)' },
+    { id: 'brx-sacrificio-profano', name: 'Sacrifício Profano', archetype: 'Bruxo', fantasy: 'Poder à custa de sangue', description: '150 dano + perde 30 HP.', basedOn: ['Inteligencia', 'Forca'], unlockLevel: 23, cooldown: 4, factor: 1.0, tier: 'classe', category: 'magica', mpCost: 15, effectType: 'dano', effectLabel: '150 dano + perde 30 HP', fixedPower: 150, synergy: 'Com Monge: 200 dano, perde 20 HP' },
+  ],
+};
+
 export function getStarterItemForClass(starterClass: StarterClassId): string {
   return STARTER_ITEM_BY_CLASS[starterClass] || STARTER_ITEM_BY_CLASS.novato;
 }
@@ -683,6 +791,9 @@ function computeSkillPower(levels: AttrLevels, skill: SkillBlueprint): number {
 }
 
 function mapToNode(levels: AttrLevels, profileLevel: number, skill: SkillBlueprint): SkillNode {
+  const computedPower = skill.fixedPower !== undefined
+    ? skill.fixedPower
+    : computeSkillPower(levels, skill);
   return {
     id: skill.id,
     name: skill.name,
@@ -692,11 +803,15 @@ function mapToNode(levels: AttrLevels, profileLevel: number, skill: SkillBluepri
     basedOn: [...skill.basedOn],
     unlockLevel: skill.unlockLevel,
     cooldown: skill.cooldown,
-    power: computeSkillPower(levels, skill),
+    power: computedPower,
     unlocked: profileLevel >= skill.unlockLevel,
     tier: skill.tier,
     category: skill.category,
     requiredItem: skill.requiredItem,
+    mpCost: skill.mpCost,
+    effectType: skill.effectType,
+    effectLabel: skill.effectLabel,
+    synergy: skill.synergy,
   };
 }
 
@@ -705,6 +820,7 @@ export function getSkillLoadout(
   levels: AttrLevels,
   starterClassInput?: string,
   starterItemInput?: string,
+  currentClassNameInput?: string,
 ): SkillLoadout {
   const starterClass = normalizeClass(starterClassInput);
   const starterItem = starterItemInput || getStarterItemForClass(starterClass);
@@ -712,7 +828,10 @@ export function getSkillLoadout(
   const noviceBlueprint = NOVICE_SKILLS_BY_ITEM[starterItem] || NOVICE_SKILLS_BY_ITEM['Adaga de Treino'];
   const noviceSkills = noviceBlueprint.map((skill) => mapToNode(levels, profileLevel, skill));
   const classSkills = (CLASS_SKILLS[starterClass] || []).map((skill) => mapToNode(levels, profileLevel, skill));
+  const specialtySkills = (T3_CLASS_SKILLS[currentClassNameInput ?? ''] || []).map((skill) =>
+    mapToNode(levels, profileLevel, skill),
+  );
 
-  return { noviceSkills, classSkills };
+  return { noviceSkills, classSkills, specialtySkills };
 }
 
