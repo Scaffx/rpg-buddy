@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+export const MAX_EQUIPPED_TALENTS = 5;
+
 export type Talent = {
   id: string;
   nome: string;
@@ -125,8 +127,6 @@ export function useBuyTalent() {
     },
   });
 }
-
-export const MAX_EQUIPPED_TALENTS = 5;
 
 export function useToggleEquipTalent() {
   const { user } = useAuth();
