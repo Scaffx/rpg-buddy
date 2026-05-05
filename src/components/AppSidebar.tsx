@@ -74,15 +74,16 @@ export function AppSidebar() {
     [t],
   );
 
-  const CRAFTING_CLASSES = ['Alquimista', 'Mecânico', 'Mestre-Ferreiro', 'Criador'];
-  const hasCrafting = CRAFTING_CLASSES.includes(currentClass);
-
   const currentClass = useMemo(() => {
     const id = (profile as any)?.current_class_id;
     if (!id || !classes) return 'Aprendiz';
     const found = (classes as any[]).find((c) => c.id === id);
     return found?.name ?? 'Aprendiz';
   }, [profile, classes]);
+
+  const CRAFTING_CLASSES = ['Alquimista', 'Mecânico', 'Mestre-Ferreiro', 'Criador'];
+  const hasCrafting = CRAFTING_CLASSES.includes(currentClass);
+
   const xpProgress = getLevelProgress(profile?.total_xp || 0);
 
   return (
