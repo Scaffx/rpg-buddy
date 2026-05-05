@@ -9,11 +9,7 @@ type ActiveTalentsBadgeProps = {
 export default function ActiveTalentsBadge({ compact = false, className = '' }: ActiveTalentsBadgeProps) {
   const { data: talents = [] } = usePlayerTalents();
 
-  // Conta apenas talentos equipados — é a única medida que reflete o que
-  // está de fato contribuindo no gameplay. Evita confusão entre "comprado"
-  // e "ativo".
   const names = (talents || [])
-    .filter((row: any) => row?.equipped)
     .map((row: any) => String(row?.talentos_disponiveis?.nome || ''))
     .filter(Boolean);
 

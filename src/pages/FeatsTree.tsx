@@ -176,10 +176,8 @@ export default function FeatsTree() {
 
         <div className="rpg-card flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm">
-              <span className="text-muted-foreground">{t('app.feats.available_points')}</span>
-              <span className="ml-2 align-middle text-2xl font-bold text-primary">{pontos}</span>
-            </p>
+            <p className="text-sm text-muted-foreground">{t('app.feats.available_points')}</p>
+            <p className="text-2xl font-bold text-primary">{pontos}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">

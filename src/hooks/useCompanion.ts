@@ -138,36 +138,6 @@ export function useSkeletonCompanion() {
     gcTime: 10 * 60_000,
   });
 }
-
-/**
- * True quando o jogador venceu pelo menos um boss de esqueleto.
- * Usado para destravar a adoção do Ossinho na página de companheiros.
- */
-export function useSkeletonBossDefeated() {
-  const { user } = useAuth();
-  return useQuery<boolean>({
-    queryKey: ['skeleton_boss_defeated', user?.id],
-    enabled: !!user,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data: skeletonBosses, error: bossErr } = await (supabase as any)
-        .from('bosses')
-        .select('id')
-        .ilike('name', '%esquelet%');
-      if (bossErr) throw bossErr;
-      const ids = (skeletonBosses ?? []).map((b: any) => b.id);
-      if (ids.length === 0) return false;
-      const { count, error } = await (supabase as any)
-        .from('boss_battles')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user!.id)
-        .eq('won', true)
-        .in('boss_id', ids);
-      if (error) throw error;
-      return (count ?? 0) > 0;
-    },
-  });
-}
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useCreateCompanion() {
