@@ -95,6 +95,66 @@ export function usePendingRequests() {
   });
 }
 
+/**
+ * Solicitações de amizade ENVIADAS pelo usuário atual (pending, accepted ou rejected).
+ * Usada para a usuária ver para quem mandou pedido e o status atual de cada um.
+ */
+export function useSentRequests() {
+  const { user } = useAuth();
+  return useQuery<FriendRequest[]>({
+    queryKey: ['friend_requests_sent', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('friend_requests' as any)
+        .select('*')
+        .eq('requester_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      const rows = ((data || []) as unknown) as FriendRequest[];
+      const receiverIds = rows.map((r) => r.receiver_id);
+      if (receiverIds.length === 0) return rows;
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, level, starter_class, avatar_url')
+        .in('user_id', receiverIds);
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
+      return rows.map((r) => ({
+        ...r,
+        other_profile: profileMap.get(r.receiver_id) as FriendRequest['other_profile'],
+      }));
+    },
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Cancela uma solicitação enviada que ainda está pending (delete o row).
+ * Não funciona para solicitações já aceitas ou rejeitadas — só faz sentido cancelar pending.
+ */
+export function useCancelSentRequest() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { error } = await supabase
+        .from('friend_requests' as any)
+        .delete()
+        .eq('id', requestId)
+        .eq('requester_id', user!.id)
+        .eq('status', 'pending');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['friend_requests_sent', user?.id] });
+    },
+  });
+}
+
 /** Busca um perfil público por nome de exibição (usa RPC SECURITY DEFINER para bypasear RLS). */
 export function useSearchProfile(query: string) {
   const { user } = useAuth();
@@ -155,6 +215,7 @@ export function useSendFriendRequest() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['friends', user?.id] });
       qc.invalidateQueries({ queryKey: ['friend_requests_pending'] });
+      qc.invalidateQueries({ queryKey: ['friend_requests_sent', user?.id] });
     },
   });
 }
