@@ -545,33 +545,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Attributes */}
-        <div>
-          <h2 className="text-lg font-display font-semibold text-foreground mb-3">{t('app.dashboard.attributes_header')}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {attributes?.map((attr, i) => (
-              <motion.div
-                key={attr.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 + i * 0.05 }}
-                className="rpg-card flex items-center gap-3"
-              >
-                <span className="text-2xl">{attr.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-foreground">{attr.name}</span>
-                    <span className="rpg-badge">Nv.{attr.level}</span>
-                  </div>
-                  <div className="rpg-stat-bar mt-1.5">
-                    <div className="rpg-stat-fill" style={{ width: `${attr.xp % 100}%` }} />
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{attr.xp % 100}/100 XP</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {showCoachPopup && (
