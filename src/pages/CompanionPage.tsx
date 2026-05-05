@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PawPrint, Sparkles, Heart, Swords, Clock, Loader2, Edit2, Check, X, Lock } from 'lucide-react';
+import { PawPrint, Sparkles, Heart, Swords, Clock, Loader2, Edit2, Check, X, Lock, Skull } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,7 @@ import {
   useAllCompanions,
   useCompanion,
   useSkeletonCompanion,
+  useSkeletonBossDefeated,
   useCreateCompanion,
   useInteractCompanion,
   COMPANION_TYPES,
@@ -328,6 +330,59 @@ function CompanionCard({
   );
 }
 
+// ─── Skeleton Pup placeholder card (locked / ready-to-adopt) ───────────────
+
+function SkeletonPupSlot({ defeatedBoss }: { defeatedBoss: boolean }) {
+  const navigate = useNavigate();
+  const ready = defeatedBoss;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`rounded-2xl border bg-gradient-to-br p-6 space-y-4 ${
+        ready
+          ? 'border-violet-500/40 from-violet-500/15 to-slate-900/60'
+          : 'border-border from-card to-card/40'
+      }`}
+    >
+      <div className="flex flex-col items-center gap-3 pt-2">
+        <div className={`relative text-7xl select-none ${ready ? '' : 'opacity-40 grayscale'}`}>
+          {SKELETON_PUP.emoji}
+          {!ready && (
+            <div className="absolute -bottom-1 -right-1 bg-muted border-2 border-background rounded-full p-1">
+              <Lock className="w-4 h-4 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+        <h2 className="text-xl font-bold">{SKELETON_PUP.name}</h2>
+        <Badge
+          variant="outline"
+          className={`text-xs ${ready ? 'border-violet-500/40 text-violet-400' : ''}`}
+        >
+          {ready ? 'Pronto para adotar' : 'Trancado'}
+        </Badge>
+      </div>
+
+      <p className="text-xs text-muted-foreground text-center leading-relaxed">
+        {ready
+          ? 'Você venceu o Esqueletão Campeão. O filhote sobreviveu e espera por você. Vá até o Boss para conhecê-lo e dar um nome.'
+          : 'Para desbloquear este companheiro, derrote o Rei Esqueleto na página de Bosses.'}
+      </p>
+
+      <Button
+        onClick={() => navigate('/boss')}
+        variant={ready ? 'default' : 'outline'}
+        disabled={!ready}
+        className={`w-full ${ready ? 'bg-violet-600 hover:bg-violet-700' : ''}`}
+      >
+        <Skull className="w-4 h-4 mr-2" />
+        {ready ? 'Ir adotar o filhote' : 'Ir enfrentar o Rei Esqueleto'}
+      </Button>
+    </motion.div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CompanionPage() {
@@ -337,6 +392,7 @@ export default function CompanionPage() {
   const { isLoading: loadingCompanions, data: _allCompanions } = useAllCompanions();
   const { data: companion }         = useCompanion();
   const { data: skeletonCompanion } = useSkeletonCompanion();
+  const { data: defeatedSkeletonBoss = false } = useSkeletonBossDefeated();
 
   // Show full-screen loader only when there is no cached data yet
   const isLoading = (profileLoading && profile === undefined)
@@ -375,26 +431,28 @@ export default function CompanionPage() {
           <SelectionScreen />
         )}
 
-        {/* Companions grid */}
-        {(companion || skeletonCompanion) && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {companion && (
-              <CompanionCard companion={companion} queryKey="companion" />
-            )}
-            {skeletonCompanion && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-violet-400 uppercase tracking-wide px-1">
-                  💀 Companheiro do Chefe
-                </p>
-                <CompanionCard
-                  companion={skeletonCompanion}
-                  queryKey="companion_skeleton"
-                  isSkeletonPup
-                />
-              </div>
+        {/* Companions grid — sempre mostra os slots do animal pet e do
+            companheiro de boss; o slot do Ossinho aparece como locked quando
+            ainda não desbloqueado. */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {companion && (
+            <CompanionCard companion={companion} queryKey="companion" />
+          )}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-violet-400 uppercase tracking-wide px-1">
+              💀 Companheiro do Chefe
+            </p>
+            {skeletonCompanion ? (
+              <CompanionCard
+                companion={skeletonCompanion}
+                queryKey="companion_skeleton"
+                isSkeletonPup
+              />
+            ) : (
+              <SkeletonPupSlot defeatedBoss={defeatedSkeletonBoss} />
             )}
           </div>
-        )}
+        </div>
 
         {/* Tips */}
         <div className="rounded-xl border border-border bg-card/40 p-4">

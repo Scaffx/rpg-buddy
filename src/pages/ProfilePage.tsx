@@ -1251,7 +1251,7 @@ export default function ProfilePage() {
             { id: "perfil",      label: t("app.profile.tabPerfil") },
             { id: "habilidades", label: t("app.profile.tabHabilidades") },
             { id: "inventario",  label: t("app.profile.tabInventario") },
-            { id: "conquistas",  label: t("app.profile.tabConquistas"), badge: userAchievements.length > 0 ? userAchievements.length : undefined },
+            { id: "conquistas",  label: t("app.profile.tabConquistas"), badge: userAchievements.filter((ua: any) => !ua.claimed_at).length || undefined },
           ].map((tab) => (
             <button
               key={tab.id}

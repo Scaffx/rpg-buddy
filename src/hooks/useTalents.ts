@@ -83,11 +83,23 @@ export function useBuyTalent() {
         throw new Error('Talento ja adquirido.');
       }
 
+      // Auto-equipar se ainda houver vaga (até MAX_EQUIPPED_TALENTS).
+      // Evita o paradoxo do usuário comprar um talento e ele não estar
+      // equipado/ativo até ele tomar uma segunda ação manual.
+      const { count: currentlyEquipped } = await (supabase as any)
+        .from('talentos_jogador')
+        .select('id', { count: 'exact', head: true })
+        .eq('personagem_id', user.id)
+        .eq('equipped', true);
+
+      const shouldAutoEquip = (currentlyEquipped ?? 0) < MAX_EQUIPPED_TALENTS;
+
       const { error: insertError } = await (supabase as any)
         .from('talentos_jogador')
         .insert({
           personagem_id: user.id,
           talento_id: talento.id,
+          equipped: shouldAutoEquip,
         });
 
       if (insertError) throw insertError;
