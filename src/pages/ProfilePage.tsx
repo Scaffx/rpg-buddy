@@ -858,9 +858,15 @@ export default function ProfilePage() {
   const noviceSkills = skillLoadout.noviceSkills;
   const classSkills = skillLoadout.classSkills;
   const specialtySkills = skillLoadout.specialtySkills ?? [];
+  // Especialidades de classe (T3+) entram no mesmo bucket de classSkills:
+  // são habilidades únicas da classe e devem ser equipáveis no loadout.
+  const allClassSkills = useMemo(
+    () => [...classSkills, ...specialtySkills],
+    [classSkills, specialtySkills],
+  );
   const unlockedSkills = useMemo(
-    () => [...noviceSkills, ...classSkills].filter((s) => s.unlocked),
-    [noviceSkills, classSkills],
+    () => [...noviceSkills, ...allClassSkills].filter((s) => s.unlocked),
+    [noviceSkills, allClassSkills],
   );
   const unlockedSkillsById = useMemo(
     () => new Map(unlockedSkills.map((skill) => [skill.id, skill])),
@@ -989,6 +995,10 @@ export default function ProfilePage() {
           power: skill.power,
           cooldown: skill.cooldown,
           category: skill.category,
+          tier: skill.tier,
+          mpCost: skill.mpCost,
+          effectType: skill.effectType,
+          effectLabel: skill.effectLabel,
         }));
 
       const { error } = await (supabase as any)
@@ -1631,7 +1641,7 @@ export default function ProfilePage() {
               <div>
                 <h4 className="text-sm font-bold text-foreground mb-2">{t('app.profile.uniqueClassSkillsSection')}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {classSkills.map((skill) => (
+                {allClassSkills.map((skill) => (
                   <div
                     key={skill.id}
                     className={`rounded-lg border p-4 space-y-2 ${
@@ -1722,68 +1732,6 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
-
-            {/* ── Especialidades T3 ── */}
-            {specialtySkills.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xl">✨</span>
-                  <h3 className="text-base font-bold text-foreground">
-                    Especialidades — {currentClassName}
-                  </h3>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Habilidades exclusivas da sua especialização. Desbloqueadas conforme você avança de nível.
-                </p>
-                <div className="grid gap-3">
-                  {specialtySkills.map((skill: any) => {
-                    const effectColors: Record<string, string> = {
-                      dano:    'bg-red-500/20 border-red-500/40 text-red-300',
-                      heal:    'bg-green-500/20 border-green-500/40 text-green-300',
-                      buff:    'bg-blue-500/20 border-blue-500/40 text-blue-300',
-                      debuff:  'bg-orange-500/20 border-orange-500/40 text-orange-300',
-                      cc:      'bg-purple-500/20 border-purple-500/40 text-purple-300',
-                      utility: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300',
-                    };
-                    const badgeCls = effectColors[skill.effectType ?? 'dano'] ?? effectColors.dano;
-                    return (
-                      <div
-                        key={skill.id}
-                        className={`rounded-lg border p-3 space-y-1 ${skill.unlocked ? 'border-border bg-muted/20' : 'border-border/40 bg-muted/5 opacity-50'}`}
-                      >
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-foreground">
-                            {skill.name}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {skill.effectType && (
-                              <span className={`text-xs px-2 py-0.5 rounded border font-medium ${badgeCls}`}>
-                                {skill.effectType}
-                              </span>
-                            )}
-                            <span className="text-xs px-2 py-0.5 rounded border border-indigo-500/40 bg-indigo-500/20 text-indigo-300 font-medium">
-                              {skill.mpCost ?? 0} MP
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Lv {skill.unlockLevel}
-                            </span>
-                          </div>
-                        </div>
-                        {skill.effectLabel && (
-                          <p className="text-xs text-muted-foreground">{skill.effectLabel}</p>
-                        )}
-                        {skill.synergy && (
-                          <p className="text-xs text-amber-400/80 italic">{skill.synergy}</p>
-                        )}
-                        {!skill.unlocked && (
-                          <p className="text-xs text-red-400/70">Bloqueado — nível insuficiente</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
               <div className="flex items-center gap-2">
