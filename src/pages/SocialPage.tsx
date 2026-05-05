@@ -5,6 +5,8 @@ import AppLayout from "@/components/AppLayout";
 import {
   useFriends,
   usePendingRequests,
+  useSentRequests,
+  useCancelSentRequest,
   useSearchProfile,
   useSendFriendRequest,
   useRespondFriendRequest,
@@ -18,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   Users, UserPlus, UserCheck, UserX, Search, Swords,
-  CheckCircle, Clock, Star, X, Plus, Trash2,
+  CheckCircle, Clock, Star, X, Plus, Trash2, Send, Ban,
 } from "lucide-react";
 
 // ────────────────────────────────────────────────────────────────
@@ -230,12 +232,19 @@ export default function SocialPage() {
 
   const { data: friends = [] } = useFriends();
   const { data: pendingRequests = [] } = usePendingRequests();
+  const { data: sentRequests = [] } = useSentRequests();
   const { data: searchResults = [], isFetching: isSearching } = useSearchProfile(friendSearch);
   const { data: coOpMissions = [] } = useCoOpMissions();
 
   const sendFriendRequest = useSendFriendRequest();
   const respondFriendRequest = useRespondFriendRequest();
+  const cancelSentRequest = useCancelSentRequest();
   const removeFriend = useRemoveFriend();
+
+  // Solicitações enviadas que ainda estão pending — separadas das já respondidas
+  // para destaque visual diferente.
+  const sentPending = sentRequests.filter((r) => r.status === 'pending');
+  const sentResolved = sentRequests.filter((r) => r.status !== 'pending');
 
   const openCoOpModal = (friendId?: string) => {
     setPreselectedFriend(friendId);
@@ -345,6 +354,92 @@ export default function SocialPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Solicitações enviadas */}
+            {(sentPending.length > 0 || sentResolved.length > 0) && (
+              <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Send className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">
+                    Solicitações enviadas
+                  </h3>
+                  {sentPending.length > 0 && (
+                    <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full font-bold">
+                      {sentPending.length} aguardando
+                    </span>
+                  )}
+                </div>
+
+                {sentPending.length > 0 && (
+                  <div className="space-y-1.5">
+                    {sentPending.map((req) => (
+                      <div
+                        key={req.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {req.other_profile?.display_name || "Aventureiro"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Nv {req.other_profile?.level || "?"} · {req.other_profile?.starter_class || "Iniciante"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs px-2 py-0.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-full font-medium">
+                            Pendente
+                          </span>
+                          <button
+                            onClick={() =>
+                              cancelSentRequest.mutate(req.id, {
+                                onSuccess: () => toast.success("Solicitação cancelada"),
+                                onError: (e: any) => toast.error(e.message || "Erro ao cancelar"),
+                              })
+                            }
+                            title="Cancelar solicitação"
+                            className="p-1.5 bg-muted/50 text-muted-foreground border border-border rounded-lg hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-colors"
+                          >
+                            <Ban className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {sentResolved.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    {sentResolved.map((req) => {
+                      const accepted = req.status === 'accepted';
+                      return (
+                        <div
+                          key={req.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/15 px-3 py-2"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {req.other_profile?.display_name || "Aventureiro"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Nv {req.other_profile?.level || "?"} · {req.other_profile?.starter_class || "Iniciante"}
+                            </p>
+                          </div>
+                          {accepted ? (
+                            <span className="text-xs px-2 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full font-medium flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> Aceita
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground border border-border rounded-full font-medium">
+                              Recusada
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
