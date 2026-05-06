@@ -1453,8 +1453,8 @@ export default function ProfilePage() {
             >
               <Save className="w-4 h-4" /> {t('app.profile.saveButton')}
             </button>
-            </div>{/* end p-4 space-y-4 */}
-          </div>{/* end settings panel */}
+            </div>
+          </div>
         )}
 
         {/* ======== ABA: PERFIL ======== */}
