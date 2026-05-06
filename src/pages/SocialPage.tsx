@@ -17,10 +17,13 @@ import {
   type CoOpMission,
 } from "@/hooks/useFriends";
 import { useAuth } from "@/hooks/useAuth";
+import { isOnline } from "@/hooks/usePresence";
+import { useUnreadCounts } from "@/hooks/useDirectMessages";
+import DirectChatModal from "@/components/DirectChatModal";
 import { toast } from "sonner";
 import {
   Users, UserPlus, UserCheck, UserX, Search, Swords,
-  CheckCircle, Clock, Star, X, Plus, Trash2, Send, Ban,
+  CheckCircle, Clock, Star, X, Plus, Trash2, Send, Ban, MessageSquare,
 } from "lucide-react";
 
 // ────────────────────────────────────────────────────────────────
@@ -235,6 +238,8 @@ export default function SocialPage() {
   const { data: sentRequests = [] } = useSentRequests();
   const { data: searchResults = [], isFetching: isSearching } = useSearchProfile(friendSearch);
   const { data: coOpMissions = [] } = useCoOpMissions();
+  const { data: unreadCounts = {} } = useUnreadCounts();
+  const [chatFriendId, setChatFriendId] = useState<string | null>(null);
 
   const sendFriendRequest = useSendFriendRequest();
   const respondFriendRequest = useRespondFriendRequest();
@@ -260,6 +265,24 @@ export default function SocialPage() {
             preselectedFriendId={preselectedFriend}
           />
         )}
+        {chatFriendId && (() => {
+          const friendRow = friends.find((f) => f.other_profile?.user_id === chatFriendId);
+          const friendProfile = friendRow?.other_profile;
+          if (!friendProfile) return null;
+          return (
+            <DirectChatModal
+              friend={{
+                user_id: friendProfile.user_id,
+                display_name: friendProfile.display_name,
+                level: friendProfile.level,
+                starter_class: friendProfile.starter_class,
+                current_class_name: friendProfile.current_class_name,
+                last_seen_at: friendProfile.last_seen_at,
+              }}
+              onClose={() => setChatFriendId(null)}
+            />
+          );
+        })()}
       </AnimatePresence>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
@@ -525,6 +548,9 @@ export default function SocialPage() {
                 friends.map((f) => {
                   const profile = f.other_profile;
                   if (!profile) return null;
+                  const online = isOnline(profile.last_seen_at);
+                  const className = profile.current_class_name ?? profile.starter_class ?? "Iniciante";
+                  const unread = unreadCounts[profile.user_id] ?? 0;
                   return (
                     <motion.div
                       key={f.id}
@@ -532,15 +558,40 @@ export default function SocialPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-3"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {profile.display_name || "Herói"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Nv {profile.level} · {profile.starter_class || "Iniciante"}
-                        </p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-base">
+                            {profile.display_name?.[0]?.toUpperCase() ?? "?"}
+                          </div>
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${
+                              online ? "bg-emerald-500" : "bg-muted-foreground"
+                            }`}
+                            title={online ? "Online" : "Offline"}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {profile.display_name || "Herói"}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            Nv {profile.level} · {className} · {online ? "Online" : "Offline"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          onClick={() => setChatFriendId(profile.user_id)}
+                          title="Enviar mensagem"
+                          className="relative flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/25 transition-colors"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          {unread > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                              {unread > 9 ? "9+" : unread}
+                            </span>
+                          )}
+                        </button>
                         <button
                           onClick={() => openCoOpModal(profile.user_id)}
                           title="Chamar para missão em conjunto"
