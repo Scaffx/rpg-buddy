@@ -16,7 +16,9 @@ export type FriendRequest = {
     display_name: string | null;
     level: number;
     starter_class: string | null;
+    current_class_name?: string | null;
     avatar_url: string | null;
+    last_seen_at?: string | null;
   };
 };
 
@@ -44,10 +46,18 @@ export function useFriends() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name, level, starter_class, avatar_url')
+        .select('user_id, display_name, level, starter_class, avatar_url, last_seen_at, current_class:classes!profiles_current_class_id_fkey(name)')
         .in('user_id', otherIds);
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, {
+        user_id: p.user_id,
+        display_name: p.display_name,
+        level: p.level,
+        starter_class: p.starter_class,
+        avatar_url: p.avatar_url,
+        last_seen_at: p.last_seen_at,
+        current_class_name: p.current_class?.name ?? null,
+      }]));
 
       return rows.map((r) => ({
         ...r,
@@ -81,10 +91,18 @@ export function usePendingRequests() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name, level, starter_class, avatar_url')
+        .select('user_id, display_name, level, starter_class, avatar_url, last_seen_at, current_class:classes!profiles_current_class_id_fkey(name)')
         .in('user_id', requesterIds);
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, {
+        user_id: p.user_id,
+        display_name: p.display_name,
+        level: p.level,
+        starter_class: p.starter_class,
+        avatar_url: p.avatar_url,
+        last_seen_at: p.last_seen_at,
+        current_class_name: p.current_class?.name ?? null,
+      }]));
 
       return rows.map((r) => ({
         ...r,
@@ -118,10 +136,18 @@ export function useSentRequests() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name, level, starter_class, avatar_url')
+        .select('user_id, display_name, level, starter_class, avatar_url, last_seen_at, current_class:classes!profiles_current_class_id_fkey(name)')
         .in('user_id', receiverIds);
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, {
+        user_id: p.user_id,
+        display_name: p.display_name,
+        level: p.level,
+        starter_class: p.starter_class,
+        avatar_url: p.avatar_url,
+        last_seen_at: p.last_seen_at,
+        current_class_name: p.current_class?.name ?? null,
+      }]));
 
       return rows.map((r) => ({
         ...r,
@@ -382,7 +408,15 @@ export function useFriendChallenges() {
         .select('user_id, display_name, level, starter_class')
         .in('user_id', allIds);
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, {
+        user_id: p.user_id,
+        display_name: p.display_name,
+        level: p.level,
+        starter_class: p.starter_class,
+        avatar_url: p.avatar_url,
+        last_seen_at: p.last_seen_at,
+        current_class_name: p.current_class?.name ?? null,
+      }]));
 
       return rows.map((r) => ({
         ...r,
