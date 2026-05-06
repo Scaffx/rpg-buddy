@@ -15,6 +15,10 @@ export interface WeeklyLeaderboardEntry extends LeaderboardEntry {
   weekly_count: number;
 }
 
+export interface StreakLeaderboardEntry extends LeaderboardEntry {
+  current_streak: number;
+}
+
 // All hooks use SECURITY DEFINER RPC functions to bypass RLS and show all users.
 
 export function useGlobalLeaderboard() {
@@ -95,6 +99,62 @@ export function useRegionalClassLeaderboard(region: string | null, starterClass:
       return (data ?? []) as LeaderboardEntry[];
     },
     enabled: !!starterClass && !!region,
+    staleTime: 60 * 1000,
+  });
+}
+
+// ── Streak leaderboard ────────────────────────────────────────────────────────
+
+export function useStreakLeaderboard() {
+  return useQuery<StreakLeaderboardEntry[]>({
+    queryKey: ['leaderboard_streak'],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)('get_streak_leaderboard', { p_limit: 100 });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r: any) => ({ ...r, current_streak: Number(r.current_streak ?? 0) }));
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useRegionalStreakLeaderboard(region: string | null) {
+  return useQuery<StreakLeaderboardEntry[]>({
+    queryKey: ['leaderboard_regional_streak', region],
+    queryFn: async () => {
+      if (!region) return [];
+      const { data, error } = await (supabase.rpc as any)('get_regional_streak_leaderboard', { p_region: region, p_limit: 100 });
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r: any) => ({ ...r, current_streak: Number(r.current_streak ?? 0) }));
+    },
+    enabled: !!region,
+    staleTime: 60 * 1000,
+  });
+}
+
+// ── Champions per class (1 por classe) ────────────────────────────────────────
+
+export function useClassChampions() {
+  return useQuery<LeaderboardEntry[]>({
+    queryKey: ['leaderboard_class_champions'],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)('get_class_champions');
+      if (error) throw error;
+      return (data ?? []) as LeaderboardEntry[];
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useRegionalClassChampions(region: string | null) {
+  return useQuery<LeaderboardEntry[]>({
+    queryKey: ['leaderboard_regional_class_champions', region],
+    queryFn: async () => {
+      if (!region) return [];
+      const { data, error } = await (supabase.rpc as any)('get_regional_class_champions', { p_region: region });
+      if (error) throw error;
+      return (data ?? []) as LeaderboardEntry[];
+    },
+    enabled: !!region,
     staleTime: 60 * 1000,
   });
 }
