@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
+import { getLevelProgress } from "@/lib/progression";
 import HeroStatusBar from "@/components/HeroStatusBar";
 import ActiveTalentsBadge from "@/components/ActiveTalentsBadge";
 import { format } from "date-fns";
@@ -1140,6 +1141,7 @@ export default function ProfilePage() {
   const hpPercent = Math.round((currentHp / maxHp) * 100);
   const mpPercent = Math.round((currentMp / maxMp) * 100);
   const currentGold = (goldBalance as any)?.gold ?? 100;
+  const xpProgress = getLevelProgress(profile?.total_xp || 0);
 
   const respecClass = useMutation({
     mutationFn: async () => {
