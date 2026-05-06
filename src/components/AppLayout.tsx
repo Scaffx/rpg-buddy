@@ -19,6 +19,7 @@ import { useMidnightReset } from '@/hooks/useMidnightReset';
 import { useSleepWakeAlerts } from '@/hooks/useSleepWakeAlerts';
 import { useAutoCheckAchievements } from '@/hooks/useAchievements';
 import { usePresenceHeartbeat } from '@/hooks/usePresence';
+import { useReminderNotifications } from '@/hooks/useReminders';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -56,6 +57,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useSleepWakeAlerts();
   useAutoCheckAchievements();
   usePresenceHeartbeat();
+  useReminderNotifications();
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
   const [showDailyResetNotice, setShowDailyResetNotice] = useState(false);

@@ -18,7 +18,9 @@ export default function HealthPage() {
   const [uploading, setUploading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
 
-  // Fetch last 30 days of meal logs
+  // Fetch last 30 days of meal logs (count-only — food_description vive em
+  // meal_details, não em meal_log. Estávamos selecionando coluna inexistente
+  // e a query falhava silenciosa, deixando o contador zerado).
   const { data: mealHistory = [] } = useQuery({
     queryKey: ['meal_log_history', user?.id],
     queryFn: async () => {
@@ -26,12 +28,31 @@ export default function HealthPage() {
       since.setDate(since.getDate() - 30);
       const { data, error } = await supabase
         .from('meal_log')
-        .select('meal_date, meal_number, food_description')
+        .select('meal_date, meal_number')
         .eq('user_id', user!.id)
         .gte('meal_date', since.toLocaleDateString('en-CA'))
         .order('meal_date', { ascending: false });
       if (error) throw error;
       return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Detalhes de refeição (food_description) — tabela separada com retenção
+  // configurável (3/7/30 dias). Usada para o card "Alimentos mais frequentes".
+  const { data: mealDetailsHistory = [] } = useQuery({
+    queryKey: ['meal_details_history', user?.id],
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const { data, error } = await supabase
+        .from('meal_details' as any)
+        .select('food_description, meal_date')
+        .eq('user_id', user!.id)
+        .gte('meal_date', since.toLocaleDateString('en-CA'))
+        .order('meal_date', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<{ food_description: string | null; meal_date: string }>;
     },
     enabled: !!user,
   });
@@ -99,17 +120,22 @@ export default function HealthPage() {
     ([, ml]) => ml < waterTargetMl * 0.5,
   );
 
-  // Most common foods
+  // Most common foods — usa meal_details, não meal_log
   const topFoods = useMemo(() => {
     const freq: Record<string, number> = {};
-    for (const row of mealHistory) {
-      const desc = (row.food_description as string | null)?.trim();
+    for (const row of mealDetailsHistory) {
+      const desc = row.food_description?.trim();
       if (desc) freq[desc] = (freq[desc] || 0) + 1;
     }
     return Object.entries(freq)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
-  }, [mealHistory]);
+  }, [mealDetailsHistory]);
+
+  // Métricas agregadas de refeições nos últimos 30 dias
+  const totalMeals30d = mealHistory.length;
+  const daysWithMeals = Object.keys(mealStatsByDay).length;
+  const avgMealsPerDay = daysWithMeals > 0 ? totalMeals30d / daysWithMeals : 0;
 
   const totalDaysTracked = Object.keys({ ...mealStatsByDay, ...waterStatsByDay }).length;
 
@@ -309,18 +335,27 @@ export default function HealthPage() {
                 <Utensils className="w-4 h-4 text-orange-400" />
                 <p className="text-sm font-semibold text-foreground">Refeições</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="bg-muted/30 border border-border rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-orange-400">{lowMealDays.length}</p>
-                  <p className="text-xs text-muted-foreground mt-1">dias com &lt;50% das refeições</p>
+                  <p className="text-2xl font-bold text-orange-400">{totalMeals30d}</p>
+                  <p className="text-xs text-muted-foreground mt-1">refeições registradas</p>
+                </div>
+                <div className="bg-muted/30 border border-border rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-400">{avgMealsPerDay.toFixed(1)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">média por dia ativo</p>
                 </div>
                 <div className="bg-muted/30 border border-border rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-emerald-400">
-                    {Math.max(0, Object.keys(mealStatsByDay).length - lowMealDays.length)}
+                    {Math.max(0, daysWithMeals - lowMealDays.length)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">dias com boa alimentação</p>
                 </div>
               </div>
+              {lowMealDays.length > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  <span className="font-bold text-red-400">{lowMealDays.length}</span> dia{lowMealDays.length !== 1 ? 's' : ''} com &lt;50% da meta de {mealsTarget} refeições.
+                </p>
+              )}
               {lowMealDays.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {lowMealDays.slice(0, 8).map(([date, count]) => (
