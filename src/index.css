@@ -129,20 +129,29 @@
 }
 
 @layer components {
+  /* ── Cards ────────────────────────────────────────────────── */
   .rpg-card {
-    @apply bg-card border border-border rounded-lg p-4;
+    @apply bg-card border border-border rounded-xl p-4;
     background: var(--gradient-card);
-    box-shadow: inset 0 1px 0 hsl(230 15% 25% / 0.5);
+    box-shadow: 0 1px 3px hsl(230 25% 4% / 0.4), inset 0 1px 0 hsl(230 15% 25% / 0.4);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .rpg-card:hover {
+    border-color: hsl(var(--border) / 0.8);
+    box-shadow: 0 4px 12px hsl(230 25% 4% / 0.5), inset 0 1px 0 hsl(230 15% 25% / 0.4);
   }
 
   .rpg-card-glow {
     @apply rpg-card;
-    box-shadow: var(--glow-gold), inset 0 1px 0 hsl(230 15% 25% / 0.5);
-    border-color: hsl(43 96% 56% / 0.3);
+    box-shadow: var(--glow-gold), 0 1px 3px hsl(230 25% 4% / 0.4), inset 0 1px 0 hsl(230 15% 25% / 0.4);
+    border-color: hsl(43 96% 56% / 0.25);
   }
 
+  /* ── Barras de progressão ──────────────────────────────────── */
   .rpg-stat-bar {
-    @apply h-2 rounded-full bg-muted overflow-hidden;
+    @apply h-2 rounded-full overflow-hidden;
+    background: hsl(var(--muted) / 0.5);
   }
 
   .rpg-stat-fill {
@@ -150,15 +159,26 @@
     background: var(--gradient-gold);
   }
 
+  /* ── Tipografia especial ───────────────────────────────────── */
   .text-glow {
-    text-shadow: 0 0 10px hsl(43 96% 56% / 0.5);
+    text-shadow: 0 0 12px hsl(43 96% 56% / 0.55);
   }
 
+  /* ── Badges ─────────────────────────────────────────────────── */
   .rpg-badge {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold;
-    background: hsl(43 96% 56% / 0.15);
+    background: hsl(43 96% 56% / 0.12);
     color: hsl(var(--primary));
-    border: 1px solid hsl(43 96% 56% / 0.3);
+    border: 1px solid hsl(43 96% 56% / 0.25);
+  }
+
+  /* ── Seção de título de página ────────────────────────────── */
+  .page-title {
+    @apply font-display font-bold text-xl sm:text-2xl text-foreground tracking-tight;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-muted-foreground leading-relaxed;
   }
 }
 

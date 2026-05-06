@@ -48,64 +48,70 @@ export default function HeroStatusBar({ className = "" }: { className?: string }
   const fatigueWarning = fatigue >= 50 && fatigue < 100;
 
   return (
-    <div className={`bg-card border border-border rounded-xl p-4 space-y-3 ${className}`}>
-      <div className="flex items-center gap-2">
-        <Swords className="w-5 h-5 text-primary" />
-        <h3 className="text-sm font-bold text-foreground">⚔️ STATUS DO HERÓI</h3>
+    <div className={`rounded-xl border border-border/60 bg-card overflow-hidden ${className}`}>
+      {/* Cabeçalho */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40 bg-muted/20">
+        <Swords className="w-4 h-4 text-primary" />
+        <h3 className="text-xs font-bold tracking-widest uppercase text-foreground/80">Status do Herói</h3>
       </div>
 
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-xs">
+      {/* Grid de atributos */}
+      <div className="p-3 grid grid-cols-4 sm:grid-cols-7 gap-1.5">
         {STATS.map((s) => (
-          <div key={s.label} className="bg-muted/40 rounded-md p-2 border border-border/50">
-            <p className="text-muted-foreground">{s.label}</p>
-            <p className="text-base font-bold text-foreground">
+          <div
+            key={s.label}
+            className="flex flex-col items-center justify-center gap-0.5 rounded-lg bg-muted/25 border border-border/40 px-1.5 py-2 text-center transition-colors hover:bg-muted/40"
+          >
+            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70">{s.label}</span>
+            <span className="text-sm font-bold text-foreground tabular-nums">
               {s.base + s.bonus}{s.suffix ?? ""}
-            </p>
+            </span>
             {s.bonus > 0 && (
-              <p className="text-[10px] text-emerald-400 font-semibold">+{s.bonus} equip</p>
+              <span className="text-[9px] text-emerald-400 font-semibold leading-none">+{s.bonus}</span>
             )}
           </div>
         ))}
       </div>
 
-      {/* Fadiga — chave para combate de boss */}
-      <div className={`rounded-lg border p-2.5 ${
+      {/* Fadiga */}
+      <div className={`mx-3 mb-3 rounded-lg border p-2.5 ${
         fatigueLocked
-          ? "bg-red-500/10 border-red-500/40"
+          ? "bg-red-500/8 border-red-500/30"
           : fatigueWarning
-          ? "bg-amber-500/10 border-amber-500/40"
-          : "bg-muted/40 border-border/50"
+          ? "bg-amber-500/8 border-amber-500/30"
+          : "bg-muted/20 border-border/30"
       }`}>
-        <div className="flex items-center justify-between text-xs mb-1.5">
-          <span className="font-semibold text-foreground">FADIGA</span>
-          <span className={`font-mono font-bold ${
-            fatigueLocked ? "text-red-400" : fatigueWarning ? "text-amber-400" : "text-foreground"
+        <div className="flex items-center justify-between text-xs mb-2">
+          <span className="font-bold uppercase tracking-wider text-foreground/70 text-[10px]">Fadiga</span>
+          <span className={`font-mono font-bold text-[11px] ${
+            fatigueLocked ? "text-red-400" : fatigueWarning ? "text-amber-400" : "text-muted-foreground"
           }`}>{fatigue}%</span>
         </div>
-        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+        <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
           <div
-            className={`h-full transition-all ${fatigueColor}`}
+            className={`h-full rounded-full transition-all duration-500 ${fatigueColor}`}
             style={{ width: `${fatigue}%` }}
           />
         </div>
         {fatigueLocked && (
-          <p className="text-[11px] text-red-400 mt-1.5">
-            🔒 Bosses bloqueados. Reduza para ≤50% via Short Rest 🔥 (topo da tela).
+          <p className="text-[10px] text-red-400 mt-1.5 leading-snug">
+            Bosses bloqueados — reduza para ≤50% via Descanso Curto.
           </p>
         )}
         {fatigueWarning && !fatigueLocked && (
-          <p className="text-[11px] text-amber-400/90 mt-1.5">
-            ⚠️ Fadiga alta. Em 100% bosses ficam bloqueados até cair a ≤50%.
+          <p className="text-[10px] text-amber-400/80 mt-1.5 leading-snug">
+            Fadiga alta. Ao atingir 100%, bosses ficam bloqueados.
           </p>
         )}
       </div>
 
       {base.focus && (
-        <div className="bg-primary/10 border border-primary/20 rounded-lg p-2.5 text-xs text-primary">
-          Foco: <span className="font-bold">{base.focus}</span>
-          <span className="text-primary/70"> — atributo mais treinado nas suas missões</span>
+        <div className="mx-3 mb-3 rounded-lg border border-primary/20 bg-primary/8 px-3 py-2 text-xs text-primary/80">
+          Foco: <span className="font-bold text-primary">{base.focus}</span>
+          <span className="text-primary/50"> — atributo mais treinado</span>
         </div>
       )}
     </div>
   );
 }
+

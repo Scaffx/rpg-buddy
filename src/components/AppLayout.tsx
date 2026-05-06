@@ -222,76 +222,101 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex flex-1 w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 px-2">
-            <SidebarTrigger />
+          {/* ── Topbar ────────────────────────────────────────────────── */}
+          <header className="h-14 flex items-center justify-between border-b border-border bg-card/90 backdrop-blur-md sticky top-0 z-50 px-3 gap-2">
+            {/* Esquerda: toggle da sidebar */}
+            <SidebarTrigger className="shrink-0" />
 
-            <div className="hidden md:flex items-center justify-center flex-1 h-full pointer-events-none px-4">
+            {/* Centro: sprite do personagem (decorativo) */}
+            <div className="hidden md:flex items-center justify-center flex-1 h-full pointer-events-none">
               <CharacterSprite />
             </div>
 
+            {/* Direita: ações rápidas agrupadas */}
             <TooltipProvider delayDuration={150}>
-              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                <LanguageSwitcher />
-                <SoundToggleButton />
-                <HeroNotificationBell />
+              <div className="flex items-center gap-1 shrink-0">
 
-                {/* Streak de dias com ≥60% das missões cumpridas */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={`inline-flex items-center justify-center h-8 w-8 rounded-md border text-xs font-semibold transition-all hover:scale-105 ${
-                        streakDays > 0
-                          ? 'border-amber-400/50 bg-amber-400/10 text-amber-300'
-                          : 'border-border bg-muted/30 text-muted-foreground'
-                      }`}
-                      aria-label={`Streak: ${streakDays}`}
-                    >
-                      <Trophy className="w-4 h-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p className="text-xs">
-                      {t('app.header.streak_title')}: <strong>{streakDays} {streakDays === 1 ? (t('app.header.streak_title') === 'Consistency Streak' ? 'day' : 'dia') : (t('app.header.streak_title') === 'Consistency Streak' ? 'days' : 'dias')}</strong>
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{t('app.header.streak_desc')}</p>
-                  </TooltipContent>
-                </Tooltip>
+                {/* Utilitários */}
+                <div className="flex items-center gap-0.5 px-1 py-1 rounded-lg bg-muted/30 border border-border/50">
+                  <LanguageSwitcher />
+                  <SoundToggleButton />
+                  <HeroNotificationBell />
+                </div>
 
-                {/* Protetor de streak */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={`inline-flex items-center justify-center h-8 w-8 rounded-md border text-xs font-semibold transition-all hover:scale-105 ${
-                        isProtectorRisk
-                          ? 'border-destructive/50 bg-destructive/15 text-destructive animate-pulse'
-                          : 'border-orange-400/40 bg-orange-400/10 text-orange-300'
-                      }`}
-                      aria-label={`Protetor: ${protectorCharges} de ${protectorMax}`}
-                    >
-                      {isProtectorRisk ? <ShieldAlert className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p className="text-xs">
-                      {t('app.header.protector_title')}: <strong>{protectorCharges}/{protectorMax}</strong>
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{t('app.header.protector_desc')}</p>
-                  </TooltipContent>
-                </Tooltip>
+                {/* Divisor visual */}
+                <div className="h-6 w-px bg-border/60 mx-1 hidden sm:block" />
 
-                {/* Short Rest com ícone de fogueira */}
+                {/* Stats rápidos: Streak + Protetor */}
+                <div className="hidden sm:flex items-center gap-1 px-1 py-1 rounded-lg bg-muted/30 border border-border/50">
+                  {/* Streak */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={`inline-flex items-center gap-1 h-7 px-2 rounded-md border text-[11px] font-bold transition-all hover:scale-105 ${
+                          streakDays > 0
+                            ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
+                            : 'border-border/50 bg-transparent text-muted-foreground'
+                        }`}
+                        aria-label={`Streak: ${streakDays}`}
+                      >
+                        <Trophy className="w-3.5 h-3.5" />
+                        <span className="tabular-nums">{streakDays}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="text-xs">
+                        {t('app.header.streak_title')}: <strong>{streakDays} dia{streakDays !== 1 ? 's' : ''}</strong>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{t('app.header.streak_desc')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Protetor de streak */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={`inline-flex items-center gap-1 h-7 px-2 rounded-md border text-[11px] font-bold transition-all hover:scale-105 ${
+                          isProtectorRisk
+                            ? 'border-destructive/50 bg-destructive/10 text-destructive animate-pulse'
+                            : 'border-orange-400/30 bg-orange-400/8 text-orange-300'
+                        }`}
+                        aria-label={`Protetor: ${protectorCharges} de ${protectorMax}`}
+                      >
+                        {isProtectorRisk ? <ShieldAlert className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
+                        <span className="tabular-nums">{protectorCharges}/{protectorMax}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="text-xs">
+                        {t('app.header.protector_title')}: <strong>{protectorCharges}/{protectorMax}</strong>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{t('app.header.protector_desc')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* Divisor visual */}
+                <div className="h-6 w-px bg-border/60 mx-1 hidden sm:block" />
+
+                {/* Short Rest */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setShowRestTimer(!showRestTimer)}
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 transition-all relative"
+                      className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border font-semibold transition-all hover:scale-105 relative ${
+                        headerLabel
+                          ? 'border-primary/50 bg-primary/15 text-primary'
+                          : 'border-primary/25 bg-primary/8 text-primary/70 hover:text-primary hover:border-primary/40'
+                      }`}
                       aria-label={t('app.header.rest_label')}
                     >
-                      <Flame className="w-4 h-4" />
-                      {headerLabel && (
-                        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 font-mono text-[9px] leading-none tabular-nums bg-background border border-primary/30 rounded px-1 py-0.5 text-primary whitespace-nowrap">{headerLabel}</span>
+                      <Flame className="w-4 h-4 shrink-0" />
+                      {headerLabel ? (
+                        <span className="font-mono text-[11px] tabular-nums leading-none">{headerLabel}</span>
+                      ) : (
+                        <span className="text-[11px] hidden sm:inline">Descanso</span>
                       )}
                     </button>
                   </TooltipTrigger>
@@ -303,9 +328,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </div>
             </TooltipProvider>
           </header>
+
           <SubscriptionExpiryNotice />
           {showDailyResetNotice && (
-            <div className="mx-2 mt-2 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-300">
+            <div className="mx-3 mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300 flex items-center gap-2">
+              <span className="text-emerald-400">✓</span>
               {dailyResetMessage}
             </div>
           )}
@@ -317,7 +344,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         {/* Short Rest Modal */}
         {showRestTimer && (
           <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={closeRestTimer}
           >
             <div
