@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Flame, Swords, Crown, Medal, Loader2, Globe, MapPin } from 'lucide-react';
+import { Trophy, Flame, Swords, Crown, Medal, Loader2, Globe, MapPin, Zap } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,8 +14,13 @@ import {
   useRegionalLeaderboard,
   useRegionalWeeklyLeaderboard,
   useRegionalClassLeaderboard,
+  useStreakLeaderboard,
+  useRegionalStreakLeaderboard,
+  useClassChampions,
+  useRegionalClassChampions,
   type LeaderboardEntry,
   type WeeklyLeaderboardEntry,
+  type StreakLeaderboardEntry,
 } from '@/hooks/useLeaderboard';
 
 const REGION_LABELS: Record<string, string> = {
@@ -147,13 +152,23 @@ export default function LeaderboardPage() {
   const { data: weeklyRegional = [], isLoading: loadingWeeklyRegional } = useRegionalWeeklyLeaderboard(userRegion);
   const { data: byClassRegional = [],isLoading: loadingClassRegional  } = useRegionalClassLeaderboard(userRegion, selectedClass);
 
+  // Streak + Champions
+  const { data: streak = [],         isLoading: loadingStreak         } = useStreakLeaderboard();
+  const { data: streakRegional = [], isLoading: loadingStreakRegional } = useRegionalStreakLeaderboard(userRegion);
+  const { data: champions = [],         isLoading: loadingChamps         } = useClassChampions();
+  const { data: championsRegional = [], isLoading: loadingChampsRegional } = useRegionalClassChampions(userRegion);
+
   // Pick active data set based on scope
   const activeGlobal  = scope === 'global' ? global        : regional;
   const activeWeekly  = scope === 'global' ? weekly        : weeklyRegional;
   const activeClass   = scope === 'global' ? byClass       : byClassRegional;
+  const activeStreak  = scope === 'global' ? streak        : streakRegional;
+  const activeChamps  = scope === 'global' ? champions     : championsRegional;
   const loadingG      = scope === 'global' ? loadingGlobal : loadingRegional;
   const loadingW      = scope === 'global' ? loadingWeekly : loadingWeeklyRegional;
   const loadingC      = scope === 'global' ? loadingClass  : loadingClassRegional;
+  const loadingS      = scope === 'global' ? loadingStreak : loadingStreakRegional;
+  const loadingCh     = scope === 'global' ? loadingChamps : loadingChampsRegional;
 
   const myRankGlobal = useMemo(
     () => global.findIndex((e) => e.user_id === user?.id) + 1,
@@ -230,12 +245,14 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {/* ── Inner tabs: Geral | Semanal | Por Classe ── */}
+        {/* ── Inner tabs: Geral | Streak | Semanal | Campeões | Por Classe ── */}
         <Tabs defaultValue="geral">
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="geral"    className="gap-1.5"><Trophy  className="w-4 h-4" />Geral</TabsTrigger>
-            <TabsTrigger value="semanal"  className="gap-1.5"><Flame   className="w-4 h-4" />Semanal</TabsTrigger>
-            <TabsTrigger value="porclasse" className="gap-1.5"><Swords  className="w-4 h-4" />Por Classe</TabsTrigger>
+          <TabsList className="w-full grid grid-cols-5">
+            <TabsTrigger value="geral"     className="gap-1.5"><Trophy className="w-4 h-4" />Geral</TabsTrigger>
+            <TabsTrigger value="streak"    className="gap-1.5"><Zap    className="w-4 h-4" />Streak</TabsTrigger>
+            <TabsTrigger value="semanal"   className="gap-1.5"><Flame  className="w-4 h-4" />Semanal</TabsTrigger>
+            <TabsTrigger value="campeoes"  className="gap-1.5"><Crown  className="w-4 h-4" />Campeões</TabsTrigger>
+            <TabsTrigger value="porclasse" className="gap-1.5"><Swords className="w-4 h-4" />Por Classe</TabsTrigger>
           </TabsList>
 
           {/* ── Geral ── */}
@@ -246,6 +263,52 @@ export default function LeaderboardPage() {
               <EmptyState text="Nenhum aventureiro encontrado." />
             ) : (
               activeGlobal.map((entry, i) => (
+                <LeaderboardRow
+                  key={entry.user_id}
+                  rank={i + 1}
+                  entry={entry}
+                  score={entry.total_xp}
+                  scoreLabel="XP total"
+                  isCurrentUser={entry.user_id === user?.id}
+                />
+              ))
+            )}
+          </TabsContent>
+
+          {/* ── Streak ── */}
+          <TabsContent value="streak" className="mt-4 space-y-2">
+            <p className="text-xs text-muted-foreground mb-3 px-1">
+              Quem está mantendo a maior sequência de dias consecutivos
+            </p>
+            {noRegion ? null : loadingS ? (
+              <LoadingState />
+            ) : activeStreak.length === 0 ? (
+              <EmptyState text="Nenhuma streak ativa registrada ainda." />
+            ) : (
+              (activeStreak as StreakLeaderboardEntry[]).map((entry, i) => (
+                <LeaderboardRow
+                  key={entry.user_id}
+                  rank={i + 1}
+                  entry={entry}
+                  score={`${entry.current_streak} 🔥`}
+                  scoreLabel={entry.current_streak === 1 ? 'dia' : 'dias'}
+                  isCurrentUser={entry.user_id === user?.id}
+                />
+              ))
+            )}
+          </TabsContent>
+
+          {/* ── Campeões por classe (1 por classe) ── */}
+          <TabsContent value="campeoes" className="mt-4 space-y-2">
+            <p className="text-xs text-muted-foreground mb-3 px-1">
+              O #1 jogador de cada classe — overview rápido sem precisar selecionar
+            </p>
+            {noRegion ? null : loadingCh ? (
+              <LoadingState />
+            ) : activeChamps.length === 0 ? (
+              <EmptyState text="Nenhum campeão de classe encontrado." />
+            ) : (
+              activeChamps.map((entry, i) => (
                 <LeaderboardRow
                   key={entry.user_id}
                   rank={i + 1}
