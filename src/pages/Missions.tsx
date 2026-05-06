@@ -479,72 +479,107 @@ const handleSave = async () => {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-display font-bold text-primary">
-            <Target className="w-6 h-6 inline mr-2" />
-            {t('app.missions.page_title')}
-          </h1>
+      <div className="space-y-5 max-w-7xl mx-auto">
+
+        {/* ── Header ─────────────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="font-display font-bold text-2xl text-foreground flex items-center gap-2.5">
+              <Target className="w-6 h-6 text-primary" />
+              {t('app.missions.page_title')}
+            </h1>
+            {/* Resumo rápido de missões do dia */}
+            <div className="flex items-center gap-3 mt-1.5">
+              {todayMissions.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  <span className="font-bold text-foreground">{todayMissions.length}</span> para hoje
+                </span>
+              )}
+              {completedMissions.length > 0 && (
+                <span className="text-xs text-emerald-400">
+                  <span className="font-bold">{completedMissions.length}</span> concluída{completedMissions.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          </div>
           <Button
             onClick={openCreateModal}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 font-semibold"
             size="sm"
           >
-            <Plus className="w-4 h-4 mr-1" /> {t('app.missions.new_mission_button')}
+            <Plus className="w-4 h-4" /> {t('app.missions.new_mission_button')}
           </Button>
         </div>
 
-        {/* Search */}
+        {/* ── Busca ──────────────────────────────────────────────── */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('app.missions.search_placeholder')}
-            className="pl-9 bg-secondary border-border"
+            className="pl-10 pr-10 h-10 bg-card border-border rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1">
-              <X className="w-5 h-5 text-muted-foreground hover:text-foreground" />
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-muted/60 transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
             </button>
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 flex-wrap">
-          {TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={`px-3 py-1.5 text-xs rounded-md font-medium transition-all ${
-                activeTab === tab.value
-                  ? `${tab.color} ring-1 ring-current`
-                  : "bg-secondary text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.value === "concluidas" && <Check className="w-3 h-3 inline mr-1" />}
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* ── Tabs + Filtros ─────────────────────────────────────── */}
+        <div className="space-y-3">
+          {/* Tabs principais */}
+          <div className="flex items-center gap-1 p-1 bg-muted/40 rounded-xl w-fit border border-border/50">
+            {TABS.map((tab) => {
+              const count =
+                tab.value === "pendentes" ? todayMissions.length + todayUniqueMissions.length
+                : tab.value === "concluidas" ? completedMissions.length
+                : undefined;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === tab.value
+                      ? "bg-card text-foreground shadow-sm border border-border/50"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab.value === "concluidas" && <Check className="w-3 h-3" />}
+                  {tab.label}
+                  {count !== undefined && count > 0 && (
+                    <span className={`inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[9px] font-bold ${
+                      activeTab === tab.value ? tab.color : "bg-muted text-muted-foreground"
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Category filters */}
-        <div className="flex gap-1.5 flex-wrap">
-          {ATTRIBUTE_CATEGORIES.map((cat) => (
-            <button
-              key={cat.name}
-              onClick={() => toggleCategory(cat.name)}
-              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors flex items-center gap-1.5 ${
-                selectedCategories.includes(cat.name)
-                  ? "bg-primary/20 border-primary/50 text-primary"
-                  : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span>{cat.emoji}</span>
-              <span>{cat.name}</span>
-            </button>
-          ))}
+          {/* Filtros de categoria — scroll horizontal */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+            {ATTRIBUTE_CATEGORIES.map((cat) => (
+              <button
+                key={cat.name}
+                onClick={() => toggleCategory(cat.name)}
+                className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all ${
+                  selectedCategories.includes(cat.name)
+                    ? "bg-primary/15 border-primary/40 text-primary"
+                    : "bg-card border-border/60 text-muted-foreground hover:text-foreground hover:border-border"
+                }`}
+              >
+                <span className="text-sm leading-none">{cat.emoji}</span>
+                <span>{cat.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Welcome Back Dialog */}
@@ -577,13 +612,13 @@ const handleSave = async () => {
           </DialogContent>
         </Dialog>
 
-        {/* Failed Missions Section */}
+        {/* ── Missões Fracassadas ────────────────────────────── */}
         {failedMissions.length > 0 && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/8 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-destructive/20 bg-destructive/10">
               <h3 className="text-sm font-bold text-destructive flex items-center gap-2">
-                <Flame className="w-5 h-5" />
-                🔥 {t('app.missions.failed_section_title', { n: failedMissions.length })}
+                <Flame className="w-4 h-4" />
+                {t('app.missions.failed_section_title', { n: failedMissions.length })}
               </h3>
               {failedMissions.length > 1 && (
                 <button
@@ -594,9 +629,9 @@ const handleSave = async () => {
                     });
                   }}
                   disabled={acceptPenalty.isPending}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                  className="text-[11px] px-2.5 py-1 rounded-lg bg-destructive/20 text-destructive font-bold hover:bg-destructive/30 transition-colors disabled:opacity-50 flex items-center gap-1"
                 >
-                  {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : null}
+                  {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                   {t('app.missions.accept_all_penalty', { xp: failedMissions.reduce((sum: number, m: any) => sum + (m.xp_penalized || m.xp_reward), 0) })}
                 </button>
               )}
@@ -674,21 +709,35 @@ const handleSave = async () => {
           </div>
         )}
 
-        {/* ✅ SEÇÃO: MISSÕES DE HOJE */}
+        {/* ── Conteúdo principal ─────────────────────────────── */}
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <Loader2 className="w-7 h-7 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Carregando missões...</p>
           </div>
         ) : isError ? (
-          <p className="text-sm text-destructive text-center py-8">⚠️ Erro ao carregar missões. Verifique sua conexão e tente novamente.</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-2 text-center">
+            <AlertTriangle className="w-8 h-8 text-destructive/60" />
+            <p className="text-sm text-destructive">Erro ao carregar missões. Verifique sua conexão.</p>
+          </div>
         ) : (activeTab === "concluidas" ? completedMissions.length === 0 : (todayMissions.length === 0 && nextDaysMissions.length === 0 && todayUniqueMissions.length === 0 && nextUniqueMissions.length === 0)) ? (
-          <p className="text-sm text-muted-foreground text-center py-8">{t('app.missions.empty_state')}</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+            <Target className="w-10 h-10 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">{t('app.missions.empty_state')}</p>
+            <button onClick={openCreateModal} className="text-xs text-primary/70 hover:text-primary transition-colors underline underline-offset-2">
+              Criar primeira missão
+            </button>
+          </div>
         ) : (
           <>
-            {/* HOJE */}
+            {/* ── HOJE ─────────────────────────────────────────── */}
             {todayMissions.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-lg font-bold text-primary flex items-center gap-2">📅 {t('app.missions.today_header')}</h2>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-base font-bold text-foreground">📅 {t('app.missions.today_header')}</span>
+                  <div className="flex-1 h-px bg-border/50" />
+                  <span className="text-xs font-semibold text-muted-foreground bg-muted/40 rounded-full px-2 py-0.5">{todayMissions.length}</span>
+                </div>
 
                 {TIME_GROUPS.map(({ key, label, icon: Icon }) => {
                   const missions = todayMissions.filter((m: any) => {
@@ -700,10 +749,11 @@ const handleSave = async () => {
 
                   return (
                     <div key={key} className="space-y-2">
-                      <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                        <Icon className="w-4 h-4" />
-                        {label} ({missions.length})
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-3.5 h-3.5 text-muted-foreground/70" />
+                        <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">{label}</span>
+                        <span className="text-[10px] text-muted-foreground/50">({missions.length})</span>
+                      </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {missions.map((m: any, i: number) => (
@@ -768,11 +818,12 @@ const handleSave = async () => {
 
                 {/* Únicas dos Próximos Dias */}
                 {nextUniqueMissions.length > 0 && (
-                  <div className="space-y-3">
-                    <h2 className="text-lg font-bold text-orange-300 flex items-center gap-2">
-                      🗓️ {t('app.missions.unique_next_header')}
-                      <span className="text-xs bg-orange-400/20 text-orange-300 px-2 py-1 rounded-full">{nextUniqueMissions.length}</span>
-                    </h2>
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-base font-bold text-orange-300/80">🗓️ {t('app.missions.unique_next_header')}</span>
+                      <div className="flex-1 h-px bg-orange-300/15" />
+                      <span className="text-xs font-semibold text-orange-300/60 bg-orange-300/10 rounded-full px-2 py-0.5">{nextUniqueMissions.length}</span>
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                       {nextUniqueMissions.map((m: any, i: number) => (
                         <MissionCard
@@ -800,13 +851,14 @@ const handleSave = async () => {
               </div>
             )}
 
-            {/* ✅ PRÓXIMOS DIAS */}
-            {nextDaysMissions.length > 0 && (
-              <div className="space-y-3 mt-8 pt-8 border-t border-border">
-                <h2 className="text-lg font-bold text-muted-foreground flex items-center gap-2">
-                  📆 {t('app.missions.next_days_header')}
-                  <span className="text-xs bg-muted px-2 py-1 rounded-full">{nextDaysMissions.length} {t('app.missions.mission_count')}</span>
-                </h2>
+{/* ── PRÓXIMOS DIAS ─────────────────────────────────── */}
+    {nextDaysMissions.length > 0 && (
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center gap-3">
+          <span className="text-base font-bold text-muted-foreground">📆 {t('app.missions.next_days_header')}</span>
+          <div className="flex-1 h-px bg-border/40" />
+          <span className="text-xs font-semibold text-muted-foreground/60 bg-muted/50 rounded-full px-2 py-0.5">{nextDaysMissions.length} {t('app.missions.mission_count')}</span>
+        </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {nextDaysMissions.map((m: any, i: number) => (
@@ -834,15 +886,14 @@ const handleSave = async () => {
               </div>
             )}
 
-            {/* CONCLUÍDAS */}
-            {activeTab === "concluidas" && completedMissions.length > 0 && (
-              <div className="space-y-3 mt-8 pt-8 border-t border-border">
-                <h2 className="text-lg font-bold text-success flex items-center gap-2">
-                  ✅ {t('app.missions.completed_header')}
-                  <span className="text-xs bg-success/20 text-success px-2 py-1 rounded-full">
-                    {completedMissions.length}
-                  </span>
-                </h2>
+{/* ── CONCLUÍDAS ────────────────────────────────────── */}
+    {activeTab === "concluidas" && completedMissions.length > 0 && (
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center gap-3">
+          <span className="text-base font-bold text-emerald-400">✅ {t('app.missions.completed_header')}</span>
+          <div className="flex-1 h-px bg-emerald-400/20" />
+          <span className="text-xs font-semibold text-emerald-400/70 bg-emerald-400/10 rounded-full px-2 py-0.5">{completedMissions.length}</span>
+        </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {completedMissions.map((m: any, i: number) => (
@@ -1010,28 +1061,34 @@ function MissionCard({
     }
   };
 
+  // Cor da borda esquerda por prioridade
+  const priorityBorderColor =
+    mission.priority === 'alta' ? 'border-l-destructive'
+    : mission.priority === 'media' ? 'border-l-yellow-400'
+    : 'border-l-emerald-500';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
-      className={`rounded-xl bg-card border border-border p-3 flex flex-col justify-between aspect-square ${
-        isCompleted ? 'opacity-60' : isCompletedToday ? 'opacity-75 border-yellow-400/50' : ''
+      className={`group rounded-xl bg-card border border-border border-l-2 ${priorityBorderColor} p-3 flex flex-col justify-between aspect-square transition-all hover:border-border/80 hover:shadow-md ${
+        isCompleted ? 'opacity-55' : isCompletedToday ? 'opacity-75 border-yellow-400/40' : ''
       }`}
     >
-      {/* Top: Status dot + icons */}
+      {/* Top: Status dot + ações (visíveis só no hover) */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <div className={`w-3 h-3 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
-          <div className="flex items-center gap-0.5">
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}>
-              <Pencil className="w-4 h-4" />
+          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
+          <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}>
+              <Pencil className="w-3.5 h-3.5" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
-              <Trash2 className="w-4 h-4" />
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+              <Trash2 className="w-3.5 h-3.5" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}>
-              <Pause className="w-4 h-4" />
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}>
+              <Pause className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
