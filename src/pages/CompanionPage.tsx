@@ -17,6 +17,7 @@ import {
   useCompanion,
   useSkeletonCompanion,
   useSkeletonBossDefeated,
+  useAdoptSkeletonPup,
   useCreateCompanion,
   useInteractCompanion,
   COMPANION_TYPES,
@@ -27,6 +28,7 @@ import {
   xpForNextLevel,
   type CompanionRow,
 } from '@/hooks/useCompanion';
+import { useHeroStoryChoices } from '@/hooks/useHeroStoryChoices';
 
 const FEED_COOLDOWN_MIN = 180;
 const PLAY_COOLDOWN_MIN = 60;
@@ -332,12 +334,54 @@ function CompanionCard({
 
 // ─── Skeleton Pup placeholder card (locked / ready-to-adopt) ───────────────
 
-// SkeletonPupSlot só é renderizado quando defeatedBoss=true
+// SkeletonPupSlot só é renderizado quando defeatedBoss=true ou isOrphaned=true
 // (o grid pai garante que nunca aparece sem a derrota do boss)
-function SkeletonPupSlot({ defeatedBoss }: { defeatedBoss: boolean }) {
+function SkeletonPupSlot({ defeatedBoss, isOrphaned }: { defeatedBoss: boolean; isOrphaned?: boolean }) {
   const navigate = useNavigate();
+  const adoptSkeletonPup = useAdoptSkeletonPup();
+  const [name, setName] = useState('Ossinho');
 
-  if (!defeatedBoss) return null;
+  if (!defeatedBoss && !isOrphaned) return null;
+
+  // Estado órfão: escolheu adotar mas o insert falhou. Permite re-adotar diretamente.
+  if (isOrphaned) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="rounded-2xl border bg-gradient-to-br p-6 space-y-4 border-violet-500/40 from-violet-500/15 to-slate-900/60"
+      >
+        <div className="flex flex-col items-center gap-3 pt-2">
+          <div className="text-7xl select-none">{SKELETON_PUP.emoji}</div>
+          <h2 className="text-xl font-bold">{SKELETON_PUP.name}</h2>
+          <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400">
+            Aguardando adoção
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground text-center leading-relaxed">
+          Você escolheu adotar o filhote, mas algo deu errado ao salvá-lo.
+          Dê um nome a ele e confirme a adoção.
+        </p>
+        <div className="space-y-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ex: Ossinho, Fang, Sombra…"
+            maxLength={32}
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+          />
+          <Button
+            onClick={() => adoptSkeletonPup.mutate(name.trim() || 'Ossinho')}
+            disabled={adoptSkeletonPup.isPending}
+            className="w-full bg-violet-600 hover:bg-violet-700"
+          >
+            <Skull className="w-4 h-4 mr-2" />
+            {adoptSkeletonPup.isPending ? 'Adotando…' : 'Confirmar adoção'}
+          </Button>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -381,6 +425,15 @@ export default function CompanionPage() {
   const { data: companion }         = useCompanion();
   const { data: skeletonCompanion } = useSkeletonCompanion();
   const { data: defeatedSkeletonBoss = false } = useSkeletonBossDefeated();
+  const { data: storyChoices } = useHeroStoryChoices();
+
+  // Estado órfão: escolheu adotar mas o insert do companion falhou
+  const isOrphanedAdoption =
+    storyChoices?.skeleton_champion === 'adopt' && !skeletonCompanion;
+
+  // Mostrar seção do filhote se: já adotado OU boss recém-derrotado (sem escolha) OU órfão
+  const showSkeletonSection =
+    !!skeletonCompanion || defeatedSkeletonBoss || isOrphanedAdoption;
 
   // Show full-screen loader only when there is no cached data yet
   const isLoading = (profileLoading && profile === undefined)
@@ -424,9 +477,9 @@ export default function CompanionPage() {
           {companion && (
             <CompanionCard companion={companion} queryKey="companion" />
           )}
-          {/* Seção do filhote de esqueleto: só aparece se já foi adotado
-              ou se o jogador acabou de derrotar o boss e ainda não escolheu. */}
-          {(skeletonCompanion || defeatedSkeletonBoss) && (
+          {/* Seção do filhote de esqueleto: só aparece se já foi adotado,
+              se o boss foi recém-derrotado, ou se há adoção órfã a recuperar. */}
+          {showSkeletonSection && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-violet-400 uppercase tracking-wide px-1">
                 💀 Companheiro do Chefe
@@ -438,7 +491,10 @@ export default function CompanionPage() {
                   isSkeletonPup
                 />
               ) : (
-                <SkeletonPupSlot defeatedBoss={defeatedSkeletonBoss} />
+                <SkeletonPupSlot
+                  defeatedBoss={defeatedSkeletonBoss}
+                  isOrphaned={isOrphanedAdoption}
+                />
               )}
             </div>
           )}

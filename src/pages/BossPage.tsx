@@ -259,10 +259,16 @@ export default function BossPage() {
     },
   ], [t]);
 
-  // Set of boss IDs already defeated
+  // Set of boss IDs already defeated (via boss_battles)
   const defeatedBossIds = new Set(
     battles?.filter((b) => b.won).map((b) => b.boss_id) || []
   );
+
+  /** Retorna true se o boss de esqueleto está permanentemente derrotado,
+   *  mesmo que boss_battles tenha sido resetado via script de admin.
+   *  A escolha na hero_story_choices é o registro definitivo. */
+  const isSkeletonPermanentlyDefeated = (bossName: string) =>
+    SKELETON_BOSS_PATTERN.test(bossName) && !!storyChoices?.skeleton_champion;
 
   const handleOpenDungeon = (dungeon: { id: string; name: string; currentPlayers: number }) => {
     setActiveDungeon({ id: dungeon.id, name: dungeon.name, friendCount: Math.max(0, dungeon.currentPlayers - 1) });
@@ -506,7 +512,7 @@ export default function BossPage() {
                     'Água': 'text-blue-400', 'Neutro': 'text-muted-foreground',
                   };
                   const difficultyStars = (boss.difficulty || '+P').split('+P').length - 1;
-                  const isDefeated = defeatedBossIds.has(boss.id);
+                  const isDefeated = defeatedBossIds.has(boss.id) || isSkeletonPermanentlyDefeated(boss.name ?? '');
                   const isLocked = profile && profile.level < boss.level;
 
                   return (
