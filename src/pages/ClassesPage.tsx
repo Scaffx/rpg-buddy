@@ -48,9 +48,9 @@ const tierColors: Record<number, { bg: string; border: string; label: string }> 
   1: { bg: 'bg-muted/60', border: 'border-muted-foreground/30', label: 'Início' },
   2: { bg: 'bg-blue-950/40', border: 'border-blue-500/30', label: 'Classe 1' },
   3: { bg: 'bg-emerald-950/40', border: 'border-emerald-500/30', label: 'Classe 2' },
-  4: { bg: 'bg-purple-950/40', border: 'border-purple-500/30', label: 'Transclasse' },
-  5: { bg: 'bg-orange-950/40', border: 'border-orange-500/30', label: 'Classe 3' },
-  6: { bg: 'bg-red-950/40', border: 'border-red-500/30', label: 'Classe 4' },
+  4: { bg: 'bg-purple-950/40', border: 'border-purple-500/30', label: 'Classe 3' },
+  5: { bg: 'bg-orange-950/40', border: 'border-orange-500/30', label: 'Classe 4' },
+  6: { bg: 'bg-red-950/40', border: 'border-red-500/30', label: 'Classe 5' },
 };
 
 const tierGlows: Record<number, string> = {
@@ -68,7 +68,7 @@ const STARTER_TO_CLASS_NAME: Record<string, string> = {
   gatuno: 'Gatuno',
   clerico: 'Noviço',
   arqueiro: 'Arqueiro',
-  ferreiro: 'Mercador',
+  ferreiro: 'Ferreiro',
 };
 
 // Reverse map: class name in the tree → starter_class id

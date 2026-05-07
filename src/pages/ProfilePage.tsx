@@ -82,7 +82,7 @@ const CLASS_NAME_TO_STARTER: Record<string, string> = {
   Gatuno: 'gatuno',
   Noviço: 'clerico',
   Arqueiro: 'arqueiro',
-  Mercador: 'ferreiro',
+  Ferreiro: 'ferreiro',
 };
 
 const RESPEC_CLASSES = [
