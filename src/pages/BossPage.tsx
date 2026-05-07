@@ -94,6 +94,7 @@ export default function BossPage() {
   const [skeletonPupName,      setSkeletonPupName]      = useState('Ossinho');
   const [mantirocaWarningBoss, setMantirocaWarningBoss] = useState<any | null>(null);
   const [boostedMantirocaHp,   setBoostedMantirocaHp]   = useState(0);
+  const [deathWarningBoss,     setDeathWarningBoss]     = useState<any | null>(null);
   // ────────────────────────────────────────────────────────────────────────
 
   const [activeDungeon, setActiveDungeon] = useState<{ id: string; name: string; friendCount: number } | null>(null);
@@ -312,6 +313,10 @@ export default function BossPage() {
   const handleDungeonDefeat = () => {
     setActiveDungeon(null);
     toast({ title: '💀 Derrota na Dungeon', description: 'Você foi derrotado. Prepare-se melhor e tente novamente.', variant: 'destructive' });
+  };
+
+  const handleFightButtonClick = (boss: any) => {
+    setDeathWarningBoss(boss);
   };
 
   const handleStartArenaCombat = async (boss: any, overrideBossHp?: number) => {
@@ -622,7 +627,7 @@ export default function BossPage() {
                     ) : (
                       <div className="w-full grid grid-cols-1 gap-2">
                         <Button
-                          onClick={() => handleStartArenaCombat(boss)}
+                          onClick={() => handleFightButtonClick(boss)}
                           disabled={startActiveCombat.isPending}
                           className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                           size="sm"
@@ -1019,6 +1024,70 @@ export default function BossPage() {
               }}
             >
               Enfrentar assim mesmo ⚔️
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: aviso de penalidade de morte ───────────────────────── */}
+      <Dialog open={!!deathWarningBoss} onOpenChange={(open) => { if (!open) setDeathWarningBoss(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              ⚠️ Atenção: Risco de Morte
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-4 pt-2 text-left">
+                <p className="text-foreground font-medium">
+                  Você está prestes a desafiar{' '}
+                  <span className="text-primary font-bold">{deathWarningBoss?.name}</span>.
+                </p>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 space-y-2">
+                  <p className="text-sm font-bold text-destructive uppercase tracking-wide">
+                    💀 Se você perder este combate:
+                  </p>
+                  <ul className="space-y-1.5 text-sm text-foreground">
+                    <li className="flex items-start gap-2">
+                      <span className="text-destructive font-bold mt-0.5">▼</span>
+                      <span><strong>Perde 1 nível</strong> — seu progresso de XP atual é descartado</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-destructive font-bold mt-0.5">▼</span>
+                      <span><strong>Fadiga máxima</strong> — ficará com 100% de fadiga pelo resto do dia, reduzindo XP ganho</span>
+                    </li>
+                  </ul>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Certifique-se de que seu loadout de habilidades está equipado e que seu HP/MP está em boas condições antes de entrar.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setDeathWarningBoss(null)}
+            >
+              Voltar (me preparar melhor)
+            </Button>
+            <Button
+              variant="destructive"
+              className="w-full sm:w-auto"
+              disabled={startActiveCombat.isPending}
+              onClick={() => {
+                const boss = deathWarningBoss;
+                setDeathWarningBoss(null);
+                handleStartArenaCombat(boss);
+              }}
+            >
+              {startActiveCombat.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+              ) : (
+                <Skull className="w-4 h-4 mr-1" />
+              )}
+              Entrar na Arena ⚔️
             </Button>
           </DialogFooter>
         </DialogContent>
