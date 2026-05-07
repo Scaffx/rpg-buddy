@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats } from '@/hooks/useProfile';
@@ -6,7 +6,7 @@ import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown, Eye, EyeOff, AlertTriangle, Copy, Swords, UserPlus, LogIn } from 'lucide-react';
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
 const BOSS_TOUR_STEPS: TourStep[] = [
@@ -36,7 +36,7 @@ import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CombatArena from '@/components/CombatArena';
-import DungeonArena, { type PotionItem } from '@/components/DungeonArena';
+import DungeonArena, { type PotionItem, type SessionPlayer } from '@/components/DungeonArena';
 import HeroStatusBar from '@/components/HeroStatusBar';
 import { useHeroStoryChoices, useSaveSkeletonChoice } from '@/hooks/useHeroStoryChoices';
 import { useAdoptSkeletonPup, useSkeletonCompanion, computeLiveMood } from '@/hooks/useCompanion';
@@ -97,8 +97,18 @@ export default function BossPage() {
   const [deathWarningBoss,     setDeathWarningBoss]     = useState<any | null>(null);
   // ────────────────────────────────────────────────────────────────────────
 
-  const [activeDungeon, setActiveDungeon] = useState<{ id: string; name: string; friendCount: number } | null>(null);
+  const [activeDungeon, setActiveDungeon] = useState<{ id: string; name: string; friendCount: number; sessionId?: string; sessionPlayers?: SessionPlayer[]; isHost?: boolean } | null>(null);
   const [activeCombat, setActiveCombat] = useState<{ id: string; bossId: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number; playerFatigue: number } | null>(null);
+
+  // ── Dungeon co-op session state ───────────────────────────────────────────
+  type SessionFlow = 'idle' | 'choosing' | 'creating' | 'lobby' | 'joining';
+  const [sessionFlow,     setSessionFlow]     = useState<SessionFlow>('idle');
+  const [sessionDungeon,  setSessionDungeon]  = useState<{ id: string; name: string } | null>(null);
+  const [sessionData,     setSessionData]     = useState<{ id: string; inviteCode: string; layoutIndex: number } | null>(null);
+  const [sessionPlayers,  setSessionPlayers]  = useState<SessionPlayer[]>([]);
+  const [joinCodeInput,   setJoinCodeInput]   = useState('');
+  const [sessionLoading,  setSessionLoading]  = useState(false);
+  const sessionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [arenaVisible, setArenaVisible] = useState<boolean>(() => {
     const stored = localStorage.getItem('rpg_combat_arena_visible');
     return stored === null ? true : stored === 'true';
@@ -239,50 +249,56 @@ export default function BossPage() {
   const dungeons = useMemo(() => [
     {
       id: '1',
-      name: t('app.boss.dungeon_1_name'),
-      difficulty: t('app.boss.difficulty_medium'),
-      icon: '🗿',
-      minLevel: 5,
-      requiredPlayers: 3,
-      currentPlayers: 2,
-      boss: { name: t('app.boss.dungeon_1_boss'), hp: 150, icon: '👹' },
-      xpReward: 200,
-      description: t('app.boss.dungeon_1_desc'),
-      uniqueItem: t('app.boss.dungeon_1_item'),
-      specialCoin: t('app.boss.dungeon_1_coin'),
-      titleReward: t('app.boss.dungeon_1_title'),
+      name: 'Covil dos Orcs Selvagens',
+      difficulty: 'Médio',
+      icon: '🧌',
+      minLevel: 3,
+      requiredPlayers: 4,
+      boss: { name: 'Shagor + Zoth', hp: 300 + 160, icon: '🧌👺' },
+      xpReward: 240,
+      description: 'Uma caverna úmida infestada de orcs, goblins e aranhas gigantes. O chefe duplo Shagor e Zoth aguardam no covil.',
+      uniqueItem: 'Dente de Orc',
+      specialCoin: 'Moeda Orc',
+      titleReward: 'Caçador de Orcs',
+      theme: 'orc',
+      atmosphere: 'O cheiro de suor e carne podre impregna o ar...',
+      minions: ['Goblin Sentinela', 'Aranha das Cavernas', 'Slime Fétido', 'Orc Selvagem', 'Zumbi Orc'],
     },
     {
       id: '2',
-      name: t('app.boss.dungeon_2_name'),
-      difficulty: t('app.boss.difficulty_hard'),
-      icon: '🏰',
-      minLevel: 10,
+      name: 'Templo das Areias Perdidas',
+      difficulty: 'Difícil',
+      icon: '🏺',
+      minLevel: 8,
       requiredPlayers: 4,
-      currentPlayers: 3,
-      boss: { name: t('app.boss.dungeon_2_boss'), hp: 200, icon: '🧙' },
-      xpReward: 300,
-      description: t('app.boss.dungeon_2_desc'),
-      uniqueItem: t('app.boss.dungeon_2_item'),
-      specialCoin: t('app.boss.dungeon_2_coin'),
-      titleReward: t('app.boss.dungeon_2_title'),
+      boss: { name: 'Esfinge Guardiã + Djinn', hp: 420 + 230, icon: '🦁🌪️' },
+      xpReward: 390,
+      description: 'Ruínas de um império antigo no deserto. Múmias, escorpiões e golens de areia guardam o segredo do boss duplo Esfinge + Djinn.',
+      uniqueItem: 'Fragmento de Hieróglifo',
+      specialCoin: 'Moeda do Deserto',
+      titleReward: 'Saqueador de Templos',
+      theme: 'desert',
+      atmosphere: 'As areias cantam enquanto ruínas milenares te envolvem...',
+      minions: ['Escorpião do Deserto', 'Múmia Enfaixada', 'Golem de Areia', 'Zumbi do Templo', 'Serpente de Areia'],
     },
     {
       id: '3',
-      name: t('app.boss.dungeon_3_name'),
-      difficulty: t('app.boss.difficulty_easy'),
-      icon: '🌲',
-      minLevel: 2,
-      requiredPlayers: 2,
-      currentPlayers: 1,
-      boss: { name: t('app.boss.dungeon_3_boss'), hp: 100, icon: '🐺' },
-      xpReward: 150,
-      description: t('app.boss.dungeon_3_desc'),
-      uniqueItem: t('app.boss.dungeon_3_item'),
-      specialCoin: t('app.boss.dungeon_3_coin'),
-      titleReward: t('app.boss.dungeon_3_title'),
+      name: 'Abismo das Sombras',
+      difficulty: 'Lendário',
+      icon: '🌑',
+      minLevel: 15,
+      requiredPlayers: 4,
+      boss: { name: 'Cavaleiro do Vazio + Wyvern', hp: 520 + 310, icon: '🗡️⚡' },
+      xpReward: 580,
+      description: 'O vazio entre os mundos. Sombras, zumbis das trevas e wyverns juvenis guardam o Cavaleiro do Vazio montado no Wyvern Relâmpago.',
+      uniqueItem: 'Fragmento do Vazio',
+      specialCoin: 'Essência Sombria',
+      titleReward: 'Caçador de Sombras',
+      theme: 'shadow',
+      atmosphere: 'A escuridão é viva. Raios silenciosos rasgam o vazio...',
+      minions: ['Sombra Rastejante', 'Espectro Sombrio', 'Zumbi das Trevas', 'Wyvern Juvenil', 'Criatura do Vazio'],
     },
-  ], [t]);
+  ], []);
 
   // Set of boss IDs already defeated (via boss_battles)
   const defeatedBossIds = new Set(
@@ -295,9 +311,199 @@ export default function BossPage() {
   const isSkeletonPermanentlyDefeated = (bossName: string) =>
     SKELETON_BOSS_PATTERN.test(bossName) && !!storyChoices?.skeleton_champion;
 
-  const handleOpenDungeon = (dungeon: { id: string; name: string; currentPlayers: number }) => {
-    setActiveDungeon({ id: dungeon.id, name: dungeon.name, friendCount: Math.max(0, dungeon.currentPlayers - 1) });
+  const handleOpenDungeon = (dungeon: { id: string; name: string }) => {
+    setSessionDungeon(dungeon);
+    setSessionFlow('choosing');
   };
+
+  const closeDungeonSession = useCallback(() => {
+    if (sessionChannelRef.current) {
+      supabase.removeChannel(sessionChannelRef.current);
+      sessionChannelRef.current = null;
+    }
+    setSessionFlow('idle');
+    setSessionDungeon(null);
+    setSessionData(null);
+    setSessionPlayers([]);
+    setJoinCodeInput('');
+  }, []);
+
+  // Subscribe to Realtime for session lobby
+  const subscribeLobby = useCallback((sessionId: string) => {
+    if (sessionChannelRef.current) supabase.removeChannel(sessionChannelRef.current);
+
+    const channel = supabase.channel(`dungeon_lobby:${sessionId}`);
+    sessionChannelRef.current = channel;
+
+    channel
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'dungeon_session_players',
+        filter: `session_id=eq.${sessionId}`,
+      }, async () => {
+        // Re-fetch players
+        const { data } = await (supabase as any)
+          .from('dungeon_session_players')
+          .select('user_id,display_name,current_hp,max_hp,player_level,player_atk,player_def,is_host,is_alive')
+          .eq('session_id', sessionId);
+        if (data) {
+          setSessionPlayers(data.map((p: any) => ({
+            userId: p.user_id,
+            displayName: p.display_name,
+            hp: p.current_hp,
+            maxHp: p.max_hp,
+            level: p.player_level,
+            atk: p.player_atk,
+            def: p.player_def,
+            isHost: p.is_host,
+            isAlive: p.is_alive,
+          })));
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'dungeon_sessions',
+        filter: `id=eq.${sessionId}`,
+      }, ({ new: newRow }: any) => {
+        if (newRow?.status === 'in_progress') {
+          // Host started — launch DungeonArena for everyone
+          const dungeon = sessionDungeon;
+          if (!dungeon) return;
+          const isH = sessionPlayers.find(p => p.userId === user?.id)?.isHost ?? false;
+          setSessionFlow('idle');
+          setActiveDungeon({
+            id: dungeon.id,
+            name: dungeon.name,
+            friendCount: Math.max(0, sessionPlayers.length - 1),
+            sessionId,
+            sessionPlayers,
+            isHost: isH,
+          });
+        }
+      })
+      .subscribe();
+  }, [sessionDungeon, sessionPlayers, user?.id]);
+
+  const handleCreateSession = useCallback(async (dungeon: { id: string; name: string }) => {
+    if (!user || !profile) return;
+    setSessionLoading(true);
+    try {
+      const attrLevelsLocal = getAttributeLevels(attributes as any[]);
+      const statsLocal = getPlayerCombatStats(profile.level || 1, attrLevelsLocal);
+      const curHp  = healthStats?.current_hp  != null ? Number(healthStats.current_hp)  : statsLocal.hp ?? 120;
+      const maxHp  = healthStats?.max_hp      != null ? Number(healthStats.max_hp)      : statsLocal.hp ?? 120;
+
+      const { data, error } = await (supabase as any).rpc('create_dungeon_session', {
+        p_dungeon_id:   dungeon.id,
+        p_display_name: (profile as any).display_name || 'Herói',
+        p_current_hp:   curHp,
+        p_max_hp:       maxHp,
+        p_player_level: profile.level || 1,
+        p_player_atk:   statsLocal.atk ?? 15,
+        p_player_def:   statsLocal.def ?? 8,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      setSessionData({ id: row.session_id, inviteCode: row.invite_code, layoutIndex: row.layout_index });
+      setSessionPlayers([{
+        userId:      user.id,
+        displayName: (profile as any).display_name || 'Herói',
+        hp:          curHp,
+        maxHp:       maxHp,
+        level:       profile.level || 1,
+        atk:         statsLocal.atk ?? 15,
+        def:         statsLocal.def ?? 8,
+        isHost:      true,
+        isAlive:     true,
+      }]);
+      setSessionFlow('lobby');
+      subscribeLobby(row.session_id);
+    } catch (err: any) {
+      toast({ title: 'Erro ao criar sessão', description: err?.message, variant: 'destructive' });
+    } finally {
+      setSessionLoading(false);
+    }
+  }, [user, profile, attributes, healthStats, toast, subscribeLobby]);
+
+  const handleJoinSession = useCallback(async () => {
+    if (!user || !profile || !joinCodeInput.trim()) return;
+    setSessionLoading(true);
+    try {
+      const attrLevelsLocal = getAttributeLevels(attributes as any[]);
+      const statsLocal = getPlayerCombatStats(profile.level || 1, attrLevelsLocal);
+      const curHp  = healthStats?.current_hp  != null ? Number(healthStats.current_hp)  : statsLocal.hp ?? 120;
+      const maxHp  = healthStats?.max_hp      != null ? Number(healthStats.max_hp)      : statsLocal.hp ?? 120;
+
+      const { data, error } = await (supabase as any).rpc('join_dungeon_session', {
+        p_invite_code:  joinCodeInput.trim().toUpperCase(),
+        p_display_name: (profile as any).display_name || 'Herói',
+        p_current_hp:   curHp,
+        p_max_hp:       maxHp,
+        p_player_level: profile.level || 1,
+        p_player_atk:   statsLocal.atk ?? 15,
+        p_player_def:   statsLocal.def ?? 8,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      // Find dungeon by id
+      const dg = dungeons.find(d => d.id === row.dungeon_id) || dungeons[0];
+      setSessionDungeon({ id: dg.id, name: dg.name });
+      setSessionData({ id: row.session_id, inviteCode: joinCodeInput.trim().toUpperCase(), layoutIndex: row.layout_index });
+
+      // Fetch current players
+      const { data: playersData } = await (supabase as any)
+        .from('dungeon_session_players')
+        .select('user_id,display_name,current_hp,max_hp,player_level,player_atk,player_def,is_host,is_alive')
+        .eq('session_id', row.session_id);
+      if (playersData) {
+        setSessionPlayers(playersData.map((p: any) => ({
+          userId: p.user_id, displayName: p.display_name, hp: p.current_hp, maxHp: p.max_hp,
+          level: p.player_level, atk: p.player_atk, def: p.player_def, isHost: p.is_host, isAlive: p.is_alive,
+        })));
+      }
+      setSessionFlow('lobby');
+      subscribeLobby(row.session_id);
+      toast({ title: `✅ Entrou na sessão do ${row.host_name}!` });
+    } catch (err: any) {
+      toast({ title: 'Erro ao entrar na sessão', description: err?.message, variant: 'destructive' });
+    } finally {
+      setSessionLoading(false);
+    }
+  }, [user, profile, attributes, healthStats, joinCodeInput, dungeons, toast, subscribeLobby]);
+
+  const handleStartSession = useCallback(async () => {
+    if (!sessionData) return;
+    setSessionLoading(true);
+    try {
+      const { error } = await (supabase as any).rpc('start_dungeon_session', { p_session_id: sessionData.id });
+      if (error) throw error;
+      // The Realtime listener will fire and open DungeonArena for all
+      // But also open it directly for host as fallback
+      const dungeon = sessionDungeon;
+      if (!dungeon) return;
+      setSessionFlow('idle');
+      setActiveDungeon({
+        id:             dungeon.id,
+        name:           dungeon.name,
+        friendCount:    Math.max(0, sessionPlayers.length - 1),
+        sessionId:      sessionData.id,
+        sessionPlayers: sessionPlayers,
+        isHost:         true,
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro ao iniciar sessão', description: err?.message, variant: 'destructive' });
+    } finally {
+      setSessionLoading(false);
+    }
+  }, [sessionData, sessionDungeon, sessionPlayers, toast]);
+
+  // Solo: immediately open DungeonArena without session
+  const handleSoloOpen = useCallback((dungeon: { id: string; name: string }) => {
+    setActiveDungeon({ id: dungeon.id, name: dungeon.name, friendCount: 0 });
+    setSessionFlow('idle');
+  }, []);
 
   const handleDungeonVictory = ({ xpGained, goldGained, loot, rescued }: { xpGained: number; goldGained: number; loot: any[]; rescued: number }) => {
     setActiveDungeon(null);
@@ -681,108 +887,199 @@ export default function BossPage() {
             {profile && (
               <div className="rpg-card bg-purple-500/10 border-purple-500/30">
                 <p className="text-sm text-muted-foreground">
-                  Seu nível: <span className="text-purple-400 font-bold">{profile.level}</span> • Poder: <span className="text-purple-400 font-bold">{profile.level * 15}</span>
+                  Nível: <span className="text-purple-400 font-bold">{profile.level}</span> &nbsp;•&nbsp; ATK: <span className="text-purple-400 font-bold">{playerStats?.atk ?? '—'}</span>
                 </p>
-                <p className="text-xs text-purple-300 mt-1">⚔️ Dungeons são desafios em grupo — bosses são extremamente fortes. Cada aliado dá +18% de dano!</p>
+                <p className="text-xs text-purple-300 mt-1">⚔️ Dungeons são desafios co-op (2–4 jogadores). Com mais aliados o boss fica mais forte, mas a vitória é mais fácil!</p>
               </div>
             )}
+
+            {/* Entrar por código */}
+            <div className="rpg-card border-emerald-500/30 space-y-3">
+              <p className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
+                <LogIn className="w-4 h-4" /> Entrar em uma sessão
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={joinCodeInput}
+                  onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
+                  placeholder="Código (ex: AB3X9Z)"
+                  maxLength={6}
+                  className="font-mono tracking-widest text-center uppercase"
+                />
+                <Button
+                  onClick={handleJoinSession}
+                  disabled={sessionLoading || joinCodeInput.length < 4}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                >
+                  {sessionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Entrar'}
+                </Button>
+              </div>
+            </div>
 
             <div className="grid gap-4">
               {dungeons.map((dungeon, i) => {
                 const canJoin = profile && profile.level >= dungeon.minLevel;
-                const isFull = dungeon.currentPlayers >= dungeon.requiredPlayers;
+                const diffColor =
+                  dungeon.difficulty === 'Médio'   ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                  dungeon.difficulty === 'Difícil'  ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                  dungeon.difficulty === 'Lendário' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                                      'bg-success/20 text-success border-success/30';
 
                 return (
                   <motion.div
                     key={dungeon.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
+                    transition={{ delay: i * 0.08 }}
                     className="rpg-card-glow border-purple-500/30 flex flex-col gap-4"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-4 flex-1">
-                        <span className="text-5xl">{dungeon.icon}</span>
-                        <div className="flex-1">
-                          <h3 className="font-display font-bold text-lg text-foreground">{dungeon.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-1">{dungeon.description}</p>
-                          <div className="flex items-center gap-3 mt-2 flex-wrap">
-                            <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                              dungeon.difficulty === 'Fácil'
-                                ? 'bg-success/20 text-success'
-                                : dungeon.difficulty === 'Médio'
-                                ? 'bg-yellow-500/20 text-yellow-400'
-                                : 'bg-destructive/20 text-destructive'
-                            }`}>
-                              {dungeon.difficulty}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              ⭐ Nível mín: {dungeon.minLevel}
-                            </span>
-                          </div>
+                    <div className="flex items-start gap-4">
+                      <span className="text-5xl">{dungeon.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-display font-bold text-lg text-foreground">{dungeon.name}</h3>
+                        <p className="text-xs text-muted-foreground mt-1 italic">"{dungeon.atmosphere}"</p>
+                        <p className="text-xs text-muted-foreground mt-1">{dungeon.description}</p>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${diffColor}`}>
+                            {dungeon.difficulty}
+                          </span>
+                          <span className="text-xs text-muted-foreground">⭐ Nível mín: {dungeon.minLevel}</span>
+                          <span className="text-xs text-muted-foreground">👥 2–4 jogadores</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="rpg-card bg-secondary/50">
-                        <p className="text-muted-foreground">Boss Final</p>
-                        <p className="font-bold text-foreground mt-1">{dungeon.boss.icon} {dungeon.boss.name}</p>
-                        <p className="text-muted-foreground">❤️ {dungeon.boss.hp} HP</p>
+                      <div className="rpg-card bg-secondary/50 space-y-0.5">
+                        <p className="text-muted-foreground font-semibold">Boss Final</p>
+                        <p className="font-bold text-foreground">{dungeon.boss.icon} {dungeon.boss.name}</p>
+                        <p className="text-muted-foreground">❤️ {dungeon.boss.hp} HP total</p>
                       </div>
-                      <div className="rpg-card bg-secondary/50">
-                        <p className="text-muted-foreground">Recompensas</p>
-                        <p className="font-bold text-xp mt-1">✨ {dungeon.xpReward} XP</p>
+                      <div className="rpg-card bg-secondary/50 space-y-0.5">
+                        <p className="text-muted-foreground font-semibold">Recompensas</p>
+                        <p className="font-bold text-xp">✨ {dungeon.xpReward} XP</p>
                         <p className="text-muted-foreground">🪙 {dungeon.specialCoin}</p>
                         <p className="text-muted-foreground">🎁 {dungeon.uniqueItem}</p>
                         <p className="text-muted-foreground">🏅 {dungeon.titleReward}</p>
-                        <p className="text-muted-foreground">👥 {dungeon.currentPlayers}/{dungeon.requiredPlayers}</p>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          Grupo ({dungeon.currentPlayers}/{dungeon.requiredPlayers})
-                        </span>
-                        <div className="flex gap-1">
-                          {Array.from({ length: dungeon.requiredPlayers }).map((_, idx) => (
-                            <div
-                              key={idx}
-                              className={`h-2 flex-1 rounded-full ${
-                                idx < dungeon.currentPlayers ? 'bg-purple-500' : 'bg-muted'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleOpenDungeon({ id: dungeon.id, name: dungeon.name })}
+                        disabled={!canJoin}
+                        className={`flex-1 font-semibold ${!canJoin ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
+                      >
+                        {!canJoin ? `🔒 Nível ${dungeon.minLevel} req` : <><UserPlus className="w-4 h-4 mr-2" />Criar Sessão Co-op</>}
+                      </Button>
+                      <Button
+                        onClick={() => handleSoloOpen({ id: dungeon.id, name: dungeon.name })}
+                        disabled={!canJoin}
+                        variant="outline"
+                        className={`shrink-0 ${!canJoin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title="Entrar solo (muito mais difícil)"
+                      >
+                        <Swords className="w-4 h-4" />
+                      </Button>
                     </div>
-
-                    <Button
-                      onClick={() => handleOpenDungeon({ id: dungeon.id, name: dungeon.name, currentPlayers: dungeon.currentPlayers })}
-                      disabled={!canJoin}
-                      className={`w-full font-semibold ${
-                        !canJoin
-                          ? 'opacity-50 cursor-not-allowed'
-                          : 'bg-purple-600 hover:bg-purple-700 text-white'
-                      }`}
-                    >
-                      {!canJoin ? (
-                        `❌ Nível insuficiente (${dungeon.minLevel} req)`
-                      ) : (
-                        <>
-                          <Skull className="w-4 h-4 mr-2" />
-                          Entrar na Dungeon
-                        </>
-                      )}
-                    </Button>
                   </motion.div>
                 );
               })}
             </div>
           </div>
         )}
+
+        {/* ── Session flow dialogs ─────────────────────────────── */}
+        {/* Choosing: create or join */}
+        <Dialog open={sessionFlow === 'choosing'} onOpenChange={open => !open && setSessionFlow('idle')}>
+          <DialogContent className="max-w-xs">
+            <DialogHeader>
+              <DialogTitle>🗡️ {sessionDungeon?.name}</DialogTitle>
+              <DialogDescription>Como deseja jogar?</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 mt-2">
+              <Button
+                onClick={() => sessionDungeon && handleCreateSession(sessionDungeon)}
+                disabled={sessionLoading}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                {sessionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+                Criar sessão e convidar amigos
+              </Button>
+              <Button variant="outline" onClick={() => setSessionFlow('idle')} className="w-full">
+                Cancelar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Lobby */}
+        <Dialog open={sessionFlow === 'lobby'} onOpenChange={open => !open && closeDungeonSession()}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>🏰 Lobby — {sessionDungeon?.name}</DialogTitle>
+              <DialogDescription>
+                {sessionPlayers.find(p => p.userId === user?.id)?.isHost
+                  ? 'Você é o host. Compartilhe o código e inicie quando estiver pronto (mín. 2 jogadores).'
+                  : 'Aguardando o host iniciar a dungeon...'}
+              </DialogDescription>
+            </DialogHeader>
+
+            {sessionData && (
+              <div className="space-y-4 my-2">
+                {/* Invite code */}
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
+                  <div className="flex-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Código de convite</p>
+                    <p className="font-mono font-bold text-2xl tracking-[0.25em] text-purple-300">{sessionData.inviteCode}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(sessionData.inviteCode);
+                      toast({ title: 'Código copiado!' });
+                    }}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Players */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Jogadores ({sessionPlayers.length}/4)
+                  </p>
+                  {sessionPlayers.map(p => (
+                    <div key={p.userId} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50">
+                      <span className="text-lg">{p.isHost ? '👑' : '⚔️'}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">{p.displayName}{p.isHost ? ' (Host)' : ''}</p>
+                        <p className="text-xs text-muted-foreground">Lv.{p.level} · ATK {p.atk} · ❤️ {p.hp}</p>
+                      </div>
+                      <div className={`w-2 h-2 rounded-full ${p.isAlive ? 'bg-emerald-400' : 'bg-red-500'}`} />
+                    </div>
+                  ))}
+                  {sessionPlayers.length < 2 && (
+                    <p className="text-xs text-yellow-400 text-center py-1">Aguardando pelo menos 2 jogadores para iniciar...</p>
+                  )}
+                </div>
+
+                {sessionPlayers.find(p => p.userId === user?.id)?.isHost && (
+                  <Button
+                    onClick={handleStartSession}
+                    disabled={sessionLoading || sessionPlayers.length < 2}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold"
+                  >
+                    {sessionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '⚔️ '}
+                    Iniciar Dungeon ({sessionPlayers.length} jogadores)
+                  </Button>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
 
         {/* ========== ABA: RANKING ========== */}
         {activeTab === "ranking" && (
@@ -1126,6 +1423,9 @@ export default function BossPage() {
             playerDef={playerStats.def ?? 8}
             potions={hpPotions}
             friendCount={activeDungeon.friendCount}
+            sessionId={activeDungeon.sessionId}
+            sessionPlayers={activeDungeon.sessionPlayers}
+            isHost={activeDungeon.isHost ?? true}
             onVictory={handleDungeonVictory}
             onDefeat={handleDungeonDefeat}
             onFlee={() => setActiveDungeon(null)}

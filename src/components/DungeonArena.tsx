@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Zap, ChevronRight, Trophy, Skull, LogOut, Users, Package, FlaskConical, Bot, ShieldCheck } from 'lucide-react';
+import { Heart, Zap, ChevronRight, Trophy, Skull, LogOut, Users, Package, FlaskConical, Bot, ShieldCheck, Swords, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,12 @@ type RoomDef = {
   npcName?: string;
 };
 
+type BossFight = {
+  primary: EnemyDef & { matk: number };
+  secondary?: EnemyDef & { matk: number; enragePrimary?: number };
+  secondaryProtects?: boolean; // primary takes 50% dmg while secondary lives
+};
+
 type LootDrop = { id: string; name: string; icon: string; qty: number };
 
 export type PotionItem = {
@@ -28,6 +34,18 @@ export type PotionItem = {
   effect: string;
   icon: string;
   qty: number;
+};
+
+export type SessionPlayer = {
+  userId: string;
+  displayName: string;
+  hp: number;
+  maxHp: number;
+  level: number;
+  atk: number;
+  def: number;
+  isHost: boolean;
+  isAlive: boolean;
 };
 
 type DungeonPhase = 'prep' | 'exploring' | 'victory' | 'defeat';
@@ -43,49 +61,153 @@ const LOOT_TABLE: Array<{ id: string; name: string; icon: string; weight: number
   { id: 'cristal_fragmentado',  name: 'Cristal Fragmentado',    icon: '💎', weight: 5,  min: 1, max: 1  },
 ];
 
-// ── Dungeon Configs ─────────────────────────────────────────────────────────
-const DUNGEON_ROOMS: Record<string, RoomDef[]> = {
-  '1': [
-    { type: 'combat',   name: 'Corredor da Entrada',     desc: 'Slimes infestam a passagem sombria...', icon: '🌫️',
-      enemy: { name: 'Slime Preguiçoso', icon: '🟢', hp: 40, atk: 9 } },
-    { type: 'rescue',   name: 'Cela dos Prisioneiros',   desc: 'Gritos abafados vêm de trás da grade enferrujada.', icon: '🔒', npcName: 'Aventureiro Capturado' },
-    { type: 'treasure', name: 'Sala do Tesouro',          desc: 'Um baú coberto de poeira paira no centro da sala.', icon: '💰' },
-    { type: 'combat',   name: 'Câmara do Capitão',        desc: 'Um goblin armado bloqueia a passagem principal!', icon: '⚔️',
-      enemy: { name: 'Capitão Goblin', icon: '👺', hp: 70, atk: 16 } },
-    { type: 'trap',     name: 'Corredor das Lâminas',     desc: 'O piso pulsa com armadilhas mecânicas.', icon: '⚠️', trapDmg: 22 },
-    { type: 'rest',     name: 'Câmara Sagrada',           desc: 'Uma fonte mágica emana luz dourada reconfortante.', icon: '✨' },
-  ],
-  '2': [
-    { type: 'combat',   name: '1º Andar — Sentinelas',    desc: 'Golens arcanos montam guarda na entrada da torre.', icon: '🌩️',
-      enemy: { name: 'Golem Arcano', icon: '🤖', hp: 80, atk: 20 } },
-    { type: 'trap',     name: '2º Andar — Runas Mortais',  desc: 'O piso brilha com runas explosivas em cada passo.', icon: '💥', trapDmg: 38 },
-    { type: 'rescue',   name: '3º Andar — Sábio Aprisionado', desc: 'Um ancião está aprisionado por correntes mágicas.', icon: '📚', npcName: 'Sábio Encarcerado' },
-    { type: 'combat',   name: '4º Andar — Espectro',       desc: 'Uma entidade sombria surge das paredes geladas!', icon: '👻',
-      enemy: { name: 'Espectro do Esquecimento', icon: '👻', hp: 95, atk: 25 } },
-    { type: 'treasure', name: '5º Andar — Biblioteca',     desc: 'Prateleiras repletas de tomos e relíquias esquecidas.', icon: '📖' },
-    { type: 'combat',   name: '6º Andar — Elite Sombria',  desc: 'Um guerreiro das trevas bloqueia a câmara do Oráculo.', icon: '🌑',
-      enemy: { name: 'Guerreiro das Trevas', icon: '🗡️', hp: 90, atk: 22 } },
-  ],
-  '3': [
-    { type: 'combat',   name: 'Portão da Fortaleza',       desc: 'Soldados de pedra animados montam guarda.', icon: '🏰',
-      enemy: { name: 'Soldado de Pedra', icon: '🪨', hp: 30, atk: 7 } },
-    { type: 'trap',     name: 'Fosso com Lanças',           desc: 'Lanças surgem do chão ao caminhar!', icon: '⚠️', trapDmg: 18 },
-    { type: 'rescue',   name: 'Calabouço',                  desc: 'Um aldeão ferido está trancado na cela escura.', icon: '🔒', npcName: 'Aldeão Assustado' },
-    { type: 'treasure', name: 'Sala das Armas',             desc: 'Armamentos e materiais espalhados pelo chão de pedra.', icon: '🛡️' },
-    { type: 'combat',   name: 'Pátio dos Guardiões',        desc: 'Dois lobos ferozes circulam a entrada do chefe!', icon: '🐺',
-      enemy: { name: 'Lobo Feroz', icon: '🐺', hp: 28, atk: 10 } },
-    { type: 'rest',     name: 'Sala do Trono',              desc: 'O silêncio antes do confronto final...', icon: '👑' },
-  ],
+// ── Scaling helpers ─────────────────────────────────────────────────────────
+function scaleHp(base: number, level: number, playerCount: number): number {
+  return Math.round(base * (1 + (Math.max(1, level) - 1) * 0.07) * (1 + Math.max(0, playerCount - 1) * 0.22));
+}
+function scaleAtk(base: number, level: number, playerCount: number): number {
+  return Math.round(base * (1 + (Math.max(1, level) - 1) * 0.05) * (1 + Math.max(0, playerCount - 1) * 0.15));
+}
+
+// ── Dungeon Configurations ──────────────────────────────────────────────────
+type DungeonMeta = {
+  atmosphere: string;
+  layouts: RoomDef[][];   // 3 layout variants
+  boss: BossFight;
+  xp: number;
+  gold: number;
 };
 
-const DUNGEON_BOSS: Record<string, EnemyDef & { matk: number }> = {
-  '1': { name: 'Guardião das Rotinas', icon: '🧿', hp: 380, atk: 30, matk: 22 },
-  '2': { name: 'Oráculo das Trevas',   icon: '🧙', hp: 560, atk: 42, matk: 50 },
-  '3': { name: 'Colosso de Pedra',     icon: '🗿', hp: 280, atk: 24, matk: 13 },
+const DUNGEON_DATA: Record<string, DungeonMeta> = {
+
+  // ── DUNGEON 1: COVIL DOS ORCS SELVAGENS ────────────────────────────────
+  '1': {
+    atmosphere: 'O cheiro de suor, sangue e carne podre impregna o ar úmido da caverna...',
+    xp: 240,
+    gold: 95,
+    layouts: [
+      // Layout A — Infiltração
+      [
+        { type: 'combat',   name: 'Entrada da Caverna',     desc: 'Sentinelas goblin saltam dos arbustos ao som de suas botas!',                                    icon: '🌑', enemy: { name: 'Goblin Sentinela',    icon: '👺', hp: 40,  atk: 9  } },
+        { type: 'combat',   name: 'Ninho das Aranhas',       desc: 'Teias brancas encobrem o teto. Aranhas descem lentamente...',                                    icon: '🕸️', enemy: { name: 'Aranha das Cavernas', icon: '🕷️', hp: 55,  atk: 12 } },
+        { type: 'rescue',   name: 'Cela dos Cativos',        desc: 'Gritos abafados vêm de trás de grades enferrujadas. Um mercador está acorrentado!',              icon: '🔒', npcName: 'Mercador Capturado' },
+        { type: 'combat',   name: 'Acampamento de Guerra',   desc: 'Crânios de inimigos decoram o acampamento. Um orc enfurecido avança gritando!',                  icon: '🏕️', enemy: { name: 'Orc Selvagem',         icon: '🧌', hp: 80,  atk: 18 } },
+        { type: 'trap',     name: 'Corredor da Pedra',       desc: 'O piso treme... Uma enorme pedra rola pelo corredor!',                                           icon: '⚠️', trapDmg: 25 },
+        { type: 'rest',     name: 'Fonte Corrompida',        desc: 'Uma fonte de água escura brilha com magia estranha, mas parece reconfortante...',                 icon: '💧' },
+      ],
+      // Layout B — Emboscada
+      [
+        { type: 'combat',   name: 'Entrada da Caverna',     desc: 'Sentinelas goblin saltam dos arbustos!',                                                          icon: '🌑', enemy: { name: 'Goblin Sentinela',    icon: '👺', hp: 40,  atk: 9  } },
+        { type: 'combat',   name: 'Passagem do Slime',       desc: 'A passagem está coberta de slime fétido. Slimes pulam em sua direção!',                           icon: '🟢', enemy: { name: 'Slime Fétido',        icon: '🟢', hp: 30,  atk: 7  } },
+        { type: 'trap',     name: 'Armadilha de Redes',      desc: 'Redes cheias de espinhos orc caem do teto sobre você!',                                          icon: '⚠️', trapDmg: 18 },
+        { type: 'rescue',   name: 'Cela dos Cativos',        desc: 'Entre os ossos de aventureiros anteriores, um mercador sobrevive acorrentado!',                  icon: '🔒', npcName: 'Mercador Capturado' },
+        { type: 'combat',   name: 'Acampamento de Guerra',   desc: 'Um orc selvagem protege o covil do chefe!',                                                      icon: '🏕️', enemy: { name: 'Orc Selvagem',         icon: '🧌', hp: 80,  atk: 18 } },
+        { type: 'rest',     name: 'Totem Curativo',          desc: 'Um totem orc com cristal roubado de curandeiro. Você absorve sua energia!',                      icon: '🗿' },
+      ],
+      // Layout C — Profundezas
+      [
+        { type: 'combat',   name: 'Entrada da Caverna',     desc: 'Sentinelas goblin saltam dos arbustos!',                                                          icon: '🌑', enemy: { name: 'Goblin Sentinela',    icon: '👺', hp: 40,  atk: 9  } },
+        { type: 'combat',   name: 'Fosso dos Zumbis Orc',   desc: 'Orcs mortos se levantam de um fosso escuro, guiados por feitiçaria negra!',                       icon: '🌀', enemy: { name: 'Zumbi Orc',           icon: '🧟', hp: 65,  atk: 14 } },
+        { type: 'rescue',   name: 'Cela dos Cativos',        desc: 'Um mercador ferido te olha com olhos cheios de esperança pelas grades!',                         icon: '🔒', npcName: 'Mercador Capturado' },
+        { type: 'combat',   name: 'Ninho das Aranhas',       desc: 'Aranhas gigantes descem rapidamente do teto encharcado de teias!',                               icon: '🕸️', enemy: { name: 'Aranha das Cavernas', icon: '🕷️', hp: 55,  atk: 12 } },
+        { type: 'trap',     name: 'Corredor da Pedra',       desc: 'Uma pedra colossal rola pelo corredor! Não há como recuar!',                                     icon: '⚠️', trapDmg: 25 },
+        { type: 'treasure', name: 'Pilha de Espólio Orc',    desc: 'Itens saqueados de aventureiros anteriores formam uma pilha gloriosa!',                          icon: '💰' },
+      ],
+    ],
+    boss: {
+      primary:   { name: 'Shagor, o Grande Orc',   icon: '🧌', hp: 300, atk: 35, matk: 18 },
+      secondary: { name: 'Zoth, Chefe dos Goblins', icon: '👺', hp: 160, atk: 22, matk: 12, enragePrimary: 25 },
+    },
+  },
+
+  // ── DUNGEON 2: TEMPLO DAS AREIAS PERDIDAS ──────────────────────────────
+  '2': {
+    atmosphere: 'As areias cantam enquanto você penetra nas ruínas milenares... O calor sufocante faz o ar vibrar.',
+    xp: 390,
+    gold: 145,
+    layouts: [
+      // Layout A — Câmaras do Templo
+      [
+        { type: 'combat',   name: 'Portal do Templo',       desc: 'Escorpiões gigantes emergem das dunas internas ao sentir sua presença!',                         icon: '🏺', enemy: { name: 'Escorpião do Deserto', icon: '🦂', hp: 60,  atk: 14 } },
+        { type: 'combat',   name: 'Câmara das Múmias',      desc: 'Sarcófagos se abrem sozinhos. Múmias com olhos vazios avançam silenciosamente...',               icon: '⚰️', enemy: { name: 'Múmia Enfaixada',     icon: '🧟', hp: 85,  atk: 18 } },
+        { type: 'rescue',   name: 'Câmara Proibida',        desc: 'Um erudito preso por correntes mágicas suplica por ajuda entre os hieróglifos!',                 icon: '📚', npcName: 'Erudito Perdido' },
+        { type: 'trap',     name: 'Corredor de Areia',      desc: 'O chão se abre! Uma fossa de areia movediça tenta engolir seus pés!',                            icon: '⚠️', trapDmg: 30 },
+        { type: 'combat',   name: 'Câmara do Golem',        desc: 'Um gigante feito de areia animada bloqueia a câmara sagrada com braços imensos!',                icon: '🗿', enemy: { name: 'Golem de Areia',       icon: '🟫', hp: 100, atk: 20 } },
+        { type: 'rest',     name: 'Oásis Místico',          desc: 'Um oásis escondido na câmara. A água restaura sua energia como um milagre!',                     icon: '🌴' },
+      ],
+      // Layout B — Labirinto das Serpenetes
+      [
+        { type: 'combat',   name: 'Portal do Templo',       desc: 'Escorpiões do deserto emergem das pedras ao som do primeiro passo!',                             icon: '🏺', enemy: { name: 'Escorpião do Deserto', icon: '🦂', hp: 60,  atk: 14 } },
+        { type: 'trap',     name: 'Lâminas de Obsidiana',   desc: 'Lâminas de obsidiana disparam das paredes ao menor toque nas runas!',                            icon: '⚠️', trapDmg: 22 },
+        { type: 'combat',   name: 'Corredor das Serpentes', desc: 'Uma serpente colossal surge da areia, cuspindo veneno ácido!',                                   icon: '🐍', enemy: { name: 'Serpente de Areia',    icon: '🐍', hp: 70,  atk: 16 } },
+        { type: 'rescue',   name: 'Câmara Proibida',        desc: 'O erudito está semienterrado na areia, chamando por socorro freneticamente!',                    icon: '📚', npcName: 'Erudito Perdido' },
+        { type: 'combat',   name: 'Câmara dos Servos',      desc: 'Servos mortos do templo caminham em procissão silenciosa. Eles te viram!',                       icon: '⚰️', enemy: { name: 'Zumbi do Templo',      icon: '🧟', hp: 55,  atk: 13 } },
+        { type: 'rest',     name: 'Fonte Ancestral',        desc: 'Uma fonte ancestral emana luz dourada. Beba e recupere suas forças...',                          icon: '⭐' },
+      ],
+      // Layout C — Relicário Profundo
+      [
+        { type: 'combat',   name: 'Portal do Templo',       desc: 'Escorpiões emergem das pedras ao sentir tua chegada!',                                           icon: '🏺', enemy: { name: 'Escorpião do Deserto', icon: '🦂', hp: 60,  atk: 14 } },
+        { type: 'combat',   name: 'Câmara do Golem',        desc: 'Um golem de areia desperta violentamente! O chão treme!',                                        icon: '🗿', enemy: { name: 'Golem de Areia',       icon: '🟫', hp: 100, atk: 20 } },
+        { type: 'treasure', name: 'Relicário Antigo',       desc: 'Relíquias do Império Antigo em baús de pedra dourada selados há séculos!',                       icon: '💰' },
+        { type: 'rescue',   name: 'Câmara Proibida',        desc: 'O erudito está aprisionado em runas antigas que drenam sua magia lentamente!',                   icon: '📚', npcName: 'Erudito Perdido' },
+        { type: 'combat',   name: 'Câmara das Múmias',      desc: 'Múmias guardam o corredor do chefe. Elas não param de se aproximar!',                            icon: '⚰️', enemy: { name: 'Múmia Enfaixada',     icon: '🧟', hp: 85,  atk: 18 } },
+        { type: 'trap',     name: 'Fossa de Areia',         desc: 'A areia movediça acelera! Você afunda rapidamente!',                                             icon: '⚠️', trapDmg: 30 },
+      ],
+    ],
+    boss: {
+      primary:   { name: 'Esfinge Guardiã',    icon: '🦁', hp: 420, atk: 48, matk: 62 },
+      secondary: { name: 'Djinn do Deserto',   icon: '🌪️', hp: 230, atk: 34, matk: 30, enragePrimary: 20 },
+    },
+  },
+
+  // ── DUNGEON 3: ABISMO DAS SOMBRAS ─────────────────────────────────────
+  '3': {
+    atmosphere: 'A escuridão aqui é viva. Raios silenciosos rasgam o vazio enquanto sombras sussurram seu nome...',
+    xp: 580,
+    gold: 210,
+    layouts: [
+      // Layout A — O Vazio Profundo
+      [
+        { type: 'combat',   name: 'Portal das Sombras',     desc: 'O escuro se move. Sombras ganharam forma e querem devorar sua alma!',                            icon: '🌑', enemy: { name: 'Sombra Rastejante',   icon: '👤', hp: 70,  atk: 16 } },
+        { type: 'combat',   name: 'Corredor dos Espectros', desc: 'Um espectro de olhos brancos emerge do vazio, emitindo um grito silencioso!',                    icon: '👻', enemy: { name: 'Espectro Sombrio',    icon: '👻', hp: 90,  atk: 22 } },
+        { type: 'rescue',   name: 'Prisão do Vazio',        desc: 'Um guerreiro corrompido pelo vazio está aprisionado em correntes de sombra. Pode ser salvo!',    icon: '⛓️', npcName: 'Guerreiro Perdido' },
+        { type: 'combat',   name: 'Fosso das Trevas',       desc: 'Zumbis corrompidos surgem do chão, pele negra como carvão queimado!',                            icon: '🕳️', enemy: { name: 'Zumbi das Trevas',     icon: '🧟', hp: 75,  atk: 18 } },
+        { type: 'combat',   name: 'Ninho do Wyvern',        desc: 'Um Wyvern jovem mas letal protege o corredor! Seus raios são mortais!',                          icon: '⚡', enemy: { name: 'Wyvern Juvenil',      icon: '🐉', hp: 110, atk: 25 } },
+        { type: 'rest',     name: 'Brasa das Trevas',       desc: 'Uma brasa persistente no meio do vazio. O calor reconforta sua alma ferida...',                  icon: '🔥' },
+      ],
+      // Layout B — Sombras Corrompidas
+      [
+        { type: 'combat',   name: 'Portal das Sombras',     desc: 'Sombras ganham forma e atacam imediatamente!',                                                   icon: '🌑', enemy: { name: 'Sombra Rastejante',   icon: '👤', hp: 70,  atk: 16 } },
+        { type: 'combat',   name: 'Covil dos Zumbis',       desc: 'Zumbis das trevas sobem de um fosso profundo, emitindo sons guturais!',                          icon: '🕳️', enemy: { name: 'Zumbi das Trevas',     icon: '🧟', hp: 75,  atk: 18 } },
+        { type: 'trap',     name: 'Câmara das Correntes',   desc: 'Correntes sombrias disparam das paredes, drenando sua força vital!',                             icon: '⚠️', trapDmg: 35 },
+        { type: 'rescue',   name: 'Prisão do Vazio',        desc: 'O guerreiro perdido te olha com olhos meio corrompidos, mas ainda humanos!',                     icon: '⛓️', npcName: 'Guerreiro Perdido' },
+        { type: 'combat',   name: 'Corredor dos Espectros', desc: 'Espectros sombrios surgem das paredes cristalizadas de sombra!',                                 icon: '👻', enemy: { name: 'Espectro Sombrio',    icon: '👻', hp: 90,  atk: 22 } },
+        { type: 'rest',     name: 'Altar Profano',          desc: 'Um altar sombrio. Ao tocá-lo, energia estranha e fria cura suas feridas...',                     icon: '🕯️' },
+      ],
+      // Layout C — Criaturas do Vazio
+      [
+        { type: 'combat',   name: 'Portal das Sombras',     desc: 'Criaturas sem forma emergem do vazio entre os mundos!',                                          icon: '🌑', enemy: { name: 'Criatura do Vazio',    icon: '🌀', hp: 95,  atk: 20 } },
+        { type: 'combat',   name: 'Emboscada Espectral',    desc: 'Espectros te emboscam em um corredor estreito de pedra negra!',                                  icon: '👻', enemy: { name: 'Espectro Sombrio',    icon: '👻', hp: 90,  atk: 22 } },
+        { type: 'rescue',   name: 'Prisão do Vazio',        desc: 'O guerreiro perdido está semiconsciente nas correntes de vazio!',                                 icon: '⛓️', npcName: 'Guerreiro Perdido' },
+        { type: 'combat',   name: 'Covil dos Zumbis',       desc: 'Zumbis das trevas emergem das sombras com força sobre-humana!',                                  icon: '🕳️', enemy: { name: 'Zumbi das Trevas',     icon: '🧟', hp: 75,  atk: 18 } },
+        { type: 'combat',   name: 'Ninho do Wyvern',        desc: 'Um Wyvern juvenil protege a passagem com raios implacáveis de energia sombria!',                 icon: '⚡', enemy: { name: 'Wyvern Juvenil',      icon: '🐉', hp: 110, atk: 25 } },
+        { type: 'trap',     name: 'Fissura do Vazio',       desc: 'O piso desaparece! Você cai no vazio antes de se agarrar à borda por um fio!',                   icon: '⚠️', trapDmg: 28 },
+      ],
+    ],
+    boss: {
+      primary:          { name: 'Cavaleiro do Vazio',   icon: '🗡️', hp: 520, atk: 58, matk: 32 },
+      secondary:        { name: 'Wyvern Relâmpago',     icon: '⚡', hp: 310, atk: 50, matk: 38, enragePrimary: 30 },
+      secondaryProtects: true, // Cavaleiro takes 50% dmg while Wyvern is alive
+    },
+  },
 };
 
-const DUNGEON_XP:   Record<string, number> = { '1': 220, '2': 380, '3': 160 };
-const DUNGEON_GOLD: Record<string, number> = { '1': 90,  '2': 140, '3': 65  };
+// Backwards-compat helpers (used in victory/prep screens)
+function getDungeonXp(id: string):   number { return DUNGEON_DATA[id]?.xp   ?? 200; }
+function getDungeonGold(id: string): number { return DUNGEON_DATA[id]?.gold  ?? 80;  }
+function getDungeonBoss(id: string): EnemyDef & { matk: number } {
+  return DUNGEON_DATA[id]?.boss.primary ?? { name: 'Boss Final', icon: '👹', hp: 300, atk: 30, matk: 20 };
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function d(sides: number): number { return Math.floor(Math.random() * sides) + 1; }
@@ -145,6 +267,10 @@ export type DungeonArenaProps = {
   onVictory: (result: { xpGained: number; goldGained: number; loot: LootDrop[]; rescued: number }) => void;
   onDefeat: () => void;
   onFlee: () => void;
+  // Co-op props (optional)
+  sessionId?: string;
+  sessionPlayers?: SessionPlayer[];
+  isHost?: boolean;
 };
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -163,21 +289,59 @@ export default function DungeonArena({
   onVictory,
   onDefeat,
   onFlee,
+  sessionId,
+  sessionPlayers,
+  isHost = true,
 }: DungeonArenaProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const boss = DUNGEON_BOSS[dungeonId] || DUNGEON_BOSS['1'];
-  const dungeonRoomList = DUNGEON_ROOMS[dungeonId] || DUNGEON_ROOMS['1'];
+  // ── Compute dungeon data ─────────────────────────────────────────────
+  const dungeonMeta   = DUNGEON_DATA[dungeonId] ?? DUNGEON_DATA['1'];
+  const playerCount   = sessionPlayers ? sessionPlayers.length : (1 + Math.max(0, friendCount));
+  const aliveAllies   = sessionPlayers ? sessionPlayers.filter(p => !p.isHost && p.isAlive).length : friendCount;
+
+  // Randomly pick a layout once (computed on mount via lazy useState)
+  const [layoutIndex] = useState<number>(() => Math.floor(Math.random() * 3));
+  const baseRooms     = dungeonMeta.layouts[layoutIndex] ?? dungeonMeta.layouts[0];
+
+  // Scale rooms to player level + party size
+  const dungeonRoomList: RoomDef[] = baseRooms.map(room => room.enemy
+    ? { ...room, enemy: { ...room.enemy, hp: scaleHp(room.enemy.hp, playerLevel, playerCount), atk: scaleAtk(room.enemy.atk, playerLevel, playerCount) } }
+    : room
+  );
+
+  const boss         = getDungeonBoss(dungeonId);
+  const bossFight    = dungeonMeta.boss;
+  const scaledPrimary: EnemyDef & { matk: number } = {
+    ...bossFight.primary,
+    hp:  scaleHp(bossFight.primary.hp,  playerLevel, playerCount),
+    atk: scaleAtk(bossFight.primary.atk, playerLevel, playerCount),
+    matk: scaleAtk(bossFight.primary.matk, playerLevel, playerCount),
+  };
+  const scaledSecondary = bossFight.secondary ? {
+    ...bossFight.secondary,
+    hp:  scaleHp(bossFight.secondary.hp,  playerLevel, playerCount),
+    atk: scaleAtk(bossFight.secondary.atk, playerLevel, playerCount),
+    matk: scaleAtk(bossFight.secondary.matk, playerLevel, playerCount),
+  } : undefined;
+
   const bossRoomDef: RoomDef = {
-    type: 'boss',
-    name: `Boss Final — ${boss.name}`,
-    desc: `A câmara treme com a presença de ${boss.name}. Este é o momento da verdade.`,
-    icon: boss.icon,
-    enemy: { name: boss.name, icon: boss.icon, hp: boss.hp, atk: boss.atk },
+    type:  'boss',
+    name:  scaledSecondary
+      ? `Boss Final — ${scaledSecondary.name} & ${scaledPrimary.name}`
+      : `Boss Final — ${scaledPrimary.name}`,
+    desc:  scaledSecondary
+      ? `A câmara treme! ${scaledSecondary.name} e ${scaledPrimary.name} aguardam. ${bossFight.secondaryProtects ? `⚠️ Derrote ${scaledSecondary.name} primeiro — ${scaledPrimary.name} está sendo protegido!` : `Foque ${scaledSecondary.name} primeiro!`}`
+      : `A câmara treme com a presença de ${scaledPrimary.name}. Este é o momento da verdade.`,
+    icon:  scaledSecondary ? '⚔️' : scaledPrimary.icon,
+    enemy: { ...scaledPrimary },
   };
   const allRooms: RoomDef[] = [...dungeonRoomList, bossRoomDef];
+
+  // Realtime co-op channel ref
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // ── State ──────────────────────────────────────────────────────────────
   const [phase, setPhase]             = useState<DungeonPhase>('prep');
@@ -185,6 +349,8 @@ export default function DungeonArena({
   const [playerHp, setPlayerHp]       = useState(initialPlayerHp);
   const [playerMp, setPlayerMp]       = useState(initialPlayerMp);
   const [enemyHp, setEnemyHp]         = useState(0);
+  const [boss2Hp, setBoss2Hp]         = useState(0);      // secondary boss HP
+  const [bossEnraged, setBossEnraged] = useState(false);  // primary enrages when secondary dies
   const [log, setLog]                 = useState<string[]>([]);
   const [roomOutcome, setRoomOutcome] = useState<'success' | 'failure' | 'partial' | null>(null);
   const [allLoot, setAllLoot]         = useState<LootDrop[]>([]);
@@ -195,9 +361,9 @@ export default function DungeonArena({
   const [xpEarned, setXpEarned]       = useState(0);
   const [goldEarned, setGoldEarned]   = useState(0);
   const [showLootPanel, setShowLootPanel] = useState(false);
+  const [coopLog, setCoopLog]         = useState<string[]>([]);  // extra co-op entries
 
   const logRef = useRef<HTMLDivElement>(null);
-  // sync potions ref for access inside callbacks
   const potionsRef = useRef<PotionItem[]>(initialPotions);
   useEffect(() => { potionsRef.current = potions; }, [potions]);
   const autoPotionRef = useRef(true);
@@ -206,6 +372,43 @@ export default function DungeonArena({
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [log]);
+
+  // ── Co-op Realtime channel ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const channel = supabase.channel(`dungeon_combat:${sessionId}`, { config: { broadcast: { self: false } } });
+    channelRef.current = channel;
+
+    channel
+      .on('broadcast', { event: 'action_result' }, ({ payload }: any) => {
+        if (isHost) return; // host already applied locally
+        // Non-host: sync enemy HP and log from host
+        if (payload.enemyHp    !== undefined) setEnemyHp(payload.enemyHp);
+        if (payload.boss2Hp    !== undefined) setBoss2Hp(payload.boss2Hp);
+        if (payload.bossEnraged !== undefined) setBossEnraged(payload.bossEnraged);
+        if (payload.roomOutcome !== undefined) setRoomOutcome(payload.roomOutcome);
+        if (payload.phase       !== undefined && payload.phase !== 'exploring') setPhase(payload.phase);
+        if (payload.logLines) setLog(prev => [...prev, ...payload.logLines]);
+      })
+      .on('broadcast', { event: 'room_change' }, ({ payload }: any) => {
+        if (isHost) return;
+        setRoomIdx(payload.roomIdx);
+        setRoomOutcome(null);
+        setLog([`📍 ${payload.roomName}`, `   ${payload.roomDesc}`]);
+        if (payload.enemyHp !== undefined) setEnemyHp(payload.enemyHp);
+        if (payload.boss2Hp !== undefined) setBoss2Hp(payload.boss2Hp);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); channelRef.current = null; };
+  }, [sessionId, isHost]);
+
+  // Helper: broadcast to co-op channel
+  const broadcastAction = useCallback((event: string, payload: Record<string, unknown>) => {
+    if (!sessionId || !isHost || !channelRef.current) return;
+    channelRef.current.send({ type: 'broadcast', event, payload }).catch(() => {});
+  }, [sessionId, isHost]);
 
   const addLog = useCallback((msg: string) => {
     setLog(prev => [...prev, msg]);
@@ -259,62 +462,141 @@ export default function DungeonArena({
     setRoomOutcome(null);
     setLog([`📍 ${room.name}`, `   ${room.desc}`]);
     if (room.enemy) setEnemyHp(room.enemy.hp);
-  }, [allRooms]);
+    // Boss room: initialise dual boss HP
+    if (room.type === 'boss' && scaledSecondary) {
+      setEnemyHp(scaledPrimary.hp);
+      setBoss2Hp(scaledSecondary.hp);
+      setBossEnraged(false);
+    } else {
+      setBoss2Hp(0);
+      setBossEnraged(false);
+    }
+    broadcastAction('room_change', {
+      roomIdx: idx,
+      roomName: room.name,
+      roomDesc: room.desc,
+      enemyHp: room.enemy?.hp ?? 0,
+      boss2Hp: (room.type === 'boss' && scaledSecondary) ? scaledSecondary.hp : 0,
+    });
+  }, [allRooms, scaledPrimary, scaledSecondary, broadcastAction]);
 
   // ── Action handler (one round / one action per click) ──────────────────
   const handleAction = useCallback(() => {
+    if (!isHost) return;  // only host drives combat in co-op
     const room = allRooms[roomIdx];
     const isCombat = room.type === 'combat' || room.type === 'boss';
+    const isBoss   = room.type === 'boss';
 
     if (isCombat) {
-      const friendBonus = Math.min(friendCount * 0.18, 0.65);
-      const effAtk = Math.round(playerAtk * (1 + friendBonus));
+      // Combined ATK from entire alive party
+      const baseAtk = sessionPlayers
+        ? sessionPlayers.filter(p => p.isAlive).reduce((s, p) => s + p.atk, 0)
+        : playerAtk;
+      const friendBonus   = sessionPlayers ? 0 : Math.min(friendCount * 0.18, 0.65);
+      const effAtk        = Math.round(baseAtk * (sessionPlayers ? 1 : (1 + friendBonus)));
 
       const pRoll = d(20);
       const eRoll = d(20);
       const crit  = pRoll === 20;
+
+      // ── DUAL BOSS: target secondary first ──────────────────────────
+      if (isBoss && scaledSecondary && boss2Hp > 0) {
+        const basePDmg = Math.max(1, Math.round((pRoll * effAtk) / 15));
+        const pDmg     = crit ? basePDmg * 2 : basePDmg;
+        const newLog: string[] = [];
+
+        setBoss2Hp(prev => {
+          const newB2Hp = Math.max(0, prev - pDmg);
+          newLog.push(`⚔️ Você atacou ${scaledSecondary.name} — rolou ${pRoll}${crit ? ' 💥CRÍTICO' : ''} → ${pDmg} dano! (${newB2Hp} HP)`);
+
+          if (newB2Hp <= 0) {
+            // Secondary dies — primary enrages
+            newLog.push(`💀 ${scaledSecondary.name} foi derrotado!`);
+            if (scaledSecondary.enragePrimary) {
+              newLog.push(`😡 ${scaledPrimary.name} ENFURECEU! +${scaledSecondary.enragePrimary}% de ATK!`);
+            }
+            setBossEnraged(true);
+            const loot = rollLoot(2);
+            setAllLoot(al => mergeLoot(al, loot));
+            loot.forEach(l => newLog.push(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
+          } else {
+            // Secondary retaliates
+            const enrageAtk = scaledSecondary.atk;
+            const rawEDmg = Math.max(1, Math.round((eRoll * enrageAtk) / 15) - Math.floor(playerDef / 6));
+            newLog.push(`👹 ${scaledSecondary.name} rolou ${eRoll} → ${rawEDmg} dano em você!`);
+            setPlayerHp(ph => {
+              const newHp = Math.max(0, ph - rawEDmg);
+              newLog.push(`   ❤️ Seu HP: ${newHp}/${initialPlayerMaxHp}`);
+              if (newHp <= 0) {
+                newLog.push(`💀 Você foi derrotado por ${scaledSecondary.name}...`);
+                setRoomOutcome('failure');
+                setTimeout(() => setPhase('defeat'), 800);
+              } else if (autoPotionRef.current && newHp <= initialPlayerMaxHp * 0.25) {
+                setTimeout(() => { const h = usePotion('hp', true); if (!h) addLog('⚠️ Sem poções de HP!'); }, 100);
+              }
+              return newHp;
+            });
+          }
+          setTimeout(() => newLog.forEach(l => addLog(l)), 0);
+          broadcastAction('action_result', { enemyHp, boss2Hp: newB2Hp, bossEnraged: newB2Hp <= 0, roomOutcome: newB2Hp <= 0 ? null : roomOutcome, logLines: newLog });
+          return newB2Hp;
+        });
+        return;
+      }
+
+      // ── PRIMARY BOSS OR REGULAR COMBAT ─────────────────────────────
+      const enrageMult  = bossEnraged && scaledSecondary?.enragePrimary ? 1 + scaledSecondary.enragePrimary / 100 : 1;
+      const enemyAtkEff = Math.round((room.enemy?.atk ?? 15) * enrageMult);
+
+      // If secondaryProtects and secondary alive → primary takes 50% dmg
+      const protectionFactor = (isBoss && bossFight.secondaryProtects && boss2Hp > 0) ? 0.5 : 1;
       const basePDmg = Math.max(1, Math.round((pRoll * effAtk) / 15));
-      const pDmg = crit ? basePDmg * 2 : basePDmg;
+      const pDmg     = Math.round((crit ? basePDmg * 2 : basePDmg) * protectionFactor);
+
+      const newLogLines: string[] = [];
 
       setEnemyHp(prev => {
         const newEnemyHp = Math.max(0, prev - pDmg);
-        addLog(`⚔️ Você rolou ${pRoll}${crit ? ' 💥CRÍTICO' : ''} → ${pDmg} de dano! (${room.enemy?.name}: ${newEnemyHp} HP)`);
+        newLogLines.push(
+          protectionFactor < 1
+            ? `⚔️ ${scaledPrimary.name} está sendo protegido! ${pDmg} dano (50% absorvido). HP: ${newEnemyHp}`
+            : `⚔️ Você rolou ${pRoll}${crit ? ' 💥CRÍTICO' : ''} → ${pDmg} de dano! (${room.enemy?.name}: ${newEnemyHp} HP)`
+        );
 
         if (newEnemyHp <= 0) {
-          // Enemy killed
-          addLog(`✅ ${room.enemy?.name} derrotado!`);
-          const loot = rollLoot(room.type === 'boss' ? 4 : 2);
+          newLogLines.push(`✅ ${room.enemy?.name} derrotado!`);
+          if (isBoss) newLogLines.push(`🏆 Boss Final eliminado! A masmorra é sua!`);
+          const loot = rollLoot(isBoss ? 4 : 2);
           setAllLoot(al => mergeLoot(al, loot));
-          loot.forEach(l => addLog(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
+          loot.forEach(l => newLogLines.push(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
           setRoomOutcome('success');
-          if (room.type === 'boss') {
-            setTimeout(() => setPhase('victory'), 800);
-          }
+          if (isBoss) { setTimeout(() => setPhase('victory'), 800); }
+          setTimeout(() => newLogLines.forEach(l => addLog(l)), 0);
+          broadcastAction('action_result', { enemyHp: 0, boss2Hp, bossEnraged, roomOutcome: 'success', phase: isBoss ? 'victory' : 'exploring', logLines: newLogLines });
           return 0;
         }
 
         // Enemy attacks back
-        const rawEDmg = Math.max(1, Math.round((eRoll * (room.enemy?.atk || 15)) / 15) - Math.floor(playerDef / 6));
+        const rawEDmg = Math.max(1, Math.round((eRoll * enemyAtkEff) / 15) - Math.floor(playerDef / 6));
         const eDmg = Math.max(1, rawEDmg);
-        addLog(`👹 ${room.enemy?.name} rolou ${eRoll} → ${eDmg} de dano em você!`);
+        if (bossEnraged) newLogLines.push(`😡 [ENFURECIDO] ${room.enemy?.name} rolou ${eRoll} → ${eDmg} dano!`);
+        else newLogLines.push(`👹 ${room.enemy?.name} rolou ${eRoll} → ${eDmg} de dano em você!`);
 
         setPlayerHp(ph => {
           const newHp = Math.max(0, ph - eDmg);
-          addLog(`   ❤️ Seu HP: ${newHp}/${initialPlayerMaxHp}`);
+          newLogLines.push(`   ❤️ Seu HP: ${newHp}/${initialPlayerMaxHp}`);
           if (newHp <= 0) {
-            addLog(`💀 Você foi derrotado por ${room.enemy?.name}...`);
+            newLogLines.push(`💀 Você foi derrotado por ${room.enemy?.name}...`);
             setRoomOutcome('failure');
             setTimeout(() => setPhase('defeat'), 800);
           } else if (autoPotionRef.current && newHp <= initialPlayerMaxHp * 0.25) {
-            // auto-potion in next tick
-            setTimeout(() => {
-              const healed = usePotion('hp', true);
-              if (!healed) addLog('⚠️ Sem poções de HP! Situação crítica!');
-            }, 100);
+            setTimeout(() => { const h = usePotion('hp', true); if (!h) addLog('⚠️ Sem poções de HP! Situação crítica!'); }, 100);
           }
           return newHp;
         });
 
+        setTimeout(() => newLogLines.forEach(l => addLog(l)), 0);
+        broadcastAction('action_result', { enemyHp: newEnemyHp, boss2Hp, bossEnraged, roomOutcome, logLines: newLogLines });
         return newEnemyHp;
       });
 
@@ -359,10 +641,7 @@ export default function DungeonArena({
           const newHp = Math.max(1, ph - dmg);
           addLog(`   ❤️ Seu HP: ${newHp}/${initialPlayerMaxHp}`);
           if (autoPotionRef.current && newHp <= initialPlayerMaxHp * 0.25) {
-            setTimeout(() => {
-              const healed = usePotion('hp', true);
-              if (!healed) addLog('⚠️ Sem poções de HP!');
-            }, 100);
+            setTimeout(() => { const h = usePotion('hp', true); if (!h) addLog('⚠️ Sem poções de HP!'); }, 100);
           }
           return newHp;
         });
@@ -383,7 +662,7 @@ export default function DungeonArena({
       loot.forEach(l => addLog(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
       setRoomOutcome('success');
     }
-  }, [allRooms, roomIdx, playerAtk, playerDef, playerLevel, friendCount, initialPlayerMaxHp, initialPlayerMaxMp, addLog, usePotion]);
+  }, [allRooms, roomIdx, playerAtk, playerDef, playerLevel, friendCount, sessionPlayers, boss2Hp, bossEnraged, scaledPrimary, scaledSecondary, bossFight, initialPlayerMaxHp, initialPlayerMaxMp, addLog, usePotion, broadcastAction, enemyHp, roomOutcome, isHost]);
 
   // ── Continue to next room ──────────────────────────────────────────────
   const handleContinue = useCallback(() => {
@@ -405,9 +684,9 @@ export default function DungeonArena({
     setIsGranting(true);
 
     const rescuedBonus = rescued * 50;
-    const totalXp   = (DUNGEON_XP[dungeonId] || 200) + rescuedBonus;
+    const totalXp   = getDungeonXp(dungeonId)   + rescuedBonus;
     const copperQty = allLoot.find(l => l.id === 'moeda_cobre')?.qty || 0;
-    const totalGold = (DUNGEON_GOLD[dungeonId] || 80) + Math.floor(copperQty * 0.5);
+    const totalGold = getDungeonGold(dungeonId) + Math.floor(copperQty * 0.5);
 
     setXpEarned(totalXp);
     setGoldEarned(totalGold);
@@ -470,6 +749,7 @@ export default function DungeonArena({
   const currentRoom    = allRooms[roomIdx];
   const isCombatRoom   = currentRoom?.type === 'combat' || currentRoom?.type === 'boss';
   const maxEnemyHp     = currentRoom?.enemy?.hp || 1;
+  const maxBoss2Hp     = scaledSecondary?.hp || 1;
   const combatOngoing  = isCombatRoom && enemyHp > 0 && roomOutcome === null;
   const roomsDone      = Math.min(roomIdx, dungeonRoomList.length);
   const totalRooms     = dungeonRoomList.length;
@@ -477,10 +757,14 @@ export default function DungeonArena({
   const hpPct          = Math.round((playerHp / initialPlayerMaxHp) * 100);
   const mpPct          = Math.round((playerMp / initialPlayerMaxMp) * 100);
   const enemyHpPct     = maxEnemyHp > 0 ? Math.round((enemyHp / maxEnemyHp) * 100) : 0;
+  const boss2HpPct     = maxBoss2Hp > 0 ? Math.round((boss2Hp / maxBoss2Hp) * 100) : 0;
   const hpPotions      = potions.filter(p => p.effect.startsWith('heal_') || p.effect.includes('full_rest'));
   const mpPotions      = potions.filter(p => p.effect.startsWith('mana_') && !p.effect.includes('full_rest'));
   const isBossRoom     = currentRoom?.type === 'boss';
-  const friendBonus    = Math.min(friendCount * 18, 65);
+  const friendBonus    = sessionPlayers
+    ? Math.min(aliveAllies * 18, 65)
+    : Math.min(friendCount * 18, 65);
+  const isDualBoss     = isBossRoom && !!scaledSecondary;
 
   const actionLabel = () => {
     if (!currentRoom) return '';
@@ -510,8 +794,8 @@ export default function DungeonArena({
               🏰 {dungeonName}
             </h2>
             {friendCount > 0 && (
-              <p className="text-xs text-purple-400 flex items-center gap-1 mt-0.5">
-                <Users className="w-3 h-3" /> {friendCount} aliado(s) — +{friendBonus}% de dano
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <Users className="w-3 h-3" /> {aliveAllies > 0 ? `${aliveAllies} aliado(s) — +${friendBonus}% de dano` : (sessionId ? 'Aguardando aliados...' : `${friendCount} aliado(s) — +${friendBonus}% de dano`)}
               </p>
             )}
           </div>
@@ -561,26 +845,39 @@ export default function DungeonArena({
         {phase === 'prep' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             <div className="rpg-card bg-purple-500/10 border-purple-500/30 space-y-3">
+              {dungeonMeta.atmosphere && (
+                <p className="text-xs text-purple-300 italic border-b border-purple-500/20 pb-2">&quot;{dungeonMeta.atmosphere}&quot;</p>
+              )}
               <p className="text-sm text-muted-foreground">Prepare-se para a dungeon. Cada sala oferece perigos e recompensas diferentes. O boss final é extremamente poderoso.</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="rpg-card bg-secondary/50">
                   <p className="text-muted-foreground">Salas</p>
                   <p className="font-bold text-foreground mt-1">{totalRooms} + Boss Final</p>
+                  <p className="text-[11px] text-purple-400">Layout {layoutIndex + 1}/3 (aleatório)</p>
                 </div>
                 <div className="rpg-card bg-secondary/50">
                   <p className="text-muted-foreground">Boss HP</p>
-                  <p className="font-bold text-red-400 mt-1">❤️ {DUNGEON_BOSS[dungeonId]?.hp || 300}</p>
+                  {isDualBoss ? (
+                    <>
+                      <p className="font-bold text-red-400 mt-1">⚔️ Boss duplo!</p>
+                      <p className="text-[11px] text-muted-foreground">{scaledSecondary?.name} ❤️{scaledSecondary?.hp}</p>
+                      <p className="text-[11px] text-muted-foreground">{scaledPrimary.name} ❤️{scaledPrimary.hp}</p>
+                    </>
+                  ) : (
+                    <p className="font-bold text-red-400 mt-1">❤️ {scaledPrimary.hp}</p>
+                  )}
                 </div>
                 <div className="rpg-card bg-secondary/50">
                   <p className="text-muted-foreground">Recompensa Base</p>
-                  <p className="font-bold text-xp mt-1">✨ {DUNGEON_XP[dungeonId]} XP</p>
-                  <p className="font-bold text-accent">🪙 {DUNGEON_GOLD[dungeonId]} ouro</p>
+                  <p className="font-bold text-xp mt-1">✨ {getDungeonXp(dungeonId)} XP</p>
+                  <p className="font-bold text-accent">🪙 {getDungeonGold(dungeonId)} ouro</p>
                 </div>
                 <div className="rpg-card bg-secondary/50">
-                  <p className="text-muted-foreground">Aliados</p>
-                  <p className={`font-bold mt-1 ${friendCount > 0 ? 'text-emerald-400' : 'text-yellow-400'}`}>
-                    {friendCount > 0 ? `${friendCount} aliado(s) ⚔️ +${friendBonus}%` : '⚠️ Solo (mais difícil)'}
+                  <p className="text-muted-foreground">Grupo</p>
+                  <p className={`font-bold mt-1 ${playerCount > 1 ? 'text-emerald-400' : 'text-yellow-400'}`}>
+                    {playerCount > 1 ? `${playerCount} jogadores ⚔️ +${friendBonus}%` : '⚠️ Solo (mais difícil)'}
                   </p>
+                  {playerCount > 1 && <p className="text-[11px] text-orange-400">Boss escalado p/ {playerCount} jogadores!</p>}
                 </div>
               </div>
             </div>
@@ -616,20 +913,41 @@ export default function DungeonArena({
               </div>
             </div>
 
-            {friendCount === 0 && (
+            {playerCount === 1 && (
               <div className="rpg-card bg-yellow-500/10 border-yellow-500/30">
                 <p className="text-xs text-yellow-300 flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  <span>Dungeons são projetadas para grupos! Sem aliados, o boss é muito mais difícil de derrotar. Convide amigos pelo menu de amigos.</span>
+                  <span>Dungeons são projetadas para grupos! Solo é muito mais difícil. Crie uma sessão co-op e convide amigos!</span>
                 </p>
+              </div>
+            )}
+
+            {/* Co-op roster */}
+            {sessionPlayers && sessionPlayers.length > 0 && (
+              <div className="rpg-card space-y-2">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Users className="w-4 h-4 text-purple-400" />
+                  Grupo ({sessionPlayers.length}/4)
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {sessionPlayers.map(p => (
+                    <div key={p.userId} className="flex items-center gap-2 text-xs">
+                      <span className={p.isHost ? 'text-yellow-400' : 'text-purple-300'}>
+                        {p.isHost ? '👑' : '⚔️'} {p.displayName}
+                      </span>
+                      <span className="text-muted-foreground ml-auto">Lv.{p.level} · ATK {p.atk}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             <button
               onClick={startDungeon}
-              className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg transition-colors shadow-lg"
+              disabled={!isHost}
+              className={`w-full py-3 rounded-xl font-bold text-lg transition-colors shadow-lg ${isHost ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-muted text-muted-foreground cursor-not-allowed'}`}
             >
-              🗡️ Entrar na Dungeon
+              {isHost ? '🗡️ Entrar na Dungeon' : '⏳ Aguardando o host iniciar...'}
             </button>
           </motion.div>
         )}
@@ -687,17 +1005,44 @@ export default function DungeonArena({
 
                 {/* Enemy HP bar */}
                 {isCombatRoom && enemyHp > 0 && (
-                  <div className="mb-3 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-red-400 font-semibold">{currentRoom.enemy?.icon} {currentRoom.enemy?.name}</span>
-                      <span className="text-red-400 font-bold">{enemyHp}/{maxEnemyHp} HP</span>
-                    </div>
-                    <div className="h-3 rounded-full bg-muted/50 overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full bg-red-500"
-                        animate={{ width: `${enemyHpPct}%` }}
-                        transition={{ type: 'spring', stiffness: 180 }}
-                      />
+                  <div className="mb-3 space-y-2">
+                    {/* Secondary boss (target first) */}
+                    {isDualBoss && boss2Hp > 0 && (
+                      <div className="space-y-1 p-2 rounded-lg bg-orange-500/10 border border-orange-500/30">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-orange-400 font-semibold flex items-center gap-1">
+                            {scaledSecondary?.icon} {scaledSecondary?.name}
+                            <span className="text-[10px] text-orange-300 ml-1">← ATACAR PRIMEIRO</span>
+                          </span>
+                          <span className="text-orange-400 font-bold">{boss2Hp}/{maxBoss2Hp} HP</span>
+                        </div>
+                        <div className="h-2.5 rounded-full bg-muted/50 overflow-hidden">
+                          <motion.div className="h-full rounded-full bg-orange-500" animate={{ width: `${boss2HpPct}%` }} transition={{ type: 'spring', stiffness: 180 }} />
+                        </div>
+                      </div>
+                    )}
+                    {isDualBoss && boss2Hp <= 0 && scaledSecondary && (
+                      <div className="text-xs text-muted-foreground line-through px-2">💀 {scaledSecondary.name} — derrotado</div>
+                    )}
+                    {/* Primary enemy */}
+                    <div className={`space-y-1 ${isDualBoss ? 'p-2 rounded-lg bg-red-500/10 border border-red-500/30' : ''}`}>
+                      <div className="flex justify-between text-xs">
+                        <span className={`font-semibold flex items-center gap-1 ${bossEnraged ? 'text-red-300 animate-pulse' : 'text-red-400'}`}>
+                          {currentRoom.enemy?.icon} {currentRoom.enemy?.name}
+                          {bossEnraged && <span className="text-[10px] text-red-200 ml-1">😡 ENFURECIDO</span>}
+                        </span>
+                        <span className="text-red-400 font-bold">{enemyHp}/{maxEnemyHp} HP</span>
+                      </div>
+                      <div className="h-3 rounded-full bg-muted/50 overflow-hidden">
+                        <motion.div
+                          className={`h-full rounded-full ${bossEnraged ? 'bg-red-400' : 'bg-red-500'}`}
+                          animate={{ width: `${enemyHpPct}%` }}
+                          transition={{ type: 'spring', stiffness: 180 }}
+                        />
+                      </div>
+                      {isDualBoss && bossFight.secondaryProtects && boss2Hp > 0 && (
+                        <p className="text-[10px] text-yellow-400">🛡️ Protegido pelo {scaledSecondary?.name} — dano reduzido 50%!</p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -795,16 +1140,21 @@ export default function DungeonArena({
             {/* Action button */}
             <button
               onClick={roomOutcome !== null ? handleContinue : handleAction}
-              disabled={phase !== 'exploring'}
+              disabled={phase !== 'exploring' || (!isHost && sessionId !== undefined)}
               className={`w-full py-3 rounded-xl font-bold text-base transition-colors disabled:opacity-50 ${
-                roomOutcome !== null
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                  : isBossRoom
-                  ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20'
-                  : 'bg-purple-500/30 hover:bg-purple-500/50 border border-purple-500/50 text-purple-200'
+                (!isHost && sessionId) ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                : roomOutcome !== null
+                ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                : isBossRoom
+                ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20'
+                : 'bg-purple-500/30 hover:bg-purple-500/50 border border-purple-500/50 text-purple-200'
               }`}
             >
-              {roomOutcome !== null ? (
+              {(!isHost && sessionId) ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Users className="w-4 h-4" /> Aguardando host agir...
+                </span>
+              ) : roomOutcome !== null ? (
                 <span className="flex items-center justify-center gap-2">
                   Continuar <ChevronRight className="w-5 h-5" />
                 </span>
@@ -827,7 +1177,7 @@ export default function DungeonArena({
                 🏆
               </motion.div>
               <h2 className="text-2xl font-display font-bold text-yellow-300">Dungeon Conquistada!</h2>
-              <p className="text-sm text-muted-foreground">{boss.name} foi derrotado. A masmorra é sua.</p>
+              <p className="text-sm text-muted-foreground">{scaledPrimary.name} foi derrotado. A masmorra é sua.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
