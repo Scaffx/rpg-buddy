@@ -11,6 +11,25 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { getClassProfileByTreeName, type ClassProfile } from '@/lib/classProfiles';
+import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+
+const CLASSES_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'classes-title',
+    title: 'Árvore de Progressão de Classes ⚔️',
+    description: 'Existem 55+ classes organizadas em 6 tiers. Você começa como Aprendiz e evolui ao longo da linha da sua classe, desbloqueando habilidades únicas a cada tier.',
+  },
+  {
+    target: 'classes-legend',
+    title: 'Cores de Tier 🎨',
+    description: 'Cada cor indica um nível de evolução. Do cinza (início) ao vermelho (lendário). Classes de tiers superiores exigem nível mínimo para serem desbloqueadas.',
+  },
+  {
+    target: 'classes-tree',
+    title: 'Como Evoluir de Classe 🌳',
+    description: 'Clique em qualquer card para ver detalhes, habilidades e requisitos. Para evoluir, você precisa estar no nível mínimo e seguir a linha de progressão — não é possível pular tiers ou mudar de ramo.',
+  },
+];
 
 interface ClassNode {
   id: string;
@@ -409,7 +428,7 @@ export default function ClassesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
+        <div data-tour="classes-title" className="flex items-center gap-2">
           <Swords className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
             {t('app.classes.page_title')}
@@ -421,7 +440,7 @@ export default function ClassesPage() {
         </p>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-2">
+        <div data-tour="classes-legend" className="flex flex-wrap gap-2">
           {Object.entries(tierColors).map(([idx, t]) => (
             <span key={idx} className={`text-[10px] px-2 py-0.5 rounded-full border ${t.bg} ${t.border} text-foreground`}>
               {t.label}
@@ -430,12 +449,14 @@ export default function ClassesPage() {
         </div>
 
         {/* Tree */}
-        <div className="overflow-x-auto pb-8">
+        <div data-tour="classes-tree" className="overflow-x-auto pb-8">
           <div className="flex justify-center min-w-[400px] sm:min-w-[600px] py-4">
             {tree && renderNode(tree)}
           </div>
         </div>
       </div>
+
+      <GuidedTour tourKey="classes" steps={CLASSES_TOUR_STEPS} />
 
       {/* Detail modal */}
       <Dialog open={!!selectedDetail} onOpenChange={() => setSelectedDetail(null)}>

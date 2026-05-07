@@ -14,6 +14,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { evaluateTodayStreakRisk } from "@/lib/streakUtils";
 import RemindersCard from "@/components/RemindersCard";
+import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+
+const DASHBOARD_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'dash-greeting',
+    title: 'Seu Painel de Controle ⚔️',
+    description: 'Aqui você acompanha tudo em tempo real: status do herói, streak, XP e muito mais. Este é o coração do Life on RPG.',
+  },
+  {
+    target: 'dash-stats',
+    title: 'Seus Stats de Herói 📊',
+    description: 'Esses cards mostram Nível, posição no Ranking global, sua Classe atual, XP total, missões do dia e XP ganho hoje.',
+  },
+  {
+    target: 'dash-xp',
+    title: 'Barra de Progresso de Nível ✨',
+    description: 'Acompanhe quantos XP faltam para subir de nível. A cada subida você desbloqueia novas classes e habilidades únicas.',
+  },
+  {
+    target: 'dash-bonus',
+    title: 'Bônus Diário 🎁',
+    description: 'Colete seu bônus diário de ouro e XP uma vez por dia. O cooldown reseta à meia-noite — nunca esqueça de coletar!',
+  },
+  {
+    target: 'dash-missions',
+    title: 'Missões de Hoje ✅',
+    description: 'Estas são as missões programadas para hoje. Conclua-as para ganhar XP nos atributos e manter sua streak ativa. Cumprir 60% delas mantém o fogo aceso! 🔥',
+  },
+];
 
 const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -352,7 +381,7 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div data-tour="dash-greeting" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
             Olá, {profile?.display_name || "Aventureiro"}!
           </h1>
@@ -389,7 +418,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div data-tour="dash-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {statCards.map((stat, i) => (
             <motion.div
               key={stat.key}
@@ -408,6 +437,7 @@ export default function Dashboard() {
         {/* XP Progress */}
         {profile && (
           <motion.div
+            data-tour="dash-xp"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
@@ -426,6 +456,7 @@ export default function Dashboard() {
         {/* Daily Bonus */}
         {!dailyBonus.isCheckingClaim && (
           <motion.div
+            data-tour="dash-bonus"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
@@ -484,7 +515,7 @@ export default function Dashboard() {
         <RemindersCard />
 
         {/* Today's Daily Missions */}
-        <div>
+        <div data-tour="dash-missions">
           <h2 className="text-lg font-display font-semibold text-foreground mb-1">{t('app.dashboard.missions_today_header')}</h2>
           <p className="text-xs text-muted-foreground mb-3">{todayDayLabel}</p>
 
@@ -550,6 +581,8 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      <GuidedTour tourKey="dashboard" steps={DASHBOARD_TOUR_STEPS} />
 
       {showCoachPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

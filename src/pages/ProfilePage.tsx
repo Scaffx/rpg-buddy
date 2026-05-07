@@ -30,6 +30,35 @@ import {
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
 import { getLevelProgress } from "@/lib/progression";
+import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+
+const PROFILE_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'profile-hero',
+    title: 'Seu Cartão de Herói 🦸',
+    description: 'Aqui ficam seu nome, nível, classe atual e barra de XP. Clique no lápis para editar seu nome de aventureiro a qualquer momento.',
+  },
+  {
+    target: 'profile-gold',
+    title: 'Saldo de Ouro 🪙',
+    description: 'O ouro é ganho completando missões e bônus diários. Use-o na Loja do Tempo para comprar buffs temporários e itens especiais.',
+  },
+  {
+    target: 'profile-tabs',
+    title: 'Seções do Perfil 📱',
+    description: 'Navegue pelas abas: Perfil (saúde e corpo), Habilidades (loadout de combate), Inventário (equipamentos) e Conquistas. O badge vermelho indica conquistas pendentes!',
+  },
+  {
+    target: 'profile-settings',
+    title: 'Configurações do Herói ⚙️',
+    description: 'Configure seu peso (para calcular meta diária de hidratação), número de refeições, horário de sono e acordar, volume e tema visual.',
+  },
+  {
+    target: 'profile-vitals',
+    title: 'Status Vital ❤️',
+    description: 'HP, MP e Fadiga são calculados em tempo real com base no seu nível. Comer refeições e beber água mantém o herói saudável e com buffs ativos.',
+  },
+];
 import HeroStatusBar from "@/components/HeroStatusBar";
 import ActiveTalentsBadge from "@/components/ActiveTalentsBadge";
 import { format } from "date-fns";
@@ -1199,7 +1228,7 @@ export default function ProfilePage() {
       <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
 
         {/* ── Hero Card de Perfil ─────────────────────────────────── */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-muted/30">
+        <div data-tour="profile-hero" className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-muted/30">
           {/* Fundo decorativo */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
 
@@ -1296,12 +1325,13 @@ export default function ProfilePage() {
             {/* Stats rápidos (ouro) + botão de configurações */}
             <div className="flex flex-col items-end gap-2 shrink-0">
               <button
+                data-tour="profile-settings"
                 onClick={() => setShowSettings(!showSettings)}
                 className={`p-2 rounded-xl border transition-all ${showSettings ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-card border-border hover:border-primary/40 text-muted-foreground'}`}
               >
                 <Settings className="w-4 h-4" />
               </button>
-              <div className="flex items-center gap-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-1">
+              <div data-tour="profile-gold" className="flex items-center gap-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-1">
                 <Coins className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
                 <span className="text-sm font-bold text-yellow-400">{currentGold.toLocaleString()}</span>
               </div>
@@ -1310,7 +1340,7 @@ export default function ProfilePage() {
         </div>
 
         {/* ── Tabs ────────────────────────────────────────────────── */}
-        <div className="flex gap-0 border-b border-border overflow-x-auto scrollbar-none">
+        <div data-tour="profile-tabs" className="flex gap-0 border-b border-border overflow-x-auto scrollbar-none">
           {[
             { id: "perfil",      label: t("app.profile.tabPerfil"),      icon: Heart },
             { id: "habilidades", label: t("app.profile.tabHabilidades"), icon: Swords },
@@ -1500,7 +1530,7 @@ export default function ProfilePage() {
             )}
             
             {/* HP / MP / Fatigue */}
-            <div className="rpg-card p-4 space-y-3.5">
+            <div data-tour="profile-vitals" className="rpg-card p-4 space-y-3.5">
               <h3 className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1">Status Vital</h3>
 
               {/* HP */}
@@ -2209,6 +2239,7 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+      <GuidedTour tourKey="profile" steps={PROFILE_TOUR_STEPS} />
     </AppLayout>
   );
 }
