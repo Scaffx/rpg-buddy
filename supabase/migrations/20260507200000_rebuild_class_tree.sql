@@ -107,10 +107,14 @@ INSERT INTO public.classes (id, name, column_index, column_label, level_min, lev
 VALUES
   ('00000004-0000-0000-0000-000000000001', 'Lorde', 4, 'Classe 3', 25, 34,
    'Nobre guerreiro com poder de comando sobre exércitos.', '👑',
-   '00000003-0000-0000-0000-000000000001'),
+   '00000003-0000-0000-0000-000000000001');
+
+-- ── TIER 4 — filhos do Templário ────────────────────────────
+INSERT INTO public.classes (id, name, column_index, column_label, level_min, level_max, description, icon, parent_class_id)
+VALUES
   ('00000004-0000-0000-0000-000000000002', 'Paladino', 4, 'Classe 3', 25, 34,
    'Campeão da justiça e da luz divina.', '🌟',
-   '00000003-0000-0000-0000-000000000001');
+   '00000003-0000-0000-0000-000000000002');
 
 -- ── TIER 4 — filhos do Bruxo ───────────────────────────────
 INSERT INTO public.classes (id, name, column_index, column_label, level_min, level_max, description, icon, parent_class_id)
@@ -182,13 +186,12 @@ VALUES
    'Narrador épico cujas músicas reescrevem a realidade.', '🎶',
    '00000003-0000-0000-0000-000000000012');
 
--- ── TIER 5 — filho do Arquimago ────────────────────────────
+-- ── TIER 5 — filho do Paladino ─────────────────────────────
 INSERT INTO public.classes (id, name, column_index, column_label, level_min, level_max, description, icon, parent_class_id)
 VALUES
-  ('00000005-0000-0000-0000-000000000001', 'Arquimago Supremo', 5, 'Classe 4', 35, 50,
-   'Poder arcano sem limites conhecidos. A encarnação do próprio mistério.', '🌌',
-   '00000004-0000-0000-0000-000000000003');
+  ('00000005-0000-0000-0000-000000000001', 'Guardião Real', 5, 'Classe 4', 35, 50,
+   'O protetor supremo do reino. Armadura abençoada, escudo imortal.', '🏰',
+   '00000004-0000-0000-0000-000000000002');
 
--- ── Atualizar STARTER_CLASS para quem já tem starter_class = 'ferreiro'
--- Garante que o mapeamento do ProfilePage continue funcionando
--- (não há dados corrompidos a corrigir pois current_class_id foi zerado acima)
+-- T5 classes adicionais serão adicionadas em migração futura quando
+-- houver jogadores suficientes nos tiers mais altos.
