@@ -1655,226 +1655,357 @@ export default function ProfilePage() {
 
         {/* ======== ABA: HABILIDADES ======== */}
         {activeTab === "habilidades" && (
-          <div className="space-y-6">
-            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-6 h-6 text-primary" />
-                <h3 className="text-lg font-bold text-foreground">{t('app.profile.tacticalSkillsTitle')}</h3>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t('app.profile.tacticalSkillsDesc')}
-              </p>
+          <div className="space-y-5">
 
-              <HeroStatusBar />
-
-              <div className="bg-muted/30 border border-border rounded-lg p-3 text-xs">
-                <p className="text-foreground font-semibold">{t('app.profile.starterClassInfo', { class: starterClass })}</p>
-                <p className="text-muted-foreground">{t('app.profile.starterItemInfo', { item: starterItem })}</p>
-                <p className="text-muted-foreground mt-1">{t('app.profile.magicWeakNote')}</p>
-              </div>
-
-              <div className="bg-muted/20 border border-border rounded-lg p-4 flex items-center gap-3">
-                <span className="text-xl">🔒</span>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{t('app.profile.permanentClassTitle')}</p>
-                  <p className="text-xs text-muted-foreground">{t('app.profile.permanentClassDesc')}</p>
+            {/* ── Cabeçalho com status de combate ──────────────────── */}
+            <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-purple-500/5 p-5">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
+              <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-display font-bold text-foreground">{t('app.profile.tacticalSkillsTitle')}</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed max-w-lg">
+                    {t('app.profile.tacticalSkillsDesc')}
+                  </p>
+                </div>
+                {/* Totalizador de habilidades */}
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-center px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <p className="text-2xl font-bold text-emerald-400">{unlockedSkills.length}</p>
+                    <p className="text-[10px] text-emerald-300/70 uppercase tracking-wide">desbloqueadas</p>
+                  </div>
+                  <div className="text-center px-4 py-2 rounded-xl bg-muted/30 border border-border">
+                    <p className="text-2xl font-bold text-muted-foreground">{noviceSkills.length + allClassSkills.length}</p>
+                    <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">total</p>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <h4 className="text-sm font-bold text-foreground mb-2">{t('app.profile.noviceKitSection')}</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {noviceSkills.map((skill) => (
+              {/* Barra de progresso de desbloqueio */}
+              <div className="relative mt-4">
+                <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                  <span>Progresso de habilidades</span>
+                  <span>{Math.round((unlockedSkills.length / Math.max(1, noviceSkills.length + allClassSkills.length)) * 100)}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-primary transition-all duration-700"
+                    style={{ width: `${Math.round((unlockedSkills.length / Math.max(1, noviceSkills.length + allClassSkills.length)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ── Status em combate ────────────────────────────────── */}
+            <div className="rpg-card p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Sword className="w-4 h-4 text-primary" />
+                <h4 className="text-sm font-bold text-foreground">Status em Combate</h4>
+              </div>
+              <HeroStatusBar />
+              <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-muted/30 border border-border">
+                  <span className="font-semibold text-foreground">Classe base:</span>
+                  <span className="text-primary font-bold capitalize">{starterClass}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-muted/30 border border-border">
+                  <span className="font-semibold text-foreground">Arma inicial:</span>
+                  <span className="text-amber-400 font-bold">{starterItem}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300">
+                  🔮 {t('app.profile.magicWeakNote')}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Loadout de combate ───────────────────────────────── */}
+            <div className="rpg-card p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Swords className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-bold text-foreground">{t('app.profile.combatLoadoutTitle')}</h4>
+                </div>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                  selectedCombatSkills.length === MAX_COMBAT_SKILLS
+                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                    : 'bg-muted/30 border-border text-muted-foreground'
+                }`}>
+                  {selectedCombatSkills.length}/{MAX_COMBAT_SKILLS}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2">{t('app.profile.combatLoadoutDesc', { max: MAX_COMBAT_SKILLS })}</p>
+
+              {/* Slots do deck */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {Array.from({ length: MAX_COMBAT_SKILLS }).map((_, i) => {
+                  const skill = selectedCombatSkills[i] as any;
+                  return skill ? (
                     <div
                       key={skill.id}
-                      className={`rounded-lg border p-4 space-y-2 ${
+                      className="relative group rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center space-y-1 cursor-pointer hover:border-emerald-500/60 transition-colors"
+                      onClick={() => toggleCombatSkill(skill.id)}
+                      title="Clique para remover"
+                    >
+                      <div className="text-2xl">⚔️</div>
+                      <p className="text-[11px] font-bold text-emerald-300 leading-tight line-clamp-2">{skill.name}</p>
+                      <p className="text-[9px] text-emerald-400/60">{skill.archetype}</p>
+                      <span className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <XIcon className="w-3 h-3 text-emerald-400/60" />
+                      </span>
+                    </div>
+                  ) : (
+                    <div
+                      key={`empty-${i}`}
+                      className="rounded-xl border-2 border-dashed border-border/40 bg-muted/10 p-3 flex flex-col items-center justify-center gap-1 min-h-[80px]"
+                    >
+                      <Plus className="w-4 h-4 text-border/60" />
+                      <p className="text-[10px] text-muted-foreground/50">Slot {i + 1}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => saveCombatLoadout.mutate(selectedCombatSkillIds)}
+                disabled={saveCombatLoadout.isPending}
+                className="w-full rounded-xl bg-primary/90 hover:bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {saveCombatLoadout.isPending ? (
+                  <><Sparkles className="w-4 h-4 animate-spin" /> {t('app.profile.savingLoadout')}</>
+                ) : (
+                  <><Save className="w-4 h-4" /> {t('app.profile.saveLoadoutButton')}</>
+                )}
+              </button>
+            </div>
+
+            {/* ── Kit do Novato ────────────────────────────────────── */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <div className="flex items-center gap-2">
+                  <Scroll className="w-4 h-4 text-amber-400" />
+                  <h4 className="text-sm font-bold text-foreground">{t('app.profile.noviceKitSection')}</h4>
+                </div>
+                <div className="flex-1 h-px bg-border/50" />
+                <span className="text-[10px] text-amber-400/70 uppercase tracking-wide">universal</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {noviceSkills.map((skill) => {
+                  const mpCost = Math.max(2, Math.min(16, Math.ceil((skill.power || 0) / 15)));
+                  const inLoadout = selectedCombatSkillIds.includes(skill.id);
+                  return (
+                    <div
+                      key={skill.id}
+                      className={`relative rounded-xl border p-4 space-y-3 transition-all ${
                         skill.unlocked
-                          ? "bg-emerald-500/10 border-emerald-500/30"
-                          : "bg-muted/30 border-border"
+                          ? "bg-gradient-to-br from-emerald-500/8 via-card to-card border-emerald-500/25 shadow-sm"
+                          : "bg-muted/15 border-border/50 opacity-70"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-foreground leading-tight">{skill.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{skill.archetype}</p>
-                        </div>
-                        <span className={`text-[10px] px-2 py-1 rounded-full border ${skill.unlocked ? "text-emerald-300 border-emerald-500/40" : "text-muted-foreground border-border"}`}>
-                          {skill.unlocked ? t('app.profile.skillActive') : t('app.profile.skillReqLevel', { level: skill.unlockLevel })}
-                        </span>
+                      {/* Badge de status */}
+                      <div className="absolute top-3 right-3">
+                        {skill.unlocked ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-semibold">
+                            <CheckCircle className="w-2.5 h-2.5" /> {t('app.profile.skillActive')}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted/40 border border-border text-muted-foreground">
+                            <Lock className="w-2.5 h-2.5" /> Nv. {skill.unlockLevel}
+                          </span>
+                        )}
                       </div>
 
-                      <p className="text-xs text-muted-foreground">{skill.description}</p>
-                      <p className="text-[11px] text-muted-foreground">{t('app.profile.skillRequiredItem', { item: skill.requiredItem })}</p>
+                      <div className="pr-20">
+                        <p className="font-display font-bold text-foreground leading-tight">{skill.name}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{skill.archetype}</p>
+                      </div>
 
-                      <div className="grid grid-cols-4 gap-2 text-xs">
-                        <div className="bg-background/60 rounded p-2 border border-border/50">
-                          <p className="text-muted-foreground">{t('app.profile.skillPower')}</p>
-                          <p className="font-bold text-foreground">{skill.power}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{skill.description}</p>
+
+                      {skill.requiredItem && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-amber-400/80">
+                          <Sword className="w-3 h-3 shrink-0" />
+                          <span>{t('app.profile.skillRequiredItem', { item: skill.requiredItem })}</span>
                         </div>
-                        <div className="bg-background/60 rounded p-2 border border-border/50">
-                          <p className="text-muted-foreground">MP</p>
-                          <p className="font-bold text-cyan-400">{Math.max(2, Math.min(16, Math.ceil((skill.power || 0) / 15)))}</p>
-                        </div>
-                        <div className="bg-background/60 rounded p-2 border border-border/50">
-                          <p className="text-muted-foreground">{t('app.profile.skillCooldown')}</p>
-                          <p className="font-bold text-foreground">{skill.cooldown}t</p>
-                        </div>
-                        <div className="bg-background/60 rounded p-2 border border-border/50">
-                          <p className="text-muted-foreground">{t('app.profile.skillBase')}</p>
-                          <p className="font-bold text-foreground text-[10px]">{skill.basedOn.join(" + ")}</p>
-                        </div>
+                      )}
+
+                      {/* Stats em linha */}
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 font-semibold">
+                          ⚔️ {skill.power}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-semibold">
+                          💧 {mpCost} MP
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 font-semibold">
+                          <Clock className="w-2.5 h-2.5" /> {skill.cooldown}t
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">
+                          📊 {skill.basedOn.join("+")}
+                        </span>
                       </div>
 
                       {skill.unlocked && (
                         <button
                           onClick={() => toggleCombatSkill(skill.id)}
-                          className={`w-full rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                            selectedCombatSkillIds.includes(skill.id)
-                              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
-                              : 'bg-zinc-800/80 border border-zinc-700 text-zinc-200 hover:bg-zinc-700/80'
+                          className={`w-full rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                            inLoadout
+                              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-300'
+                              : selectedCombatSkills.length >= MAX_COMBAT_SKILLS
+                              ? 'bg-muted/20 border border-border/50 text-muted-foreground/50 cursor-not-allowed'
+                              : 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20'
                           }`}
+                          disabled={!inLoadout && selectedCombatSkills.length >= MAX_COMBAT_SKILLS}
                         >
-                          {selectedCombatSkillIds.includes(skill.id) ? t('app.profile.removeFromLoadout') : t('app.profile.addToLoadout')}
+                          {inLoadout ? `✕ ${t('app.profile.removeFromLoadout')}` : selectedCombatSkills.length >= MAX_COMBAT_SKILLS ? 'Deck cheio' : `+ ${t('app.profile.addToLoadout')}`}
                         </button>
                       )}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-foreground mb-2">{t('app.profile.uniqueClassSkillsSection')}</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {allClassSkills.map((skill) => (
-                  <div
-                    key={skill.id}
-                    className={`rounded-lg border p-4 space-y-2 ${
-                      skill.unlocked
-                        ? "bg-emerald-500/10 border-emerald-500/30"
-                        : "bg-muted/30 border-border"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-foreground leading-tight">{skill.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{skill.archetype}</p>
-                      </div>
-                      <span className={`text-[10px] px-2 py-1 rounded-full border ${skill.unlocked ? "text-emerald-300 border-emerald-500/40" : "text-muted-foreground border-border"}`}>
-                        {skill.unlocked ? "Ativa" : `Req. ${skill.unlockLevel}`}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-muted-foreground">{skill.description}</p>
-                    <p className="text-[11px] text-muted-foreground">{skill.fantasy}</p>
-
-                    <div className="grid grid-cols-4 gap-2 text-xs">
-                      <div className="bg-background/60 rounded p-2 border border-border/50">
-                        <p className="text-muted-foreground">{t('app.profile.skillPower')}</p>
-                        <p className="font-bold text-foreground">{skill.power}</p>
-                      </div>
-                      <div className="bg-background/60 rounded p-2 border border-border/50">
-                        <p className="text-muted-foreground">MP</p>
-                        <p className="font-bold text-cyan-400">{Math.max(2, Math.min(16, Math.ceil((skill.power || 0) / 15)))}</p>
-                      </div>
-                      <div className="bg-background/60 rounded p-2 border border-border/50">
-                        <p className="text-muted-foreground">{t('app.profile.skillCooldown')}</p>
-                        <p className="font-bold text-foreground">{skill.cooldown}t</p>
-                      </div>
-                      <div className="bg-background/60 rounded p-2 border border-border/50">
-                        <p className="text-muted-foreground">{t('app.profile.skillBase')}</p>
-                        <p className="font-bold text-foreground text-[10px]">{skill.basedOn.join(" + ")}</p>
-                      </div>
-                    </div>
-
-                    {skill.unlocked && (
-                      <button
-                        onClick={() => toggleCombatSkill(skill.id)}
-                        className={`w-full rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                          selectedCombatSkillIds.includes(skill.id)
-                            ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
-                            : 'bg-zinc-800/80 border border-zinc-700 text-zinc-200 hover:bg-zinc-700/80'
-                        }`}
-                      >
-                        {selectedCombatSkillIds.includes(skill.id) ? t('app.profile.removeFromLoadout') : t('app.profile.addToLoadout')}
-                      </button>
-                    )}
-                  </div>
-                ))}
-                </div>
-              </div>
-
-              <div className="bg-secondary/40 border border-border rounded-lg p-3 flex items-center justify-between">
-                <span className="text-sm text-foreground font-semibold">{t('app.profile.unlockedSkillsLabel')}</span>
-                <span className="text-2xl font-bold text-primary">{unlockedSkills.length}</span>
-              </div>
-
-              <div className="bg-zinc-900/40 border border-zinc-700 rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-foreground font-semibold">{t('app.profile.combatLoadoutTitle')}</span>
-                  <span className="text-xs text-zinc-300">{selectedCombatSkills.length}/{MAX_COMBAT_SKILLS}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('app.profile.combatLoadoutDesc', { max: MAX_COMBAT_SKILLS })}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedCombatSkills.length > 0 ? (
-                    selectedCombatSkills.map((skill: any) => (
-                      <span key={skill.id} className="text-xs px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
-                        {skill.name}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-zinc-400">{t('app.profile.noSkillSelected')}</span>
-                  )}
-                </div>
-                <button
-                  onClick={() => saveCombatLoadout.mutate(selectedCombatSkillIds)}
-                  disabled={saveCombatLoadout.isPending}
-                  className="rounded-lg bg-primary/80 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary disabled:opacity-60"
-                >
-                  {saveCombatLoadout.isPending ? t('app.profile.savingLoadout') : t('app.profile.saveLoadoutButton')}
-                </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <Skull className="w-5 h-5 text-destructive" />
-                <h3 className="text-base font-bold text-foreground">{t('app.profile.bossStatusTitle')}</h3>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t('app.profile.bossStatusDesc')}
-              </p>
-
-              {(bosses || []).length > 0 ? (
+            {/* ── Habilidades da Classe ────────────────────────────── */}
+            {allClassSkills.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 text-primary" />
+                    <h4 className="text-sm font-bold text-foreground">{t('app.profile.uniqueClassSkillsSection')}</h4>
+                  </div>
+                  <div className="flex-1 h-px bg-border/50" />
+                  <span className="text-[10px] text-primary/70 uppercase tracking-wide capitalize">{currentClassName}</span>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {(bosses || []).map((boss: any) => {
-                    const b = getBossCombatStats(boss);
+                  {allClassSkills.map((skill) => {
+                    const mpCost = Math.max(2, Math.min(16, Math.ceil((skill.power || 0) / 15)));
+                    const inLoadout = selectedCombatSkillIds.includes(skill.id);
                     return (
-                      <div key={boss.id} className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="font-bold text-foreground">{boss.icon} {boss.name}</p>
-                          <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 border border-destructive/30 text-destructive">
-                            {t('app.profile.bossThreat', { level: b.threat })}
+                      <div
+                        key={skill.id}
+                        className={`relative rounded-xl border p-4 space-y-3 transition-all ${
+                          skill.unlocked
+                            ? "bg-gradient-to-br from-primary/8 via-card to-purple-500/5 border-primary/25 shadow-sm"
+                            : "bg-muted/15 border-border/50 opacity-70"
+                        }`}
+                      >
+                        <div className="absolute top-3 right-3">
+                          {skill.unlocked ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-primary font-semibold">
+                              <CheckCircle className="w-2.5 h-2.5" /> Ativa
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted/40 border border-border text-muted-foreground">
+                              <Lock className="w-2.5 h-2.5" /> Nv. {skill.unlockLevel}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="pr-20">
+                          <p className="font-display font-bold text-foreground leading-tight">{skill.name}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{skill.archetype}</p>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground leading-relaxed">{skill.description}</p>
+
+                        {(skill as any).fantasy && (
+                          <p className="text-[11px] text-primary/50 italic">"{(skill as any).fantasy}"</p>
+                        )}
+
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 font-semibold">
+                            ⚔️ {skill.power}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-semibold">
+                            💧 {mpCost} MP
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 font-semibold">
+                            <Clock className="w-2.5 h-2.5" /> {skill.cooldown}t
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">
+                            📊 {skill.basedOn.join("+")}
                           </span>
                         </div>
-                        <div className="grid grid-cols-4 gap-2 text-xs">
-                          <div><p className="text-muted-foreground">ATK</p><p className="font-bold">{b.atk}</p></div>
-                          <div><p className="text-muted-foreground">MATK</p><p className="font-bold">{b.matk}</p></div>
-                          <div><p className="text-muted-foreground">DEF</p><p className="font-bold">{b.def}</p></div>
-                          <div><p className="text-muted-foreground">AGI</p><p className="font-bold">{b.agi}</p></div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {t('app.profile.bossTacticalWeakness')} <span className="text-primary font-semibold">{b.weakness}</span>
-                        </p>
+
+                        {skill.unlocked && (
+                          <button
+                            onClick={() => toggleCombatSkill(skill.id)}
+                            className={`w-full rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                              inLoadout
+                                ? 'bg-primary/15 border border-primary/30 text-primary hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-300'
+                                : selectedCombatSkills.length >= MAX_COMBAT_SKILLS
+                                ? 'bg-muted/20 border border-border/50 text-muted-foreground/50 cursor-not-allowed'
+                                : 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20'
+                            }`}
+                            disabled={!inLoadout && selectedCombatSkills.length >= MAX_COMBAT_SKILLS}
+                          >
+                            {inLoadout ? `✕ ${t('app.profile.removeFromLoadout')}` : selectedCombatSkills.length >= MAX_COMBAT_SKILLS ? 'Deck cheio' : `+ ${t('app.profile.addToLoadout')}`}
+                          </button>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('app.profile.noBossFound')}</p>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* ── Bosses (ficha tática) ─────────────────────────────── */}
+            {(bosses || []).length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <Skull className="w-4 h-4 text-destructive" />
+                  <h4 className="text-sm font-bold text-foreground">{t('app.profile.bossStatusTitle')}</h4>
+                  <div className="flex-1 h-px bg-border/50" />
+                  <span className="text-[10px] text-destructive/60 uppercase tracking-wide">ficha tática</span>
+                </div>
+                <p className="text-xs text-muted-foreground px-1">{t('app.profile.bossStatusDesc')}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {(bosses || []).map((boss: any) => {
+                    const b = getBossCombatStats(boss);
+                    const threatColor = b.threat >= 8 ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                      : b.threat >= 5 ? 'text-orange-400 border-orange-500/30 bg-orange-500/10'
+                      : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10';
+                    return (
+                      <div key={boss.id} className="rounded-xl border border-destructive/15 bg-gradient-to-br from-destructive/5 via-card to-card p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{boss.icon}</span>
+                            <div>
+                              <p className="font-display font-bold text-foreground leading-tight">{boss.name}</p>
+                              {boss.element && (
+                                <p className="text-[10px] text-muted-foreground capitalize">{boss.element}</p>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-2 py-1 rounded-full border font-bold ${threatColor}`}>
+                            ☠ {t('app.profile.bossThreat', { level: b.threat })}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: 'ATK', value: b.atk, color: 'text-red-400' },
+                            { label: 'MATK', value: b.matk, color: 'text-purple-400' },
+                            { label: 'DEF', value: b.def, color: 'text-blue-400' },
+                            { label: 'AGI', value: b.agi, color: 'text-green-400' },
+                          ].map(({ label, value, color }) => (
+                            <div key={label} className="text-center rounded-lg bg-muted/20 border border-border/50 py-2">
+                              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{label}</p>
+                              <p className={`text-sm font-bold ${color}`}>{value}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/15 px-3 py-2">
+                          <span className="text-[10px] text-muted-foreground">{t('app.profile.bossTacticalWeakness')}</span>
+                          <span className="text-xs font-bold text-primary ml-auto">{b.weakness}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
           </div>
         )}
