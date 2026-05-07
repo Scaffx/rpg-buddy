@@ -41,7 +41,7 @@ import HeroStatusBar from '@/components/HeroStatusBar';
 import { useHeroStoryChoices, useSaveSkeletonChoice } from '@/hooks/useHeroStoryChoices';
 import { useAdoptSkeletonPup, useSkeletonCompanion, computeLiveMood } from '@/hooks/useCompanion';
 import { useAuth } from '@/hooks/useAuth';
-import { useInventory } from '@/hooks/useInventory';
+import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
 
 /** Boss name patterns for story events (case-insensitive match) */
 const SKELETON_BOSS_PATTERN   = /esquelet/i;
@@ -118,7 +118,18 @@ export default function BossPage() {
   const effectiveRegion = rankingView === 'mundial' ? null : (profile?.region ?? null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(effectiveRegion);
   const attrLevels = getAttributeLevels(attributes as any[]);
-  const playerStats = getPlayerCombatStats(profile?.level || 1, attrLevels);
+  const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
+  const equipBonuses = getEquipmentBonuses((inventory || []) as InventoryItem[]);
+  const playerStats = {
+    ...playerStatsBase,
+    atk:  playerStatsBase.atk  + equipBonuses.atk,
+    matk: playerStatsBase.matk + equipBonuses.matk,
+    def:  playerStatsBase.def  + equipBonuses.def,
+    agi:  playerStatsBase.agi  + equipBonuses.agi,
+    crit: playerStatsBase.crit + equipBonuses.crit,
+    hp:   playerStatsBase.hp   + equipBonuses.hp,
+    mp:   (playerStatsBase as any).mp + equipBonuses.mp,
+  };
 
   const handleCombatVictory = () => {
     queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
