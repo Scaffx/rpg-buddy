@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount, useRankPosition } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
 import { useDailyBonus } from "@/hooks/useDailyBonus";
-import { getLevelProgress } from "@/lib/progression";
 import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock, Flame, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
@@ -26,11 +25,6 @@ const DASHBOARD_TOUR_STEPS: TourStep[] = [
     target: 'dash-stats',
     title: 'Seus Stats de Herói 📊',
     description: 'Esses cards mostram Nível, posição no Ranking global, sua Classe atual, XP total, missões do dia e XP ganho hoje.',
-  },
-  {
-    target: 'dash-xp',
-    title: 'Barra de Progresso de Nível ✨',
-    description: 'Acompanhe quantos XP faltam para subir de nível. A cada subida você desbloqueia novas classes e habilidades únicas.',
   },
   {
     target: 'dash-bonus',
@@ -119,7 +113,6 @@ export default function Dashboard() {
   const { data: allMissions, isLoading: missionsLoading } = useMissions();
   const { data: classes } = useClasses();
   const { data: todayXp = 0 } = useTodayXp();
-  const xpProgress = getLevelProgress(profile?.total_xp || 0);
   const { data: todayMissionsCount = 0 } = useTodayMissionsCount();
   const { data: rankPosition } = useRankPosition();
   const dailyBonus = useDailyBonus();
@@ -433,25 +426,6 @@ export default function Dashboard() {
             </motion.div>
           ))}
         </div>
-
-        {/* XP Progress */}
-        {profile && (
-          <motion.div
-            data-tour="dash-xp"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="rpg-card"
-          >
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-muted-foreground">{t('app.dashboard.xp_progress_label', { n: xpProgress.isMaxLevel ? profile.level : profile.level + 1 })}</span>
-              <span className="text-primary font-semibold">{xpProgress.currentLevelXp}/{xpProgress.xpForNextLevel} XP</span>
-            </div>
-            <div className="rpg-stat-bar">
-              <div className="rpg-stat-fill" style={{ width: `${xpProgress.progressPercent}%` }} />
-            </div>
-          </motion.div>
-        )}
 
         {/* Daily Bonus */}
         {!dailyBonus.isCheckingClaim && (
