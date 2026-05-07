@@ -15,6 +15,12 @@ type TurnSummary = {
   dado_boss: number;
   dano_boss: number;
   boss_stunned?: boolean;
+  /** Dano absorvido pelo escudo de buff do jogador este turno */
+  buff_shield_amount?: number;
+  /** Quanto de defesa do boss foi reduzida pelo debuff do jogador */
+  debuff_defense_shred?: number;
+  /** Tipo de efeito que foi aplicado neste turno */
+  skill_effect_applied?: string;
   hp_boss_restante: number;
   hp_player_restante: number;
   status: 'em_andamento' | 'vitoria' | 'derrota';
@@ -113,6 +119,14 @@ type CombatSkill = {
   id: string;
   name: string;
   power: number;
+  mpCost?: number;
+  effectType?: string;
+  effectLabel?: string;
+};
+
+type HealPopup = {
+  id: number;
+  value: number;
 };
 
 type BattleLogEntry = {
@@ -332,6 +346,14 @@ export default function CombatArena({
   const [showDefeat, setShowDefeat] = useState(false);
   const [insufficientResourceWarning, setInsufficientResourceWarning] = useState<string | null>(null);
   const [summonedUnits, setSummonedUnits] = useState<SummonedUnit[]>([]);
+  /** Popups verdes de cura sobre o card do jogador */
+  const [healPopups, setHealPopups] = useState<HealPopup[]>([]);
+  /** Indicador visual de boss atordoado (CC) */
+  const [bossStunnedVisual, setBossStunnedVisual] = useState(false);
+  /** Quantidade de dano absorvida pelo escudo (buff) do turno atual */
+  const [lastBuffShield, setLastBuffShield] = useState<number | null>(null);
+  /** Quantidade de defesa reduzida pelo debuff do turno atual */
+  const [lastDebuffShred, setLastDebuffShred] = useState<number | null>(null);
   // Rancor Sombrio
   const [rancorPhase, setRancorPhase] = useState<'none' | 'reconstituted'>('none');
   const [rancorQuestion, setRancorQuestion] = useState('');
@@ -414,6 +436,9 @@ export default function CombatArena({
               id: String(safeEntry.id || ''),
               name: String(safeEntry.name || 'Ataque Basico'),
               power: Number(safeEntry.power || 0),
+              mpCost: safeEntry.mpCost !== undefined ? Number(safeEntry.mpCost) : undefined,
+              effectType: safeEntry.effectType ? String(safeEntry.effectType) : undefined,
+              effectLabel: safeEntry.effectLabel ? String(safeEntry.effectLabel) : undefined,
             };
           })
           .filter((skill: CombatSkill) => skill.id);
@@ -559,6 +584,10 @@ export default function CombatArena({
     setInsufficientResourceWarning(null);
     setSummonedUnits([]);
     summonedUnitsRef.current = [];
+    setHealPopups([]);
+    setBossStunnedVisual(false);
+    setLastBuffShield(null);
+    setLastDebuffShred(null);
     // Mantém HP/MP do jogador (sem chamar startBattle que os resetaria)
     setTurn('player');
   };
@@ -603,6 +632,10 @@ export default function CombatArena({
     setInsufficientResourceWarning(null);
     setSummonedUnits([]);
     summonedUnitsRef.current = [];
+    setHealPopups([]);
+    setBossStunnedVisual(false);
+    setLastBuffShield(null);
+    setLastDebuffShred(null);
     // Rancor Sombrio: música épica + carregar missões com mais falhas
     if (isRancorBoss) {
       questionsAnsweredRef.current = 0;
@@ -757,10 +790,47 @@ export default function CombatArena({
       setRollValue(turnResult.dado_player);
       setBossHp(turnResult.hp_boss_restante);
       pushDamage('boss', turnResult.dano_player, turnResult.dado_player);
+
+      // ── Efeitos visuais de habilidade ────────────────────────────────────────
+      const effectApplied = turnResult.skill_effect_applied || chosenSkill?.effectType || 'dano';
+
+      // Heal / Utility: restaurar HP do jogador + popup verde
+      if (turnResult.heal_amount && turnResult.heal_amount > 0) {
+        setPlayerHp((prev) => Math.min(initialPlayerHp, prev + turnResult.heal_amount!));
+        const hid = Date.now() + Math.floor(Math.random() * 1000);
+        setHealPopups((prev) => [...prev, { id: hid, value: turnResult.heal_amount! }]);
+        window.setTimeout(() => {
+          setHealPopups((prev) => prev.filter((p) => p.id !== hid));
+        }, 1300);
+        sfx.hit(); // som suave de cura
+      }
+
+      // Buff: mostrar escudo absorvido
+      if (turnResult.buff_shield_amount && turnResult.buff_shield_amount > 0) {
+        setLastBuffShield(turnResult.buff_shield_amount);
+        window.setTimeout(() => setLastBuffShield(null), 3000);
+      }
+
+      // Debuff: mostrar redução de defesa aplicada
+      if (turnResult.debuff_defense_shred && turnResult.debuff_defense_shred > 0) {
+        setLastDebuffShred(turnResult.debuff_defense_shred);
+        window.setTimeout(() => setLastDebuffShred(null), 3000);
+      }
+
+      // CC: marcar boss como atordoado visualmente
+      if (turnResult.boss_stunned) {
+        setBossStunnedVisual(true);
+        window.setTimeout(() => setBossStunnedVisual(false), 2200);
+      }
+      // ─────────────────────────────────────────────────────────────────────────
+
+      const effectLabelForLog = effectApplied !== 'dano'
+        ? ` [${effectApplied.toUpperCase()}]`
+        : '';
       appendBattleLog({
         actor: 'player',
-        skill: turnResult.habilidade_player || chosenSkill?.name || 'Ataque Basico',
-        damage: turnResult.dano_player,
+        skill: (turnResult.habilidade_player || chosenSkill?.name || 'Ataque Basico') + effectLabelForLog,
+        damage: turnResult.heal_amount && turnResult.heal_amount > 0 ? turnResult.heal_amount : turnResult.dano_player,
         roll: turnResult.dado_player,
         effects: turnResult.efeitos_player || [],
       });
@@ -1099,23 +1169,43 @@ export default function CombatArena({
             {selectedSkills.map((skill) => {
               const cost = skill.mpCost !== undefined ? skill.mpCost : getSkillMpCost(skill.power);
               const canAfford = playerMp >= cost || turn === 'idle';
+              // Cor do badge por tipo de efeito
+              const effectColors: Record<string, string> = {
+                heal:    'border-emerald-500/50 bg-emerald-500/10 text-emerald-200',
+                buff:    'border-blue-500/50 bg-blue-500/10 text-blue-200',
+                debuff:  'border-orange-500/50 bg-orange-500/10 text-orange-200',
+                cc:      'border-purple-500/50 bg-purple-500/10 text-purple-200',
+                utility: 'border-amber-500/50 bg-amber-500/10 text-amber-200',
+                dano:    'border-rose-500/50 bg-rose-500/10 text-rose-200',
+              };
+              const effectIcon: Record<string, string> = {
+                heal: '💚', buff: '🛡️', debuff: '🔻', cc: '⚡', utility: '✨', dano: '⚔️',
+              };
+              const activeColor = effectColors[skill.effectType || 'dano'] ?? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200';
+              const icon = effectIcon[skill.effectType || 'dano'] ?? '⚔️';
               return (
                 <span
                   key={skill.id}
                   title={
-                    canAfford
+                    skill.effectLabel
+                      ? `${skill.effectLabel} | Custo: ${cost} MP`
+                      : canAfford
                       ? `Custo: ${cost} MP`
                       : `MP insuficiente — necessário ${cost}, disponível ${playerMp}`
                   }
                   className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-all select-none ${
                     canAfford
-                      ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200'
+                      ? activeColor
                       : 'border-zinc-600/40 bg-zinc-700/20 text-zinc-500 opacity-50 cursor-not-allowed line-through'
                   }`}
                 >
-                  {!canAfford && <span className="text-[10px] not-italic no-underline line-through-none">⚠️</span>}
+                  {canAfford ? (
+                    <span className="text-[10px]">{icon}</span>
+                  ) : (
+                    <span className="text-[10px] not-italic no-underline line-through-none">⚠️</span>
+                  )}
                   {skill.name}
-                  <span className={`text-[10px] font-mono ${canAfford ? 'text-cyan-400/80' : 'text-zinc-500'}`}>
+                  <span className={`text-[10px] font-mono ${canAfford ? 'opacity-70' : 'text-zinc-500'}`}>
                     {cost} MP
                   </span>
                 </span>
@@ -1128,6 +1218,22 @@ export default function CombatArena({
           </p>
         )}
       </div>
+
+      {/* Indicadores de efeito ativo (buff/debuff do turno atual) */}
+      {(lastBuffShield !== null || lastDebuffShred !== null) && (
+        <div className="mb-3 flex gap-2 flex-wrap">
+          {lastBuffShield !== null && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-1.5 text-xs text-blue-200">
+              🛡️ Escudo absorveu <span className="font-bold font-mono">{lastBuffShield}</span> de dano
+            </div>
+          )}
+          {lastDebuffShred !== null && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-1.5 text-xs text-orange-200">
+              🔻 Defesa do boss reduzida em <span className="font-bold font-mono">{lastDebuffShred}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {insufficientResourceWarning && (
         <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
@@ -1194,6 +1300,21 @@ export default function CombatArena({
                 className="pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-rose-300 to-transparent animate-slash"
               />
             ))}
+          {/* Heal popups: exibidos sobre o card do jogador */}
+          <AnimatePresence>
+            {healPopups.map((popup) => (
+              <motion.span
+                key={popup.id}
+                initial={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 0, y: -40 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.2 }}
+                className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 text-2xl font-extrabold text-emerald-300 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+              >
+                +{popup.value} HP
+              </motion.span>
+            ))}
+          </AnimatePresence>
           <AnimatePresence>
             {damagePopups
               .filter((popup) => popup.target === 'player')
@@ -1257,6 +1378,21 @@ export default function CombatArena({
         >
           <p className="text-sm text-zinc-400">Boss HP</p>
           <p className="mt-2 text-3xl font-black text-rose-300">{bossHp}</p>
+          {/* Indicador de atordoamento (CC) */}
+          <AnimatePresence>
+            {bossStunnedVisual && (
+              <motion.div
+                key="stun"
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                transition={{ duration: 0.3 }}
+                className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-purple-500/90 px-3 py-0.5 text-xs font-bold text-white shadow-lg"
+              >
+                ⚡ ATORDOADO
+              </motion.div>
+            )}
+          </AnimatePresence>
           {/* Barra de recurso do boss (Mana ou Estamina) */}
           {(() => {
             const resPct = bossResourceMax > 0 ? (bossResource / bossResourceMax) * 100 : 0;

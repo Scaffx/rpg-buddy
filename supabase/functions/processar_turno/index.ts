@@ -482,11 +482,12 @@ Deno.serve(async (req) => {
     }
 
     const skillEffectType = String(body.skill_effect_type || 'dano');
-    const isHealSkill = skillEffectType === 'heal';
-    const isCcSkill   = skillEffectType === 'cc';
-    const isBuffSkill = skillEffectType === 'buff';
-    const isNonDamageSkill = isHealSkill || isCcSkill || isBuffSkill ||
-      skillEffectType === 'debuff' || skillEffectType === 'utility';
+    const isHealSkill    = skillEffectType === 'heal';
+    const isCcSkill      = skillEffectType === 'cc';
+    const isBuffSkill    = skillEffectType === 'buff';
+    const isDebuffSkill  = skillEffectType === 'debuff';
+    const isUtilitySkill = skillEffectType === 'utility';
+    const isNonDamageSkill = isHealSkill || isCcSkill || isBuffSkill || isDebuffSkill || isUtilitySkill;
 
     const playerSkill = buildPlayerSkillResolution(body);
     const bossSkillPool = parseBossSkills(combat.bosses?.skills);
@@ -508,10 +509,19 @@ Deno.serve(async (req) => {
     const effectiveBossDefense =
       combat.bosses.defesa_base + (bossItemEnabled ? Math.floor(toNumber(bossItem?.def_bonus, 0) * 0.5) : 0);
 
+    // ── Debuff: habilidade do jogador reduz defesa do boss temporariamente ──────────────────
+    let debuffDefenseShred = 0;
+    let actualBossDefense = effectiveBossDefense;
+    if (isDebuffSkill && requestedSkillPower > 0) {
+      const shredRate = clamp(requestedSkillPower / 300, 0.12, 0.38);
+      debuffDefenseShred = Math.floor(actualBossDefense * shredRate);
+      actualBossDefense = Math.max(0, actualBossDefense - debuffDefenseShred);
+    }
+
     let danoPlayer = calculateDamage(
       playerAttackBase,
       dadoPlayer,
-      effectiveBossDefense,
+      actualBossDefense,
       2 * playerSkill.damageMultiplier,
     );
 
@@ -573,6 +583,11 @@ Deno.serve(async (req) => {
       danoPlayer = 0; // heal não causa dano
     }
 
+    // ── Utility: efeito misto — dano normal + mini restauração de HP (12% do power) ──────────
+    if (isUtilitySkill && requestedSkillPower > 0) {
+      playerHealAmount += Math.max(1, Math.floor(requestedSkillPower * 0.12));
+    }
+
     // ── CC: stun boss — o boss não ataca este turno ──
     const bossStunned = isCcSkill;
 
@@ -597,6 +612,8 @@ Deno.serve(async (req) => {
     let status: 'em_andamento' | 'vitoria' | 'derrota' = 'em_andamento';
     let turnoAtual: 'player' | 'boss' = 'boss';
     let lootDrop: any = null;
+    /** Dano absorvido pelo buff shield — iniciado aqui para ficar no escopo externo */
+    let buffShieldAmount = 0;
 
     if (hpBossRestante <= 0) {
       status = 'vitoria';
@@ -639,6 +656,14 @@ Deno.serve(async (req) => {
       if (playerSkill.reduceIncomingPct > 0) {
         danoBoss = Math.max(1, Math.floor(danoBoss * (1 - playerSkill.reduceIncomingPct)));
       }
+
+      // ── Buff: escudo do jogador absorve parte do dano recebido ───────────────────────────────
+      if (isBuffSkill && requestedSkillPower > 0 && danoBoss > 0) {
+        buffShieldAmount = Math.min(danoBoss - 1, requestedSkillPower);
+        danoBoss = Math.max(1, danoBoss - buffShieldAmount);
+        if (buffShieldAmount > 0) bossEffectLog.push(`buff_shield:${buffShieldAmount}`);
+      }
+
       hpPlayerRestante = Math.max(combat.hp_atual_personagem - danoBoss, 0);
 
       if (hpPlayerRestante <= 0) {
@@ -944,6 +969,9 @@ Deno.serve(async (req) => {
         dado_boss: dadoBoss,
         dano_boss: danoBoss,
         boss_stunned: bossStunned,
+        buff_shield_amount: buffShieldAmount,
+        debuff_defense_shred: debuffDefenseShred,
+        skill_effect_applied: skillEffectType,
         hp_boss_restante: hpBossRestante,
         hp_player_restante: hpPlayerRestante,
         status,
