@@ -10,6 +10,30 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+
+const PRIORITY_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'priority-header',
+    title: 'Prioridades e Metas 🎯',
+    description: 'Aqui você cria Planos de Meta: objetivos grandes que você alcança completando missões. Cada missão concluída avança o progresso do plano automaticamente.',
+  },
+  {
+    target: 'priority-howto',
+    title: 'Como Funciona 💡',
+    description: 'Vincule missões ao plano e defina quantas conclusões são necessárias para atingir a meta. Ex: fazer 30 treinos para ganhar um novo equipamento.',
+  },
+  {
+    target: 'priority-new',
+    title: 'Criar Novo Plano ➕',
+    description: 'Clique aqui para criar um plano. Nomeie seu objetivo, descreva a motivação, vincule as missões e defina a quantidade alvo. O progresso é atualizado automaticamente.',
+  },
+  {
+    target: 'priority-list',
+    title: 'Seus Planos Ativos 📈',
+    description: 'Cada card mostra o progresso atual vs a meta, as missões vinculadas e o percentual de conclusão. Quando chegar a 100% você vence o plano!',
+  },
+];
 
 type MissionOption = {
   id: string;
@@ -136,12 +160,12 @@ export default function PrioridadePage() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-2">
+      <div data-tour="priority-header" className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-display font-bold text-primary">{t('app.priority.page_title')}</h1>
-        <Button onClick={() => setModalOpen(true)}>{t('app.priority.new_plan_button')}</Button>
+        <Button data-tour="priority-new" onClick={() => setModalOpen(true)}>{t('app.priority.new_plan_button')}</Button>
       </div>
 
-      <div className="mb-6 p-4 rounded-lg bg-muted/30 border border-border/40">
+      <div data-tour="priority-howto" className="mb-6 p-4 rounded-lg bg-muted/30 border border-border/40">
         <p className="text-sm text-foreground font-semibold mb-1">🎯 {t('app.priority.how_it_works_title')}</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
           {t('app.priority.how_it_works_body')}
@@ -266,7 +290,7 @@ export default function PrioridadePage() {
       </Dialog>
 
       {/* Cards dos planos/metas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div data-tour="priority-list" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           <div>{t('app.priority.loading')}</div>
         ) : plans?.length === 0 ? (
@@ -309,6 +333,7 @@ export default function PrioridadePage() {
           })
         )}
       </div>
+      <GuidedTour tourKey="priority" steps={PRIORITY_TOUR_STEPS} />
     </AppLayout>
   );
 }

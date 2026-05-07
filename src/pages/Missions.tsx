@@ -62,7 +62,31 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useUndoMission } from '@/hooks/useUndoMission'; 
+import { useUndoMission } from '@/hooks/useUndoMission';
+import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+
+const MISSIONS_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'missions-header',
+    title: 'Missões Principais 🎯',
+    description: 'Aqui você gerencia todas as suas missões recorrentes e únicas. Cada missão concluída ganha XP no atributo escolhido e mantém sua streak ativa.',
+  },
+  {
+    target: 'missions-new',
+    title: 'Criar Nova Missão ➕',
+    description: 'Crie missões para hábitos que quer construir: treinar, estudar, meditar, etc. Defina os dias da semana, horário e atributo que ela desenvolve.',
+  },
+  {
+    target: 'missions-search',
+    title: 'Busca e Filtros 🔍',
+    description: 'Encontre rapidamente uma missão pelo nome. Use os filtros de categoria para ver só missões de Inteligência, Força, Carisma, etc.',
+  },
+  {
+    target: 'missions-tabs',
+    title: 'Abas de Visão 📋',
+    description: 'Pendentes mostra as missões de hoje. Todas lista as recorrentes e únicas. Foco exibe apenas o que é urgente. Concluídas guarda o histórico do dia.',
+  },
+];
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const DAYS_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
@@ -482,7 +506,7 @@ const handleSave = async () => {
       <div className="space-y-5 max-w-7xl mx-auto">
 
         {/* ── Header ─────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4">
+        <div data-tour="missions-header" className="flex items-start justify-between gap-4">
           <div>
             <h1 className="font-display font-bold text-2xl text-foreground flex items-center gap-2.5">
               <Target className="w-6 h-6 text-primary" />
@@ -503,6 +527,7 @@ const handleSave = async () => {
             </div>
           </div>
           <Button
+            data-tour="missions-new"
             onClick={openCreateModal}
             className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 font-semibold"
             size="sm"
@@ -512,7 +537,7 @@ const handleSave = async () => {
         </div>
 
         {/* ── Busca ──────────────────────────────────────────────── */}
-        <div className="relative">
+        <div data-tour="missions-search" className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={searchQuery}
@@ -530,8 +555,8 @@ const handleSave = async () => {
           )}
         </div>
 
-        {/* ── Tabs + Filtros ─────────────────────────────────────── */}
-        <div className="space-y-3">
+        {/* -- Tabs + Filtros -- */}
+        <div data-tour="missions-tabs" className="space-y-3">
           {/* Tabs principais */}
           <div className="flex items-center gap-1 p-1 bg-muted/40 rounded-xl w-fit border border-border/50">
             {TABS.map((tab) => {
@@ -971,6 +996,7 @@ const handleSave = async () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <GuidedTour tourKey="missions" steps={MISSIONS_TOUR_STEPS} />
     </AppLayout>
   );
 }

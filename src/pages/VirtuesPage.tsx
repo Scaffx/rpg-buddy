@@ -6,6 +6,30 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Circle, AlertTriangle, CheckCircle2, RotateCcw, TrendingDown, TrendingUp, Calendar } from 'lucide-react';
+import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+
+const VIRTUES_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'virtues-header',
+    title: 'Virtudes e Consistência 🔵',
+    description: 'Esta tela mostra seu desempenho dos últimos 7 dias. Aqui você enfrenta a realidade: quantas missões cumpriu, falhou ou recuperou.',
+  },
+  {
+    target: 'virtues-stats',
+    title: 'Resumo da Semana 📊',
+    description: 'Quatro métricas rápidas: missoes concluídas (verde), falhadas (vermelho), recuperadas (ambar) e sua taxa de sucesso geral. Mire sempre acima de 80%!',
+  },
+  {
+    target: 'virtues-calendar',
+    title: 'Atividade Diária 📅',
+    description: 'Cada coluna é um dia da semana. As barras mostram a proporção entre conclusões, recuperações e falhas. Dias cheios e verdes = herói em forma!',
+  },
+  {
+    target: 'virtues-rankings',
+    title: 'Virtudes e Pontos de Atenção 🌟',
+    description: 'As 5 missões que você mais cumpre são suas Virtudes. As 5 que mais falha são seus Pontos de Atenção. Use isso para ajustar sua rotina!',
+  },
+];
 
 function toLocalDate(d: Date) {
   return d.toLocaleDateString('en-CA');
@@ -128,7 +152,7 @@ export default function VirtuesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
+        <div data-tour="virtues-header" className="flex items-center gap-3">
           <Circle className="w-7 h-7 text-primary" />
           <div>
             <h1 className="text-2xl font-display font-bold text-primary">{t('app.virtues.title')}</h1>
@@ -139,7 +163,7 @@ export default function VirtuesPage() {
         </div>
 
         {/* Cards de resumo */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div data-tour="virtues-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="rpg-card p-4 space-y-1">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -175,7 +199,7 @@ export default function VirtuesPage() {
         </div>
 
         {/* Breakdown diario */}
-        <div className="rpg-card p-5 space-y-4">
+        <div data-tour="virtues-calendar" className="rpg-card p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-primary" />
             <h2 className="text-sm font-bold text-foreground">{t('app.virtues.daily_activity')}</h2>
@@ -210,7 +234,7 @@ export default function VirtuesPage() {
         </div>
 
         {/* Mais cumpridas e mais falhadas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div data-tour="virtues-rankings" className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rpg-card p-5 space-y-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-400" />
@@ -307,6 +331,7 @@ export default function VirtuesPage() {
           </div>
         )}
       </div>
+      <GuidedTour tourKey="virtues" steps={VIRTUES_TOUR_STEPS} />
     </AppLayout>
   );
 }

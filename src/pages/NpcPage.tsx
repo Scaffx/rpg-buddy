@@ -6,6 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2, Coins, Gift, MessageCircle, Send, TrendingUp } from 'lucide-react';
+import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+
+const NPC_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'npc-header',
+    title: 'Missões de NPC 🧙',
+    description: 'Cada semana 6 NPCs geram desafios exclusivos para você. Completar desafios aumenta sua Afinidade com o NPC e dá recompensas únicas — XP, ouro e itens raros.',
+  },
+  {
+    target: 'npc-grid',
+    title: 'Os 6 NPCs Mentores 🏆',
+    description: 'Atlas (Corpo), Nova (Mente), Elara (Alma), Zephyr (Criatividade), Midas (Riqueza) e Vox (Social). Clique num card para ver e aceitar os desafios semanais. Converse para gerar missões personalizadas!',
+  },
+  {
+    target: 'npc-footer',
+    title: 'Progresso Semanal 📊',
+    description: 'Acompanhe quantos desafios você já concluiu nesta semana. Os desafios resetam toda segunda-feira — tente zerar todos os NPCs antes do reset!',
+  },
+];
 import { useNpcAffinity, useIncrementNpcAffinity, getAffinityTier } from '@/hooks/useNpcAffinity';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -530,7 +549,7 @@ export default function NpcPage() {
     <AppLayout>
       <div className="min-h-screen p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div data-tour="npc-header" className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Users className="w-7 h-7 text-primary" />
             <div>
@@ -550,7 +569,7 @@ export default function NpcPage() {
         )}
 
         {/* NPC Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div data-tour="npc-grid" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {INITIAL_NPCS.map((npc) => {
             const npcChallenges = challengesByNpc.get(npc.id) ?? [];
             const done = npcChallenges.filter((challenge) => isCompleted(npc.id, challenge.challenge_id)).length;
@@ -608,7 +627,7 @@ export default function NpcPage() {
         </div>
 
                 {/* Footer Stats */}
-        <div className="flex items-center justify-center gap-6 p-4 rounded-xl border border-border bg-card/50">
+        <div data-tour="npc-footer" className="flex items-center justify-center gap-6 p-4 rounded-xl border border-border bg-card/50">
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-primary" />
             <span className="text-sm text-muted-foreground">
@@ -816,6 +835,7 @@ export default function NpcPage() {
           )}
         </DialogContent>
       </Dialog>
+      <GuidedTour tourKey="npc" steps={NPC_TOUR_STEPS} />
     </AppLayout>
   );
 }

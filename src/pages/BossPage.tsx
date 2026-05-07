@@ -7,6 +7,30 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+
+const BOSS_TOUR_STEPS: TourStep[] = [
+  {
+    target: 'boss-header',
+    title: 'Boss Arena 💀',
+    description: 'Aqui você enfrenta Bosses poderosos em batalha por turnos. Vencer bosses dá XP, ouro e itens raros. Quanto mais forte seu herói, mais dano você causa!',
+  },
+  {
+    target: 'boss-tabs',
+    title: 'Modos de Combate ⚔️',
+    description: 'Solo: enfrente bosses individualmente. Coletiva (Dungeon): entre em masmorras com outros jogadores. Ranking: veja quem são os heróis mais poderosos do servidor.',
+  },
+  {
+    target: 'boss-keys',
+    title: 'Chaves de Boss 🔑',
+    description: 'Para desafiar um boss você precisa de Chaves. Ganhe chaves completando missões diárias. O número de chaves é exibido aqui — nunca deixe acumular sem usar!',
+  },
+  {
+    target: 'boss-list',
+    title: 'Lista de Bosses 🐉',
+    description: 'Cada boss tem elemento, HP e nível mínimo recomendado. Bosses de fogo são fracos à água, etc. Estude os elementos antes de entrar na arena!',
+  },
+];
 import { useToast } from '@/hooks/use-toast';
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
@@ -365,7 +389,7 @@ export default function BossPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
+        <div data-tour="boss-header" className="flex items-center gap-2">
           <Skull className="w-6 h-6 text-destructive" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
             {t('app.boss.page_title')}
@@ -373,7 +397,7 @@ export default function BossPage() {
         </div>
 
         {/* Abas */}
-        <div className="flex gap-2 flex-wrap">
+        <div data-tour="boss-tabs" className="flex gap-2 flex-wrap">
           <button
             onClick={() => setActiveTab("solo")}
             className={`px-4 py-2 rounded-lg border font-semibold transition-all ${
@@ -410,7 +434,7 @@ export default function BossPage() {
         {activeTab === "solo" && (
           <>
             {profile && (
-              <div className="rpg-card space-y-3">
+              <div data-tour="boss-keys" className="rpg-card space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
                     Poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
@@ -431,7 +455,7 @@ export default function BossPage() {
             {isLoading ? (
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             ) : (
-              <div className="space-y-6">
+              <div data-tour="boss-list" className="space-y-6">
                 {activeCombat && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -1039,6 +1063,7 @@ export default function BossPage() {
           />
         );
       })()}
+      <GuidedTour tourKey="boss" steps={BOSS_TOUR_STEPS} />
     </AppLayout>
   );
 }
