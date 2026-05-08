@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Zap, ChevronRight, Trophy, Skull, LogOut, Users, Package, FlaskConical, Bot, ShieldCheck, Swords, Copy, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +28,48 @@ type BossFight = {
 };
 
 type LootDrop = { id: string; name: string; icon: string; qty: number };
+
+// ── Room Modifiers ─────────────────────────────────────────────────────────
+type ModifierKind =
+  | 'sagrado'          // ✨ blessing: enemy hp -20%
+  | 'eco_cura'         // 💚 blessing: +8% HP on room clear
+  | 'recompensa_dupla' // 💰 blessing: loot doubled
+  | 'porta_secreta'    // 🚪 blessing: +1 extra loot item
+  | 'bencao_heroi'     // ⭐ blessing: first attack is guaranteed crit
+  | 'amaldicoado'      // 💀 curse: enemy +20% HP and ATK
+  | 'eco_veneno'       // ☠️  curse: lose 6% max HP on room entry
+  | 'escuridao'        // 🌑 curse: attack dice -3
+  | 'sangramento'      // 🩸 curse: enemy deals +5 flat dmg per hit
+  | 'armadilha_oculta';// ⚙️  curse: trap damage +50%
+
+type RoomModifier = { kind: ModifierKind; label: string; icon: string; desc: string; isCurse: boolean };
+
+const ROOM_MODIFIER_POOL: RoomModifier[] = [
+  // Curses
+  { kind: 'amaldicoado',      label: 'Sala Amaldiçoada',   icon: '💀', desc: 'Inimigo mais poderoso: +20% HP e ATK.',              isCurse: true  },
+  { kind: 'eco_veneno',       label: 'Eco de Veneno',       icon: '☠️',  desc: 'Veneno ao entrar: perde 6% do HP máximo.',           isCurse: true  },
+  { kind: 'escuridao',        label: 'Escuridão Total',     icon: '🌑', desc: 'Visibilidade zero: -3 nos dados de ataque.',          isCurse: true  },
+  { kind: 'sangramento',      label: 'Aura de Sangramento', icon: '🩸', desc: 'Cada golpe inimigo causa +5 de dano extra.',          isCurse: true  },
+  { kind: 'armadilha_oculta', label: 'Armadilha Oculta',   icon: '⚙️',  desc: 'Armadilha camuflada: dano +50% se ativada.',         isCurse: true  },
+  // Blessings
+  { kind: 'sagrado',          label: 'Sala Sagrada',        icon: '✨', desc: 'Luz divina enfraquece o inimigo: -20% de HP.',        isCurse: false },
+  { kind: 'eco_cura',         label: 'Eco de Cura',         icon: '💚', desc: 'Energia restauradora: +8% HP ao limpar a sala.',      isCurse: false },
+  { kind: 'recompensa_dupla', label: 'Recompensa Dupla',    icon: '💰', desc: 'Sala abençoada: loot dobrado ao vencer.',             isCurse: false },
+  { kind: 'porta_secreta',    label: 'Porta Secreta',       icon: '🚪', desc: 'Passagem oculta: +1 item garantido.',                 isCurse: false },
+  { kind: 'bencao_heroi',     label: 'Bênção do Herói',     icon: '⭐', desc: 'Energia ancestral: primeiro ataque é crítico.',       isCurse: false },
+];
+
+function generateModifiers(totalRooms: number): (RoomModifier | null)[] {
+  return Array.from({ length: totalRooms }, (_, i) => {
+    const isBoss = i === totalRooms - 1;
+    if (Math.random() > (isBoss ? 0.60 : 0.38)) return null;
+    const cursePct = isBoss ? 0.65 : 0.50;
+    const pool = ROOM_MODIFIER_POOL.filter(m => m.isCurse === (Math.random() < cursePct));
+    const filtered = isBoss ? pool.filter(m => m.kind !== 'armadilha_oculta') : pool;
+    if (!filtered.length) return null;
+    return filtered[Math.floor(Math.random() * filtered.length)];
+  });
+}
 
 export type PotionItem = {
   invId: string;
@@ -363,7 +405,26 @@ export default function DungeonArena({
     icon:  scaledSecondary ? '⚔️' : scaledPrimary.icon,
     enemy: { ...scaledPrimary },
   };
-  const allRooms: RoomDef[] = [...dungeonRoomList, bossRoomDef];
+
+  // ── Room Modifiers ───────────────────────────────────────────────────────────────
+  // Gerados uma vez no mount, paralelos ao array allRooms.
+  // Não são afetados por rerenders; inputs estáveis durante toda a dungeon.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const roomModifiers = useMemo(() => generateModifiers(baseRooms.length + 1), []);
+  // Ref para rastrear se a bênção de crítico já foi usada na sala atual
+  const heroiCritUsedRef = useRef(false);
+  // Em co-op, não-host sincroniza o modificador pelo broadcast
+  const [syncedModifierKind, setSyncedModifierKind] = useState<ModifierKind | null>(null);
+
+  // Bake sagrado / amaldicoado into allRooms enemy stats
+  const allRooms: RoomDef[] = [...dungeonRoomList, bossRoomDef].map((room, i) => {
+    const mod = roomModifiers[i];
+    if (!mod || !room.enemy) return room;
+    const enemy = { ...room.enemy };
+    if (mod.kind === 'sagrado')     enemy.hp = Math.round(enemy.hp * 0.80);
+    if (mod.kind === 'amaldicoado') { enemy.hp = Math.round(enemy.hp * 1.20); enemy.atk = Math.round(enemy.atk * 1.20); }
+    return { ...room, enemy };
+  });
 
   // Realtime co-op channel ref
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -423,6 +484,7 @@ export default function DungeonArena({
         setLog([`📍 ${payload.roomName}`, `   ${payload.roomDesc}`]);
         if (payload.enemyHp !== undefined) setEnemyHp(payload.enemyHp);
         if (payload.boss2Hp !== undefined) setBoss2Hp(payload.boss2Hp);
+        if (payload.modifierKind !== undefined) setSyncedModifierKind(payload.modifierKind ?? null);
       })
       .subscribe();
 
@@ -483,13 +545,34 @@ export default function DungeonArena({
   // ── Enter a room ───────────────────────────────────────────────────────
   const enterRoom = useCallback((idx: number) => {
     const room = allRooms[idx];
+    const mod  = roomModifiers[idx];
     setRoomIdx(idx);
     setRoomOutcome(null);
-    setLog([`📍 ${room.name}`, `   ${room.desc}`]);
+    heroiCritUsedRef.current = false;  // reset crit blessing each room
+
+    const logLines: string[] = [`📍 ${room.name}`, `   ${room.desc}`];
+
+    // Announce modifier
+    if (mod) {
+      logLines.push(mod.isCurse
+        ? `🔴 [${mod.icon} ${mod.label}] ${mod.desc}`
+        : `🟢 [${mod.icon} ${mod.label}] ${mod.desc}`
+      );
+    }
+
+    setLog(logLines);
+
+    // Apply eco_veneno: lose 6% max HP on entry
+    if (mod?.kind === 'eco_veneno') {
+      const poison = Math.max(1, Math.round(initialPlayerMaxHp * 0.06));
+      setPlayerHp(ph => Math.max(1, ph - poison));
+    }
+
+    // Set enemy HP (room.enemy.hp already has sagrado/amaldicoado baked in)
     if (room.enemy) setEnemyHp(room.enemy.hp);
-    // Boss room: initialise dual boss HP
+    // Boss room: initialise dual boss HP (primary uses room.enemy.hp for modifier)
     if (room.type === 'boss' && scaledSecondary) {
-      setEnemyHp(scaledPrimary.hp);
+      setEnemyHp(room.enemy?.hp ?? scaledPrimary.hp);
       setBoss2Hp(scaledSecondary.hp);
       setBossEnraged(false);
     } else {
@@ -502,8 +585,9 @@ export default function DungeonArena({
       roomDesc: room.desc,
       enemyHp: room.enemy?.hp ?? 0,
       boss2Hp: (room.type === 'boss' && scaledSecondary) ? scaledSecondary.hp : 0,
+      modifierKind: mod?.kind ?? null,
     });
-  }, [allRooms, scaledPrimary, scaledSecondary, broadcastAction]);
+  }, [allRooms, roomModifiers, scaledPrimary, scaledSecondary, initialPlayerMaxHp, broadcastAction]);
 
   // ── Action handler (one round / one action per click) ──────────────────
   const handleAction = useCallback(() => {
@@ -526,15 +610,30 @@ export default function DungeonArena({
       const friendBonus   = sessionPlayers ? 0 : Math.min(friendCount * 0.18, 0.65);
       const effAtk        = Math.round(baseAtk * (sessionPlayers ? 1 : (1 + friendBonus)));
 
-      const pRoll = d(20);
+      // ── Apply room modifier effects on dice ────────────────────────
+      const mod = roomModifiers[roomIdx];
+      const rawRoll  = d(20);
+      // escuridao: -3 to attack dice (min 1)
+      const pRoll    = mod?.kind === 'escuridao' ? Math.max(1, rawRoll - 3) : rawRoll;
+      // bencao_heroi: first attack in room is guaranteed crit
+      const isBencaoHeroi = mod?.kind === 'bencao_heroi' && !heroiCritUsedRef.current;
+      if (isBencaoHeroi) heroiCritUsedRef.current = true;
       const eRoll = d(20);
-      const crit  = pRoll === 20;
+      const crit  = pRoll === 20 || isBencaoHeroi;
+      // Loot multiplier for this room
+      const lootMult   = mod?.kind === 'recompensa_dupla' ? 2 : 1;
+      const lootBonus  = mod?.kind === 'porta_secreta' ? 1 : 0;
+      // Modifier prefix for log
+      const modTag = mod && mod.kind !== 'sagrado' && mod.kind !== 'amaldicoado' && mod.kind !== 'eco_veneno' && mod.kind !== 'eco_cura' && mod.kind !== 'recompensa_dupla' && mod.kind !== 'porta_secreta' && mod.kind !== 'bencao_heroi'
+        ? ` [${mod.icon}]` : '';
 
       // ── DUAL BOSS: target secondary first ──────────────────────────
       if (isBoss && scaledSecondary && boss2Hp > 0) {
         const basePDmg = Math.max(1, Math.round((pRoll * effAtk) / 15));
         const pDmg     = crit ? basePDmg * 2 : basePDmg;
         const newLog: string[] = [];
+        if (mod?.kind === 'escuridao' && rawRoll !== pRoll) newLog.push(`🌑 [Escuridão] Dado reduzido de ${rawRoll} → ${pRoll}!`);
+        if (isBencaoHeroi) newLog.push(`⭐ [Bênção do Herói] Ataque crítico garantido!`);
 
         setBoss2Hp(prev => {
           const newB2Hp = Math.max(0, prev - pDmg);
@@ -547,13 +646,14 @@ export default function DungeonArena({
               newLog.push(`😡 ${scaledPrimary.name} ENFURECEU! +${scaledSecondary.enragePrimary}% de ATK!`);
             }
             setBossEnraged(true);
-            const loot = rollLoot(2);
+            const loot = rollLoot(2 * lootMult + lootBonus);
             setAllLoot(al => mergeLoot(al, loot));
             loot.forEach(l => newLog.push(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
           } else {
             // Secondary retaliates
             const enrageAtk = scaledSecondary.atk;
-            const rawEDmg = Math.max(1, Math.round((eRoll * enrageAtk) / 15) - Math.floor(effectivePlayerDef / 6));
+            const sanguinBonus = mod?.kind === 'sangramento' ? 5 : 0;
+            const rawEDmg = Math.max(1, Math.round((eRoll * enrageAtk) / 15) - Math.floor(effectivePlayerDef / 6) + sanguinBonus);
             newLog.push(`👹 ${scaledSecondary.name} rolou ${eRoll} → ${rawEDmg} dano em você!`);
             setPlayerHp(ph => {
               const newHp = Math.max(0, ph - rawEDmg);
@@ -585,6 +685,8 @@ export default function DungeonArena({
       const pDmg     = Math.round((crit ? basePDmg * 2 : basePDmg) * protectionFactor);
 
       const newLogLines: string[] = [];
+      if (mod?.kind === 'escuridao' && rawRoll !== pRoll) newLogLines.push(`🌑 [Escuridão] Dado reduzido de ${rawRoll} → ${pRoll}!`);
+      if (isBencaoHeroi) newLogLines.push(`⭐ [Bênção do Herói] Ataque crítico garantido!`);
 
       setEnemyHp(prev => {
         const newEnemyHp = Math.max(0, prev - pDmg);
@@ -597,9 +699,18 @@ export default function DungeonArena({
         if (newEnemyHp <= 0) {
           newLogLines.push(`✅ ${room.enemy?.name} derrotado!`);
           if (isBoss) newLogLines.push(`🏆 Boss Final eliminado! A masmorra é sua!`);
-          const loot = rollLoot(isBoss ? 4 : 2);
+          const baseLootRolls = isBoss ? 4 : 2;
+          const loot = rollLoot(baseLootRolls * lootMult + lootBonus);
           setAllLoot(al => mergeLoot(al, loot));
           loot.forEach(l => newLogLines.push(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
+          if (mod?.kind === 'recompensa_dupla') newLogLines.push(`💰 [Recompensa Dupla] Loot dobrado!`);
+          if (mod?.kind === 'porta_secreta')    newLogLines.push(`🚪 [Porta Secreta] +1 item bônus encontrado!`);
+          // eco_cura: heal after clearing room
+          if (mod?.kind === 'eco_cura') {
+            const ecoCuraHeal = Math.round(initialPlayerMaxHp * 0.08);
+            setPlayerHp(ph => Math.min(ph + ecoCuraHeal, initialPlayerMaxHp));
+            newLogLines.push(`💚 [Eco de Cura] +${ecoCuraHeal} HP restaurados!`);
+          }
           setRoomOutcome('success');
           if (isBoss) { setTimeout(() => setPhase('victory'), 800); }
           setTimeout(() => newLogLines.forEach(l => addLog(l)), 0);
@@ -608,10 +719,11 @@ export default function DungeonArena({
         }
 
         // Enemy attacks back
-        const rawEDmg = Math.max(1, Math.round((eRoll * enemyAtkEff) / 15) - Math.floor(effectivePlayerDef / 6));
+        const sanguinBonus = mod?.kind === 'sangramento' ? 5 : 0;
+        const rawEDmg = Math.max(1, Math.round((eRoll * enemyAtkEff) / 15) - Math.floor(effectivePlayerDef / 6) + sanguinBonus);
         const eDmg = Math.max(1, rawEDmg);
-        if (bossEnraged) newLogLines.push(`😡 [ENFURECIDO] ${room.enemy?.name} rolou ${eRoll} → ${eDmg} dano!`);
-        else newLogLines.push(`👹 ${room.enemy?.name} rolou ${eRoll} → ${eDmg} de dano em você!`);
+        if (bossEnraged) newLogLines.push(`😡 [ENFURECIDO] ${room.enemy?.name} rolou ${eRoll} → ${eDmg} dano!${sanguinBonus > 0 ? ` 🩸 +${sanguinBonus} sangramento` : ''}`);
+        else newLogLines.push(`👹 ${room.enemy?.name} rolou ${eRoll}${modTag} → ${eDmg} de dano em você!`);
 
         setPlayerHp(ph => {
           const newHp = Math.max(0, ph - eDmg);
@@ -638,9 +750,14 @@ export default function DungeonArena({
       if (success) {
         addLog(`✅ ${room.npcName} foi resgatado! Você ganha +50 XP bônus.`);
         setRescued(r => r + 1);
-        const loot = rollLoot(2);
+        const loot = rollLoot(2 * lootMult + lootBonus);
         setAllLoot(al => mergeLoot(al, loot));
         loot.forEach(l => addLog(`   📦 ${room.npcName} te dá: +${l.qty}x ${l.icon} ${l.name}`));
+        if (mod?.kind === 'eco_cura') {
+          const heal = Math.round(initialPlayerMaxHp * 0.08);
+          setPlayerHp(ph => Math.min(ph + heal, initialPlayerMaxHp));
+          addLog(`💚 [Eco de Cura] +${heal} HP restaurados!`);
+        }
         setRoomOutcome('success');
       } else {
         addLog(`❌ Não foi possível resgatar ${room.npcName}.`);
@@ -649,9 +766,11 @@ export default function DungeonArena({
 
     } else if (room.type === 'treasure') {
       addLog(`🔑 Você abre o baú com cuidado...`);
-      const loot = rollLoot(3);
+      const loot = rollLoot(3 * lootMult + lootBonus);
       setAllLoot(al => mergeLoot(al, loot));
       loot.forEach(l => addLog(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
+      if (mod?.kind === 'recompensa_dupla') addLog(`💰 [Recompensa Dupla] Loot dobrado!`);
+      if (mod?.kind === 'porta_secreta')    addLog(`🚪 [Porta Secreta] +1 item bônus!`);
       addLog(`💰 Itens de fabricação encontrados!`);
       setRoomOutcome('success');
 
@@ -659,14 +778,16 @@ export default function DungeonArena({
       const roll = d(20) + Math.floor(effectiveDungeonLevel / 3);
       const evaded = roll >= 14;
       addLog(`🏃 Tentativa de desvio — rolou ${roll} (min: 14)`);
+      if (mod?.kind === 'armadilha_oculta') addLog(`⚙️ [Armadilha Oculta] Armadilha camuflada detectada! Dano +50%.`);
       if (evaded) {
         addLog(`✅ Você desviou da armadilha! Nenhum dano.`);
-        const loot = rollLoot(1);
+        const loot = rollLoot(1 * lootMult + lootBonus);
         setAllLoot(al => mergeLoot(al, loot));
         loot.forEach(l => addLog(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
         setRoomOutcome('success');
       } else {
-        const dmg = room.trapDmg || 20;
+        const baseTrapDmg = room.trapDmg || 20;
+        const dmg = mod?.kind === 'armadilha_oculta' ? Math.round(baseTrapDmg * 1.5) : baseTrapDmg;
         addLog(`💥 Armadilha disparada! -${dmg} HP`);
         setPlayerHp(ph => {
           const newHp = Math.max(1, ph - dmg);
@@ -693,7 +814,7 @@ export default function DungeonArena({
       loot.forEach(l => addLog(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
       setRoomOutcome('success');
     }
-  }, [allRooms, roomIdx, effectivePlayerAtk, effectivePlayerDef, effectiveDungeonLevel, partyMinLevel, SIDEKICK_BUFFER, friendCount, sessionPlayers, boss2Hp, bossEnraged, scaledPrimary, scaledSecondary, bossFight, initialPlayerMaxHp, initialPlayerMaxMp, addLog, usePotion, broadcastAction, enemyHp, roomOutcome, isHost]);
+  }, [allRooms, roomIdx, roomModifiers, effectivePlayerAtk, effectivePlayerDef, effectiveDungeonLevel, partyMinLevel, SIDEKICK_BUFFER, friendCount, sessionPlayers, boss2Hp, bossEnraged, scaledPrimary, scaledSecondary, bossFight, initialPlayerMaxHp, initialPlayerMaxMp, addLog, usePotion, broadcastAction, enemyHp, roomOutcome, isHost]);
 
   // ── Continue to next room ──────────────────────────────────────────────
   const handleContinue = useCallback(() => {
@@ -818,6 +939,11 @@ export default function DungeonArena({
 
   const outcomeColor = roomOutcome === 'success' ? 'text-emerald-400' : roomOutcome === 'failure' ? 'text-red-400' : 'text-yellow-400';
   const outcomeLabel = roomOutcome === 'success' ? '✅ Sucesso!' : roomOutcome === 'failure' ? '❌ Falhou' : '⚠️ Parcial';
+
+  // Current room modifier (host uses own array; non-host syncs from broadcast)
+  const currentMod: RoomModifier | null = isHost
+    ? (roomModifiers[roomIdx] ?? null)
+    : (syncedModifierKind ? ROOM_MODIFIER_POOL.find(m => m.kind === syncedModifierKind) ?? null : null);
 
   // ── RENDER ─────────────────────────────────────────────────────────────
   return (
@@ -1041,16 +1167,21 @@ export default function DungeonArena({
                 />
               </div>
               <div className="flex gap-1 mt-1">
-                {allRooms.map((r, i) => (
-                  <div
-                    key={i}
-                    className={`flex-1 h-1.5 rounded-full ${
-                      i < roomIdx ? 'bg-emerald-500' :
-                      i === roomIdx ? (isBossRoom ? 'bg-red-500' : 'bg-purple-400') :
-                      'bg-muted/40'
-                    }`}
-                  />
-                ))}
+                {allRooms.map((r, i) => {
+                  const dotMod = isHost ? roomModifiers[i] : null;
+                  return (
+                    <div
+                      key={i}
+                      className={`flex-1 h-1.5 rounded-full ${
+                        i < roomIdx ? 'bg-emerald-500' :
+                        i === roomIdx ? (isBossRoom ? 'bg-red-500' : 'bg-purple-400') :
+                        dotMod ? (dotMod.isCurse ? 'bg-red-900/60' : 'bg-emerald-900/60') :
+                        'bg-muted/40'
+                      }`}
+                      title={dotMod ? `${dotMod.icon} ${dotMod.label}` : undefined}
+                    />
+                  );
+                })}
               </div>
             </div>
 
@@ -1069,8 +1200,18 @@ export default function DungeonArena({
                     <h3 className={`font-display font-bold text-lg ${isBossRoom ? 'text-red-300' : 'text-purple-300'}`}>
                       {currentRoom.name}
                     </h3>
+                    {/* Room modifier badge */}
+                    {currentMod && (
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border mt-1 ${
+                        currentMod.isCurse
+                          ? 'text-red-300 bg-red-500/15 border-red-500/40'
+                          : 'text-emerald-300 bg-emerald-500/15 border-emerald-500/40'
+                      }`}>
+                        {currentMod.icon} {currentMod.label}
+                      </span>
+                    )}
                     {roomOutcome !== null && (
-                      <span className={`text-sm font-bold ${outcomeColor}`}>{outcomeLabel}</span>
+                      <span className={`text-sm font-bold block mt-1 ${outcomeColor}`}>{outcomeLabel}</span>
                     )}
                   </div>
                 </div>
