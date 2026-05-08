@@ -318,8 +318,9 @@ export default function CombatArena({
 
   // Guerreiro Imortal: detectar pelo nome
   const isImmortalBoss = useMemo(() => /guerreiro\s+imortal/i.test(bossName ?? ''), [bossName]);
-  // Fênix do Caos: renasce 3x; na 4ª morte funde-se com Esfinge do Deserto
-  const isPhoenixBoss  = useMemo(() => /f[eê]nix|phoenix/i.test(bossName ?? '') && !/esfinge/i.test(bossName ?? ''), [bossName]);
+  // Fênix Renascente (lv10): renasce 3x e funde com Esfinge do Deserto
+  // Nota: "Fênix Sombria" (lv45) é uma boss diferente — sem mecânica de renascimento
+  const isPhoenixBoss  = useMemo(() => /f[eê]nix\s+renascente/i.test(bossName ?? ''), [bossName]);
   // Rancor Sombrio: confronta o heroi com suas falhas
   const isRancorBoss = useMemo(() => /rancor\s+sombrio/i.test(bossName ?? ''), [bossName]);
   // 'none' = combate normal | 'reborn' = mostrando overlay de renascimento
