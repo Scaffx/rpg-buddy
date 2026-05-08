@@ -11,6 +11,9 @@ import {
   useChecklistItems,
   useAddChecklistItem,
   useToggleChecklistItem,
+  computeStreakFromDailyStatus,
+  getStreakXpMultiplier,
+  getStreakXpBonusLabel,
 } from "@/hooks/useProfile";
 import {
   useUpdateMission,
@@ -446,17 +449,27 @@ const handleSave = async () => {
 
   const handleComplete = async (mission: any) => {
     try {
-      await completeMission.mutateAsync({
+      const result = await completeMission.mutateAsync({
         missionId: mission.id,
         attributeId: mission.attribute_id,
         xpReward: mission.xp_reward,
         secondaryAttributeIds: (mission as any).secondary_attribute_ids || [],
       });
 
-      toast({
-        title: t('app.missions.mission_completed'),
-        description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
-      });
+      const streak = (result as any)?.streakDays ?? 0;
+      const bonusLabel = getStreakXpBonusLabel(streak);
+
+      if (streak >= 3 && bonusLabel) {
+        toast({
+          title: `🔥 Streak ${streak} dias! ${bonusLabel}`,
+          description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
+        });
+      } else {
+        toast({
+          title: t('app.missions.mission_completed'),
+          description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
+        });
+      }
     } catch {
       toast({ title: "Erro", variant: "destructive" });
     }
@@ -1172,6 +1185,20 @@ function MissionCard({
           {days.length > 0 && (
             <span className="text-xs font-medium bg-primary/15 text-primary px-2 py-0.5 rounded">📅 Diária</span>
           )}
+          {days.length > 0 && (() => {
+            const streak = computeStreakFromDailyStatus((mission.daily_status as Record<string,string>) || {});
+            if (streak < 2) return null;
+            const bonusLabel = getStreakXpBonusLabel(streak + 1); // +1 = se completar hoje
+            return (
+              <span
+                className="text-xs font-bold px-2 py-0.5 rounded"
+                style={{ background: 'hsl(22 100% 30% / 0.25)', color: 'hsl(38 100% 65%)' }}
+                title={`Streak: ${streak} dias consecutivos${bonusLabel ? ` — completar hoje dá ${bonusLabel}` : ''}`}
+              >
+                🔥 {streak}{bonusLabel && ` · ${bonusLabel}`}
+              </span>
+            );
+          })()}
           {mission.due_date && days.length === 0 && (
             <span className="text-xs font-medium bg-orange-400/15 text-orange-400 px-2 py-0.5 rounded">🎯 Única</span>
           )}

@@ -159,6 +159,50 @@ async function getPlayerTalentEffects(userId: string): Promise<Set<string>> {
   return effects;
 }
 
+// ── STREAK HELPERS ────────────────────────────────────────────────────
+/** Calcula a streak de uma missão diária a partir do daily_status (sem query DB). */
+export function computeStreakFromDailyStatus(
+  dailyStatus: Record<string, string>,
+): number {
+  const completedDates = Object.entries(dailyStatus)
+    .filter(([, v]) => v === 'completed')
+    .map(([d]) => d)
+    .sort((a, b) => (b > a ? 1 : -1)); // mais recente primeiro
+
+  if (completedDates.length === 0) return 0;
+
+  let streak = 1;
+  for (let i = 0; i < completedDates.length - 1; i++) {
+    const curr = new Date(completedDates[i] + 'T12:00:00');
+    const next = new Date(completedDates[i + 1] + 'T12:00:00');
+    const diffDays = Math.round((curr.getTime() - next.getTime()) / 86400000);
+    if (diffDays <= 2) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+/** Retorna o multiplicador de XP com base na streak de missão. */
+export function getStreakXpMultiplier(streak: number): number {
+  if (streak >= 30) return 2.0;   // +100% XP
+  if (streak >= 14) return 1.5;   // +50%
+  if (streak >= 7)  return 1.25;  // +25%
+  if (streak >= 3)  return 1.10;  // +10%
+  return 1.0;
+}
+
+/** Rótulo legível do bônus de streak para exibir na UI. */
+export function getStreakXpBonusLabel(streak: number): string {
+  if (streak >= 30) return '+100% XP';
+  if (streak >= 14) return '+50% XP';
+  if (streak >= 7)  return '+25% XP';
+  if (streak >= 3)  return '+10% XP';
+  return '';
+}
+
 async function getMissionGoldRewardFromStreakWithTalent(
   missionId: string,
   today: string,
@@ -614,6 +658,17 @@ export const useCompleteMission = () => {
       // Missões criadas por NPC não concedem XP — apenas ouro
       const isNpcMission = !!typedMission.npc_id;
 
+      // ── Streak XP ────────────────────────────────────────────────────────
+      // Calculado ANTES de registrar a conclusão de hoje para contar a sequência correta.
+      const dailyStatus = (typedMission.daily_status as Record<string, string>) || {};
+      const isDailyMission = ((typedMission.days_of_week as string[]) || []).length > 0;
+      // +1: este completion vai estender a streak
+      const priorStreak = isDailyMission ? computeStreakFromDailyStatus(dailyStatus) : 0;
+      const newStreak = isDailyMission ? priorStreak + 1 : 0;
+      const streakMultiplier = getStreakXpMultiplier(newStreak);
+      // Aplica bônus de streak SOBRE o xpMultiplier já calculado
+      const scaledXpRewardWithStreak = Math.round(scaledXpReward * streakMultiplier);
+
       const missionCategory = deriveMissionCategory({
         mission: typedMission,
         primaryAttributeName: String((primaryAttrMeta as any)?.name || ''),
@@ -652,7 +707,7 @@ export const useCompleteMission = () => {
           .insert({
             mission_id: missionId,
             completion_date: today,
-            xp_earned: scaledXpReward,
+            xp_earned: scaledXpRewardWithStreak,
             gold_earned: goldReward,
             user_id: user!.id,
           });
@@ -707,7 +762,7 @@ export const useCompleteMission = () => {
         .filter((item: any) => item.completed)
         .reduce((sum: number, item: any) => sum + (item.xp_bonus || 2), 0);
 
-      const totalXpReward = isNpcMission ? 0 : scaledXpReward + checklistBonus;
+      const totalXpReward = isNpcMission ? 0 : scaledXpRewardWithStreak + checklistBonus;
 
       // Atualizar atributo primário
       const { data: attr } = await supabase
@@ -855,7 +910,7 @@ export const useCompleteMission = () => {
 
       const inspiredGranted = await grantInspirationIfPerfectDay(user!.id, today);
 
-      return { success: true, inspiredGranted };
+      return { success: true, inspiredGranted, streakDays: newStreak, streakMultiplier };
     },
 
     // ⚡ OPTIMISTIC UPDATE: marca a missão como concluída na UI antes do servidor responder.
