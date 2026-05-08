@@ -109,6 +109,7 @@ export default function Landing() {
                 </Button>
               </>
             )}
+          </div>
         </div>
       </header>
 
