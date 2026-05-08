@@ -120,6 +120,14 @@ export default function BossPage() {
   const attrLevels = getAttributeLevels(attributes as any[]);
   const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
   const equipBonuses = getEquipmentBonuses((inventory || []) as InventoryItem[]);
+
+  /** True se o jogador possui Tridente de Poseidon OU Chama Eterna de Ifrit */
+  const phoenixCanDie = Boolean(
+    inventory?.some((inv) =>
+      (inv.game_items as any)?.effect === 'derrota_fenix_permanente' ||
+      (inv.game_items as any)?.effect === 'captura_fenix_pet',
+    ),
+  );
   const playerStats = {
     ...playerStatsBase,
     atk:  playerStatsBase.atk  + equipBonuses.atk,
@@ -255,6 +263,34 @@ export default function BossPage() {
 
   const handleCombatClose = () => {
     setActiveCombat(null);
+  };
+
+  /** Fênix Renascente: escapa — incrementa o escape count e fecha o combate */
+  const handlePhoenixEscaped = async () => {
+    if (!user) return;
+    try {
+      const { data: choices } = await supabase
+        .from('hero_story_choices' as never)
+        .select('phoenix_escape_count' as never)
+        .eq('user_id' as never, user.id as never)
+        .maybeSingle();
+      const currentCount = (choices as any)?.phoenix_escape_count ?? 0;
+      await supabase.from('hero_story_choices' as never).upsert({
+        user_id: user.id,
+        phoenix_escape_count: currentCount + 1,
+      } as never, { onConflict: 'user_id' });
+      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
+      const nextLevel = 10 + (currentCount + 1) * 10;
+      toast({
+        title: '🔥 A fênix escapou!',
+        description: `Ela ressurgirá mais poderosa. Próxima forma: Lv${nextLevel}. Busque o Tridente de Poseidon ou a Chama de Ifrit para detê-la.`,
+        duration: 6000,
+      });
+    } catch {
+      // silencioso — UI atualiza via invalidate
+    } finally {
+      setActiveCombat(null);
+    }
   };
 
   const dungeons = useMemo(() => [
@@ -716,6 +752,8 @@ export default function BossPage() {
                         )}
                         onImmortalFlee={handleCombatClose}
                         onImmortalTrueDefeat={handleImmortalTrueDefeat}
+                        phoenixCanDie={phoenixCanDie}
+                        onPhoenixEscaped={handlePhoenixEscaped}
                         companionData={skeletonCompanion ? {
                           name: skeletonCompanion.name,
                           level: skeletonCompanion.level,

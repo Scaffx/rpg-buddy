@@ -111,6 +111,10 @@ type CombatArenaProps = {
   onImmortalFlee?: () => void;
   /** Chamado quando o jogador usa a Cabeça de Basilisco para derrota verdadeira */
   onImmortalTrueDefeat?: () => void;
+  /** True se o jogador possui Tridente de Poseidon OU Chama Eterna de Ifrit — permite matar a Fênix permanentemente */
+  phoenixCanDie?: boolean;
+  /** Chamado quando a Fênix escapa (sem os itens especiais) — deve incrementar o escape count no DB */
+  onPhoenixEscaped?: () => void;
   /** Companheiro de boss (ex: Ossinho) que duela ao lado do herói */
   companionData?: { name: string; level: number; mood: number };
 };
@@ -304,6 +308,8 @@ export default function CombatArena({
   hasBasiliscoHead = false,
   onImmortalFlee,
   onImmortalTrueDefeat,
+  phoenixCanDie = false,
+  onPhoenixEscaped,
   companionData,
 }: CombatArenaProps) {
   const { user } = useAuth();
@@ -327,12 +333,13 @@ export default function CombatArena({
   const [immortalPhase, setImmortalPhase] = useState<'none' | 'reborn'>('none');
   // Conta quantas vezes o imortal renasceu nesta sessão (0 = primeira vez)
   const immortalRebirthCountRef = useRef(0);
-  // Fênix: conta mortes (max 3 rebirths → 4ª morte = fusão)
+  // Fênix Renascente: conta mortes (será ignorado quando phoenixCanDie = true)
   const phoenixKillCountRef = useRef(0);
-  // 'none' | 'reborn' | 'fused' (fusão com Esfinge)
-  const [phoenixPhase, setPhoenixPhase] = useState<'none' | 'reborn' | 'fused'>('none');
-  // Nome exibido na arena (muda quando Fênix se funde)
-  const displayBossName = phoenixPhase === 'fused' ? 'Fênix + Esfinge do Deserto' : (bossName ?? '');
+  // 'none' | 'escaped' (— fugiu, nenhum dano permanente)
+  const [phoenixPhase, setPhoenixPhase] = useState<'none' | 'escaped'>('none');
+  // Typewriter: texto exibido letra a letra no overlay de fuga
+  const [phoenixTypewriterText, setPhoenixTypewriterText] = useState('');
+  const PHOENIX_MESSAGE = 'A fênix nunca morre';
 
   const [turn, setTurn] = useState<Turn>('idle');
   const [isRolling, setIsRolling] = useState(false);
@@ -412,6 +419,22 @@ export default function CombatArena({
   useEffect(() => {
     summonedUnitsRef.current = summonedUnits;
   }, [summonedUnits]);
+
+  // Typewriter para overlay de fuga da Fênix
+  useEffect(() => {
+    if (phoenixPhase !== 'escaped') {
+      setPhoenixTypewriterText('');
+      return;
+    }
+    let idx = 0;
+    setPhoenixTypewriterText('');
+    const interval = window.setInterval(() => {
+      idx += 1;
+      setPhoenixTypewriterText(PHOENIX_MESSAGE.slice(0, idx));
+      if (idx >= PHOENIX_MESSAGE.length) window.clearInterval(interval);
+    }, 90);
+    return () => window.clearInterval(interval);
+  }, [phoenixPhase]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -601,39 +624,11 @@ export default function CombatArena({
     setTurn('player');
   };
 
-  /** Reinicia o combate após renascimento da Fênix (mantém HP do jogador). */
-  const handlePhoenixFightAgain = async (fusedHp?: number) => {
-    const targetHp = fusedHp ?? initialBossHp;
-    if (combateId && user) {
-      void supabase
-        .from('combates_ativos' as never)
-        .update({ hp_atual_boss: targetHp } as never)
-        .eq('id' as never, combateId as never);
-    }
+  /** Fecha o overlay de fuga da Fênix e retorna ao mapa de bosses. */
+  const handlePhoenixEscapeClose = () => {
     setPhoenixPhase('none');
-    currentBattleTokenRef.current += 1;
-    skillCursorRef.current = 0;
-    setBossHp(targetHp);
-    setBossResource(Math.round(targetHp * 0.5));
-    setRollValue(null);
-    setDamagePopups([]);
-    setHitEffects([]);
-    setArenaShake(false);
-    setScreenFlash(false);
-    setLootDrop(null);
-    setBattleLog([]);
-    setCritParticles([]);
-    setConfetti([]);
-    setShowVictory(false);
-    setShowDefeat(false);
-    setInsufficientResourceWarning(null);
-    setSummonedUnits([]);
-    summonedUnitsRef.current = [];
-    setHealPopups([]);
-    setBossStunnedVisual(false);
-    setLastBuffShield(null);
-    setLastDebuffShred(null);
-    setTurn('player');
+    onPhoenixEscaped?.();
+    onClose?.();
   };
 
   /** Rancor Sombrio: heroi escolhe continuar após reconstituição. */
@@ -964,26 +959,14 @@ export default function CombatArena({
               setBossResource(bossResourceMax);
             }, 2000);
           } else if (isPhoenixBoss) {
-            phoenixKillCountRef.current += 1;
-            setShowVictory(true);
-            sfx.victory();
-            if (phoenixKillCountRef.current < 3) {
-              setTimeout(() => {
-                if (!mountedRef.current) return;
-                setShowVictory(false);
-                setPhoenixPhase('reborn');
-                setBossHp(initialBossHp);
-                setBossResource(bossResourceMax);
-              }, 2000);
+            if (phoenixCanDie) {
+              // Jogador tem o item especial — vitória verdadeira com XP
+              if (turnResult.loot_drop) setLootDrop(turnResult.loot_drop);
+              launchVictoryCinematic();
             } else {
-              setTimeout(() => {
-                if (!mountedRef.current) return;
-                setShowVictory(false);
-                setPhoenixPhase('fused');
-                const fusedHp = Math.round(initialBossHp * 2.5);
-                setBossHp(fusedHp);
-                setBossResource(Math.round(fusedHp * 0.5));
-              }, 2200);
+              // Fênix é imortal — escapa sem dar XP
+              phoenixKillCountRef.current += 1;
+              setPhoenixPhase('escaped');
             }
           } else {
             if (turnResult.loot_drop) setLootDrop(turnResult.loot_drop);
@@ -1044,30 +1027,13 @@ export default function CombatArena({
           }, 2000);
         } else if (isPhoenixBoss) {
           phoenixKillCountRef.current += 1;
-          if (phoenixKillCountRef.current < 3) {
-            // Renascimento 1 ou 2 — volta com HP cheio
-            setShowVictory(true);
-            sfx.victory();
-            setTimeout(() => {
-              if (!mountedRef.current) return;
-              setShowVictory(false);
-              setPhoenixPhase('reborn');
-              setBossHp(initialBossHp);
-              setBossResource(bossResourceMax);
-            }, 2000);
+          if (phoenixCanDie) {
+            // Jogador tem o item especial — vitória verdadeira com XP
+            if (turnResult.loot_drop) setLootDrop(turnResult.loot_drop);
+            launchVictoryCinematic();
           } else {
-            // 3ª morte → FUSÃO com Esfinge do Deserto
-            setShowVictory(true);
-            sfx.victory();
-            setTimeout(() => {
-              if (!mountedRef.current) return;
-              setShowVictory(false);
-              setPhoenixPhase('fused');
-              // Fênix fundida: HP muito mais alto
-              const fusedHp = Math.round(initialBossHp * 2.5);
-              setBossHp(fusedHp);
-              setBossResource(Math.round(fusedHp * 0.5));
-            }, 2200);
+            // Fênix é imortal — escapa sem dar XP
+            setPhoenixPhase('escaped');
           }
         } else {
           launchVictoryCinematic();
@@ -1807,71 +1773,98 @@ export default function CombatArena({
         </div>
       )}
 
-      {/* ── Overlay de Renascimento / Fusão da Fênix ──────────────────────────── */}
-      {(phoenixPhase === 'reborn' || phoenixPhase === 'fused') && (
+      {/* ── Overlay de Fuga da Fênix ─────────────────────────────────────── */}
+      {phoenixPhase === 'escaped' && (
         <div className="pointer-events-auto fixed inset-0 z-50 overflow-hidden flex flex-col items-center justify-center">
           <div className="absolute inset-0 bg-black" />
+          {/* Radial glow laranja-fogo */}
           <div
-            className="absolute inset-0 animate-defeat-shake"
+            className="absolute inset-0"
             style={{
-              background: phoenixPhase === 'fused'
-                ? 'radial-gradient(ellipse at center, hsl(30 90% 30% / 0.6) 0%, transparent 70%)'
-                : 'radial-gradient(ellipse at center, hsl(22 100% 30% / 0.5) 0%, transparent 70%)',
+              background: 'radial-gradient(ellipse at center, hsl(22 100% 25% / 0.55) 0%, transparent 68%)',
             }}
           />
+          {/* Partículas de chama (pseudo-element via box-shadow animado) */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {Array.from({ length: 18 }).map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: 6 + Math.random() * 10,
+                  height: 6 + Math.random() * 10,
+                  left: `${10 + Math.random() * 80}%`,
+                  background: `hsl(${20 + Math.random() * 30} 100% ${50 + Math.random() * 25}%)`,
+                  filter: 'blur(3px)',
+                }}
+                initial={{ y: 0, opacity: 0.8 }}
+                animate={{ y: -320 - Math.random() * 200, opacity: 0 }}
+                transition={{ duration: 2.5 + Math.random() * 2, delay: Math.random() * 1.5, repeat: Infinity, repeatDelay: Math.random() * 2 }}
+              />
+            ))}
+          </div>
+
           <div className="relative z-10 text-center space-y-8 px-6 max-w-2xl">
+            {/* Emoji de fênix */}
             <motion.div
-              initial={{ scale: 0.05, opacity: 0 }}
+              initial={{ scale: 0.1, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.9, type: 'spring', stiffness: 150, damping: 12 }}
+              transition={{ duration: 0.8, type: 'spring', stiffness: 140, damping: 14 }}
             >
-              {phoenixPhase === 'fused' ? (
-                <>
-                  <p className="text-6xl mb-4">🔥🦁</p>
-                  <p className="font-cinzel font-black text-4xl md:text-6xl text-orange-400 drop-shadow-[0_0_40px_hsl(22_100%_55%/1)] leading-tight uppercase">
-                    FUSÃO!<br />Fênix + Esfinge<br />do Deserto
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-6xl mb-4">🔥</p>
-                  <p className="font-cinzel font-black text-5xl md:text-7xl text-orange-500 drop-shadow-[0_0_50px_hsl(22_100%_55%/1)] leading-tight uppercase">
-                    A FÊNIX<br />RENASCE<br />DAS CINZAS
-                  </p>
-                </>
-              )}
+              <p className="text-7xl mb-2 drop-shadow-[0_0_40px_hsl(22_100%_60%)]">🔥</p>
             </motion.div>
 
+            {/* Typewriter "A fênix nunca morre" */}
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              className="text-orange-200/70 text-sm md:text-base tracking-widest"
+              transition={{ delay: 0.4 }}
+              className="font-cinzel font-black text-4xl md:text-6xl leading-tight uppercase"
+              style={{
+                background: 'linear-gradient(90deg, hsl(38 100% 60%), hsl(16 100% 55%), hsl(38 100% 75%))',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 0 30px hsl(22 100% 55% / 0.9))',
+                minHeight: '1.2em',
+              }}
             >
-              {phoenixPhase === 'fused'
-                ? 'A Fênix derrotada 3 vezes uniu sua chama à sabedoria sombria da Esfinge. Uma dupla imparável desperta!'
-                : `Renascimento ${phoenixKillCountRef.current}/3 — Ela não pode ser destruída apenas com força bruta...`}
+              {phoenixTypewriterText}
+              {/* cursor piscante enquanto o texto ainda está sendo escrito */}
+              {phoenixTypewriterText.length < PHOENIX_MESSAGE.length && (
+                <motion.span
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.6, repeat: Infinity }}
+                  style={{ WebkitTextFillColor: 'hsl(38 100% 70%)' }}
+                >|</motion.span>
+              )}
             </motion.p>
 
+            {/* Subtítulo: próximo nível */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2.2 }}
+              className="text-orange-200/70 text-sm md:text-base tracking-widest"
+            >
+              Ela escapou das cinzas e ressurge ainda mais poderosa.
+              <br />
+              <span className="text-orange-400/80 text-xs">
+                Derrote Poseidon ou Ifrit para obter o poder de pará-la definitivamente.
+              </span>
+            </motion.p>
+
+            {/* Botão fechar */}
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.2 }}
-              className="flex flex-col items-center gap-3"
+              transition={{ delay: 2.8 }}
             >
               <button
                 type="button"
-                onClick={() => handlePhoenixFightAgain(phoenixPhase === 'fused' ? Math.round(initialBossHp * 2.5) : undefined)}
-                className="w-72 rounded-xl border border-orange-500/50 bg-orange-800/50 px-6 py-3.5 font-bold text-orange-100 hover:bg-orange-700/70 transition text-base"
+                onClick={handlePhoenixEscapeClose}
+                className="w-72 rounded-xl border border-orange-500/50 bg-orange-900/50 px-6 py-3.5 font-bold text-orange-100 hover:bg-orange-800/70 transition text-base"
               >
-                {phoenixPhase === 'fused' ? '⚔️ Enfrentar a Dupla Fusionada' : '⚔️ Enfrentar Novamente'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setPhoenixPhase('none'); onClose?.(); }}
-                className="w-72 rounded-xl border border-zinc-600/50 bg-zinc-800/60 px-6 py-3 text-zinc-300 hover:bg-zinc-700/70 transition text-sm"
-              >
-                🏃 Fugir (Abandonar)
+                🏃 Deixá-la partir
               </button>
             </motion.div>
           </div>
