@@ -46,10 +46,11 @@ async function handleSubscriptionCreated(data: any, env: PaddleEnv) {
   }
 
   const item = items[0];
-  const priceId = item.price.importMeta?.externalId;
-  const productId = item.product.importMeta?.externalId;
+  // Use Paddle's internal IDs — importMeta/externalId is not available in SDK events
+  const priceId   = item.price?.id   ?? item.price?.importMeta?.externalId;
+  const productId = item.product?.id ?? item.product?.importMeta?.externalId;
   if (!priceId || !productId) {
-    console.warn('Skipping subscription: missing importMeta.externalId');
+    console.warn('Skipping subscription: could not resolve priceId/productId', { item });
     return;
   }
 
@@ -66,7 +67,9 @@ async function handleSubscriptionCreated(data: any, env: PaddleEnv) {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'paddle_subscription_id' });
 
-  if (priceId === 'premium_annual') {
+  // Issue 2-month gift key for annual subscribers
+  const annualPriceId = Deno.env.get('PADDLE_ANNUAL_PRICE_ID');
+  if (annualPriceId && priceId === annualPriceId) {
     await issueAnnualAccessKey(userId, id);
   }
 }
