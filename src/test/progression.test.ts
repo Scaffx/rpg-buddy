@@ -29,7 +29,7 @@ describe('getLevelFromXp', () => {
 
   it('retorna o level máximo para XP muito alto', () => {
     const maxLevel = XP_TABLE.length;
-    expect(getLevelFromXp(999_999)).toBe(maxLevel);
+    expect(getLevelFromXp(10_000_000)).toBe(maxLevel);
   });
 
   it('funciona com XP fracionado (trunca)', () => {
@@ -46,16 +46,16 @@ describe('getLevelFromXp', () => {
 
 describe('getLevelProgress', () => {
   it('usa os limiares reais da tabela em vez de modulo fixo', () => {
-    expect(getLevelProgress(79)).toMatchObject({
+    expect(getLevelProgress(319)).toMatchObject({
       level: 1,
-      currentLevelXp: 79,
-      xpForNextLevel: 80,
+      currentLevelXp: 319,
+      xpForNextLevel: 320,
     });
 
-    expect(getLevelProgress(80)).toMatchObject({
+    expect(getLevelProgress(320)).toMatchObject({
       level: 2,
       currentLevelXp: 0,
-      xpForNextLevel: 100,
+      xpForNextLevel: 680,
     });
   });
 
