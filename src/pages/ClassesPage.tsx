@@ -130,8 +130,11 @@ export default function ClassesPage() {
     if (!profile?.current_class_id || !classes) return new Set<string>();
     const map = new Map<string, any>();
     classes.forEach((c: any) => map.set(c.id, c));
+    // Só considera a classe atual se o usuário tem nível suficiente
+    const currentClass = map.get(profile.current_class_id);
+    if (!currentClass || (profile.level ?? 1) < currentClass.level_min) return new Set<string>();
     const path = new Set<string>();
-    let current = map.get(profile.current_class_id);
+    let current = currentClass;
     while (current) {
       path.add(current.id);
       current = current.parent_class_id ? map.get(current.parent_class_id) : null;
@@ -146,15 +149,18 @@ export default function ClassesPage() {
     const map = new Map<string, any>();
     classes.forEach((c: any) => map.set(c.id, c));
 
-    // If user already selected a class, highlight only that branch (avoids showing two branches)
+    // If user already selected a valid class (has level), highlight only that branch
     if (profile?.current_class_id) {
-      const path = new Set<string>();
-      let current = map.get(profile.current_class_id);
-      while (current) {
-        path.add(current.id);
-        current = current.parent_class_id ? map.get(current.parent_class_id) : null;
+      const currentClass = map.get(profile.current_class_id);
+      if (currentClass && (profile.level ?? 1) >= currentClass.level_min) {
+        const path = new Set<string>();
+        let current = currentClass;
+        while (current) {
+          path.add(current.id);
+          current = current.parent_class_id ? map.get(current.parent_class_id) : null;
+        }
+        return { goldenPath: path, goldenTargetId: profile.current_class_id as string };
       }
-      return { goldenPath: path, goldenTargetId: profile.current_class_id as string };
     }
 
     if (!starterClass) return { goldenPath: new Set<string>(), goldenTargetId: null as string | null };
@@ -296,7 +302,7 @@ export default function ClassesPage() {
 
   const renderNode = (node: ClassNode, depth: number = 0): React.ReactNode => {
     const unlocked = userLevel >= node.level_min;
-    const isSelected = profile?.current_class_id === node.id;
+    const isSelected = profile?.current_class_id === node.id && unlocked;
     const isInPath = currentClassPath.has(node.id);
     const isInGoldenPath = goldenPath.has(node.id);
     const isGoldenTarget = node.id === goldenTargetId;
