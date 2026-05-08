@@ -93,6 +93,24 @@ export type SessionPlayer = {
 
 type DungeonPhase = 'prep' | 'exploring' | 'victory' | 'defeat';
 
+// ── Battle history ─────────────────────────────────────────────────────────
+export type BattleRound = {
+  round:     number;
+  enemyName: string;
+  pRoll:     number;
+  eRoll:     number;
+  pDmg:      number;
+  eDmg:      number;
+  crit:      boolean;
+};
+
+type BattleStats = {
+  totalRounds:    number;
+  totalDmgDealt:  number;
+  totalDmgTaken:  number;
+  roundHistory:   BattleRound[];
+};
+
 // ── Loot Table ─────────────────────────────────────────────────────────────
 const LOOT_TABLE: Array<{ id: string; name: string; icon: string; weight: number; min: number; max: number }> = [
   { id: 'moeda_cobre',          name: 'Moedas de Cobre',       icon: '🪙', weight: 40, min: 3, max: 12 },
@@ -615,6 +633,16 @@ export default function DungeonArena({
   const [lastActionAt, setLastActionAt]         = useState<number>(0);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
+  // ── Battle history tracking ────────────────────────────────────────────
+  const [battleStats, setBattleStats] = useState<BattleStats>({
+    totalRounds: 0, totalDmgDealt: 0, totalDmgTaken: 0, roundHistory: [],
+  });
+  const [showBattleHistory, setShowBattleHistory] = useState(false);
+  const roundCounterRef  = useRef(0);
+  // pendingRoundRef accumulates data for the current combat round;
+  // eDmg is set inside the setEnemyHp functional update (ref mutation is safe there)
+  const pendingRoundRef  = useRef<{ pDmg: number; eDmg: number; pRoll: number; eRoll: number; crit: boolean; enemyName: string } | null>(null);
+
   useEffect(() => {
     if (!actionCooldownMs || lastActionAt === 0) return;
     const interval = setInterval(() => {
@@ -820,6 +848,9 @@ export default function DungeonArena({
         if (mod?.kind === 'escuridao' && rawRoll !== pRoll) newLog.push(`🌑 [Escuridão] Dado reduzido de ${rawRoll} → ${pRoll}!`);
         if (isBencaoHeroi) newLog.push(`⭐ [Bênção do Herói] Ataque crítico garantido!`);
 
+        // Track round data
+        pendingRoundRef.current = { pDmg, eDmg: 0, pRoll, eRoll, crit, enemyName: scaledSecondary.name };
+
         setBoss2Hp(prev => {
           const newB2Hp = Math.max(0, prev - pDmg);
           newLog.push(`⚔️ Você atacou ${scaledSecondary.name} — rolou ${pRoll}${crit ? ' 💥CRÍTICO' : ''} → ${pDmg} dano! (${newB2Hp} HP)`);
@@ -839,6 +870,8 @@ export default function DungeonArena({
             const enrageAtk = scaledSecondary.atk;
             const sanguinBonus = mod?.kind === 'sangramento' ? 5 : 0;
             const rawEDmg = Math.max(1, Math.round((eRoll * enrageAtk) / 15) - Math.floor(effectivePlayerDef / 6) + sanguinBonus);
+            // Record eDmg for history (ref mutation inside functional update is safe)
+            if (pendingRoundRef.current) pendingRoundRef.current.eDmg = rawEDmg;
             newLog.push(`👹 ${scaledSecondary.name} rolou ${eRoll} → ${rawEDmg} dano em você!`);
             setPlayerHp(ph => {
               const newHp = Math.max(0, ph - rawEDmg);
@@ -857,6 +890,21 @@ export default function DungeonArena({
           broadcastAction('action_result', { enemyHp, boss2Hp: newB2Hp, bossEnraged: newB2Hp <= 0, roomOutcome: newB2Hp <= 0 ? null : roomOutcome, logLines: newLog });
           return newB2Hp;
         });
+
+        // Flush pending round to battle history
+        setTimeout(() => {
+          if (pendingRoundRef.current) {
+            const rnd = pendingRoundRef.current;
+            pendingRoundRef.current = null;
+            const rndNum = ++roundCounterRef.current;
+            setBattleStats(s => ({
+              totalRounds:   s.totalRounds   + 1,
+              totalDmgDealt: s.totalDmgDealt + rnd.pDmg,
+              totalDmgTaken: s.totalDmgTaken + rnd.eDmg,
+              roundHistory:  [...s.roundHistory, { round: rndNum, ...rnd }],
+            }));
+          }
+        }, 0);
         return;
       }
 
@@ -872,6 +920,9 @@ export default function DungeonArena({
       const newLogLines: string[] = [];
       if (mod?.kind === 'escuridao' && rawRoll !== pRoll) newLogLines.push(`🌑 [Escuridão] Dado reduzido de ${rawRoll} → ${pRoll}!`);
       if (isBencaoHeroi) newLogLines.push(`⭐ [Bênção do Herói] Ataque crítico garantido!`);
+
+      // Track round data (eDmg filled in below if enemy survives)
+      pendingRoundRef.current = { pDmg, eDmg: 0, pRoll, eRoll, crit, enemyName: room.enemy?.name ?? 'Inimigo' };
 
       setEnemyHp(prev => {
         const newEnemyHp = Math.max(0, prev - pDmg);
@@ -907,6 +958,8 @@ export default function DungeonArena({
         const sanguinBonus = mod?.kind === 'sangramento' ? 5 : 0;
         const rawEDmg = Math.max(1, Math.round((eRoll * enemyAtkEff) / 15) - Math.floor(effectivePlayerDef / 6) + sanguinBonus);
         const eDmg = Math.max(1, rawEDmg);
+        // Record eDmg for history (ref mutation inside functional update is safe)
+        if (pendingRoundRef.current) pendingRoundRef.current.eDmg = eDmg;
         if (bossEnraged) newLogLines.push(`😡 [ENFURECIDO] ${room.enemy?.name} rolou ${eRoll} → ${eDmg} dano!${sanguinBonus > 0 ? ` 🩸 +${sanguinBonus} sangramento` : ''}`);
         else newLogLines.push(`👹 ${room.enemy?.name} rolou ${eRoll}${modTag} → ${eDmg} de dano em você!`);
 
@@ -927,6 +980,21 @@ export default function DungeonArena({
         broadcastAction('action_result', { enemyHp: newEnemyHp, boss2Hp, bossEnraged, roomOutcome, logLines: newLogLines });
         return newEnemyHp;
       });
+
+      // Flush pending round to battle history
+      setTimeout(() => {
+        if (pendingRoundRef.current) {
+          const rnd = pendingRoundRef.current;
+          pendingRoundRef.current = null;
+          const rndNum = ++roundCounterRef.current;
+          setBattleStats(s => ({
+            totalRounds:   s.totalRounds   + 1,
+            totalDmgDealt: s.totalDmgDealt + rnd.pDmg,
+            totalDmgTaken: s.totalDmgTaken + rnd.eDmg,
+            roundHistory:  [...s.roundHistory, { round: rndNum, ...rnd }],
+          }));
+        }
+      }, 0);
 
     } else if (room.type === 'rescue') {
       const roll = d(20) + Math.floor(effectiveDungeonLevel / 2);
@@ -1535,6 +1603,64 @@ export default function DungeonArena({
               )}
             </AnimatePresence>
 
+            {/* Battle stats bar */}
+            {battleStats.totalRounds > 0 && (
+              <div className="flex items-center justify-between text-xs bg-muted/20 border border-border/40 rounded-lg px-3 py-1.5 select-none">
+                <span className="text-muted-foreground">🎲 {battleStats.totalRounds} rodada{battleStats.totalRounds !== 1 ? 's' : ''}</span>
+                <span className="text-green-400 font-semibold">⚔️ {battleStats.totalDmgDealt} dado</span>
+                <span className="text-red-400 font-semibold">🛡️ {battleStats.totalDmgTaken} sofrido</span>
+                <button
+                  onClick={() => setShowBattleHistory(v => !v)}
+                  className="text-purple-400 hover:text-purple-300 underline underline-offset-2"
+                >
+                  histórico
+                </button>
+              </div>
+            )}
+
+            {/* Battle history table */}
+            {showBattleHistory && battleStats.roundHistory.length > 0 && (
+              <div className="rpg-card bg-muted/10 border border-border/40 space-y-2 max-h-52 overflow-y-auto">
+                <div className="flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-sm pb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Histórico de Batalha</p>
+                  <button onClick={() => setShowBattleHistory(false)} className="text-muted-foreground hover:text-foreground text-base leading-none">×</button>
+                </div>
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="text-muted-foreground border-b border-border/40">
+                      <th className="text-left py-1 pr-2 font-medium">#</th>
+                      <th className="text-left py-1 pr-2 font-medium">Inimigo</th>
+                      <th className="text-center py-1 pr-2 font-medium">🎲 Atk</th>
+                      <th className="text-center py-1 pr-2 font-medium">🎲 Def</th>
+                      <th className="text-center py-1 pr-2 font-medium text-green-400">Dado</th>
+                      <th className="text-center py-1 font-medium text-red-400">Sofrido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {battleStats.roundHistory.map(r => (
+                      <tr key={r.round} className="border-b border-border/20 hover:bg-muted/20">
+                        <td className="py-1 pr-2 text-muted-foreground">{r.round}</td>
+                        <td className="py-1 pr-2 text-foreground/80 truncate max-w-[80px]">{r.enemyName}</td>
+                        <td className="py-1 pr-2 text-center">
+                          <span className={r.crit ? 'text-yellow-400 font-bold' : ''}>{r.pRoll}{r.crit ? '💥' : ''}</span>
+                        </td>
+                        <td className="py-1 pr-2 text-center text-muted-foreground">{r.eRoll}</td>
+                        <td className="py-1 pr-2 text-center font-bold text-green-400">{r.pDmg}</td>
+                        <td className="py-1 text-center font-bold text-red-400">{r.eDmg > 0 ? r.eDmg : <span className="text-muted-foreground">—</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-border/60 font-bold">
+                      <td colSpan={4} className="py-1.5 text-muted-foreground">Total</td>
+                      <td className="py-1.5 text-center text-green-400">{battleStats.totalDmgDealt}</td>
+                      <td className="py-1.5 text-center text-red-400">{battleStats.totalDmgTaken}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+
             {/* Action button */}
             <button
               onClick={roomOutcome !== null ? handleContinue : handleAction}
@@ -1664,6 +1790,65 @@ export default function DungeonArena({
               ) : null;
             })()}
 
+            {/* Battle summary on victory */}
+            {battleStats.totalRounds > 0 && (
+              <div className="rpg-card bg-slate-500/10 border-slate-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resumo de Batalha</p>
+                  <button
+                    onClick={() => setShowBattleHistory(v => !v)}
+                    className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
+                  >
+                    {showBattleHistory ? 'ocultar' : 'ver histórico'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="rpg-card bg-muted/20 py-1.5">
+                    <p className="font-bold text-foreground">{battleStats.totalRounds}</p>
+                    <p className="text-muted-foreground">Rodadas</p>
+                  </div>
+                  <div className="rpg-card bg-green-500/10 py-1.5">
+                    <p className="font-bold text-green-400">{battleStats.totalDmgDealt}</p>
+                    <p className="text-muted-foreground">Dano Dado</p>
+                  </div>
+                  <div className="rpg-card bg-red-500/10 py-1.5">
+                    <p className="font-bold text-red-400">{battleStats.totalDmgTaken}</p>
+                    <p className="text-muted-foreground">Dano Sofrido</p>
+                  </div>
+                </div>
+                {showBattleHistory && battleStats.roundHistory.length > 0 && (
+                  <div className="max-h-44 overflow-y-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="text-muted-foreground border-b border-border/40">
+                          <th className="text-left py-1 pr-2 font-medium">#</th>
+                          <th className="text-left py-1 pr-2 font-medium">Inimigo</th>
+                          <th className="text-center py-1 pr-2 font-medium">🎲 Atk</th>
+                          <th className="text-center py-1 pr-2 font-medium">🎲 Def</th>
+                          <th className="text-center py-1 pr-2 font-medium text-green-400">Dado</th>
+                          <th className="text-center py-1 font-medium text-red-400">Sofrido</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {battleStats.roundHistory.map(r => (
+                          <tr key={r.round} className="border-b border-border/20">
+                            <td className="py-1 pr-2 text-muted-foreground">{r.round}</td>
+                            <td className="py-1 pr-2 text-foreground/80 truncate max-w-[80px]">{r.enemyName}</td>
+                            <td className="py-1 pr-2 text-center">
+                              <span className={r.crit ? 'text-yellow-400 font-bold' : ''}>{r.pRoll}{r.crit ? '💥' : ''}</span>
+                            </td>
+                            <td className="py-1 pr-2 text-center text-muted-foreground">{r.eRoll}</td>
+                            <td className="py-1 pr-2 text-center font-bold text-green-400">{r.pDmg}</td>
+                            <td className="py-1 text-center font-bold text-red-400">{r.eDmg > 0 ? r.eDmg : <span className="text-muted-foreground">—</span>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {isGranting && <p className="text-xs text-center text-muted-foreground animate-pulse">Salvando recompensas...</p>}
 
             <button
@@ -1700,6 +1885,65 @@ export default function DungeonArena({
               </div>
             )}
 
+            {/* Battle summary on defeat */}
+            {battleStats.totalRounds > 0 && (
+              <div className="rpg-card bg-slate-500/10 border-slate-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resumo de Batalha</p>
+                  <button
+                    onClick={() => setShowBattleHistory(v => !v)}
+                    className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
+                  >
+                    {showBattleHistory ? 'ocultar' : 'ver histórico'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="rpg-card bg-muted/20 py-1.5">
+                    <p className="font-bold text-foreground">{battleStats.totalRounds}</p>
+                    <p className="text-muted-foreground">Rodadas</p>
+                  </div>
+                  <div className="rpg-card bg-green-500/10 py-1.5">
+                    <p className="font-bold text-green-400">{battleStats.totalDmgDealt}</p>
+                    <p className="text-muted-foreground">Dano Dado</p>
+                  </div>
+                  <div className="rpg-card bg-red-500/10 py-1.5">
+                    <p className="font-bold text-red-400">{battleStats.totalDmgTaken}</p>
+                    <p className="text-muted-foreground">Dano Sofrido</p>
+                  </div>
+                </div>
+                {showBattleHistory && battleStats.roundHistory.length > 0 && (
+                  <div className="max-h-44 overflow-y-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="text-muted-foreground border-b border-border/40">
+                          <th className="text-left py-1 pr-2 font-medium">#</th>
+                          <th className="text-left py-1 pr-2 font-medium">Inimigo</th>
+                          <th className="text-center py-1 pr-2 font-medium">🎲 Atk</th>
+                          <th className="text-center py-1 pr-2 font-medium">🎲 Def</th>
+                          <th className="text-center py-1 pr-2 font-medium text-green-400">Dado</th>
+                          <th className="text-center py-1 font-medium text-red-400">Sofrido</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {battleStats.roundHistory.map(r => (
+                          <tr key={r.round} className="border-b border-border/20">
+                            <td className="py-1 pr-2 text-muted-foreground">{r.round}</td>
+                            <td className="py-1 pr-2 text-foreground/80 truncate max-w-[80px]">{r.enemyName}</td>
+                            <td className="py-1 pr-2 text-center">
+                              <span className={r.crit ? 'text-yellow-400 font-bold' : ''}>{r.pRoll}{r.crit ? '💥' : ''}</span>
+                            </td>
+                            <td className="py-1 pr-2 text-center text-muted-foreground">{r.eRoll}</td>
+                            <td className="py-1 pr-2 text-center font-bold text-green-400">{r.pDmg}</td>
+                            <td className="py-1 text-center font-bold text-red-400">{r.eDmg > 0 ? r.eDmg : <span className="text-muted-foreground">—</span>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={onFlee}
@@ -1721,6 +1965,10 @@ export default function DungeonArena({
                   setRoomOutcome(null);
                   setXpEarned(0);
                   setGoldEarned(0);
+                  setBattleStats({ totalRounds: 0, totalDmgDealt: 0, totalDmgTaken: 0, roundHistory: [] });
+                  roundCounterRef.current = 0;
+                  pendingRoundRef.current = null;
+                  setShowBattleHistory(false);
                 }}
                 className="flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-colors"
               >
