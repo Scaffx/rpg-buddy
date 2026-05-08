@@ -75,6 +75,7 @@ CREATE POLICY "portal_scans_insert"
 -- ── 7. RPC: get_active_portal_event (reescrita) ────────────
 -- Retorna o portal diário ativo.
 -- portal_color é NULL se o usuário não escaneou (e não fechou) o portal.
+DROP FUNCTION IF EXISTS get_active_portal_event();
 CREATE OR REPLACE FUNCTION get_active_portal_event()
 RETURNS TABLE (
   event_id           UUID,
@@ -216,14 +217,8 @@ END;
 $$;
 
 -- ── 9. RPC: complete_portal_run (reescrita) ────────────────
--- Distribui fragmentos entre TODOS os participantes.
--- Lógica:
---   1. Registra o run do usuário
---   2. Adiciona usuário aos participantes
---   3. Rola o drop de fragmentos (base + aleatorio conforme cor)
---   4. Distribui fragmentos igualmente entre participantes
---   5. Verifica item lendário (5% por herói, por portal vermelho/lendário)
---   6. Sorteia dungeon pendente (se ainda não foi sorteada este evento)
+DROP FUNCTION IF EXISTS complete_portal_run(UUID, INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS complete_portal_run(UUID, INTEGER, INTEGER, TEXT, INTEGER);
 CREATE OR REPLACE FUNCTION complete_portal_run(
   p_event_id     UUID,
   p_xp_earned    INTEGER,
