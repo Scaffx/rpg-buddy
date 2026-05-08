@@ -411,7 +411,7 @@ Deno.serve(async (req) => {
           status,
           boss_id,
           personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel),
-          bosses!combates_ativos_boss_id_fkey(id, name, ataque_base, defesa_base, level, hp, element, skills, signature_item_name)
+          bosses!combates_ativos_boss_id_fkey(id, name, ataque_base, defesa_base, level, hp, element, skills, signature_item_name, xp_reward, gold_reward)
         `,
       )
       .eq('id', combateId)
@@ -835,9 +835,9 @@ Deno.serve(async (req) => {
           won: true,
         });
 
-        // Grant XP and gold rewards on first victory
-        const xpReward = Math.max(50, bossLevel * 30);
-        const goldReward = Math.max(10, bossLevel * 5);
+        // Usa xp_reward e gold_reward do banco — valores reais do boss
+        const xpReward   = Math.max(50,  toNumber((combat.bosses as any).xp_reward,   bossLevel * 50));
+        const goldReward = Math.max(10,  toNumber((combat.bosses as any).gold_reward,  bossLevel * 10));
 
         const { data: profileRewards } = await supabase
           .from('profiles')

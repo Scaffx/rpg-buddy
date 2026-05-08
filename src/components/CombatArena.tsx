@@ -318,12 +318,20 @@ export default function CombatArena({
 
   // Guerreiro Imortal: detectar pelo nome
   const isImmortalBoss = useMemo(() => /guerreiro\s+imortal/i.test(bossName ?? ''), [bossName]);
+  // Fênix do Caos: renasce 3x; na 4ª morte funde-se com Esfinge do Deserto
+  const isPhoenixBoss  = useMemo(() => /f[eê]nix|phoenix/i.test(bossName ?? '') && !/esfinge/i.test(bossName ?? ''), [bossName]);
   // Rancor Sombrio: confronta o heroi com suas falhas
   const isRancorBoss = useMemo(() => /rancor\s+sombrio/i.test(bossName ?? ''), [bossName]);
   // 'none' = combate normal | 'reborn' = mostrando overlay de renascimento
   const [immortalPhase, setImmortalPhase] = useState<'none' | 'reborn'>('none');
   // Conta quantas vezes o imortal renasceu nesta sessão (0 = primeira vez)
   const immortalRebirthCountRef = useRef(0);
+  // Fênix: conta mortes (max 3 rebirths → 4ª morte = fusão)
+  const phoenixKillCountRef = useRef(0);
+  // 'none' | 'reborn' | 'fused' (fusão com Esfinge)
+  const [phoenixPhase, setPhoenixPhase] = useState<'none' | 'reborn' | 'fused'>('none');
+  // Nome exibido na arena (muda quando Fênix se funde)
+  const displayBossName = phoenixPhase === 'fused' ? 'Fênix + Esfinge do Deserto' : (bossName ?? '');
 
   const [turn, setTurn] = useState<Turn>('idle');
   const [isRolling, setIsRolling] = useState(false);
@@ -589,6 +597,41 @@ export default function CombatArena({
     setLastBuffShield(null);
     setLastDebuffShred(null);
     // Mantém HP/MP do jogador (sem chamar startBattle que os resetaria)
+    setTurn('player');
+  };
+
+  /** Reinicia o combate após renascimento da Fênix (mantém HP do jogador). */
+  const handlePhoenixFightAgain = async (fusedHp?: number) => {
+    const targetHp = fusedHp ?? initialBossHp;
+    if (combateId && user) {
+      void supabase
+        .from('combates_ativos' as never)
+        .update({ hp_atual_boss: targetHp } as never)
+        .eq('id' as never, combateId as never);
+    }
+    setPhoenixPhase('none');
+    currentBattleTokenRef.current += 1;
+    skillCursorRef.current = 0;
+    setBossHp(targetHp);
+    setBossResource(Math.round(targetHp * 0.5));
+    setRollValue(null);
+    setDamagePopups([]);
+    setHitEffects([]);
+    setArenaShake(false);
+    setScreenFlash(false);
+    setLootDrop(null);
+    setBattleLog([]);
+    setCritParticles([]);
+    setConfetti([]);
+    setShowVictory(false);
+    setShowDefeat(false);
+    setInsufficientResourceWarning(null);
+    setSummonedUnits([]);
+    summonedUnitsRef.current = [];
+    setHealPopups([]);
+    setBossStunnedVisual(false);
+    setLastBuffShield(null);
+    setLastDebuffShred(null);
     setTurn('player');
   };
 
@@ -919,6 +962,28 @@ export default function CombatArena({
               setBossHp(initialBossHp);
               setBossResource(bossResourceMax);
             }, 2000);
+          } else if (isPhoenixBoss) {
+            phoenixKillCountRef.current += 1;
+            setShowVictory(true);
+            sfx.victory();
+            if (phoenixKillCountRef.current < 3) {
+              setTimeout(() => {
+                if (!mountedRef.current) return;
+                setShowVictory(false);
+                setPhoenixPhase('reborn');
+                setBossHp(initialBossHp);
+                setBossResource(bossResourceMax);
+              }, 2000);
+            } else {
+              setTimeout(() => {
+                if (!mountedRef.current) return;
+                setShowVictory(false);
+                setPhoenixPhase('fused');
+                const fusedHp = Math.round(initialBossHp * 2.5);
+                setBossHp(fusedHp);
+                setBossResource(Math.round(fusedHp * 0.5));
+              }, 2200);
+            }
           } else {
             if (turnResult.loot_drop) setLootDrop(turnResult.loot_drop);
             launchVictoryCinematic();
@@ -976,6 +1041,33 @@ export default function CombatArena({
               // Reutilizamos immortalRebirthCountRef; o overlay lê o ref
             }
           }, 2000);
+        } else if (isPhoenixBoss) {
+          phoenixKillCountRef.current += 1;
+          if (phoenixKillCountRef.current < 3) {
+            // Renascimento 1 ou 2 — volta com HP cheio
+            setShowVictory(true);
+            sfx.victory();
+            setTimeout(() => {
+              if (!mountedRef.current) return;
+              setShowVictory(false);
+              setPhoenixPhase('reborn');
+              setBossHp(initialBossHp);
+              setBossResource(bossResourceMax);
+            }, 2000);
+          } else {
+            // 3ª morte → FUSÃO com Esfinge do Deserto
+            setShowVictory(true);
+            sfx.victory();
+            setTimeout(() => {
+              if (!mountedRef.current) return;
+              setShowVictory(false);
+              setPhoenixPhase('fused');
+              // Fênix fundida: HP muito mais alto
+              const fusedHp = Math.round(initialBossHp * 2.5);
+              setBossHp(fusedHp);
+              setBossResource(Math.round(fusedHp * 0.5));
+            }, 2200);
+          }
         } else {
           launchVictoryCinematic();
         }
@@ -1714,7 +1806,78 @@ export default function CombatArena({
         </div>
       )}
 
-      {/* ── Rancor Sombrio: Reconstitui\u00e7\u00e3o ─────────────────────────────────── */}
+      {/* ── Overlay de Renascimento / Fusão da Fênix ──────────────────────────── */}
+      {(phoenixPhase === 'reborn' || phoenixPhase === 'fused') && (
+        <div className="pointer-events-auto fixed inset-0 z-50 overflow-hidden flex flex-col items-center justify-center">
+          <div className="absolute inset-0 bg-black" />
+          <div
+            className="absolute inset-0 animate-defeat-shake"
+            style={{
+              background: phoenixPhase === 'fused'
+                ? 'radial-gradient(ellipse at center, hsl(30 90% 30% / 0.6) 0%, transparent 70%)'
+                : 'radial-gradient(ellipse at center, hsl(22 100% 30% / 0.5) 0%, transparent 70%)',
+            }}
+          />
+          <div className="relative z-10 text-center space-y-8 px-6 max-w-2xl">
+            <motion.div
+              initial={{ scale: 0.05, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.9, type: 'spring', stiffness: 150, damping: 12 }}
+            >
+              {phoenixPhase === 'fused' ? (
+                <>
+                  <p className="text-6xl mb-4">🔥🦁</p>
+                  <p className="font-cinzel font-black text-4xl md:text-6xl text-orange-400 drop-shadow-[0_0_40px_hsl(22_100%_55%/1)] leading-tight uppercase">
+                    FUSÃO!<br />Fênix + Esfinge<br />do Deserto
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-6xl mb-4">🔥</p>
+                  <p className="font-cinzel font-black text-5xl md:text-7xl text-orange-500 drop-shadow-[0_0_50px_hsl(22_100%_55%/1)] leading-tight uppercase">
+                    A FÊNIX<br />RENASCE<br />DAS CINZAS
+                  </p>
+                </>
+              )}
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="text-orange-200/70 text-sm md:text-base tracking-widest"
+            >
+              {phoenixPhase === 'fused'
+                ? 'A Fênix derrotada 3 vezes uniu sua chama à sabedoria sombria da Esfinge. Uma dupla imparável desperta!'
+                : `Renascimento ${phoenixKillCountRef.current}/3 — Ela não pode ser destruída apenas com força bruta...`}
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.2 }}
+              className="flex flex-col items-center gap-3"
+            >
+              <button
+                type="button"
+                onClick={() => handlePhoenixFightAgain(phoenixPhase === 'fused' ? Math.round(initialBossHp * 2.5) : undefined)}
+                className="w-72 rounded-xl border border-orange-500/50 bg-orange-800/50 px-6 py-3.5 font-bold text-orange-100 hover:bg-orange-700/70 transition text-base"
+              >
+                {phoenixPhase === 'fused' ? '⚔️ Enfrentar a Dupla Fusionada' : '⚔️ Enfrentar Novamente'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPhoenixPhase('none'); onClose?.(); }}
+                className="w-72 rounded-xl border border-zinc-600/50 bg-zinc-800/60 px-6 py-3 text-zinc-300 hover:bg-zinc-700/70 transition text-sm"
+              >
+                🏃 Fugir (Abandonar)
+              </button>
+            </motion.div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Rancor Sombrio: Reconstituição ─────────────────────────────────── */}
       {rancorPhase === 'reconstituted' && (
         <div className="pointer-events-auto fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-black/93" />

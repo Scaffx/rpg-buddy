@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { Shield, Users, Globe, Lock, Copy, CheckCheck, Zap, Clock } from 'lucide-react';
+import { Shield, Users, Globe, Lock, Copy, CheckCheck, Zap, Clock, Search, AlertTriangle, Sparkles, ChevronRight, Trophy } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile, useAttributes, useHealthStats } from '@/hooks/useProfile';
@@ -9,6 +9,7 @@ import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/u
 import { useToast } from '@/hooks/use-toast';
 import { getPlayerCombatStats, getAttributeLevels } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
+import AppLayout from '@/components/AppLayout';
 
 import DungeonArena, { type SessionPlayer, type PotionItem } from '@/components/DungeonArena';
 import FragmentDungeonArena, { type FragmentVictoryResult } from '@/components/FragmentDungeonArena';
@@ -16,6 +17,8 @@ import {
   usePortalEvent,
   useMyFragments,
   useCompletePortalRun,
+  useScanPortal,
+  useClaimPendingDungeon,
   usePublicFragmentDungeons,
   useCreateFragmentDungeon,
   useJoinFragmentDungeon,
@@ -58,56 +61,143 @@ function FragmentBar({ count }: { count: number }) {
   );
 }
 
-// ── Portal color card ─────────────────────────────────────────────────────
-function PortalCard({
-  color,
-  completed,
+// ── Daily portal card ─────────────────────────────────────────────────────
+function DailyPortalCard({
+  portalColor,
+  colorRevealed,
+  alreadyCompleted,
+  participantCount,
+  hasScannerItem,
+  isScanning,
+  onScan,
   onEnter,
 }: {
-  color: PortalColor;
-  completed: boolean;
-  onEnter: (color: PortalColor) => void;
+  portalColor: PortalColor | null;
+  colorRevealed: boolean;
+  alreadyCompleted: boolean;
+  participantCount: number;
+  hasScannerItem: boolean;
+  isScanning: boolean;
+  onScan: () => void;
+  onEnter: () => void;
 }) {
-  const meta = PORTAL_COLORS[color];
+  const meta = portalColor ? PORTAL_COLORS[portalColor] : null;
+
   return (
     <motion.div
-      whileHover={{ scale: completed ? 1 : 1.02 }}
-      className={`rpg-card border ${meta.bg} relative overflow-hidden`}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`rpg-card border relative overflow-hidden ${
+        meta ? meta.bg : 'bg-purple-900/10 border-purple-500/20'
+      }`}
     >
-      {completed && (
+      {alreadyCompleted && (
         <div className="absolute top-2 right-2 bg-green-500/20 border border-green-500/40 rounded-full px-2 py-0.5 text-xs text-green-400 font-semibold">
-          ✓ Concluído
+          ✓ Concluído hoje
         </div>
       )}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{meta.emoji}</span>
+
+      <div className="space-y-4">
+        {/* Título e ícone do portal */}
+        <div className="flex items-center gap-3">
+          <AnimatePresence mode="wait">
+            {colorRevealed && meta ? (
+              <motion.span
+                key={portalColor}
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                className="text-4xl"
+              >
+                {meta.emoji}
+              </motion.span>
+            ) : (
+              <motion.span
+                key="unknown"
+                className="text-4xl"
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                🌀
+              </motion.span>
+            )}
+          </AnimatePresence>
           <div>
-            <p className={`font-bold ${meta.colorClass}`}>{meta.label}</p>
-            <p className="text-xs text-muted-foreground">{meta.difficulty} · {meta.levelRange}</p>
+            {colorRevealed && meta ? (
+              <p className={`font-bold text-lg ${meta.colorClass}`}>{meta.label}</p>
+            ) : (
+              <p className="font-bold text-lg text-purple-300">Portal Dimensional</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {colorRevealed && meta
+                ? `${meta.difficulty} · ${meta.levelRange}`
+                : 'Raridade desconhecida'}
+            </p>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-xs text-center">
-          <div className="rpg-card bg-muted/20 py-1">
-            <p className="font-bold text-yellow-400">+{meta.xp}</p>
-            <p className="text-muted-foreground">XP</p>
+
+        {/* Stats se cor revelada */}
+        {colorRevealed && meta && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="grid grid-cols-3 gap-2 text-xs text-center"
+          >
+            <div className="rpg-card bg-muted/20 py-1">
+              <p className="font-bold text-yellow-400">+{meta.xp}</p>
+              <p className="text-muted-foreground">XP</p>
+            </div>
+            <div className="rpg-card bg-muted/20 py-1">
+              <p className="font-bold text-amber-400">+{meta.gold}🪙</p>
+              <p className="text-muted-foreground">Ouro</p>
+            </div>
+            <div className="rpg-card bg-muted/20 py-1">
+              <p className={`font-bold ${meta.colorClass}`}>{meta.fragmentChance}%</p>
+              <p className="text-muted-foreground">Frag.</p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Participantes */}
+        {participantCount > 0 && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Users className="w-3 h-3" />
+            {participantCount} herói{participantCount !== 1 ? 's' : ''} já fechou este portal hoje
+          </p>
+        )}
+
+        {/* Botões de ação */}
+        {!alreadyCompleted && (
+          <div className="flex gap-2">
+            {!colorRevealed && (
+              <button
+                onClick={onScan}
+                disabled={!hasScannerItem || isScanning}
+                title={!hasScannerItem ? 'Requer item "Escaner de Portal" na loja' : ''}
+                className="flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 border border-purple-500/40 text-purple-300 hover:bg-purple-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Search className="w-4 h-4" />
+                {isScanning ? 'Escaneando...' : 'Escanear Portal'}
+              </button>
+            )}
+            <button
+              onClick={onEnter}
+              className={`flex-1 py-2.5 rounded-xl font-bold text-sm text-white transition-colors flex items-center justify-center gap-2 ${
+                meta ? meta.btnClass : 'bg-purple-600 hover:bg-purple-700'
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              {colorRevealed ? `Entrar no ${meta?.label}` : 'Entrar às Cegas'}
+            </button>
           </div>
-          <div className="rpg-card bg-muted/20 py-1">
-            <p className="font-bold text-amber-400">+{meta.gold}🪙</p>
-            <p className="text-muted-foreground">Ouro</p>
-          </div>
-          <div className="rpg-card bg-muted/20 py-1">
-            <p className={`font-bold ${meta.colorClass}`}>{meta.fragmentChance}%</p>
-            <p className="text-muted-foreground">Fragmento</p>
-          </div>
-        </div>
-        <button
-          disabled={completed}
-          onClick={() => onEnter(color)}
-          className={`w-full py-2 rounded-xl font-semibold text-sm transition-colors text-white disabled:opacity-40 disabled:cursor-not-allowed ${meta.btnClass}`}
-        >
-          {completed ? 'Já concluído esta semana' : `Entrar no ${meta.label}`}
-        </button>
+        )}
+
+        {!colorRevealed && !alreadyCompleted && (
+          <p className="text-xs text-center text-muted-foreground">
+            Sem o escaner, a raridade só será revelada ao entrar.
+          </p>
+        )}
       </div>
     </motion.div>
   );

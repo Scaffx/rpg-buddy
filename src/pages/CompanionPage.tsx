@@ -26,6 +26,9 @@ import {
   computeLiveMood,
   isCooldownDone,
   xpForNextLevel,
+  isCombatCompanion,
+  COMBAT_COMPANION_META,
+  getCompanionEffectiveAtk,
   type CompanionRow,
 } from '@/hooks/useCompanion';
 import { useHeroStoryChoices } from '@/hooks/useHeroStoryChoices';
@@ -170,9 +173,11 @@ function CompanionCard({
   const ct       = isSkeletonPup
     ? SKELETON_PUP
     : COMPANION_TYPES.find((c) => c.id === companion.companion_type);
+  const combatMeta = COMBAT_COMPANION_META[companion.companion_type] ?? null;
+  const isCombat   = isCombatCompanion(companion);
   const liveMood = useMemo(() => computeLiveMood(companion), [companion]);
   const moodTier = getMoodTier(liveMood);
-  const xpNeeded = xpForNextLevel(companion.level);
+  const xpNeeded = xpForNextLevel(companion.level, isCombat);
   const xpPct    = Math.min(100, Math.round((companion.xp / xpNeeded) * 100));
   const canFeed  = isCooldownDone(companion.last_fed_at,    FEED_COOLDOWN_MIN);
   const canPlay  = isCooldownDone(companion.last_played_at, PLAY_COOLDOWN_MIN);
@@ -262,7 +267,48 @@ function CompanionCard({
         >
           {ct?.name ?? companion.companion_type}
         </Badge>
+        {isCombat && combatMeta && (
+          <Badge variant="outline" className={`text-xs border-orange-500/40 ${combatMeta.roleColor}`}>
+            ⚔️ {combatMeta.roleLabel}
+          </Badge>
+        )}
       </div>
+
+      {/* Combat stats — only for non-starter combat companions */}
+      {isCombat && companion.max_hp > 0 && (
+        <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 space-y-2">
+          <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Stats de Combate</p>
+          <div className="grid grid-cols-3 gap-2 text-xs text-center">
+            <div className="space-y-0.5">
+              <p className="text-health font-bold">❤️ {companion.current_hp}/{companion.max_hp}</p>
+              <p className="text-muted-foreground">HP</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-red-400 font-bold">⚔️ {getCompanionEffectiveAtk(companion)}</p>
+              <p className="text-muted-foreground">ATK</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-sky-400 font-bold">🛡️ {companion.def}</p>
+              <p className="text-muted-foreground">DEF</p>
+            </div>
+            {companion.max_mp > 0 && (
+              <div className="space-y-0.5 col-span-3">
+                <p className="text-blue-400 font-bold">💧 {companion.current_mp}/{companion.max_mp} MP</p>
+              </div>
+            )}
+          </div>
+          {combatMeta && combatMeta.skills.length > 0 && (
+            <div className="mt-1">
+              <p className="text-xs text-muted-foreground mb-1">Habilidades:</p>
+              <div className="flex flex-wrap gap-1">
+                {combatMeta.skills.map((s) => (
+                  <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-muted/40 border border-border/40 text-muted-foreground">{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Mood bar */}
       <div className="space-y-1.5">

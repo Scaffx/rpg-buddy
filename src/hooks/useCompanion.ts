@@ -2,6 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+export type CompanionRole = 'none' | 'physical' | 'magic' | 'support';
+
 export interface CompanionRow {
   id: string;
   user_id: string;
@@ -16,7 +18,58 @@ export interface CompanionRow {
   last_played_at: string | null;
   created_at: string;
   updated_at: string;
+  // ── Combat stats (non-starter companions only) ──
+  max_hp: number;
+  current_hp: number;
+  atk: number;
+  def: number;
+  max_mp: number;
+  current_mp: number;
+  companion_role: CompanionRole;
 }
+
+/** Companheiros com stats de combate (não são animais de estimação) */
+export const COMBAT_COMPANION_TYPES = ['skeleton_pup', 'spirit_fox', 'golem_guardian'] as const;
+export type CombatCompanionType = (typeof COMBAT_COMPANION_TYPES)[number];
+
+export function isCombatCompanion(companion: CompanionRow): boolean {
+  return companion.companion_role !== 'none';
+}
+
+export const COMBAT_COMPANION_META: Record<string, {
+  emoji: string; name: string; role: CompanionRole;
+  roleLabel: string; roleColor: string;
+  skills: string[];
+  description: string;
+}> = {
+  skeleton_pup: {
+    emoji: '💀',
+    name: 'Filhote de Esqueleto',
+    role: 'physical',
+    roleLabel: 'Físico',
+    roleColor: 'text-orange-400',
+    skills: ['Mordida Óssea', 'Golpe com Osso', 'Uivo das Trevas'],
+    description: 'Guerreiro das sombras. Pode equipar armas e armaduras.',
+  },
+  spirit_fox: {
+    emoji: '🦊',
+    name: 'Raposa Espiritual',
+    role: 'magic',
+    roleLabel: 'Mágico',
+    roleColor: 'text-purple-400',
+    skills: ['Chama Espiritual', 'Ilusão Vulpina', 'Feitiço da Neblina'],
+    description: 'Maga astuta que lança feitiços poderosos em batalha.',
+  },
+  golem_guardian: {
+    emoji: '🪨',
+    name: 'Golem Guardião',
+    role: 'support',
+    roleLabel: 'Suporte',
+    roleColor: 'text-emerald-400',
+    skills: ['Escudo de Pedra', 'Muro de Rocha', 'Terraformação'],
+    description: 'Tanque e protetor. Absorve dano pelos aliados.',
+  },
+};
 
 // ── Animal companions (lv 3 unlock, one-time choice) ─────────────────────────
 
@@ -67,8 +120,16 @@ export function getMoodTier(mood: number) {
 }
 
 /** XP required to reach the NEXT level from current level */
-export function xpForNextLevel(level: number) {
-  return level * 50;
+export function xpForNextLevel(level: number, isCombat = false) {
+  // Companheiros de combate precisam de mais XP para subir de nível
+  return isCombat ? level * 120 : level * 50;
+}
+
+/** Calcula ATK efetivo do companheiro incluindo bônus de item equipado */
+export function getCompanionEffectiveAtk(companion: CompanionRow, itemAtkBonus = 0): number {
+  if (!isCombatCompanion(companion)) return 0;
+  const moodMod = companion.mood >= 70 ? 1.2 : companion.mood < 40 ? 0.8 : 1.0;
+  return Math.round((companion.atk + itemAtkBonus) * moodMod);
 }
 
 /** Compute current mood accounting for time-based decay (1 per hour since last action) */
