@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Shield, Users, Globe, Lock, Copy, CheckCheck, Zap, Clock,
   Search, AlertTriangle, Sparkles, Timer, Gem,
-  Swords, ArrowRight,
+  Swords, ArrowRight, ArrowLeft,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -485,6 +486,7 @@ export default function PortalEventPage() {
   const { user }      = useAuth();
   const { toast }     = useToast();
   const queryClient   = useQueryClient();
+  const navigate      = useNavigate();
   const { data: profile }     = useProfile();
   const { data: attributes }  = useAttributes();
   const { data: healthStats } = useHealthStats();
@@ -633,6 +635,16 @@ export default function PortalEventPage() {
     <div className="min-h-screen bg-[#08080f]">
       <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-purple-950/40 to-transparent pointer-events-none" />
       <div className="relative p-4 space-y-5 max-w-xl mx-auto pb-10">
+
+        {/* botão voltar */}
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Voltar
+        </button>
 
         {/* header */}
         <div className="text-center pt-2 space-y-1">
