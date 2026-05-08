@@ -188,11 +188,11 @@ export default function BossPage() {
         won: true,
       } as never);
 
-      // 3. Recompensas de XP (boss lv * 50 + 200 bônus)
+      // 3. Recompensas de XP — usa xp_reward do DB (mesmo valor exibido no card)
       const bossData = (bosses as any[])?.find((b: any) => b.id === activeCombat.bossId);
       if (bossData) {
-        const xpReward = Math.max(200, (bossData.level || 10) * 50);
-        const goldReward = Math.max(50, (bossData.gold_reward || (bossData.level || 10) * 10));
+        const xpReward   = Math.max(50, bossData.xp_reward   || (bossData.level || 10) * 80 + 20);
+        const goldReward = Math.max(10, bossData.gold_reward  || (bossData.level || 10) * 15 + 10);
         const { data: profileRow } = await supabase
           .from('profiles' as never)
           .select('total_xp, level' as never)
