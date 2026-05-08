@@ -8,7 +8,7 @@ import HelpTutorialModal from '@/components/HelpTutorialModal';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users,
   ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Hammer,
+  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Hammer, Zap,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -56,6 +56,7 @@ const navGroups = [
       { key: 'shop',        url: '/shop',        icon: Store },
       { key: 'npc_missions',url: '/npc',         icon: Users },
       { key: 'boss_arena',  url: '/boss',        icon: Skull },
+      { key: 'portal_event', url: '/portal',      icon: Zap },
       { key: 'leaderboard', url: '/leaderboard', icon: Trophy },
       { key: 'companheiro', url: '/companheiro', icon: PawPrint },
       { key: 'social',      url: '/social',      icon: UsersRound },

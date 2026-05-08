@@ -243,6 +243,163 @@ const DUNGEON_DATA: Record<string, DungeonMeta> = {
       secondaryProtects: true, // Cavaleiro takes 50% dmg while Wyvern is alive
     },
   },
+
+  // ── PORTAL AZUL (nível 1-15) ──────────────────────────────
+  'portal_blue': {
+    atmosphere: 'Uma fenda azulada pulsa no ar. Seres dimensionais aguardam do outro lado...',
+    xp: 350, gold: 140,
+    layouts: [
+      [
+        { type: 'combat',   name: 'Antecâmara Azul',      desc: 'Elementais de éter saltam das paredes cristalinas!',                                icon: '🔵', enemy: { name: 'Elemental de Éter',   icon: '💧', hp: 60,  atk: 13 } },
+        { type: 'trap',     name: 'Corredor de Espelhos',  desc: 'Os espelhos refletem ilusões. Uma armadilha de luz te cega momentaneamente!',       icon: '🪞', trapDmg: 20 },
+        { type: 'combat',   name: 'Salão dos Fragmentos',  desc: 'Criaturas do portal formadas de energia bruta avançam!',                            icon: '💎', enemy: { name: 'Guardião do Fragmento', icon: '🔷', hp: 80,  atk: 16 } },
+        { type: 'rest',     name: 'Nexo de Restauração',   desc: 'Uma fonte de energia dimensional pulsa suavemente, curando feridas...',             icon: '✨' },
+        { type: 'combat',   name: 'Câmara do Portal',      desc: 'Um golem de cristal azul protege a passagem para o boss!',                          icon: '🔮', enemy: { name: 'Golem Cristalino',    icon: '🗿', hp: 100, atk: 19 } },
+        { type: 'treasure', name: 'Câmara do Tesouro',     desc: 'Baú dimensional brilha com energia contida!',                                      icon: '📦' },
+      ],
+      [
+        { type: 'combat',   name: 'Limiar Dimensional',    desc: 'Sentinelas etéreas formam barreira ao seu avanço!',                                  icon: '🔵', enemy: { name: 'Sentinela Etérea',    icon: '👻', hp: 55,  atk: 12 } },
+        { type: 'combat',   name: 'Corredor Energizado',   desc: 'Arcanistas do portal lançam raios de energia dimensional!',                          icon: '⚡', enemy: { name: 'Arcanista Portal',   icon: '🧙', hp: 70,  atk: 15 } },
+        { type: 'rescue',   name: 'Câmara da Névoa',       desc: 'Um aventureiro preso em cristal dimensional grita por ajuda!',                       icon: '🌫️', npcName: 'Aventureiro Aprisionado' },
+        { type: 'trap',     name: 'Armadilha de Energias', desc: 'Fios de energia dimensional cruzam o corredor invisíveis!',                          icon: '⚠️', trapDmg: 22 },
+        { type: 'combat',   name: 'Sala do Guardião',      desc: 'O guardião do portal não permite passagem sem luta!',                                icon: '🔮', enemy: { name: 'Guardião Azul',       icon: '🛡️', hp: 95,  atk: 18 } },
+        { type: 'rest',     name: 'Nexo Tranquilo',        desc: 'Energia restauradora flui por este nexo esquecido...',                               icon: '✨' },
+      ],
+      [
+        { type: 'combat',   name: 'Antecâmara Azul',      desc: 'Elementais de éter saltam das paredes cristalinas!',                                 icon: '🔵', enemy: { name: 'Elemental de Éter',   icon: '💧', hp: 60,  atk: 13 } },
+        { type: 'rescue',   name: 'Câmara Aprisionada',    desc: 'Vozes ecoam atrás de uma parede de energia cristalizada!',                           icon: '🔒', npcName: 'Mercador Dimensional' },
+        { type: 'combat',   name: 'Corredor da Refração',  desc: 'Criaturas de luz refletida se multiplicam conforme avançam!',                        icon: '💫', enemy: { name: 'Reflexo Vivo',        icon: '🌟', hp: 75,  atk: 14 } },
+        { type: 'trap',     name: 'Fissura de Energia',    desc: 'O solo racha liberando rajadas de energia dimensional!',                             icon: '⚠️', trapDmg: 18 },
+        { type: 'treasure', name: 'Câmara do Tesouro',     desc: 'Baú dimensional brilha com energia contida!',                                       icon: '📦' },
+        { type: 'combat',   name: 'Sala do Guardião',      desc: 'O guardião do portal não permite passagem sem luta!',                                icon: '🔮', enemy: { name: 'Guardião Azul',       icon: '🛡️', hp: 95,  atk: 18 } },
+      ],
+    ],
+    boss: {
+      primary: { name: 'Sentinela do Portal Azul', icon: '🔵', hp: 280, atk: 32, matk: 18 },
+    },
+  },
+
+  // ── PORTAL AMARELO (nível 11-25) ──────────────────────────
+  'portal_yellow': {
+    atmosphere: 'Calor intenso emana do portal âmbar. Cheiros de enxofre e metal quente dominam o ar...',
+    xp: 600, gold: 240,
+    layouts: [
+      [
+        { type: 'combat',   name: 'Forja Dimensional',     desc: 'Constructos de metal fundido emergem do portal amarelo com fúria!',                  icon: '🟡', enemy: { name: 'Constructo de Lava',  icon: '🤖', hp: 90,  atk: 22 } },
+        { type: 'trap',     name: 'Corredor de Metal',     desc: 'Engrenagens giratórias cortam o ar! Esquive ou sofra as consequências!',              icon: '⚠️', trapDmg: 30 },
+        { type: 'combat',   name: 'Câmara dos Forjadores', desc: 'Espíritos forjadores protegem os segredos do portal com vidas!',                     icon: '⚒️', enemy: { name: 'Espírito Forjador',   icon: '🔥', hp: 110, atk: 25 } },
+        { type: 'rest',     name: 'Câmara de Resfriamento', desc: 'Água gelada de fonte dimensional alivia as queimaduras...',                         icon: '💧' },
+        { type: 'combat',   name: 'Salão do Ferro',        desc: 'Um Golem de Ferro avançado barra o caminho com força esmagadora!',                   icon: '⚙️', enemy: { name: 'Golem de Ferro',      icon: '🤖', hp: 140, atk: 28 } },
+        { type: 'treasure', name: 'Arsenal Dimensional',   desc: 'Equipamentos forjados em energia dimensional!',                                      icon: '📦' },
+      ],
+      [
+        { type: 'combat',   name: 'Antecâmara Incandescente', desc: 'Elementais de fogo emergem do portal com rugidos ensurdecedores!',                icon: '🟡', enemy: { name: 'Elemental de Fogo',   icon: '🔥', hp: 85,  atk: 20 } },
+        { type: 'rescue',   name: 'Gaiola de Metal',        desc: 'Um ferreiro aprisionado grita atrás de barras de metal aquecido!',                  icon: '🔒', npcName: 'Ferreiro Dimensional' },
+        { type: 'combat',   name: 'Câmara dos Mestres',     desc: 'Mestres do metal dimensional empunham martelos de energia!',                        icon: '⚒️', enemy: { name: 'Mestre do Metal',     icon: '🔨', hp: 120, atk: 26 } },
+        { type: 'trap',     name: 'Rio de Metal Fundido',   desc: 'Metal fundido corre pelo piso! Precisa saltar rapidamente!',                        icon: '⚠️', trapDmg: 28 },
+        { type: 'combat',   name: 'Sala da Forja Suprema',  desc: 'A criação mais poderosa do portal aguarda para defender seu criador!',               icon: '⚙️', enemy: { name: 'Constructo Supremo',  icon: '🤖', hp: 145, atk: 29 } },
+        { type: 'rest',     name: 'Câmara de Refrigeração', desc: 'Uma fonte fria restaura energia e alivia dores...',                                 icon: '💧' },
+      ],
+      [
+        { type: 'combat',   name: 'Forja Dimensional',     desc: 'Constructos de metal fundido emergem do portal amarelo!',                            icon: '🟡', enemy: { name: 'Constructo de Lava',  icon: '🤖', hp: 90,  atk: 22 } },
+        { type: 'combat',   name: 'Corredor dos Espinhos', desc: 'Bestas de ferro com espinhos afiados bloqueiam a passagem!',                         icon: '🐾', enemy: { name: 'Besta de Ferro',      icon: '🦎', hp: 100, atk: 23 } },
+        { type: 'trap',     name: 'Câmara Pressurizada',   desc: 'Vapores quentes são liberados por válvulas defeituosas!',                             icon: '⚠️', trapDmg: 32 },
+        { type: 'combat',   name: 'Guardiões da Forja',    desc: 'Dois guardiões trabalham em conjunto para bloquear a passagem!',                     icon: '⚙️', enemy: { name: 'Guardião da Forja',   icon: '⚒️', hp: 130, atk: 27 } },
+        { type: 'rest',     name: 'Câmara de Refrigeração', desc: 'Uma fonte fria restaura energia e alivia dores...',                                 icon: '💧' },
+        { type: 'treasure', name: 'Arsenal Dimensional',   desc: 'Equipamentos forjados em energia dimensional!',                                      icon: '📦' },
+      ],
+    ],
+    boss: {
+      primary:   { name: 'Senhor da Forja Dimensional', icon: '🟡', hp: 480, atk: 52, matk: 28 },
+      secondary: { name: 'Constructo Guardião',          icon: '🤖', hp: 280, atk: 40, matk: 20, enragePrimary: 25 },
+    },
+  },
+
+  // ── PORTAL VERMELHO (nível 21-35) ─────────────────────────
+  'portal_red': {
+    atmosphere: 'Sangue e cinzas cobrem tudo além do portal carmesim. Gritos de batalha ecoam eternamente...',
+    xp: 1000, gold: 400,
+    layouts: [
+      [
+        { type: 'combat',   name: 'Campo de Ruínas',       desc: 'Demônios de guerra sobreviventes de batalhas eternas avançam com fúria!',           icon: '🔴', enemy: { name: 'Demônio de Guerra',   icon: '😈', hp: 130, atk: 34 } },
+        { type: 'trap',     name: 'Chuva de Brasas',       desc: 'O teto derrete liberando chuva de metal incandescente!',                             icon: '⚠️', trapDmg: 40 },
+        { type: 'combat',   name: 'Salão do Sangue',       desc: 'O Cavaleiro Carmesim não permite nenhuma passagem!',                                  icon: '🩸', enemy: { name: 'Cavaleiro Carmesim',  icon: '🗡️', hp: 170, atk: 40 } },
+        { type: 'rescue',   name: 'Masmorra Carmesim',     desc: 'Um herói capturado luta para se libertar das correntes demoníacas!',                 icon: '🔒', npcName: 'Herói Capturado' },
+        { type: 'combat',   name: 'Câmara das Almas',      desc: 'Almas perdidas no portal foram corrompidas em guardiões malignos!',                  icon: '💀', enemy: { name: 'Alma Corrompida',     icon: '👻', hp: 150, atk: 38 } },
+        { type: 'rest',     name: 'Santuário Proibido',    desc: 'Uma chama sagrada persiste em meio ao caos. Ela restaura os justos...',               icon: '🕯️' },
+        { type: 'combat',   name: 'Antecâmara do Boss',    desc: 'Os servos do lorde dimensional formam uma última linha de defesa!',                  icon: '🔴', enemy: { name: 'Servo do Lorde',      icon: '🧟', hp: 190, atk: 42 } },
+        { type: 'treasure', name: 'Tesouro Profano',       desc: 'Riquezas arrancadas de mundos conquistados aguardam em baús malditos!',              icon: '📦' },
+      ],
+      [
+        { type: 'combat',   name: 'Fronteira Carmesim',    desc: 'Sentinelas demoníacas guardam a entrada com lanças de fogo sombrio!',                icon: '🔴', enemy: { name: 'Sentinela Demoníaca', icon: '👿', hp: 125, atk: 32 } },
+        { type: 'combat',   name: 'Fortaleza de Ossos',    desc: 'Necromantes convocam esqueletos de guerreiros caídos em batalha!',                   icon: '💀', enemy: { name: 'Necromante Portal',   icon: '💀', hp: 145, atk: 35 } },
+        { type: 'trap',     name: 'Câmara das Maldições',  desc: 'Runas de maldição disparam ao toque! Energia sombria penetra cada célula!',          icon: '⚠️', trapDmg: 38 },
+        { type: 'combat',   name: 'Arena dos Condenados',  desc: 'Gladiadores eternamente condenados lutam sem possibilidade de repouso!',              icon: '🩸', enemy: { name: 'Gladiador Condenado',  icon: '⚔️', hp: 160, atk: 39 } },
+        { type: 'rest',     name: 'Santuário Esquecido',   desc: 'Uma chama sagrada persiste em meio ao caos dimensional...',                           icon: '🕯️' },
+        { type: 'combat',   name: 'Torre dos Horrores',    desc: 'Criaturas de pesadelo despencam das alturas da torre carmesim!',                     icon: '🔴', enemy: { name: 'Criatura Carmesim',   icon: '🦇', hp: 175, atk: 41 } },
+        { type: 'rescue',   name: 'Masmorra das Almas',    desc: 'Almas presas gritam por libertação!',                                                 icon: '🔒', npcName: 'Alma Aprisionada' },
+        { type: 'treasure', name: 'Câmara do Saque',       desc: 'Pilhagem de mil mundos conquistados pelo portal!',                                   icon: '📦' },
+      ],
+      [
+        { type: 'combat',   name: 'Campo de Ruínas',       desc: 'Demônios de guerra sobreviventes avançam com fúria implacável!',                     icon: '🔴', enemy: { name: 'Demônio de Guerra',   icon: '😈', hp: 130, atk: 34 } },
+        { type: 'trap',     name: 'Fogo das Profundezas',  desc: 'Fissuras no chão liberam jatos de fogo sombrio sem aviso!',                          icon: '⚠️', trapDmg: 42 },
+        { type: 'combat',   name: 'Salão dos Titãs',       desc: 'Titãs demoníacos de 5 metros bloqueiam a passagem com corpos maciços!',              icon: '💢', enemy: { name: 'Titã Demoníaco',      icon: '👹', hp: 180, atk: 43 } },
+        { type: 'rest',     name: 'Câmara de Sangue Frio', desc: 'Estranhamente pacífica — energia restauradora de uma fonte de sangue frio...',       icon: '🕯️' },
+        { type: 'combat',   name: 'Guardiões Vermelhos',   desc: 'Gêmeos Vermelhos guardam o caminho para o boss em uníssono!',                        icon: '🩸', enemy: { name: 'Guardião Gêmeo',      icon: '⚔️', hp: 155, atk: 37 } },
+        { type: 'combat',   name: 'Antecâmara do Lorde',   desc: 'Servos leais do Lorde Carmesim fazem última defesa desesperada!',                    icon: '🔴', enemy: { name: 'Servo Leal',          icon: '🧟', hp: 185, atk: 42 } },
+        { type: 'rescue',   name: 'Gaiola Carmesim',       desc: 'Um herói capturado luta para se libertar das correntes!',                             icon: '🔒', npcName: 'Herói Capturado' },
+        { type: 'treasure', name: 'Tesouro Profano',       desc: 'Riquezas arrancadas de mundos conquistados pelo portal carmesim!',                   icon: '📦' },
+      ],
+    ],
+    boss: {
+      primary:   { name: 'Lorde Carmesim',               icon: '🔴', hp: 750, atk: 75, matk: 45 },
+      secondary: { name: 'Arauto da Destruição',          icon: '😈', hp: 450, atk: 60, matk: 35, enragePrimary: 35 },
+      secondaryProtects: true,
+    },
+  },
+
+  // ── PORTAL LENDÁRIO (nível 30+) ───────────────────────────
+  'portal_legendary': {
+    atmosphere: 'O tecido da realidade se rasga. Um vazio absoluto sussurra nomes esquecidos de heróis mortos...',
+    xp: 1800, gold: 700,
+    layouts: [
+      [
+        { type: 'combat',   name: 'Borda do Vazio',         desc: 'Entidades do Vazio sem forma nem rosto convergem com sede de almas!',               icon: '🟣', enemy: { name: 'Entidade do Vazio',   icon: '🌌', hp: 200, atk: 55 } },
+        { type: 'trap',     name: 'Colapso Dimensional',    desc: 'O espaço entra em colapso! Energia do vazio fragmenta tudo ao redor!',               icon: '⚠️', trapDmg: 55 },
+        { type: 'combat',   name: 'Câmara da Aniquilação',  desc: 'Aniquiladores do Vazio existem apenas para apagar tudo que encontram!',              icon: '💜', enemy: { name: 'Aniquilador do Vazio', icon: '⚫', hp: 250, atk: 62 } },
+        { type: 'rescue',   name: 'Fragmento de Consciência', desc: 'Um herói lendário sobrevive consumido pelo vazio, apenas parcialmente...',         icon: '🔒', npcName: 'Herói Lendário' },
+        { type: 'combat',   name: 'Salão dos Arquidemônios', desc: 'Arquidemônios do Vazio carregam o poder de mundos destruídos!',                    icon: '🟣', enemy: { name: 'Arquidemônio do Vazio', icon: '👿', hp: 280, atk: 68 } },
+        { type: 'rest',     name: 'Olho da Tempestade',     desc: 'Um ponto de calma absoluta no centro do caos dimensional...',                        icon: '✨' },
+        { type: 'combat',   name: 'Câmara dos Campeões',    desc: 'Campeões corrompidos pelo vazio — heróis que falharam antes de você!',               icon: '💀', enemy: { name: 'Campeão Corrompido',   icon: '💀', hp: 300, atk: 70 } },
+        { type: 'treasure', name: 'Tesouro do Vazio',       desc: 'Artefatos de mundos destruídos aguardam quem for digno de os possuir!',              icon: '📦' },
+      ],
+      [
+        { type: 'combat',   name: 'Limiar do Infinito',     desc: 'Guardiões do Infinito testam cada aventureiro antes de permitir passagem!',          icon: '🟣', enemy: { name: 'Guardião do Infinito', icon: '🌌', hp: 210, atk: 57 } },
+        { type: 'combat',   name: 'Corredor dos Augúrios',  desc: 'Augúrios do Vazio preveem sua morte e tentam realizá-la!',                           icon: '🔮', enemy: { name: 'Augúrio Dimensional',  icon: '👁️', hp: 230, atk: 60 } },
+        { type: 'trap',     name: 'Paradoxo Temporal',      desc: 'O tempo para brevemente! Dano da realidade colidindo com antimatéria!',               icon: '⚠️', trapDmg: 58 },
+        { type: 'combat',   name: 'Salão do Esquecimento',  desc: 'Espíritos esquecidos de batalhas passadas buscam ancoragem na realidade!',            icon: '💜', enemy: { name: 'Espírito Esquecido',  icon: '👻', hp: 260, atk: 64 } },
+        { type: 'rest',     name: 'Nexo do Equilíbrio',     desc: 'Um ponto de equilíbrio raro no caos dimensional restaura os vivos...',                icon: '✨' },
+        { type: 'combat',   name: 'Câmara dos Titãs Cósmicos', desc: 'Titãs nascidos do vazio cósmico destroem tudo com mera presença!',               icon: '🟣', enemy: { name: 'Titã Cósmico',        icon: '⭐', hp: 290, atk: 69 } },
+        { type: 'rescue',   name: 'Prisioneiro do Vazio',   desc: 'Uma consciência aprisionada por séculos no vazio pede libertação!',                  icon: '🔒', npcName: 'Ancião Dimensional' },
+        { type: 'treasure', name: 'Cofre do Cosmos',        desc: 'Relíquias cósmicas de eras esquecidas aguardam o herói digno!',                      icon: '📦' },
+      ],
+      [
+        { type: 'combat',   name: 'Entrada do Abismo',      desc: 'O próprio Abismo toma forma para impedir sua passagem!',                             icon: '🟣', enemy: { name: 'Sombra do Abismo',    icon: '🌑', hp: 220, atk: 58 } },
+        { type: 'trap',     name: 'Rift Gravitacional',     desc: 'Um rift gravitacional comprime tudo numa área — inclusive você!',                     icon: '⚠️', trapDmg: 52 },
+        { type: 'combat',   name: 'Câmara dos Lordes',      desc: 'Lordes do Vazio — cada um um mundo destruído personificado!',                         icon: '💀', enemy: { name: 'Lorde do Vazio',      icon: '👿', hp: 270, atk: 66 } },
+        { type: 'rest',     name: 'Lágrima do Portal',      desc: 'Uma cristalização de lágrimas de mundos perdidos cura as feridas...',                icon: '✨' },
+        { type: 'combat',   name: 'Salão do Fim',           desc: 'Arautos do fim dos tempos formam uma guarda de honra ao boss final!',                icon: '🟣', enemy: { name: 'Arauto do Fim',       icon: '💀', hp: 310, atk: 72 } },
+        { type: 'combat',   name: 'Ante-Boss Cósmico',      desc: 'O guardião pessoal do Ancião do Vazio testa sua dignidade!',                         icon: '⚫', enemy: { name: 'Guardião Cósmico',    icon: '🌌', hp: 330, atk: 74 } },
+        { type: 'rescue',   name: 'Fragmento de Alma',      desc: 'Uma alma fragmentada tenta se reconstruir a partir de seus gritos...',               icon: '🔒', npcName: 'Alma Fragmentada' },
+        { type: 'treasure', name: 'Tesouro do Vazio',       desc: 'Artefatos de mundos destruídos aguardam quem for digno!',                            icon: '📦' },
+      ],
+    ],
+    boss: {
+      primary:   { name: 'Ancião do Vazio',              icon: '🟣', hp: 1200, atk: 95, matk: 65 },
+      secondary: { name: 'Fragmento do Caos Primordial', icon: '⚫', hp:  700, atk: 78, matk: 55, enragePrimary: 40 },
+      secondaryProtects: true,
+    },
+  },
 };
 
 // Backwards-compat helpers (used in victory/prep screens)
@@ -314,6 +471,9 @@ export type DungeonArenaProps = {
   sessionId?: string;
   sessionPlayers?: SessionPlayer[];
   isHost?: boolean;
+  // Portal dungeon options
+  actionCooldownMs?: number;  // If > 0, enforces a cooldown between actions (ms)
+  isPortalDungeon?: boolean;  // Disables pet assistance
 };
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -335,6 +495,8 @@ export default function DungeonArena({
   sessionId,
   sessionPlayers,
   isHost = true,
+  actionCooldownMs = 0,
+  isPortalDungeon = false,
 }: DungeonArenaProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -448,6 +610,20 @@ export default function DungeonArena({
   const [goldEarned, setGoldEarned]   = useState(0);
   const [showLootPanel, setShowLootPanel] = useState(false);
   const [coopLog, setCoopLog]         = useState<string[]>([]);  // extra co-op entries
+
+  // ── Action cooldown (for portal dungeons) ─────────────────────────────
+  const [lastActionAt, setLastActionAt]         = useState<number>(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+  useEffect(() => {
+    if (!actionCooldownMs || lastActionAt === 0) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, actionCooldownMs - (Date.now() - lastActionAt));
+      setCooldownRemaining(remaining);
+      if (remaining === 0) clearInterval(interval);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [lastActionAt, actionCooldownMs]);
 
   const logRef = useRef<HTMLDivElement>(null);
   const potionsRef = useRef<PotionItem[]>(initialPotions);
@@ -592,6 +768,15 @@ export default function DungeonArena({
   // ── Action handler (one round / one action per click) ──────────────────
   const handleAction = useCallback(() => {
     if (!isHost) return;  // only host drives combat in co-op
+
+    // Enforce action cooldown for portal dungeons
+    if (actionCooldownMs > 0) {
+      const now = Date.now();
+      if (now - lastActionAt < actionCooldownMs) return;
+      setLastActionAt(now);
+      setCooldownRemaining(actionCooldownMs);
+    }
+
     const room = allRooms[roomIdx];
     const isCombat = room.type === 'combat' || room.type === 'boss';
     const isBoss   = room.type === 'boss';
@@ -1353,7 +1538,7 @@ export default function DungeonArena({
             {/* Action button */}
             <button
               onClick={roomOutcome !== null ? handleContinue : handleAction}
-              disabled={phase !== 'exploring' || (!isHost && sessionId !== undefined)}
+              disabled={phase !== 'exploring' || (!isHost && sessionId !== undefined) || (actionCooldownMs > 0 && cooldownRemaining > 0 && roomOutcome === null)}
               className={`w-full py-3 rounded-xl font-bold text-base transition-colors disabled:opacity-50 ${
                 (!isHost && sessionId) ? 'bg-muted text-muted-foreground cursor-not-allowed'
                 : roomOutcome !== null
@@ -1370,6 +1555,10 @@ export default function DungeonArena({
               ) : roomOutcome !== null ? (
                 <span className="flex items-center justify-center gap-2">
                   Continuar <ChevronRight className="w-5 h-5" />
+                </span>
+              ) : actionCooldownMs > 0 && cooldownRemaining > 0 ? (
+                <span className="flex items-center justify-center gap-2">
+                  ⏳ Aguardando... {Math.ceil(cooldownRemaining / 1000)}s
                 </span>
               ) : (
                 actionLabel()

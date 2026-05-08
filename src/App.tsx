@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import Missions from "./pages/Missions";
 import CalendarPage from "./pages/CalendarPage";
 import BossPage from "./pages/BossPage";
+import PortalEventPage from "./pages/PortalEventPage";
 import ClassesPage from "./pages/ClassesPage";
 import ProgressPage from "./pages/ProgressPage";
 import ShopPage from "./pages/ShopPage";
@@ -131,6 +132,7 @@ function AppRoutes() {
       <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
       <Route path="/boss" element={<ProtectedRoute><BossPage /></ProtectedRoute>} />
+      <Route path="/portal" element={<ProtectedRoute><PortalEventPage /></ProtectedRoute>} />
       <Route path="/health" element={<ProtectedRoute><HealthPage /></ProtectedRoute>} />
       <Route path="/feats" element={<ProtectedRoute><FeatsTree /></ProtectedRoute>} />
       <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
