@@ -27,7 +27,16 @@ export async function initializePaddle() {
     script.onload = () => {
       const paddleJsEnvironment = getPaddleEnvironment() === "sandbox" ? "sandbox" : "production";
       window.Paddle.Environment.set(paddleJsEnvironment);
-      window.Paddle.Initialize({ token: clientToken });
+      window.Paddle.Initialize({
+        token: clientToken,
+        eventCallback: (event: any) => {
+          if (event.name === "checkout.error" || event.type === "error") {
+            console.error("[Paddle] Checkout event error:", JSON.stringify(event));
+          } else {
+            console.log("[Paddle] Event:", event.name, event);
+          }
+        },
+      });
       paddleInitialized = true;
       resolve();
     };

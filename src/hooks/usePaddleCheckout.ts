@@ -30,6 +30,7 @@ export function usePaddleCheckout() {
     let paddlePriceId: string;
     try {
       paddlePriceId = await getPaddlePriceId(priceId);
+      console.log("[Paddle] Resolved priceId:", paddlePriceId, "| env:", window.Paddle?.Environment?.current?.());
     } catch (err) {
       console.error("[Paddle] getPaddlePriceId failed:", err);
       toast.error("Não foi possível encontrar o plano de assinatura. Entre em contato com o suporte.");
