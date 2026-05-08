@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Zap, ChevronRight, Trophy, Skull, LogOut, Users, Package, FlaskConical, Bot, ShieldCheck, Swords, Copy } from 'lucide-react';
+import { Heart, Zap, ChevronRight, Trophy, Skull, LogOut, Users, Package, FlaskConical, Bot, ShieldCheck, Swords, Copy, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRecordPartnership, useDungeonPartnerships, getBondTier, BOND_TIERS, runsToNextTier } from '@/hooks/useDungeonPartnerships';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type RoomType = 'combat' | 'rescue' | 'treasure' | 'trap' | 'rest' | 'boss';
@@ -296,6 +297,8 @@ export default function DungeonArena({
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const recordPartnership = useRecordPartnership();
+  const { data: myPartnerships = [] } = useDungeonPartnerships();
 
   // ── Compute dungeon data ─────────────────────────────────────────────
   const dungeonMeta   = DUNGEON_DATA[dungeonId] ?? DUNGEON_DATA['1'];
@@ -729,6 +732,12 @@ export default function DungeonArena({
         xp_gained: totalXp,
       });
 
+      // Party bond — registra parceria para todos os membros co-op
+      if (sessionPlayers && sessionPlayers.length >= 2) {
+        const allIds = sessionPlayers.map(p => p.userId);
+        recordPartnership.mutate({ playerIds: allIds, victory: true });
+      }
+
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
@@ -930,14 +939,23 @@ export default function DungeonArena({
                   Grupo ({sessionPlayers.length}/4)
                 </p>
                 <div className="flex flex-col gap-1.5">
-                  {sessionPlayers.map(p => (
-                    <div key={p.userId} className="flex items-center gap-2 text-xs">
-                      <span className={p.isHost ? 'text-yellow-400' : 'text-purple-300'}>
-                        {p.isHost ? '👑' : '⚔️'} {p.displayName}
-                      </span>
-                      <span className="text-muted-foreground ml-auto">Lv.{p.level} · ATK {p.atk}</span>
-                    </div>
-                  ))}
+                  {sessionPlayers.map(p => {
+                    const bond = myPartnerships.find(b => b.partner_id === p.userId);
+                    const tier = bond ? BOND_TIERS[bond.bond_tier] : null;
+                    return (
+                      <div key={p.userId} className="flex items-center gap-2 text-xs">
+                        <span className={p.isHost ? 'text-yellow-400' : 'text-purple-300'}>
+                          {p.isHost ? '👑' : '⚔️'} {p.displayName}
+                        </span>
+                        {tier && bond!.bond_tier > 0 && (
+                          <span className={`ml-1 ${tier.color} flex items-center gap-0.5`}>
+                            {tier.icon} <span className="text-[10px]">{tier.label}</span>
+                          </span>
+                        )}
+                        <span className="text-muted-foreground ml-auto">Lv.{p.level} · ATK {p.atk}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1218,6 +1236,49 @@ export default function DungeonArena({
                 <p className="text-[11px] text-muted-foreground">Itens salvos no inventário para fabricação de equipamentos.</p>
               </div>
             )}
+
+            {/* Party Bond card — só aparece em co-op com 2+ pessoas */}
+            {sessionPlayers && sessionPlayers.length >= 2 && (() => {
+              const allies = sessionPlayers.filter(p => !p.isHost);
+              return allies.length > 0 ? (
+                <div className="rpg-card bg-purple-500/10 border-purple-500/30 space-y-2">
+                  <p className="text-sm font-semibold text-purple-300 flex items-center gap-2">
+                    <Link2 className="w-4 h-4" />
+                    Vínculo de Batalha
+                  </p>
+                  {allies.map(p => {
+                    const bond = myPartnerships.find(b => b.partner_id === p.userId);
+                    const newRuns = (bond?.runs_together ?? 0) + 1;
+                    const newTier = getBondTier(newRuns);
+                    const tierInfo = BOND_TIERS[newTier];
+                    const nextInfo = runsToNextTier(newRuns);
+                    const isNew = !bond;
+                    return (
+                      <div key={p.userId} className="flex items-start justify-between text-xs border-t border-purple-500/20 pt-2">
+                        <div>
+                          <p className="font-semibold text-foreground">{p.displayName}</p>
+                          <p className={`${tierInfo.color} flex items-center gap-1 mt-0.5`}>
+                            {tierInfo.icon} {tierInfo.label}
+                            {isNew && <span className="text-[10px] text-emerald-400 ml-1">(novo!)</span>}
+                          </p>
+                          {nextInfo && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Faltam {nextInfo.runsNeeded} run(s) para {BOND_TIERS[nextInfo.next].icon} {BOND_TIERS[nextInfo.next].label}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right text-[11px] text-muted-foreground">
+                          <p>{newRuns} run(s) juntos</p>
+                          {newTier >= 1 && <p className="text-emerald-400">+{[0,5,10,15,20][newTier]}% XP</p>}
+                          {newTier >= 2 && <p className="text-yellow-400">+{[0,0,5,10,15][newTier]}% Gold</p>}
+                          {newTier >= 3 && <p className="text-amber-400">+{[0,0,0,10,15][newTier]}% Drop</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null;
+            })()}
 
             {isGranting && <p className="text-xs text-center text-muted-foreground animate-pulse">Salvando recompensas...</p>}
 

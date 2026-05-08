@@ -30,6 +30,7 @@ import {
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
 import { getLevelProgress } from "@/lib/progression";
+import { useDungeonPartnerships, BOND_TIERS, runsToNextTier } from "@/hooks/useDungeonPartnerships";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
 const PROFILE_TOUR_STEPS: TourStep[] = [
@@ -719,6 +720,80 @@ function ThemeToggleSettings() {
           <span className="text-sm font-medium">{t('app.profile.themeLight')}</span>
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Partnership Section ────────────────────────────────────────────────────
+function PartnershipSection() {
+  const { data: partnerships = [], isLoading } = useDungeonPartnerships();
+
+  if (isLoading) return null;
+  if (partnerships.length === 0) return (
+    <div className="rpg-card bg-purple-500/5 border-purple-500/20 space-y-2">
+      <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+        <Users className="w-4 h-4 text-purple-400" />
+        Parceiros de Dungeon
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Complete dungeons co-op com amigos para construir vínculos e ganhar bônus permanentes de XP, ouro e drop.
+      </p>
+    </div>
+  );
+
+  return (
+    <div className="rpg-card space-y-3">
+      <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+        <Users className="w-4 h-4 text-purple-400" />
+        Parceiros de Dungeon
+        <span className="ml-auto text-xs text-muted-foreground">{partnerships.length} parceiro(s)</span>
+      </p>
+
+      <div className="space-y-2">
+        {partnerships.slice(0, 5).map((p) => {
+          const tier = BOND_TIERS[p.bond_tier];
+          const next = runsToNextTier(p.runs_together);
+          const progressToNext = next
+            ? Math.round(((next.runsNeeded === 1 ? 0 : (p.runs_together - ([0,3,6,11,21][p.bond_tier]))) / ([3,3,5,10,10][p.bond_tier])) * 100)
+            : 100;
+          return (
+            <div key={p.partner_id} className="flex items-start gap-3 border border-border/40 rounded-lg p-2.5 bg-muted/20">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-sm font-bold ${tier.color}`}>{tier.icon}</span>
+                  <span className="text-sm font-semibold text-foreground truncate">{p.partner_name}</span>
+                  <span className="text-xs text-muted-foreground ml-auto shrink-0">Lv.{p.partner_level}</span>
+                </div>
+                <p className={`text-xs ${tier.color} mt-0.5`}>{tier.label}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-purple-500"
+                      style={{ width: `${progressToNext}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground shrink-0">{p.runs_together} runs</span>
+                </div>
+                {next && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {next.runsNeeded} run(s) para {BOND_TIERS[next.next].icon} {BOND_TIERS[next.next].label}
+                  </p>
+                )}
+              </div>
+              <div className="text-right text-[11px] space-y-0.5 shrink-0">
+                {p.xp_bonus_pct > 0  && <p className="text-emerald-400">+{p.xp_bonus_pct}% XP</p>}
+                {p.gold_bonus_pct > 0 && <p className="text-yellow-400">+{p.gold_bonus_pct}% Ouro</p>}
+                {p.drop_bonus_pct > 0 && <p className="text-amber-400">+{p.drop_bonus_pct}% Drop</p>}
+                <p className="text-muted-foreground">{p.victories_together}v/{p.runs_together}r</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {partnerships.length > 5 && (
+        <p className="text-xs text-muted-foreground text-center">+{partnerships.length - 5} parceiro(s) adicionais</p>
+      )}
     </div>
   );
 }
@@ -1650,6 +1725,9 @@ export default function ProfilePage() {
             <div className="rpg-card p-4">
               <BodyEvolutionSection />
             </div>
+
+            {/* Parceiros de Dungeon */}
+            <PartnershipSection />
           </div>
         )}
 
