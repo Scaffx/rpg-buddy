@@ -305,13 +305,35 @@ export default function DungeonArena({
   const playerCount   = sessionPlayers ? sessionPlayers.length : (1 + Math.max(0, friendCount));
   const aliveAllies   = sessionPlayers ? sessionPlayers.filter(p => !p.isHost && p.isAlive).length : friendCount;
 
+  // ── Sidekick scaling ──────────────────────────────────────────────────
+  // Em co-op, calculamos o nível de referência da dungeon pela média da party,
+  // com teto no nível mais baixo + SIDEKICK_BUFFER (evita que jogadores de
+  // alto nível tornem o conteúdo trivial para jogadores iniciantes).
+  const SIDEKICK_BUFFER = 5;   // alto nível pode ser até 5 acima do menor
+  const partyLevels  = sessionPlayers ? sessionPlayers.map(p => p.level) : [playerLevel];
+  const partyMinLevel = Math.min(...partyLevels);
+  const partyAvgLevel = Math.round(partyLevels.reduce((a, b) => a + b, 0) / partyLevels.length);
+  // Nível de referência: média da party, mas nunca acima de mínimo + buffer
+  const effectiveDungeonLevel = sessionPlayers && sessionPlayers.length > 1
+    ? Math.min(partyAvgLevel, partyMinLevel + SIDEKICK_BUFFER)
+    : playerLevel;
+  // Fator de sidekick para este jogador (só reduz, nunca amplia)
+  const sidekickFactor = (sessionPlayers && sessionPlayers.length > 1 && playerLevel > partyMinLevel + SIDEKICK_BUFFER)
+    ? Math.min(1, (partyMinLevel + SIDEKICK_BUFFER) / playerLevel)
+    : 1;
+  const effectivePlayerAtk = Math.round(playerAtk * sidekickFactor);
+  const effectivePlayerDef = Math.round(playerDef * sidekickFactor);
+  const levelGap = sessionPlayers && sessionPlayers.length > 1
+    ? Math.max(...partyLevels) - partyMinLevel
+    : 0;
+
   // Randomly pick a layout once (computed on mount via lazy useState)
   const [layoutIndex] = useState<number>(() => Math.floor(Math.random() * 3));
   const baseRooms     = dungeonMeta.layouts[layoutIndex] ?? dungeonMeta.layouts[0];
 
   // Scale rooms to player level + party size
   const dungeonRoomList: RoomDef[] = baseRooms.map(room => room.enemy
-    ? { ...room, enemy: { ...room.enemy, hp: scaleHp(room.enemy.hp, playerLevel, playerCount), atk: scaleAtk(room.enemy.atk, playerLevel, playerCount) } }
+    ? { ...room, enemy: { ...room.enemy, hp: scaleHp(room.enemy.hp, effectiveDungeonLevel, playerCount), atk: scaleAtk(room.enemy.atk, effectiveDungeonLevel, playerCount) } }
     : room
   );
 
@@ -319,15 +341,15 @@ export default function DungeonArena({
   const bossFight    = dungeonMeta.boss;
   const scaledPrimary: EnemyDef & { matk: number } = {
     ...bossFight.primary,
-    hp:  scaleHp(bossFight.primary.hp,  playerLevel, playerCount),
-    atk: scaleAtk(bossFight.primary.atk, playerLevel, playerCount),
-    matk: scaleAtk(bossFight.primary.matk, playerLevel, playerCount),
+    hp:  scaleHp(bossFight.primary.hp,  effectiveDungeonLevel, playerCount),
+    atk: scaleAtk(bossFight.primary.atk, effectiveDungeonLevel, playerCount),
+    matk: scaleAtk(bossFight.primary.matk, effectiveDungeonLevel, playerCount),
   };
   const scaledSecondary = bossFight.secondary ? {
     ...bossFight.secondary,
-    hp:  scaleHp(bossFight.secondary.hp,  playerLevel, playerCount),
-    atk: scaleAtk(bossFight.secondary.atk, playerLevel, playerCount),
-    matk: scaleAtk(bossFight.secondary.matk, playerLevel, playerCount),
+    hp:  scaleHp(bossFight.secondary.hp,  effectiveDungeonLevel, playerCount),
+    atk: scaleAtk(bossFight.secondary.atk, effectiveDungeonLevel, playerCount),
+    matk: scaleAtk(bossFight.secondary.matk, effectiveDungeonLevel, playerCount),
   } : undefined;
 
   const bossRoomDef: RoomDef = {
@@ -491,10 +513,16 @@ export default function DungeonArena({
     const isBoss   = room.type === 'boss';
 
     if (isCombat) {
-      // Combined ATK from entire alive party
+      // Combined ATK from entire alive party — aplica sidekick cap por jogador
       const baseAtk = sessionPlayers
-        ? sessionPlayers.filter(p => p.isAlive).reduce((s, p) => s + p.atk, 0)
-        : playerAtk;
+        ? sessionPlayers.filter(p => p.isAlive).reduce((s, p) => {
+            // cap individual: se estiver muito acima do mínimo, reduz proporcionalmente
+            const pFactor = p.level > partyMinLevel + SIDEKICK_BUFFER
+              ? Math.min(1, (partyMinLevel + SIDEKICK_BUFFER) / p.level)
+              : 1;
+            return s + Math.round(p.atk * pFactor);
+          }, 0)
+        : effectivePlayerAtk;
       const friendBonus   = sessionPlayers ? 0 : Math.min(friendCount * 0.18, 0.65);
       const effAtk        = Math.round(baseAtk * (sessionPlayers ? 1 : (1 + friendBonus)));
 
@@ -525,7 +553,7 @@ export default function DungeonArena({
           } else {
             // Secondary retaliates
             const enrageAtk = scaledSecondary.atk;
-            const rawEDmg = Math.max(1, Math.round((eRoll * enrageAtk) / 15) - Math.floor(playerDef / 6));
+            const rawEDmg = Math.max(1, Math.round((eRoll * enrageAtk) / 15) - Math.floor(effectivePlayerDef / 6));
             newLog.push(`👹 ${scaledSecondary.name} rolou ${eRoll} → ${rawEDmg} dano em você!`);
             setPlayerHp(ph => {
               const newHp = Math.max(0, ph - rawEDmg);
@@ -580,7 +608,7 @@ export default function DungeonArena({
         }
 
         // Enemy attacks back
-        const rawEDmg = Math.max(1, Math.round((eRoll * enemyAtkEff) / 15) - Math.floor(playerDef / 6));
+        const rawEDmg = Math.max(1, Math.round((eRoll * enemyAtkEff) / 15) - Math.floor(effectivePlayerDef / 6));
         const eDmg = Math.max(1, rawEDmg);
         if (bossEnraged) newLogLines.push(`😡 [ENFURECIDO] ${room.enemy?.name} rolou ${eRoll} → ${eDmg} dano!`);
         else newLogLines.push(`👹 ${room.enemy?.name} rolou ${eRoll} → ${eDmg} de dano em você!`);
@@ -604,7 +632,7 @@ export default function DungeonArena({
       });
 
     } else if (room.type === 'rescue') {
-      const roll = d(20) + Math.floor(playerLevel / 2);
+      const roll = d(20) + Math.floor(effectiveDungeonLevel / 2);
       const success = roll >= 12;
       addLog(`🤝 Tentativa de resgate — rolou ${roll} (min: 12)`);
       if (success) {
@@ -628,7 +656,7 @@ export default function DungeonArena({
       setRoomOutcome('success');
 
     } else if (room.type === 'trap') {
-      const roll = d(20) + Math.floor(playerLevel / 3);
+      const roll = d(20) + Math.floor(effectiveDungeonLevel / 3);
       const evaded = roll >= 14;
       addLog(`🏃 Tentativa de desvio — rolou ${roll} (min: 14)`);
       if (evaded) {
@@ -665,7 +693,7 @@ export default function DungeonArena({
       loot.forEach(l => addLog(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
       setRoomOutcome('success');
     }
-  }, [allRooms, roomIdx, playerAtk, playerDef, playerLevel, friendCount, sessionPlayers, boss2Hp, bossEnraged, scaledPrimary, scaledSecondary, bossFight, initialPlayerMaxHp, initialPlayerMaxMp, addLog, usePotion, broadcastAction, enemyHp, roomOutcome, isHost]);
+  }, [allRooms, roomIdx, effectivePlayerAtk, effectivePlayerDef, effectiveDungeonLevel, partyMinLevel, SIDEKICK_BUFFER, friendCount, sessionPlayers, boss2Hp, bossEnraged, scaledPrimary, scaledSecondary, bossFight, initialPlayerMaxHp, initialPlayerMaxMp, addLog, usePotion, broadcastAction, enemyHp, roomOutcome, isHost]);
 
   // ── Continue to next room ──────────────────────────────────────────────
   const handleContinue = useCallback(() => {
@@ -887,6 +915,9 @@ export default function DungeonArena({
                     {playerCount > 1 ? `${playerCount} jogadores ⚔️ +${friendBonus}%` : '⚠️ Solo (mais difícil)'}
                   </p>
                   {playerCount > 1 && <p className="text-[11px] text-orange-400">Boss escalado p/ {playerCount} jogadores!</p>}
+                  {sessionPlayers && sessionPlayers.length > 1 && (
+                    <p className="text-[11px] text-sky-400 mt-0.5">★ Nv. efetivo: {effectiveDungeonLevel}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -922,6 +953,22 @@ export default function DungeonArena({
               </div>
             </div>
 
+            {/* Sidekick gap warning */}
+            {levelGap > 8 && sessionPlayers && (
+              <div className={`rpg-card ${levelGap > 15 ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+                <p className={`text-xs flex items-start gap-2 ${levelGap > 15 ? 'text-red-300' : 'text-amber-300'}`}>
+                  <span className="text-base shrink-0">{levelGap > 15 ? '🚨' : '⚠️'}</span>
+                  <span>
+                    <strong>Gap de nível de {levelGap} niveis detectado.</strong>{' '}
+                    {levelGap > 15
+                      ? 'Diferença extrema — jogadores de alto nível têm ATK reduzido automaticamente (sidekick scaling).'
+                      : 'O combatê será equilibrado automaticamente para a faixa do jogador mais fraco.'}
+                    {' '}Todos jogam no nível efetivo <strong>{effectiveDungeonLevel}</strong>.
+                  </span>
+                </p>
+              </div>
+            )}
+
             {playerCount === 1 && (
               <div className="rpg-card bg-yellow-500/10 border-yellow-500/30">
                 <p className="text-xs text-yellow-300 flex items-center gap-2">
@@ -942,11 +989,18 @@ export default function DungeonArena({
                   {sessionPlayers.map(p => {
                     const bond = myPartnerships.find(b => b.partner_id === p.userId);
                     const tier = bond ? BOND_TIERS[bond.bond_tier] : null;
+                    const isSidekickPlayer = p.level > partyMinLevel + SIDEKICK_BUFFER;
+                    const pFactor = isSidekickPlayer ? Math.min(1, (partyMinLevel + SIDEKICK_BUFFER) / p.level) : 1;
                     return (
                       <div key={p.userId} className="flex items-center gap-2 text-xs">
                         <span className={p.isHost ? 'text-yellow-400' : 'text-purple-300'}>
                           {p.isHost ? '👑' : '⚔️'} {p.displayName}
                         </span>
+                        {isSidekickPlayer && (
+                          <span className="text-[10px] text-sky-400 border border-sky-400/30 rounded-full px-1.5 py-0.5">
+                            sidekick Lv.{partyMinLevel + SIDEKICK_BUFFER}
+                          </span>
+                        )}
                         {tier && bond!.bond_tier > 0 && (
                           <span className={`ml-1 ${tier.color} flex items-center gap-0.5`}>
                             {tier.icon} <span className="text-[10px]">{tier.label}</span>

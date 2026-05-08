@@ -1076,6 +1076,30 @@ export default function BossPage() {
                   )}
                 </div>
 
+                {/* Level gap warning */}
+                {(() => {
+                  if (sessionPlayers.length < 2) return null;
+                  const levels = sessionPlayers.map(p => p.level);
+                  const gap = Math.max(...levels) - Math.min(...levels);
+                  const minLv = Math.min(...levels);
+                  const effLv = Math.min(
+                    Math.round(levels.reduce((a, b) => a + b, 0) / levels.length),
+                    minLv + 5
+                  );
+                  if (gap <= 5) return null;
+                  return (
+                    <div className={`text-xs rounded-lg p-2.5 flex items-start gap-2 ${gap > 15 ? 'bg-red-500/10 border border-red-500/30 text-red-300' : 'bg-amber-500/10 border border-amber-500/30 text-amber-300'}`}>
+                      <span className="text-base shrink-0">{gap > 15 ? '🚨' : '⚠️'}</span>
+                      <span>
+                        <strong>Gap de {gap} níveis.</strong> Dungeon escala pelo nível efetivo <strong>{effLv}</strong>.
+                        {gap > 15
+                          ? ' ATK dos jogadores de alto nível será reduzido (sidekick scaling).'
+                          : ' Combate balanceado automaticamente.'}
+                      </span>
+                    </div>
+                  );
+                })()}
+
                 {sessionPlayers.find(p => p.userId === user?.id)?.isHost && (
                   <Button
                     onClick={handleStartSession}
