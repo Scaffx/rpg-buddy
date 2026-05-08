@@ -283,7 +283,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ============== ROADMAP ============== */}}
+      {/* ============== ROADMAP ============== */}
       <section className="py-20 px-4 md:px-8 max-w-6xl mx-auto">
         <SectionHeader
           eyebrow={t("roadmap.eyebrow")}
