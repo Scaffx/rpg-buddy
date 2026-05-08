@@ -10,7 +10,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useClickSound } from "@/hooks/useClickSound";
 import { ShortRestStatusProvider } from "@/hooks/useShortRestStatus";
-import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Missions from "./pages/Missions";
@@ -74,16 +73,10 @@ function ProtectedRoute({
   const onboardingDone = hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id);
   if (!bypassOnboarding && !onboardingDone) return <Navigate to="/onboarding" replace />;
 
-  // Enforce de assinatura: após trial/vencimento, bloqueia acesso às rotas protegidas.
+  // Enforce de assinatura: após trial/vencimento, redireciona para Landing com paywall.
   // Admins do sistema (app_metadata.role = 'admin') ficam isentos para poder operar o painel.
   if (!bypassSubscription && !isActive && !isAdmin) {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-6 flex items-center justify-center">
-        <div className="w-full max-w-4xl">
-          <SubscriptionPaywall />
-        </div>
-      </div>
-    );
+    return <Navigate to="/landing" replace />;
   }
 
   return <>{children}</>;
@@ -103,16 +96,20 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 function LandingRoute() {
-  // Landing pública: visitantes veem o pitch; logados vão direto pro app.
+  // Landing pública: visitantes e usuários com assinatura expirada veem o pitch.
+  // Usuários com assinatura ativa vão direto pro app.
   const { user, loading } = useAuth();
-  if (loading) {
+  const { isActive, isLoading: subLoading } = useSubscription();
+  if (loading || (user && subLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
-  if (user) return <Navigate to="/" replace />;
+  // Usuário ativo → manda pro dashboard
+  if (user && isActive) return <Navigate to="/" replace />;
+  // Expirado ou visitante → mostra Landing (com paywall modal para expirados)
   return <Landing />;
 }
 

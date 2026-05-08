@@ -1,6 +1,7 @@
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { useEffect, useState } from "react";
 import {
   Swords,
   Sparkles,
@@ -33,7 +34,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLocalizedPricing } from "@/hooks/useLocalizedPricing";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -49,7 +54,16 @@ const stagger = {
 export default function Landing() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const { isActive, isLoading: subLoading } = useSubscription();
   const { monthlyFormatted, annualFormatted, monthlyUsd, loading: pricingLoading } = useLocalizedPricing();
+
+  // Usuário logado com assinatura expirada → abre paywall automaticamente
+  const isExpiredUser = !!user && !subLoading && !isActive;
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  useEffect(() => {
+    if (isExpiredUser) setPaywallOpen(true);
+  }, [isExpiredUser]);
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground overflow-x-hidden">
@@ -61,33 +75,40 @@ export default function Landing() {
             <span className="font-[var(--font-display)] text-base md:text-lg font-bold tracking-wider">
               LIFE<span className="text-primary">on</span>RPG
             </span>
-            {IS_BETA && (
-              <Badge className="ml-1 h-5 px-2 text-[10px] font-black tracking-wider bg-accent/20 text-accent border border-accent/40 hover:bg-accent/20">
-                BETA
-              </Badge>
-            )}
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
             <LanguageSwitcher />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/auth")}
-              className="hover:text-primary"
-            >
-              <LogIn className="w-4 h-4" />
-              <span className="hidden sm:inline">{t("nav.login")}</span>
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => navigate("/auth?mode=signup")}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)]"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span className="hidden sm:inline">{t("nav.signup")}</span>
-            </Button>
-          </div>
+            {isExpiredUser ? (
+              <Button
+                size="sm"
+                onClick={() => setPaywallOpen(true)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)]"
+              >
+                <Crown className="w-4 h-4" />
+                <span className="hidden sm:inline">{t("pricing.monthly.cta")}</span>
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/auth")}
+                  className="hover:text-primary"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t("nav.login")}</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/auth?mode=signup")}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)]"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t("nav.signup")}</span>
+                </Button>
+              </>
+            )}
         </div>
       </header>
 
@@ -469,6 +490,19 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* ============== PAYWALL MODAL (usuário expirado) ============== */}
+      <Dialog open={paywallOpen} onOpenChange={setPaywallOpen}>
+        <DialogContent className="max-w-2xl w-full bg-background border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-[var(--font-display)] text-xl font-black flex items-center gap-2">
+              <Crown className="w-5 h-5 text-primary" />
+              {t("pricing.access_plan_title")}
+            </DialogTitle>
+          </DialogHeader>
+          <SubscriptionPaywall />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
