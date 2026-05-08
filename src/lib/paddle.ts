@@ -36,13 +36,25 @@ export async function initializePaddle() {
   });
 }
 
+// Optional direct price ID overrides via env vars (bypasses API lookup)
+// e.g. VITE_PADDLE_PRICE_MONTHLY=pri_01xxx  VITE_PADDLE_PRICE_ANNUAL=pri_01yyy
+const PRICE_ID_MAP: Record<string, string | undefined> = {
+  premium_monthly: import.meta.env.VITE_PADDLE_PRICE_MONTHLY,
+  premium_annual:  import.meta.env.VITE_PADDLE_PRICE_ANNUAL,
+};
+
 export async function getPaddlePriceId(priceId: string): Promise<string> {
+  // If a direct Paddle price ID is configured in env, use it immediately
+  const direct = PRICE_ID_MAP[priceId] ?? (priceId.startsWith('pri_') ? priceId : undefined);
+  if (direct) return direct;
+
+  // Fallback: resolve via edge function (requires external_id configured in Paddle)
   const environment = getPaddleEnvironment();
   const { data, error } = await supabase.functions.invoke("get-paddle-price", {
     body: { priceId, environment },
   });
   if (error || !data?.paddleId) {
-    throw new Error(`Failed to resolve price: ${priceId}`);
+    throw new Error(`Failed to resolve price "${priceId}": ${error?.message ?? 'not found'}`);
   }
   return data.paddleId;
 }

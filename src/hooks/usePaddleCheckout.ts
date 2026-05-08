@@ -20,8 +20,24 @@ export function usePaddleCheckout() {
     setLoading(true);
     try {
       await initializePaddle();
-      const paddlePriceId = await getPaddlePriceId(priceId);
+    } catch (err) {
+      console.error("[Paddle] initializePaddle failed:", err);
+      toast.error("Falha ao carregar o sistema de pagamento. Verifique sua conexão.");
+      setLoading(false);
+      return;
+    }
 
+    let paddlePriceId: string;
+    try {
+      paddlePriceId = await getPaddlePriceId(priceId);
+    } catch (err) {
+      console.error("[Paddle] getPaddlePriceId failed:", err);
+      toast.error("Não foi possível encontrar o plano de assinatura. Entre em contato com o suporte.");
+      setLoading(false);
+      return;
+    }
+
+    try {
       window.Paddle.Checkout.open({
         items: [{ priceId: paddlePriceId, quantity: 1 }],
         customer: user.email ? { email: user.email } : undefined,
@@ -35,7 +51,7 @@ export function usePaddleCheckout() {
         },
       });
     } catch (err) {
-      console.error(err);
+      console.error("[Paddle] Checkout.open failed:", err);
       toast.error("Não foi possível abrir o checkout. Tente novamente.");
     } finally {
       setLoading(false);
