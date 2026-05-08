@@ -13,7 +13,7 @@
     "cta_signup": "Начать",
     "cta_login": "У меня есть аккаунт",
     "perk_trial": "7 дней бесплатно",
-    "perk_apk": "APK для Android",
+    "perk_apk": "Скоро в Play Store",
     "perk_bosses": "60 боссов"
   },
   "what": {
@@ -98,16 +98,32 @@
       "loot_text": "Расширенная система лута, крафта и оружия с реальными бонусами к атрибутам."
     }
   },
+  "whats_new": {
+    "eyebrow": "Что нового в v2.0",
+    "title": "Что появилось в этой версии.",
+    "subtitle": "Обновления, которые уже доступны в твоём аккаунте.",
+    "items": {
+      "premium_title": "Premium запущен",
+      "premium_text": "Подпишись прямо из приложения. Безопасная оплата через Paddle.",
+      "gift_title": "Подарочный ключ",
+      "gift_text": "Годовые подписчики получают 2 месяца в подарок.",
+      "battle_title": "История битвы",
+      "battle_text": "Смотри раунды, броски кубиков и урон в каждом бою Dungeon.",
+      "store_title": "Play Store скоро",
+      "store_text": "Распространение APK прекращено. Приложение отправляется в Google Play Store."
+    }
+  },
   "download": {
     "beta_badge": "БЕТА-ДОСТУП",
-    "title_part1": "Возьми приключение в",
-    "title_highlight": "карман",
-    "subtitle": "Установи Android APK и получай уведомления от героя в реальном времени. Работает офлайн, синхронизируется при подключении.",
+    "title_part1": "Играй в",
+    "title_highlight": "браузере или мобильном",
+    "subtitle": "Приложение доступно через браузер. Версия Google Play Store уже скоро.",
     "cta_download": "Скачать APK",
     "cta_preparing": "APK готовится",
     "cta_browser": "Открыть в браузере",
+    "cta_playstore": "Скоро в Play Store",
     "footnote_beta": "Бета-сборка · ",
-    "footnote": "Android 8.0+ · Автообновления внутри приложения"
+    "footnote": "Работает в любом современном браузере"
   },
   "app": {
     "sidebar": {

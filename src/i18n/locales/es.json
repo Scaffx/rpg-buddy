@@ -13,7 +13,7 @@
     "cta_signup": "Empezar ahora",
     "cta_login": "Ya tengo cuenta",
     "perk_trial": "7 días gratis",
-    "perk_apk": "APK Android disponible",
+    "perk_apk": "Próximamente en Play Store",
     "perk_bosses": "60 bosses"
   },
   "what": {
@@ -98,16 +98,32 @@
       "loot_text": "Sistema expandido de loot, crafting y armas con bonos reales a atributos."
     }
   },
+  "whats_new": {
+    "eyebrow": "Novedades v2.0",
+    "title": "Lo que llegó en esta versión.",
+    "subtitle": "Actualizaciones que transforman tu experiencia en LifeOnRPG — ya disponibles en tu cuenta.",
+    "items": {
+      "premium_title": "Premium en vivo",
+      "premium_text": "Suscríbete desde la app. Plan mensual o anual vía Paddle — pago seguro en moneda local.",
+      "gift_title": "Llave de regalo",
+      "gift_text": "Los suscriptores anuales reciben 2 meses de regalo para dar a un amigo.",
+      "battle_title": "Historial de batalla",
+      "battle_text": "Ve rondas, dados y daño en cada combate del Dungeon.",
+      "store_title": "Play Store próximamente",
+      "store_text": "La distribución por APK ha terminado. La app está siendo enviada a Google Play Store."
+    }
+  },
   "download": {
     "beta_badge": "ACCESO BETA",
-    "title_part1": "Lleva la aventura en el",
-    "title_highlight": "bolsillo",
-    "subtitle": "Instala el APK Android y recibe notificaciones en tiempo real de tu héroe. Funciona offline, sincroniza al reconectar.",
+    "title_part1": "Juega en el",
+    "title_highlight": "navegador o móvil",
+    "subtitle": "La app está disponible ahora vía navegador. La versión de Google Play Store está en camino.",
     "cta_download": "Descargar APK",
     "cta_preparing": "APK en preparación",
-    "cta_browser": "Usar en navegador",
+    "cta_browser": "Jugar en navegador",
+    "cta_playstore": "Próximamente en Play Store",
     "footnote_beta": "Build Beta · ",
-    "footnote": "Android 8.0+ · Actualizaciones automáticas dentro de la app"
+    "footnote": "Funciona en cualquier navegador moderno · iOS vía Safari"
   },
   "app": {
     "sidebar": {

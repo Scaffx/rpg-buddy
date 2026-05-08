@@ -13,7 +13,7 @@
     "cta_signup": "立即开始",
     "cta_login": "我已有账号",
     "perk_trial": "7天免费",
-    "perk_apk": "Android APK 可下载",
+    "perk_apk": "即将登陆 Play Store",
     "perk_bosses": "60个首领"
   },
   "what": {
@@ -98,16 +98,32 @@
       "loot_text": "扩展的战利品、合成与武器系统,带来真实的属性加成。"
     }
   },
+  "whats_new": {
+    "eyebrow": "v2.0 新功能",
+    "title": "本版本带来了什么。",
+    "subtitle": "升级已自动应用到您的账号。",
+    "items": {
+      "premium_title": "Premium 正式上线",
+      "premium_text": "可直接在应用内订阅。按月或按年计划，通过 Paddle 安全支付。",
+      "gift_title": "礼品密鑅",
+      "gift_text": "年度订阅者将获得2个月的礼品密鑅小类。",
+      "battle_title": "战斗历史",
+      "battle_text": "查看地下城战斗中的回合、骰子投掷和伤害。",
+      "store_title": "Play Store 即将上线",
+      "store_text": "APK 分发已结束。应用正在提交至 Google Play Store。"
+    }
+  },
   "download": {
     "beta_badge": "BETA 通道",
-    "title_part1": "把冒险装进你的",
-    "title_highlight": "口袋",
-    "subtitle": "安装 Android APK,实时收到英雄的通知。可离线运行,联网即同步。",
+    "title_part1": "在浏览器或",
+    "title_highlight": "手机上玩",
+    "subtitle": "现在可通过浏览器使用。Google Play Store 版本即将上线。",
     "cta_download": "下载 APK",
     "cta_preparing": "APK 准备中",
-    "cta_browser": "在浏览器中使用",
+    "cta_browser": "在浏览器中玩",
+    "cta_playstore": "即将登陆 Play Store",
     "footnote_beta": "Beta版本 · ",
-    "footnote": "Android 8.0+ · 应用内自动更新"
+    "footnote": "支持所有现代浏览器"
   },
   "app": {
     "sidebar": {

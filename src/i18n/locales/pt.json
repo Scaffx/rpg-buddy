@@ -5,7 +5,7 @@
     "language": "Idioma"
   },
   "hero": {
-    "badge": "Sua vida virou um RPG · Acesso Beta aberto",
+    "badge": "v2.0 disponível · Assine agora",
     "title_part1": "Transforme cada hábito em",
     "title_highlight": "XP real",
     "subtitle_main": "Beba água, treine, estude, durma cedo, e veja seu personagem evoluir, dropar loot e enfrentar bosses.",
@@ -13,7 +13,7 @@
     "cta_signup": "Começar agora",
     "cta_login": "Já tenho conta",
     "perk_trial": "7 dias grátis",
-    "perk_apk": "APK Android disponível",
+    "perk_apk": "Em breve na Play Store",
     "perk_bosses": "60 bosses"
   },
   "what": {
@@ -85,16 +85,32 @@
       "loot_text": "Sistema expandido de loot, crafting e armas com bônus reais aos atributos."
     }
   },
+  "whats_new": {
+    "eyebrow": "Novidades v2.0",
+    "title": "O que chegou nesta versão.",
+    "subtitle": "Atualizações que transformam sua experiência no LifeOnRPG — já disponíveis na sua conta.",
+    "items": {
+      "premium_title": "Premium ao vivo",
+      "premium_text": "Assine agora pelo próprio app. Plano mensal ou anual via Paddle — pagamento seguro em moeda local.",
+      "gift_title": "Chave de presente",
+      "gift_text": "Quem assina o plano anual recebe 2 meses de presente para dar a um amigo. Resgate no seu perfil.",
+      "battle_title": "Histórico de batalha",
+      "battle_text": "Veja os rounds, rolagem de dados e dano sofrido/dado em cada combate no Dungeon.",
+      "store_title": "Play Store em breve",
+      "store_text": "Distribuição via APK encerrada. O app está em processo de publicação na Google Play Store."
+    }
+  },
   "download": {
     "beta_badge": "ACESSO BETA",
-    "title_part1": "Leve a aventura no",
-    "title_highlight": "bolso",
-    "subtitle": "Instale o APK Android e receba notificações em tempo real do seu herói. Funciona offline, sincroniza ao reconectar.",
+    "title_part1": "Jogue no",
+    "title_highlight": "navegador ou mobile",
+    "subtitle": "O app está disponível agora pelo navegador. A versão Google Play Store está a caminho.",
     "cta_download": "Baixar APK",
     "cta_preparing": "APK em preparação",
-    "cta_browser": "Usar no navegador",
+    "cta_browser": "Jogar no navegador",
+    "cta_playstore": "Em breve na Play Store",
     "footnote_beta": "Build Beta · ",
-    "footnote": "Android 8.0+ · Atualizações automáticas dentro do app"
+    "footnote": "Funciona em qualquer navegador moderno · iOS via Safari (Adicionar à tela de início)"
   },
   "app": {
     "sidebar": {

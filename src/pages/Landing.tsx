@@ -1,8 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
 import {
   Swords,
   Sparkles,
@@ -24,16 +22,19 @@ import {
   Heart,
   Target,
   Zap,
-  Download,
   LogIn,
   UserPlus,
   Check,
+  CreditCard,
+  Gift,
+  History,
+  Store,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { useLocalizedPricing } from "@/hooks/useLocalizedPricing";
-import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
+import { APP_VERSION_LABEL } from "@/lib/version";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const fadeUp = {
@@ -48,24 +49,7 @@ const stagger = {
 export default function Landing() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { latest } = useAppUpdate();
   const { monthlyFormatted, annualFormatted, monthlyUsd, loading: pricingLoading } = useLocalizedPricing();
-  const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
-  const latestVersion = latest?.version ?? APP_VERSION;
-  const downloadLabel = IS_BETA ? `v${latestVersion} BETA` : `v${latestVersion}`;
-  const isNative = Capacitor.isNativePlatform();
-
-  const handleApkDownload = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!apkUrl) return;
-    if (isNative) {
-      // No APK nativo, use Browser.open()
-      await Browser.open({ url: apkUrl });
-    } else {
-      // Na web, permite download normal
-      window.open(apkUrl, "_blank", "noopener,noreferrer");
-    }
-  };
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground overflow-x-hidden">
@@ -180,7 +164,7 @@ export default function Landing() {
 
           <motion.div variants={fadeUp} className="mt-6 flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-success" /> {t("hero.perk_trial")}</span>
-            <span className="flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5 text-accent" /> {t("hero.perk_apk")}</span>
+            <span className="flex items-center gap-1.5"><Store className="w-3.5 h-3.5 text-accent" /> {t("hero.perk_apk")}</span>
             <span className="flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5 text-primary" /> {t("hero.perk_bosses")}</span>
           </motion.div>
         </motion.div>
@@ -240,7 +224,44 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ============== ROADMAP ============== */}
+      {/* ============== NOVIDADES ============== */}
+      <section className="py-20 px-4 md:px-8 max-w-6xl mx-auto">
+        <SectionHeader
+          eyebrow={t("whats_new.eyebrow")}
+          title={t("whats_new.title")}
+          subtitle={t("whats_new.subtitle")}
+        />
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
+          <WhatsNewCard
+            icon={<CreditCard className="w-6 h-6" />}
+            title={t("whats_new.items.premium_title")}
+            text={t("whats_new.items.premium_text")}
+            tag="v2.0"
+          />
+          <WhatsNewCard
+            icon={<Gift className="w-6 h-6" />}
+            title={t("whats_new.items.gift_title")}
+            text={t("whats_new.items.gift_text")}
+            tag="v2.0"
+          />
+          <WhatsNewCard
+            icon={<History className="w-6 h-6" />}
+            title={t("whats_new.items.battle_title")}
+            text={t("whats_new.items.battle_text")}
+            tag="v2.0"
+          />
+          <WhatsNewCard
+            icon={<Store className="w-6 h-6" />}
+            title={t("whats_new.items.store_title")}
+            text={t("whats_new.items.store_text")}
+            tag="EM BREVE"
+            tagVariant="accent"
+          />
+        </div>
+      </section>
+
+      {/* ============== ROADMAP ============== */}}
       <section className="py-20 px-4 md:px-8 max-w-6xl mx-auto">
         <SectionHeader
           eyebrow={t("roadmap.eyebrow")}
@@ -358,7 +379,7 @@ export default function Landing() {
         </motion.div>
       </section>
 
-      {/* ============== DOWNLOAD APK ============== */}
+      {/* ============== MOBILE / PLAY STORE ============== */}
       <section id="download" className="py-24 px-4 md:px-8">
         <div className="max-w-4xl mx-auto relative">
           <div className="absolute -inset-4 bg-gradient-to-r from-primary/30 via-accent/20 to-primary/30 rounded-3xl blur-2xl" />
@@ -367,11 +388,6 @@ export default function Landing() {
               <Badge variant="outline" className="border-primary/40 text-primary font-mono">
                 {APP_VERSION_LABEL}
               </Badge>
-              {IS_BETA && (
-                <Badge className="bg-accent/20 text-accent border border-accent/40 hover:bg-accent/20 font-black tracking-wider">
-                  {t("download.beta_badge")}
-                </Badge>
-              )}
             </div>
 
             <motion.div
@@ -392,43 +408,33 @@ export default function Landing() {
             </p>
 
             <div className="flex flex-wrap justify-center gap-3">
-              {apkUrl ? (
-                <Button
-                  size="lg"
-                  onClick={handleApkDownload}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)] h-14 px-8 text-base"
-                >
-                  <Download className="w-5 h-5" />
-                  {t("download.cta_download")} · {downloadLabel}
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  disabled
-                  className="bg-primary/40 text-primary-foreground font-bold h-14 px-8 text-base"
-                >
-                  <Download className="w-5 h-5" />
-                  {t("download.cta_preparing")} · {downloadLabel}
-                </Button>
-              )}
+              <Button
+                size="lg"
+                disabled
+                className="bg-card/60 border border-border text-muted-foreground font-bold h-14 px-8 text-base cursor-not-allowed opacity-60"
+              >
+                <Store className="w-5 h-5" />
+                {t("download.cta_playstore")}
+              </Button>
 
               <Button
                 asChild
                 size="lg"
-                variant="outline"
-                className="border-primary/30 hover:border-primary h-14 px-8 text-base"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)] h-14 px-8 text-base"
               >
-                <Link to="/auth?mode=signup">{t("download.cta_browser")}</Link>
+                <Link to="/auth?mode=signup">
+                  <ExternalLink className="w-5 h-5" />
+                  {t("download.cta_browser")}
+                </Link>
               </Button>
             </div>
 
             <p className="text-xs text-muted-foreground mt-6">
-              {IS_BETA ? t("download.footnote_beta") : ""}{t("download.footnote")}
+              {t("download.footnote")}
             </p>
           </div>
         </div>
       </section>
-
       {/* ============== FOOTER ============== */}
       <footer className="border-t border-border/40 py-10 px-4 md:px-8">
         <div className="max-w-7xl mx-auto flex flex-col gap-6">
@@ -436,17 +442,12 @@ export default function Landing() {
             <div className="flex items-center gap-2">
               <Swords className="w-4 h-4 text-primary" />
               <span>LifeOnRPG · {t("footer.tagline")}</span>
-              {IS_BETA && (
-                <Badge className="ml-1 h-4 px-1.5 text-[9px] bg-accent/20 text-accent border border-accent/40 hover:bg-accent/20">
-                  BETA
-                </Badge>
-              )}
             </div>
             <div className="flex flex-wrap gap-4 justify-center">
               <Link to="/auth" className="hover:text-primary">{t("nav.login")}</Link>
               <Link to="/auth?mode=signup" className="hover:text-primary">{t("nav.signup")}</Link>
               <a href="#pricing" className="hover:text-primary">{t("pricing.eyebrow")}</a>
-              <a href="#download" className="hover:text-primary">APK</a>
+              <a href="#download" className="hover:text-primary">Mobile</a>
             </div>
           </div>
 
@@ -581,6 +582,44 @@ function RoadmapCard({ icon, title, text, tag }: { icon: React.ReactNode; title:
         {icon}
       </div>
       <h3 className="font-[var(--font-display)] text-lg font-bold mb-2">{title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{text}</p>
+    </motion.div>
+  );
+}
+
+function WhatsNewCard({
+  icon,
+  title,
+  text,
+  tag,
+  tagVariant = "primary",
+}: {
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+  tag: string;
+  tagVariant?: "primary" | "accent";
+}) {
+  const tagColors = {
+    primary: "bg-primary/20 text-primary border-primary/40",
+    accent: "bg-accent/20 text-accent border-accent/40",
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.4 }}
+      whileHover={{ y: -4 }}
+      className="relative rounded-xl border border-primary/20 bg-card/60 backdrop-blur-sm p-6 hover:border-primary/50 transition-all"
+    >
+      <div className={`absolute top-3 right-3 text-[9px] font-black tracking-wider px-2 py-0.5 rounded-full border ${tagColors[tagVariant]}`}>
+        {tag}
+      </div>
+      <div className="inline-flex items-center justify-center w-11 h-11 rounded-lg bg-primary/15 text-primary border border-primary/30 mb-4">
+        {icon}
+      </div>
+      <h3 className="font-[var(--font-display)] text-base font-bold mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed">{text}</p>
     </motion.div>
   );

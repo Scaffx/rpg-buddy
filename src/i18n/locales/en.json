@@ -5,7 +5,7 @@
     "language": "Language"
   },
   "hero": {
-    "badge": "Your life is now an RPG · Beta access open",
+    "badge": "v2.0 available · Subscribe now",
     "title_part1": "Turn every habit into",
     "title_highlight": "real XP",
     "subtitle_main": "Drink water, train, study, sleep early, and watch your character evolve, drop loot and face bosses.",
@@ -13,7 +13,7 @@
     "cta_signup": "Get started",
     "cta_login": "I have an account",
     "perk_trial": "7 days free",
-    "perk_apk": "Android APK available",
+    "perk_apk": "Play Store coming soon",
     "perk_bosses": "60 bosses"
   },
   "what": {
@@ -85,16 +85,32 @@
       "loot_text": "Expanded loot, crafting and weapons system with real attribute bonuses."
     }
   },
+  "whats_new": {
+    "eyebrow": "What's new in v2.0",
+    "title": "What arrived in this version.",
+    "subtitle": "Updates that transform your LifeOnRPG experience — already available in your account.",
+    "items": {
+      "premium_title": "Premium is live",
+      "premium_text": "Subscribe right from the app. Monthly or annual plan via Paddle — secure payment in local currency.",
+      "gift_title": "Gift key",
+      "gift_text": "Annual subscribers receive a 2-month gift key to give to a friend. Redeem from your profile.",
+      "battle_title": "Battle history",
+      "battle_text": "See rounds, dice rolls and damage dealt/taken for every Dungeon battle.",
+      "store_title": "Play Store coming soon",
+      "store_text": "APK distribution has ended. The app is being submitted to the Google Play Store."
+    }
+  },
   "download": {
     "beta_badge": "BETA ACCESS",
-    "title_part1": "Take the adventure in your",
-    "title_highlight": "pocket",
-    "subtitle": "Install the Android APK and get real-time notifications from your hero. Works offline, syncs on reconnect.",
+    "title_part1": "Play in the",
+    "title_highlight": "browser or mobile",
+    "subtitle": "The app is available now via browser. The Google Play Store version is on its way.",
     "cta_download": "Download APK",
     "cta_preparing": "APK in preparation",
-    "cta_browser": "Use in browser",
+    "cta_browser": "Play in browser",
+    "cta_playstore": "Coming soon on Play Store",
     "footnote_beta": "Beta build · ",
-    "footnote": "Android 8.0+ · Auto-updates inside the app"
+    "footnote": "Works in any modern browser · iOS via Safari (Add to Home Screen)"
   },
   "app": {
     "sidebar": {
