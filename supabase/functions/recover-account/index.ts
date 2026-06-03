@@ -66,14 +66,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    const newUserId = user.id;
-    const { old_user_id } = await req.json();
+    // ── Autorização: recuperação de conta é admin-only ──────────────────────
+    // O fluxo self-service permitia takeover (qualquer usuário reivindicava
+    // qualquer old_user_id). Agora apenas administradores do sistema disparam
+    // a recuperação, após verificar a identidade do usuário pelo suporte.
+    const callerRole = (user.app_metadata as Record<string, unknown> | undefined)?.role;
+    if (callerRole !== "admin") {
+      return new Response(JSON.stringify({ error: "Acesso negado: somente administradores podem recuperar contas." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    if (!old_user_id) {
-      return new Response(JSON.stringify({ error: "old_user_id é obrigatório" }), {
+    // O admin informa explicitamente a conta de origem (legada) e a de destino
+    // (a conta atual do usuário que está recuperando). O admin NÃO é o destino.
+    const { old_user_id, new_user_id } = await req.json();
+
+    if (!old_user_id || !new_user_id) {
+      return new Response(JSON.stringify({ error: "old_user_id e new_user_id são obrigatórios" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (old_user_id === new_user_id) {
+      return new Response(JSON.stringify({ error: "old_user_id e new_user_id não podem ser iguais" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const newUserId = new_user_id;
 
     // Verificar que old_user_id pertence a um placeholder migrado (segurança)
     let oldEmail: string | null = null;
@@ -94,6 +113,14 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    }
+
+    // Verificar que a conta de destino existe de fato no auth.
+    const { data: newAuth, error: newAuthErr } = await admin.auth.admin.getUserById(newUserId);
+    if (newAuthErr || !newAuth?.user) {
+      return new Response(JSON.stringify({ error: "Conta de destino (new_user_id) não encontrada" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const errors: string[] = [];

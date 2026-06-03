@@ -39,6 +39,7 @@ export const MAX_FRIENDS = 50;
 export const MAX_PENDING_REQUESTS = 20;
 
 // === NPCs ===
+/** Base usada como default no schema do Supabase; consumers em runtime devem usar getNpcXpReward(level). */
 export const NPC_XP_REWARD = 25;
 export const NPC_GOLD_REWARD = 15;
 export const NPC_REFRESH_DAY = 1; // segunda-feira (0=Dom, 1=Seg)
@@ -47,3 +48,38 @@ export const NPC_REFRESH_DAY = 1; // segunda-feira (0=Dom, 1=Seg)
 export const DAILY_BONUS_XP = 15;
 export const DAILY_BONUS_GOLD = 5;
 export const HEALTH_CHALLENGE_XP = 35;
+
+// === XP Multiplier ===
+/** Cap do multiplicador de XP por nível (aplicado em useCompleteMission). */
+export const XP_LEVEL_MULTIPLIER_CAP = 3.5;
+
+// === Reward scaling ===
+/** Bônus de XP do Daily Bonus por nível além do 1. */
+export function getDailyBonusXp(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level || 1));
+  return DAILY_BONUS_XP + (safeLevel - 1) * 3;
+}
+
+/** Ouro do Daily Bonus: ganha +1 a cada 5 níveis. */
+export function getDailyBonusGold(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level || 1));
+  return DAILY_BONUS_GOLD + Math.floor((safeLevel - 1) / 5);
+}
+
+/** Recompensa de XP de missão de NPC escalada por nível do jogador. */
+export function getNpcXpReward(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level || 1));
+  return NPC_XP_REWARD + (safeLevel - 1) * 5;
+}
+
+/** Recompensa de ouro de missão de NPC escalada por nível do jogador. */
+export function getNpcGoldReward(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level || 1));
+  return NPC_GOLD_REWARD + Math.floor((safeLevel - 1) / 4);
+}
+
+/** XP do Health Challenge escala devagar com nível. */
+export function getHealthChallengeXp(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level || 1));
+  return HEALTH_CHALLENGE_XP + (safeLevel - 1) * 4;
+}

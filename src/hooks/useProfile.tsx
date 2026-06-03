@@ -621,296 +621,37 @@ export const useCompleteMission = () => {
       secondaryAttributeIds?: string[];
     }) => {
       const today = toDateString(new Date());
+      const hour = new Date().getHours();
 
-      // ⚡ Paralelizar leituras independentes
-      const [
-        { data: currentProfile },
-        activeBuffs,
-        talentEffects,
-        { data: mission, error: missionError },
-        { data: primaryAttrMeta },
-      ] = await Promise.all([
-        supabase.from('profiles').select('level, boss_keys, missions_completed').eq('user_id', user!.id).single(),
-        getActiveBuffEffects(user!.id),
-        getPlayerTalentEffects(user!.id),
-        supabase.from('missions').select('*').eq('id', missionId).single(),
-        supabase.from('attributes').select('name').eq('id', attributeId).maybeSingle(),
-      ]);
-
-      if (missionError) throw missionError;
-
-      const playerLevel = currentProfile?.level || 1;
-      const hadFlowXpBuff = activeBuffs.has('estado_fluxo_xp');
-
-      // XP Dinâmico: escala com o nível do jogador
-      let xpMultiplier = 1 + Math.floor((playerLevel - 1) / 5) * 0.5; // +50% a cada 5 níveis
-      xpMultiplier += getRoutineXpBuffBonus(activeBuffs);
-      if (hadFlowXpBuff) {
-        xpMultiplier *= 1.2;
-      }
-      const currentHour = new Date().getHours();
-      if (talentEffects.has('madrugador') && currentHour < 8) {
-        xpMultiplier *= 1.15;
-      }
-      const scaledXpReward = Math.round(xpReward * xpMultiplier);
-
-      const typedMission = mission as any;
-      // Missões criadas por NPC não concedem XP — apenas ouro
-      const isNpcMission = !!typedMission.npc_id;
-
-      // ── Streak XP ────────────────────────────────────────────────────────
-      // Calculado ANTES de registrar a conclusão de hoje para contar a sequência correta.
-      const dailyStatus = (typedMission.daily_status as Record<string, string>) || {};
-      const isDailyMission = ((typedMission.days_of_week as string[]) || []).length > 0;
-      // +1: este completion vai estender a streak
-      const priorStreak = isDailyMission ? computeStreakFromDailyStatus(dailyStatus) : 0;
-      const newStreak = isDailyMission ? priorStreak + 1 : 0;
-      const streakMultiplier = getStreakXpMultiplier(newStreak);
-      // Aplica bônus de streak SOBRE o xpMultiplier já calculado
-      const scaledXpRewardWithStreak = Math.round(scaledXpReward * streakMultiplier);
-
-      const missionCategory = deriveMissionCategory({
-        mission: typedMission,
-        primaryAttributeName: String((primaryAttrMeta as any)?.name || ''),
+      // 🔒 Economia server-side: toda a lógica de recompensa (XP escalado,
+      // ouro por streak/checklist/talento, level, chaves de boss, efeitos de
+      // talento, inspiração) roda no RPC transacional `complete_mission`.
+      // O client não envia mais valores — o servidor lê tudo do banco, então
+      // não é possível forjar XP/ouro/level pelo navegador.
+      const { data, error } = await (supabase as any).rpc('complete_mission', {
+        p_mission_id: missionId,
+        p_today: today,
+        p_hour: hour,
       });
+      if (error) throw error;
 
-      const missionTalentEffects = resolveMissionTalentEffects(missionCategory, talentEffects);
-
-      // Verificar se é diária
-      const daysOfWeek = (typedMission.days_of_week as string[]) || [];
-      
-      let goldReward = 2;
-
-      if (daysOfWeek && Array.isArray(daysOfWeek) && daysOfWeek.length > 0) {
-        goldReward = await getMissionGoldRewardFromStreakWithTalent(
-          missionId,
-          today,
-          talentEffects.has('foco_inabalavel'),
-        );
-
-        // ✅ MISSÃO DIÁRIA
-        const dailyStatus = (typedMission.daily_status as { [key: string]: string }) || {};
-        dailyStatus[today] = 'completed';
-
-        const { error: updateError } = await supabase
-          .from('missions')
-          .update({ 
-            daily_status: dailyStatus
-          } as any)
-          .eq('id', missionId);
-
-        if (updateError) throw updateError;
-
-        // Registrar conclusão diária
-        const { error: insertError } = await supabase
-          .from('mission_daily_completions')
-          .insert({
-            mission_id: missionId,
-            completion_date: today,
-            xp_earned: scaledXpRewardWithStreak,
-            gold_earned: goldReward,
-            user_id: user!.id,
-          });
-
-        if (insertError) throw insertError;
-      } else {
-        // ✅ MISSÃO ÚNICA
-        const { error: updateError } = await supabase
-          .from('missions')
-          .update({ 
-            completed: true, 
-            completed_at: new Date().toISOString() 
-          })
-          .eq('id', missionId);
-
-        if (updateError) throw updateError;
-      }
-
-      goldReward = Math.max(0, Math.round(goldReward * missionTalentEffects.goldMultiplier));
-
-      // 🔑 Rebalanceamento: 1 chave a cada 5 missões concluídas.
-      const previousMissionCount = Number((currentProfile as any)?.missions_completed ?? 0);
-      const nextMissionCount = previousMissionCount + 1;
-      const previousKeysEarned = Math.floor(previousMissionCount / 5);
-      const nextKeysEarned = Math.floor(nextMissionCount / 5);
-      const gainedKeys = Math.max(0, nextKeysEarned - previousKeysEarned);
-      const currentKeys = Number((currentProfile as any)?.boss_keys ?? 0);
-
-      if (gainedKeys > 0) {
-        await supabase
-          .from('profiles')
-          .update({ boss_keys: currentKeys + gainedKeys } as any)
-          .eq('user_id', user!.id);
-
-        await supabase.from('activity_log').insert({
-          user_id: user!.id,
-          action: 'boss_key_earned',
-          description: `Voce ganhou ${gainedKeys} chave(s) de boss por completar 5 missoes.`,
-          xp_gained: 0,
-        });
-      }
-
-      // ... resto do código (XP, Ouro, etc.)
-      
-      // Calcular bônus do checklist
-      const { data: checklistItems } = await supabase
-        .from('checklist_items')
-        .select('*')
-        .eq('mission_id', missionId);
-
-      const checklistBonus = (checklistItems || [])
-        .filter((item: any) => item.completed)
-        .reduce((sum: number, item: any) => sum + (item.xp_bonus || 2), 0);
-
-      const totalXpReward = isNpcMission ? 0 : scaledXpRewardWithStreak + checklistBonus;
-
-      // Atualizar atributo primário
-      const { data: attr } = await supabase
-        .from('attributes')
-        .select('xp, level')
-        .eq('id', attributeId)
-        .single();
-
-      if (attr) {
-        const newXp = attr.xp + totalXpReward;
-        const newLevel = getLevelFromXp(newXp);
-
-        await supabase
-          .from('attributes')
-          .update({ xp: newXp, level: newLevel })
-          .eq('id', attributeId);
-      }
-
-      // Atualizar atributos secundários
-      for (const secId of secondaryAttributeIds) {
-        const { data: secAttr } = await supabase
-          .from('attributes')
-          .select('xp, level')
-          .eq('id', secId)
-          .single();
-
-        if (secAttr) {
-          const newXp = secAttr.xp + 12;
-          const newLevel = getLevelFromXp(newXp);
-
-          await supabase
-            .from('attributes')
-            .update({ xp: newXp, level: newLevel })
-            .eq('id', secId);
-        }
-      }
-
-      // Atualizar perfil
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('total_xp, xp_today, missions_completed, level')
-        .eq('user_id', user!.id)
-        .single();
-
-      if (profile) {
-        const newTotalXp = profile.total_xp + totalXpReward;
-        let newLevel = getLevelFromXp(newTotalXp);
-        newLevel = Math.max(newLevel, profile.level);
-
-        await supabase
-          .from('profiles')
-          .update({
-            total_xp: newTotalXp,
-            xp_today: profile.xp_today + totalXpReward,
-            missions_completed: profile.missions_completed + 1,
-            level: newLevel,
-          })
-          .eq('user_id', user!.id);
-      }
-
-      // Atualizar progresso dos planos vinculados
-      const { data: planLinks } = await supabase
-        .from('plan_missions' as any)
-        .select('id, plan_id, value_per_completion')
-        .eq('mission_id', missionId);
-
-      if (planLinks && (planLinks as any[]).length > 0) {
-        for (const link of (planLinks as any[])) {
-          const { data: plan } = await supabase
-            .from('plans' as any)
-            .select('current_value')
-            .eq('id', link.plan_id)
-            .single();
-          if (plan) {
-            await supabase
-              .from('plans' as any)
-              .update({ current_value: Number((plan as any).current_value) + Number(link.value_per_completion) } as any)
-              .eq('id', link.plan_id);
-          }
-        }
-      }
-
-      // Registrar atividade
-      await supabase
-        .from('activity_log')
-        .insert({
-          user_id: user!.id,
-          action: 'mission_complete',
-          description: `Missao concluida! +${totalXpReward} XP +${goldReward} Ouro`,
-          xp_gained: totalXpReward,
-        });
-
-      // Registrar no histórico de XP para o gráfico de progresso
-      await supabase
-        .from('xp_history' as any)
-        .insert({
-          user_id: user!.id,
-          xp_gained: totalXpReward,
-          type: 'mission',
-        } as any);
-
-      // Adicionar ouro
-      const { data: bal } = await supabase
-        .from('user_balance')
-        .select('gold')
-        .eq('user_id', user!.id)
-        .maybeSingle();
-
-      if (bal) {
-        const currentGold = (bal as any).gold ?? 100;
-
-        await supabase
-          .from('user_balance')
-          .update({ 
-            gold: currentGold + goldReward,
-            updated_at: new Date().toISOString() 
-          } as any)
-          .eq('user_id', user!.id);
-      } else {
-        await supabase
-          .from('user_balance')
-          .insert({ 
-            user_id: user!.id, 
-            balance_percent: 100, 
-            gold: 100 + goldReward
-          } as any);
-      }
-
-      await supabase.from('gold_history').insert({
-        user_id: user!.id,
-        type: 'missao',
-        amount: goldReward,
-        reason: `Recompensa de missao: ${typedMission.title}`,
-      } as any);
-
-      await applyMissionTalentPostEffects({
-        userId: user!.id,
-        missionTitle: String(typedMission.title || 'Missao'),
-        effects: missionTalentEffects,
-      });
-
-      if (hadFlowXpBuff) {
-        await consumeOneShotBuff(user!.id, ['estado_fluxo_xp']);
-      }
-
-      const inspiredGranted = await grantInspirationIfPerfectDay(user!.id, today);
-
-      return { success: true, inspiredGranted, streakDays: newStreak, streakMultiplier };
+      const result = (data || {}) as {
+        inspired_granted?: boolean;
+        streak_days?: number;
+        streak_multiplier?: number;
+        xp_gained?: number;
+        gold_gained?: number;
+        gained_keys?: number;
+      };
+      return {
+        success: true,
+        inspiredGranted: !!result.inspired_granted,
+        streakDays: result.streak_days ?? 0,
+        streakMultiplier: result.streak_multiplier ?? 1,
+        xpGained: result.xp_gained ?? 0,
+        goldGained: result.gold_gained ?? 0,
+        gainedKeys: result.gained_keys ?? 0,
+      };
     },
 
     // ⚡ OPTIMISTIC UPDATE: marca a missão como concluída na UI antes do servidor responder.
@@ -921,7 +662,7 @@ export const useCompleteMission = () => {
       const previousMissions = queryClient.getQueriesData({ queryKey: ['missions'] });
       const previousProfile = queryClient.getQueryData(['profile', user?.id]);
       const previousAttributes = queryClient.getQueryData(['attributes', user?.id]);
-      const previousGold = queryClient.getQueryData(['gold_balance', user?.id]);
+      const previousGold = queryClient.getQueryData(['gold-balance', user?.id]);
 
       // Atualiza otimisticamente as missões (marca daily_status do dia)
       queryClient.setQueriesData({ queryKey: ['missions'] }, (old: any) => {
@@ -958,12 +699,38 @@ export const useCompleteMission = () => {
       });
 
       // Atualiza otimisticamente o ouro (estimativa: +2)
-      queryClient.setQueryData(['gold_balance', user?.id], (old: any) => {
+      queryClient.setQueryData(['gold-balance', user?.id], (old: any) => {
         if (!old) return old;
         return { ...old, gold: (old.gold || 0) + 2 };
       });
 
       return { previousMissions, previousProfile, previousAttributes, previousGold };
+    },
+
+    // ✅ Reconcilia XP/ouro/XP-hoje/chaves com os valores EXATOS calculados pelo
+    // servidor assim que o RPC responde — sem esperar o refetch. Isso elimina a
+    // "demora pra contabilizar" e o salto de valor (estimativa → real).
+    onSuccess: (data: any, _vars, context: any) => {
+      const prevProfile = context?.previousProfile as any;
+      if (prevProfile) {
+        queryClient.setQueryData(['profile', user?.id], {
+          ...prevProfile,
+          total_xp: (prevProfile.total_xp || 0) + (data?.xpGained || 0),
+          xp_today: (prevProfile.xp_today || 0) + (data?.xpGained || 0),
+          missions_completed: (prevProfile.missions_completed || 0) + 1,
+          boss_keys: (prevProfile.boss_keys || 0) + (data?.gainedKeys || 0),
+        });
+      }
+      const prevGold = context?.previousGold as any;
+      if (prevGold) {
+        queryClient.setQueryData(['gold-balance', user?.id], {
+          ...prevGold,
+          gold: (prevGold.gold || 0) + (data?.goldGained || 0),
+        });
+      }
+      // O card "XP hoje" usa a query própria useTodayXp (['xp_today']).
+      queryClient.setQueryData(['xp_today', user?.id], (old: any) =>
+        Number(old || 0) + (data?.xpGained || 0));
     },
 
     onError: (_err, _vars, context: any) => {
@@ -975,7 +742,7 @@ export const useCompleteMission = () => {
       }
       if (context?.previousProfile) queryClient.setQueryData(['profile', user?.id], context.previousProfile);
       if (context?.previousAttributes) queryClient.setQueryData(['attributes', user?.id], context.previousAttributes);
-      if (context?.previousGold) queryClient.setQueryData(['gold_balance', user?.id], context.previousGold);
+      if (context?.previousGold) queryClient.setQueryData(['gold-balance', user?.id], context.previousGold);
     },
 
     onSettled: () => {
@@ -988,7 +755,7 @@ export const useCompleteMission = () => {
       queryClient.invalidateQueries({ queryKey: ['xp_history'] });
       queryClient.invalidateQueries({ queryKey: ['missions_today_count'] });
       queryClient.invalidateQueries({ queryKey: ['rank_position'] });
-      queryClient.invalidateQueries({ queryKey: ['gold_balance'] });
+      queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
     },
   });
 };
@@ -1137,12 +904,7 @@ export function useFightBoss() {
       if (currentKeys < keysCost) {
         throw new Error("INSUFFICIENT_KEYS");
       }
-
-      // Consumir chaves
-      await supabase
-        .from("profiles")
-        .update({ boss_keys: currentKeys - keysCost } as any)
-        .eq("user_id", user!.id);
+      // As chaves são consumidas pelo RPC resolve_boss_battle (server-side).
 
       const { data: attrs } = await supabase
         .from('attributes')
@@ -1201,85 +963,17 @@ export function useFightBoss() {
       const damage = Math.min(Math.max(1, playerPower), bossHp);
       const won = playerPower + Math.floor(playerStats.def * 0.4) >= bossPower;
 
-      await supabase.from("boss_battles").insert({
-        user_id: user!.id,
-        boss_id: bossId,
-        damage_dealt: damage,
-        won,
+      // 🔒 Recompensa server-side: o RPC valida chaves + "já derrotado",
+      // consome chaves/buffs (adrenalina, boss_debuff, inspiração) e credita
+      // XP/ouro lendo os valores do boss no banco — não confia em
+      // xpReward/keysCost do client. O combate (won/damage) ainda é resolvido
+      // aqui; o combate 100% autoritativo virá com a reformulação de combate.
+      const { error: rpcError } = await (supabase as any).rpc('resolve_boss_battle', {
+        p_boss_id: bossId,
+        p_won: won,
+        p_damage: damage,
       });
-
-      const goldReward = (boss as any)?.gold_reward || 10;
-
-      // Consome buffs de uso único após entrar em combate
-      if (combatBuffs.hasAdrenaline) {
-        await consumeOneShotBuff(user!.id, ['adrenalina', 'adrenaline_boost']);
-      }
-      if (activeBuffs.has('boss_debuff')) {
-        await consumeOneShotBuff(user!.id, ['boss_debuff']);
-      }
-      if (hasInspiration) {
-        await supabase
-          .from('profiles')
-          .update({ inspired_available: false, inspired_earned_at: null } as any)
-          .eq('user_id', user!.id);
-      }
-
-      if (won && profile) {
-        // Boss dá XP reduzido + Ouro significativo
-        const newTotalXp = profile.total_xp + xpReward;
-        const calculatedLevel = getLevelFromXp(newTotalXp);
-        const newLevel = Math.max(calculatedLevel, profile.level);
-        await supabase
-          .from("profiles")
-          .update({
-            total_xp: newTotalXp,
-            level: newLevel,
-          })
-          .eq("user_id", user!.id);
-
-        // Dar ouro ao jogador
-        const { data: bal } = await supabase
-          .from('user_balance')
-          .select('gold')
-          .eq('user_id', user!.id)
-          .maybeSingle();
-
-        if (bal) {
-          await supabase
-            .from('user_balance')
-            .update({ gold: (bal as any).gold + goldReward, updated_at: new Date().toISOString() } as any)
-            .eq('user_id', user!.id);
-        }
-
-        await supabase.from("activity_log").insert({
-          user_id: user!.id,
-          action: "boss_defeated",
-          description: `Boss derrotado! +${xpReward} XP +${goldReward} 🪙`,
-          xp_gained: xpReward,
-        });
-
-        await supabase.from("xp_history").insert({
-          user_id: user!.id,
-          xp_gained: xpReward,
-          type: "boss",
-        });
-      } else {
-        // Derrota: devolver metade das chaves
-        const refundKeys = Math.floor(keysCost / 2);
-        if (refundKeys > 0) {
-          await supabase
-            .from("profiles")
-            .update({ boss_keys: currentKeys - keysCost + refundKeys } as any)
-            .eq("user_id", user!.id);
-        }
-
-        await supabase.from("activity_log").insert({
-          user_id: user!.id,
-          action: "boss_failed",
-          description: `Derrota contra o boss. Dano causado: ${damage}. ${refundKeys > 0 ? `${refundKeys} 🔑 devolvidas.` : ''}`,
-          xp_gained: 0,
-        });
-      }
+      if (rpcError) throw rpcError;
 
       return { won, damage, playerPower };
     },

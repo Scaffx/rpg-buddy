@@ -50,6 +50,8 @@ export const PORTAL_COLORS: Record<PortalColor, {
   maxFragments: number;
   /** % de chance de item lendário (só red/legendary) */
   legendaryChance: number;
+  /** Multiplicador de dificuldade aplicado sobre o scaling por nível no combate */
+  difficultyMult: number;
   colorClass: string; bg: string; btnClass: string; dungeonId: string;
 }> = {
   blue: {
@@ -58,7 +60,7 @@ export const PORTAL_COLORS: Record<PortalColor, {
     difficulty: 'Fácil',
     levelRange: 'Lv. 1–15',
     xp: 350, gold: 140,
-    fragmentChance: 5, maxFragments: 2, legendaryChance: 0,
+    fragmentChance: 5, maxFragments: 2, legendaryChance: 0, difficultyMult: 1.0,
     colorClass: 'text-sky-400',
     bg: 'bg-sky-500/10 border-sky-500/30',
     btnClass: 'bg-sky-600 hover:bg-sky-700',
@@ -70,7 +72,7 @@ export const PORTAL_COLORS: Record<PortalColor, {
     difficulty: 'Médio',
     levelRange: 'Lv. 11–25',
     xp: 600, gold: 240,
-    fragmentChance: 10, maxFragments: 3, legendaryChance: 0,
+    fragmentChance: 10, maxFragments: 3, legendaryChance: 0, difficultyMult: 1.35,
     colorClass: 'text-yellow-400',
     bg: 'bg-yellow-500/10 border-yellow-500/30',
     btnClass: 'bg-yellow-600 hover:bg-yellow-700',
@@ -82,7 +84,7 @@ export const PORTAL_COLORS: Record<PortalColor, {
     difficulty: 'Difícil',
     levelRange: 'Lv. 21–35',
     xp: 1000, gold: 400,
-    fragmentChance: 15, maxFragments: 4, legendaryChance: 5,
+    fragmentChance: 15, maxFragments: 4, legendaryChance: 5, difficultyMult: 1.7,
     colorClass: 'text-red-400',
     bg: 'bg-red-500/10 border-red-500/30',
     btnClass: 'bg-red-600 hover:bg-red-700',
@@ -94,7 +96,7 @@ export const PORTAL_COLORS: Record<PortalColor, {
     difficulty: 'Lendário',
     levelRange: 'Lv. 30+',
     xp: 1800, gold: 700,
-    fragmentChance: 25, maxFragments: 6, legendaryChance: 5,
+    fragmentChance: 25, maxFragments: 6, legendaryChance: 5, difficultyMult: 2.1,
     colorClass: 'text-purple-400',
     bg: 'bg-purple-500/10 border-purple-500/30',
     btnClass: 'bg-purple-600 hover:bg-purple-700',

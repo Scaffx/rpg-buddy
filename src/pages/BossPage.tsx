@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats } from '@/hooks/useProfile';
+import { getLevelFromXp } from '@/lib/progression';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -208,7 +209,8 @@ export default function BossPage() {
           .maybeSingle();
         if (profileRow) {
           const newXp = ((profileRow as any).total_xp || 0) + xpReward;
-          const newLevel = Math.max((profileRow as any).level || 1, Math.floor(newXp / 200) + 1);
+          // Usa XP_TABLE oficial em vez de xp/200, que pulava níveis (bug).
+          const newLevel = Math.max((profileRow as any).level || 1, getLevelFromXp(newXp));
           await supabase.from('profiles' as never).update({ total_xp: newXp, level: newLevel } as never).eq('user_id' as never, user.id as never);
         }
         const { data: balRow } = await supabase.from('user_balance' as never).select('gold' as never).eq('user_id' as never, user.id as never).maybeSingle();

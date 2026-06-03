@@ -492,6 +492,9 @@ export type DungeonArenaProps = {
   // Portal dungeon options
   actionCooldownMs?: number;  // If > 0, enforces a cooldown between actions (ms)
   isPortalDungeon?: boolean;  // Disables pet assistance
+  /** Multiplicador de dificuldade por raridade (comum 1.0 → lendário 2.1).
+   *  Aplica SOBRE o scaling por nível: aumenta o desafio sem "virar nível 60". */
+  difficultyMult?: number;
 };
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -515,6 +518,7 @@ export default function DungeonArena({
   isHost = true,
   actionCooldownMs = 0,
   isPortalDungeon = false,
+  difficultyMult = 1,
 }: DungeonArenaProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -553,9 +557,15 @@ export default function DungeonArena({
   const [layoutIndex] = useState<number>(() => Math.floor(Math.random() * 3));
   const baseRooms     = dungeonMeta.layouts[layoutIndex] ?? dungeonMeta.layouts[0];
 
+  // Scaling por nível + tamanho da party, com o multiplicador de raridade
+  // (difficultyMult) aplicado POR CIMA. Assim um lendário no nível 15 é mais
+  // difícil que um comum no nível 15, mas continua escalado ao nível do herói.
+  const dHp  = (base: number) => Math.round(scaleHp(base, effectiveDungeonLevel, playerCount) * difficultyMult);
+  const dAtk = (base: number) => Math.round(scaleAtk(base, effectiveDungeonLevel, playerCount) * difficultyMult);
+
   // Scale rooms to player level + party size
   const dungeonRoomList: RoomDef[] = baseRooms.map(room => room.enemy
-    ? { ...room, enemy: { ...room.enemy, hp: scaleHp(room.enemy.hp, effectiveDungeonLevel, playerCount), atk: scaleAtk(room.enemy.atk, effectiveDungeonLevel, playerCount) } }
+    ? { ...room, enemy: { ...room.enemy, hp: dHp(room.enemy.hp), atk: dAtk(room.enemy.atk) } }
     : room
   );
 
@@ -563,15 +573,15 @@ export default function DungeonArena({
   const bossFight    = dungeonMeta.boss;
   const scaledPrimary: EnemyDef & { matk: number } = {
     ...bossFight.primary,
-    hp:  scaleHp(bossFight.primary.hp,  effectiveDungeonLevel, playerCount),
-    atk: scaleAtk(bossFight.primary.atk, effectiveDungeonLevel, playerCount),
-    matk: scaleAtk(bossFight.primary.matk, effectiveDungeonLevel, playerCount),
+    hp:  dHp(bossFight.primary.hp),
+    atk: dAtk(bossFight.primary.atk),
+    matk: dAtk(bossFight.primary.matk),
   };
   const scaledSecondary = bossFight.secondary ? {
     ...bossFight.secondary,
-    hp:  scaleHp(bossFight.secondary.hp,  effectiveDungeonLevel, playerCount),
-    atk: scaleAtk(bossFight.secondary.atk, effectiveDungeonLevel, playerCount),
-    matk: scaleAtk(bossFight.secondary.matk, effectiveDungeonLevel, playerCount),
+    hp:  dHp(bossFight.secondary.hp),
+    atk: dAtk(bossFight.secondary.atk),
+    matk: dAtk(bossFight.secondary.matk),
   } : undefined;
 
   const bossRoomDef: RoomDef = {
@@ -809,6 +819,14 @@ export default function DungeonArena({
     const isCombat = room.type === 'combat' || room.type === 'boss';
     const isBoss   = room.type === 'boss';
 
+    // Modificador da sala + multiplicadores de loot — compartilhados por TODOS
+    // os tipos de sala (combate, resgate, tesouro, armadilha). Antes eram
+    // declarados só dentro do branch de combate, causando ReferenceError nas
+    // salas rescue/treasure/trap.
+    const mod = roomModifiers[roomIdx];
+    const lootMult  = mod?.kind === 'recompensa_dupla' ? 2 : 1;
+    const lootBonus = mod?.kind === 'porta_secreta' ? 1 : 0;
+
     if (isCombat) {
       // Combined ATK from entire alive party — aplica sidekick cap por jogador
       const baseAtk = sessionPlayers
@@ -824,7 +842,6 @@ export default function DungeonArena({
       const effAtk        = Math.round(baseAtk * (sessionPlayers ? 1 : (1 + friendBonus)));
 
       // ── Apply room modifier effects on dice ────────────────────────
-      const mod = roomModifiers[roomIdx];
       const rawRoll  = d(20);
       // escuridao: -3 to attack dice (min 1)
       const pRoll    = mod?.kind === 'escuridao' ? Math.max(1, rawRoll - 3) : rawRoll;
@@ -833,9 +850,6 @@ export default function DungeonArena({
       if (isBencaoHeroi) heroiCritUsedRef.current = true;
       const eRoll = d(20);
       const crit  = pRoll === 20 || isBencaoHeroi;
-      // Loot multiplier for this room
-      const lootMult   = mod?.kind === 'recompensa_dupla' ? 2 : 1;
-      const lootBonus  = mod?.kind === 'porta_secreta' ? 1 : 0;
       // Modifier prefix for log
       const modTag = mod && mod.kind !== 'sagrado' && mod.kind !== 'amaldicoado' && mod.kind !== 'eco_veneno' && mod.kind !== 'eco_cura' && mod.kind !== 'recompensa_dupla' && mod.kind !== 'porta_secreta' && mod.kind !== 'bencao_heroi'
         ? ` [${mod.icon}]` : '';
@@ -1097,19 +1111,13 @@ export default function DungeonArena({
     setGoldEarned(totalGold);
 
     try {
-      // XP
+      // XP — server-side (add_xp_to_user usa auth.uid() e clampa o valor)
       const { error: xpErr } = await (supabase as any).rpc('add_xp_to_user', { p_user_id: user.id, p_xp: totalXp });
-      if (xpErr) {
-        const { data: prof } = await (supabase as any).from('profiles').select('total_xp').eq('user_id', user.id).maybeSingle();
-        await (supabase as any).from('profiles').update({ total_xp: ((prof?.total_xp) || 0) + totalXp }).eq('user_id', user.id);
-      }
+      if (xpErr) console.error('add_xp_to_user falhou:', xpErr.message);
 
-      // Gold
-      const { error: goldErr } = await (supabase as any).rpc('add_gold_to_user', { p_user_id: user.id, p_amount: totalGold });
-      if (goldErr) {
-        const { data: bal } = await (supabase as any).from('user_balance').select('gold').eq('user_id', user.id).maybeSingle();
-        await (supabase as any).from('user_balance').update({ gold: ((bal?.gold) || 0) + totalGold }).eq('user_id', user.id);
-      }
+      // Gold — server-side (corrigido: o parâmetro é p_gold, não p_amount)
+      const { error: goldErr } = await (supabase as any).rpc('add_gold_to_user', { p_user_id: user.id, p_gold: totalGold });
+      if (goldErr) console.error('add_gold_to_user falhou:', goldErr.message);
 
       // Crafting materials → game_items by effect
       for (const loot of allLoot.filter(l => l.id !== 'moeda_cobre')) {
@@ -1711,12 +1719,12 @@ export default function DungeonArena({
             <div className="grid grid-cols-2 gap-3">
               <div className="rpg-card bg-xp/10 border-xp/30 text-center">
                 <p className="text-xs text-muted-foreground">XP Ganho</p>
-                <p className="text-2xl font-bold text-xp">+{xpEarned || (DUNGEON_XP[dungeonId] || 200)}</p>
+                <p className="text-2xl font-bold text-xp">+{xpEarned || getDungeonXp(dungeonId)}</p>
                 {rescued > 0 && <p className="text-xs text-emerald-400">+{rescued * 50} bônus de resgate</p>}
               </div>
               <div className="rpg-card bg-accent/10 border-accent/30 text-center">
                 <p className="text-xs text-muted-foreground">Ouro Ganho</p>
-                <p className="text-2xl font-bold text-accent">+{goldEarned || (DUNGEON_GOLD[dungeonId] || 80)}</p>
+                <p className="text-2xl font-bold text-accent">+{goldEarned || getDungeonGold(dungeonId)}</p>
               </div>
             </div>
 

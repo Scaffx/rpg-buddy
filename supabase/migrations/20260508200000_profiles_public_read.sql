@@ -6,23 +6,23 @@
 -- ================================================================
 
 -- Remove a política restritiva de leitura própria
-DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+                                        DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 
--- Cria política que permite qualquer autenticado ver qualquer perfil
--- (profiles só tem dados de jogo, sem informações sensíveis)
--- Usa DO $$ para não falhar se a política já existir (idempotente)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'public'
-      AND tablename  = 'profiles'
-      AND policyname = 'Authenticated users can view any profile'
-  ) THEN
-    CREATE POLICY "Authenticated users can view any profile"
-      ON public.profiles FOR SELECT
-      TO authenticated
-      USING (true);
-  END IF;
-END
-$$;
+                                        -- Cria política que permite qualquer autenticado ver qualquer perfil
+                                        -- (profiles só tem dados de jogo, sem informações sensíveis)
+                                        -- Usa DO $$ para não falhar se a política já existir (idempotente)
+                                        DO $$
+                                        BEGIN
+                                        IF NOT EXISTS (
+                                            SELECT 1 FROM pg_policies
+                                            WHERE schemaname = 'public'
+                                            AND tablename  = 'profiles'
+                                            AND policyname = 'Authenticated users can view any profile'
+                                        ) THEN
+                                            CREATE POLICY "Authenticated users can view any profile"
+                                            ON public.profiles FOR SELECT
+                                            TO authenticated
+                                            USING (true);
+                                        END IF;
+                                        END
+                                        $$;

@@ -1,192 +1,255 @@
-# 📖 Explicação dos Sistemas do RPG Buddy
+# 📖 Sistemas do RPG Buddy
+
+> Fonte canônica das fórmulas. Em caso de divergência com a UI, o **código** manda — esta doc espelha o que está em `src/lib/` e `src/hooks/useProfile.tsx`.
+
+---
 
 ## 🕐 Short Rest (Descanso Breve)
 
-### Como funciona?
-- **Recuperação FIXA**: Sempre recupera **30% de HP máximo + 30% de MP máximo**, **independente do tempo definido**
-- O timer é apenas um elemento de **gamificação/meditação**, não afeta o cálculo
-- Exemplo: Se você tem 100 HP e 10 MP máximos:
-  - Qualquer duração (5 min, 15 min, 1h) = +30 HP e +3 MP
-- **Salvos automaticamente** no localStorage - continua rodando mesmo mudando de aba
+- **Recuperação FIXA**: 30% do HP máx + 30% do MP máx, independente do tempo.
+- Timer é gamificação/meditação — não afeta o cálculo.
+- Persiste em `localStorage` (`short_rest_${user.id}`); ao retornar à aba, calcula tempo offline e completa se preciso.
 
 ---
 
-## 🎯 Missões - XP (Experiência)
+## 🎯 XP de Missão — fórmula real
 
-### Cálculo de XP na Missão
+Arquivo: [`src/hooks/useProfile.tsx`](src/hooks/useProfile.tsx) (função `useCompleteMission`).
+
 ```
-XP Base = XP da missão
-Multiplicador = 1 + floor((Nível - 1) / 5) * 0.5
+levelMultiplier = min(3.5, 1 + floor((nível − 1) / 5) × 0.5)
+buffBonus       = xpBoost(+0.5)
+                + flowXp(+0.2)
+                + madrugador(+0.15 se hora < 8)
+                + (streakMultiplier − 1)
 
-Exemplo:
-- Nível 1-4: Multiplicador = 1.0x
-- Nível 5-9: Multiplicador = 1.5x
-- Nível 10-14: Multiplicador = 2.0x
-- Nível 15-19: Multiplicador = 2.5x
-...
-
-Bônus Madrugador: Se completar ANTES DAS 8h, +15% XP
-Exemplo: 50 XP × 1.5 (nível 10) × 1.15 (madrugador) = 86 XP
+xpMultiplier    = levelMultiplier × (1 + buffBonus)
+xpFinal         = round(xpBase × xpMultiplier) + checklistBonus
 ```
 
-### Bônus Checklist
-- Cada item de checklist completado = **+2 XP bônus**
-- Soma ao XP total da missão
+### `levelMultiplier` por nível (capado em 3.5×)
+
+| Nível    | Multiplicador |
+|----------|---------------|
+| 1–4      | 1.0×          |
+| 5–9      | 1.5×          |
+| 10–14    | 2.0×          |
+| 15–19    | 2.5×          |
+| 20–24    | 3.0×          |
+| 25+      | **3.5× (cap)** |
+
+> O cap existe para evitar inflação de XP em níveis altos. Antes, no Lv 60 o multiplier era 7× e, combinado com buffs multiplicativos, podia chegar a ~20× em uma única missão.
+
+### Bônus de streak (aditivo no `buffBonus`)
+
+| Streak (dias) | Bônus     |
+|---------------|-----------|
+| 3–6           | +10%      |
+| 7–13          | +25%      |
+| 14–29         | +50%      |
+| 30+           | +100%     |
+
+### Bônus de checklist
+
+- **XP**: cada item completo soma `xp_bonus` (default **+2 XP**).
+- **Ouro**: +1 🪙 a cada 3 itens completos (até 3 🪙).
+
+### Missões de NPC
+
+- `npc_id` definido → **XP final = 0**, apenas ouro é concedido.
 
 ---
 
-## 💰 Ouro (Gold) - Recompensas de Missões
+## 💰 Ouro de Missão
 
-### Ouro Base & Streak
+Arquivo: [`src/hooks/useProfile.tsx`](src/hooks/useProfile.tsx) (`getMissionGoldRewardFromStreakWithTalent`).
+
 ```
-Base: 2 🪙 por missão
-Bônus por Streak: +1 ouro a cada 3 missões em sequência
-
-Exemplo:
-- 1ª missão: 2 🪙
-- 2ª missão: 2 🪙
-- 3ª missão: 2 🪙 + 1 = 3 🪙
-- 4ª missão: 3 🪙
-- 5ª missão: 3 🪙
-- 6ª missão: 3 🪙 + 1 = 4 🪙 (6 ÷ 3 = 2 bônus)
+goldBase     = 2
+streakBonus  = min(2, floor(streakConsecutivo / 3))   // 0, 1 ou 2
+checklistBonus = min(3, floor(itensCompletos / 3))    // 0..3
+goldFinal    = max(0, round((goldBase + streakBonus + checklistBonus) × talentGoldMultiplier))
 ```
 
-### Talentos que afetam Ouro
-- **Mestre Mercador** (10% de desconto na loja) - Não afeta recompensa de missões
-- Boss drop: 10 🪙 fixo por derrota
+- `talentGoldMultiplier` = 2× se talento `ordem_no_caos` proc-ar (20% chance em missões `casa`) ou `fotossintese` em missões `ar_livre`.
+- `foco_inabalavel` (talento) estende o gap máximo entre conclusões diárias de 1 para 2 dias.
+
+---
+
+## 🎁 Daily Bonus
+
+Arquivo: [`src/lib/constants.ts`](src/lib/constants.ts) (`getDailyBonusXp`, `getDailyBonusGold`).
+
+```
+xp   = 15 + (nível − 1) × 3
+ouro =  5 + floor((nível − 1) / 5)
+```
+
+| Nível | XP  | Ouro |
+|-------|-----|------|
+| 1     | 15  | 5    |
+| 5     | 27  | 5    |
+| 10    | 42  | 6    |
+| 20    | 72  | 8    |
+| 30    | 102 | 10   |
+
+**Investidor Anjo** (talento): +1 🪙 no 1º login do dia se streak ofensiva global > 5.
 
 ---
 
 ## 🎖️ Talentos (Feats)
 
-### Como ganhar Pontos de Talento?
+### Pontos de talento ganhos
+
 ```
-Fórmula: 1 ponto a cada 5 níveis
-- Nível 1-4: 0 pontos
-- Nível 5-9: 1 ponto
-- Nível 10-14: 2 pontos
-- Nível 15-19: 3 pontos
-...
+1 ponto a cada 5 níveis (Lv 5, 10, 15, …)
 ```
 
-### Talentos Disponíveis
+Trigger no banco concede automaticamente ao subir de nível.
 
-| Nome | Efeito | Descrição |
-|------|--------|-----------|
-| **Madrugador** | +15% XP | Bonus aplicado se completar antes das 8h |
-| **Foco Inabalável** | Combo 48h | Streak de missões continua por até 48h (normal: 24h) |
-| **Mestre Mercador** | 10% desconto | Na loja de tempo/equipamentos |
+### Talentos relevantes para balance
+
+| Nome                  | Efeito                                                                |
+|-----------------------|-----------------------------------------------------------------------|
+| **Madrugador**        | +15% XP aditivo se completar antes das 8h                            |
+| **Foco Inabalável**   | Combo 48h em vez de 24h                                              |
+| **XP Boost / Foco Profundo** | +50% XP aditivo (via buff ativo `xp_boost`/`foco_profundo`)   |
+| **Flow XP buff**      | +20% XP aditivo                                                      |
+| **Mestre Mercador**   | 10% desconto na loja                                                 |
+| **Ordem no Caos**     | 20% chance de 2× ouro em missões `casa`                              |
+| **Fotossíntese**      | 2× ouro em missões `ar_livre`                                        |
+| **Investidor Anjo**   | +1 🪙 diário se streak > 5                                            |
 
 ---
 
-## 🏥 Saúde (Health System)
+## 🏥 Saúde
 
-### Health Challenge Completo
-- **Requisito**: Atingir meta de refeições E hidratação
-- **Recompensa**: +50 XP (uma vez por dia)
+| Tipo            | Duração   | Recuperação    | XP   |
+|-----------------|-----------|----------------|------|
+| Short Rest      | 1–60 min  | 30% HP/MP      | 0    |
+| Long Rest       | Ao completar Health Challenge | 100% HP/MP | **+`getHealthChallengeXp(nível)`** |
 
-### Short Rest vs Long Rest
-| Tipo | Duração | Recuperação | XP |
-|------|---------|-------------|-----|
-| **Short Rest** | 1-60 min | 30% HP/MP | 0 XP |
-| **Long Rest** | Automático ao completar health challenge | 100% HP/MP | +50 XP |
+`getHealthChallengeXp(nível) = 35 + (nível − 1) × 4`
+
+### Penalidades dinâmicas (níveis > 15)
+
+- Refeição faltante: −5% HP máx
+- Água insuficiente: −10% MP máx
+- Abaixo do nível 15: penalidade fixa (−10 HP / refeição faltante).
 
 ---
 
 ## 👹 Boss Battles
 
-### Poder do Boss
-```
-Poder = (Nível do boss × 100) + (XP Total do boss ÷ 10)
+Arquivo: [`src/pages/BossPage.tsx`](src/pages/BossPage.tsx) + [`src/lib/combat.ts`](src/lib/combat.ts) (`getBossCombatStats`).
 
-Exemplo:
-- Boss Nível 1, XP 100 = 100 + 10 = 110 de poder
-- Boss Nível 10, XP 1000 = 1000 + 100 = 1100 de poder
+### Stats do Boss
+
+```
+base = nível × 7 + floor(hp / 10)
+atk  = base + 10 + nível × 2
+matk = base + 8 + (nível par ? nível × 2 : nível)
+def  = base + 6 + floor(nível × 1.8)
+agi  = base + 4 + floor(nível × 1.5)
+threat = round((base × 1.6 + hp × 0.35) / 10)
 ```
 
-### Recompensas de Boss
-- **XP**: Reduzido comparado a missões (aproximadamente nível × 30)
-- **Ouro**: 10 🪙 fixo
-- **Drops**: Equipamentos raros (Epic/Legendary)
+### Stats do Jogador
+
+```
+hp  = 100 + nível × 12 + Força × 8 + Vitalidade × 14
+mp  = 40  + nível × 8  + Inteligência × 10 + Sabedoria × 6
+atk = nível × 4 + Força × 6 + Disciplina × 2
+matk = nível × 3 + Inteligência × 4 + Sabedoria × 2
+def = nível × 3 + Resiliência × 5 + Vitalidade × 3
+agi = nível × 2 + Agilidade × 6 + Criatividade × 2
+crit% = min(65, 5 + floor((Agilidade + Criatividade + Carisma) × 0.9))
+```
+
+### Recompensas
+
+```
+xpReward   = max(50, boss.xp_reward   || nível × 80 + 20)
+goldReward = max(10, boss.gold_reward || nível × 15 + 10)
+```
+
+**Bug corrigido**: o cálculo de nível ao vencer usava `floor(xp/200) + 1` (pulava níveis). Agora usa `getLevelFromXp()` da tabela `XP_TABLE`.
+
+### Inspiração no combate
+
+- **Combat Adrenaline**: +2× multiplicador no ataque rolado.
+- **Boss Debuff**: reduz `bossPowerMultiplier` para 0.8 (−20%).
+
+### Chaves de Boss
+
+- 1 chave a cada **5 missões** concluídas (qualquer tipo).
 
 ---
 
-## ✨ Inspiração (Weekly Inspiration)
+## ✨ Inspiração Semanal
 
-### Como ganhar?
-- Completa **3 missões diárias em sequência** = +1 Inspiração
-- **Máximo**: 1 inspiração por semana
-- **Locação**: Verificar em "Meu Perfil"
-
-### Bônus de Inspiração
-- **Combat Adrenaline**: +2x multiplicador de ataque em alguns combates
-- **Boss Debuff**: Reduz poder do boss em 20% (0.8x)
+- Ganha **+1 Inspiração** ao completar todas missões diárias do dia (perfect day).
+- Cap: 1 inspiração por semana.
+- Local: `Meu Perfil`.
 
 ---
 
-## ⚠️ Penalidades
+## ⚠️ Penalidades por Missão Falhada
 
-### Missão Fracassada
-- **Custo**: 10 🪙 para "pagar a penalidade"
-- **Recuperação**: Restaura o XP que seria ganho
-- **Nota**: Não penaliza streak automaticamente se recuperada
+- **Custo**: 10 🪙 para "pagar a penalidade" (constante `MISSION_FAILURE_PENALTY_GOLD`).
+- **Recuperação**: restaura o XP que seria ganho.
+- Streak: não é penalizada automaticamente se recuperada.
+- **Streak Protector**: até 3 cargas/semana (constante `STREAK_PROTECTOR_MAX_CHARGES`).
 
 ---
 
 ## 📊 Progressão de Nível
 
-### Tabela XP (Primeiros 30 níveis)
+Arquivo: [`src/lib/progression.ts`](src/lib/progression.ts) — `XP_TABLE` (cumulativo).
+
 ```
-Nível 1: 0 XP
-Nível 5: 700 XP
-Nível 10: 2950 XP
-Nível 15: 6200 XP
-Nível 20: 10700 XP
-Nível 25: 16450 XP
-Nível 30: 21950 XP
+Lv 1   →      0 XP
+Lv 5   →  3 600 XP
+Lv 10  → 19 200 XP
+Lv 15  → 51 800 XP
+Lv 20  → 106 400 XP
+Lv 30  → 301 600 XP
+Lv 40  → 644 800 XP
+Lv 50  → 1 176 000 XP
+Lv 60  → 1 935 200 XP
 ```
 
-### Ganho de Pontos de Talento ao subir nível
-- Automático via banco de dados (trigger)
-- Aparece em "Árvore de Talentos"
+Fórmula incremental: `incremento(N) = 300·N + 20·N²`.
 
 ---
 
-## 🔧 Mecânicas Importantes
+## 🔧 Atributos (11 tipos)
 
-### Atributos (6 tipos)
-- **Força**: Missões de exercício físico
-- **Agilidade**: Atividades de cardio/mobilidade
-- **Inteligência**: Estudo/aprendizado
-- **Sabedoria**: Meditação/reflexão
-- **Disciplina**: Hábitos disciplinados
-- **Resiliência**: Recuperação/resistência
+`Força · Agilidade · Vitalidade · Inteligência · Sabedoria · Disciplina · Carisma · Criatividade · Relacionamento · Resiliência · Autoaperfeiçoamento`
 
-Cada atributo tem seu próprio **nível e XP** (0-100 XP por nível)
-
-### Daily Bonus (Bônus Diário)
-- **Recompensa**: +15 XP + 5 🪙
-- **Frequência**: Uma vez a cada 24h
-- **Locação**: Dashboard (botão "Coletar")
+- Cada atributo tem **nível e XP próprios** (`xp` cumulativo, `level` derivado por `getLevelFromXp`).
+- Missão concede XP a 1 atributo primário (XP total) + atributos secundários (12 XP fixo cada).
+- Cores e mapping em [`src/lib/attributes.ts`](src/lib/attributes.ts).
 
 ---
 
-## 💾 Persistência de Estado
+## 🪙 Outras recompensas fixas
 
-### LocalStorage
-- **Short Rest**: `short_rest_${user.id}` - Persiste tempo decorrido e estado
-- **Replication Sync**: Ao retornar, calcula tempo offline decorrido e completa o descanso se necessário
+| Item                   | Valor                          | Onde |
+|------------------------|--------------------------------|------|
+| Achievement (XP/Ouro)  | 30 XP / 20 🪙                  | `constants.ts` |
+| NPC weekly challenge   | Baked por challenge no DB     | tabela `npc_weekly_challenges` |
+| NPC missão via chat    | 0 XP (NPC), 2 🪙 base + streak | DB default `xp_reward=25` (ignorado) |
+| Respec de classe       | 120 🪙                         | `constants.ts` `RESPEC_COST` |
 
 ---
 
-## 📝 Resumo Rápido
+## 🧮 Resumo de escala
 
-| Item | Padrão | Escalável? |
-|------|--------|-----------|
-| **Short Rest** | 30% HP/MP | ❌ Não depende do tempo |
-| **XP Missão** | Base × Multiplicador (nível) | ✅ Sim, escala com nível |
-| **Ouro** | 2 + bônus streak | ✅ Sim, com streak |
-| **Talentos** | 1 a cada 5 níveis | ✅ Sim, automático |
-| **Health XP** | +50 (onetum/dia) | ❌ Fixo |
-| **Boss Ouro** | 10 🪙 | ❌ Fixo |
-
+| Item                  | Antes (bugado/quebrado)      | Agora                                       |
+|-----------------------|------------------------------|---------------------------------------------|
+| XP multiplier (Lv 60) | 7× sem cap                   | 3.5× cap                                    |
+| Combo buffs XP máx    | ~20× (multiplicativo)        | ~9.45× (aditivo + cap, com streak 30d)      |
+| Daily Bonus           | 15 XP / 5 🪙 fixo            | Escala com nível (15→102 XP, 5→10 🪙)        |
+| Checklist             | +XP apenas                   | +XP **e** +1 🪙 a cada 3 itens (até 3 🪙)    |
+| Boss level on win     | `floor(xp/200) + 1` (bug)    | `getLevelFromXp(xp)` (tabela oficial)       |

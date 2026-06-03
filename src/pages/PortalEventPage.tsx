@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getPlayerCombatStats, getAttributeLevels } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
 
+import AppLayout from '@/components/AppLayout';
 import DungeonArena, { type SessionPlayer, type PotionItem } from '@/components/DungeonArena';
 import FragmentDungeonArena, { type FragmentVictoryResult } from '@/components/FragmentDungeonArena';
 import {
@@ -605,6 +606,7 @@ export default function PortalEventPage() {
           initialPlayerMp={curMp} initialPlayerMaxMp={maxMp}
           playerLevel={profile?.level || 1} playerAtk={playerStats.atk ?? 15} playerDef={playerStats.def ?? 8}
           potions={potions} friendCount={0} isPortalDungeon
+          difficultyMult={meta.difficultyMult}
           onVictory={handlePortalVictory}
           onDefeat={() => setIsEnteringPortal(false)}
           onFlee={() => setIsEnteringPortal(false)}
@@ -632,19 +634,10 @@ export default function PortalEventPage() {
 
   // portal hub
   return (
-    <div className="min-h-screen bg-[#08080f]">
+    <AppLayout>
+    <div className="relative -mx-4 -my-4 md:-mx-6 md:-my-6 min-h-[calc(100vh-3.5rem)] bg-[#08080f]">
       <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-purple-950/40 to-transparent pointer-events-none" />
       <div className="relative p-4 space-y-5 max-w-xl mx-auto pb-10">
-
-        {/* botão voltar */}
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar
-        </button>
 
         {/* header */}
         <div className="text-center pt-2 space-y-1">
@@ -776,5 +769,6 @@ export default function PortalEventPage() {
         )}
       </AnimatePresence>
     </div>
+    </AppLayout>
   );
 }

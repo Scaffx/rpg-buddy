@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import { Sword, Shield, Loader2, Mail, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { AccountRecoveryModal } from '@/components/AccountRecoveryModal';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -20,7 +19,6 @@ export default function Auth() {
   const [resending, setResending] = useState(false);
   const [forgotPassword, setForgotPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-  const [showRecovery, setShowRecovery] = useState(false);
   // Fluxo de redefinição de senha (token no hash da URL)
   const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -128,13 +126,9 @@ export default function Auth() {
     try {
       if (isLogin) {
         await signIn(email, password);
-        // Checar se há perfis órfãos para recuperação antes de redirecionar
-        const { data: orphaned } = await (supabase.rpc as any)('get_orphaned_profiles');
-        if (orphaned && (orphaned as any[]).length > 0) {
-          setShowRecovery(true);
-        } else {
-          navigate('/');
-        }
+        // Recuperação de conta agora é admin-only (procedimento manual via suporte),
+        // então o login segue direto para o app.
+        navigate('/');
       } else {
         await signUp(email, password, displayName);
         setNeedsConfirmation(true);
@@ -378,14 +372,6 @@ export default function Auth() {
           </div>
         </motion.div>
       </div>
-
-      <AccountRecoveryModal
-        open={showRecovery}
-        onClose={() => {
-          setShowRecovery(false);
-          navigate('/');
-        }}
-      />
     </>
   );
 }
