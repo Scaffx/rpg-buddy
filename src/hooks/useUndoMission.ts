@@ -1,9 +1,8 @@
 // src/hooks/useUndoMission.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Database } from '@/types/supabase';
-import { getLevelFromXp } from '@/lib/progression';
 
 export function useUndoMission() {
   const { user } = useAuth();
@@ -12,147 +11,17 @@ export function useUndoMission() {
 
   return useMutation({
     mutationFn: async (missionId: string) => {
+      // 🔒 Reversão server-side: o RPC undo_mission lê os valores reais
+      // creditados e reverte XP/ouro/atributos/chaves atomicamente. Fecha o
+      // farm via loop completar/desfazer (secundários -12, chave revertida).
       const today = new Date().toLocaleDateString('en-CA');
-
-      // Buscar missão
-      const { data: mission, error: missionError } = await supabase
-        .from('missions')
-        .select('*')
-        .eq('id', missionId)
-        .single();
-
-      if (missionError) throw missionError;
-
-      const typedMission = mission as any;
-
-      // Verificar se foi concluída hoje
-      const dailyStatus = (typedMission.daily_status as { [key: string]: string }) || {};
-      if (dailyStatus[today] !== 'completed') {
-        throw new Error('Esta missão não foi concluída hoje');
-      }
-
-      // Remover conclusão de hoje
-      delete dailyStatus[today];
-
-      const { error: updateError } = await supabase
-        .from('missions')
-        .update({ daily_status: dailyStatus } as any)
-        .eq('id', missionId);
-
-      if (updateError) throw updateError;
-
-
-      // Buscar registro de conclusão diária para saber o XP/gold real
-      const { data: completion } = await supabase
-        .from('mission_daily_completions')
-        .select('xp_earned, gold_earned')
-        .eq('mission_id', missionId)
-        .eq('completion_date', today)
-        .single();
-
-      const xpEarned = (completion as any)?.xp_earned ?? 25;
-      const goldEarned = (completion as any)?.gold_earned ?? 2;
-
-      // Remover registro de conclusão diária
-      await supabase
-        .from('mission_daily_completions')
-        .delete()
-        .eq('mission_id', missionId)
-        .eq('completion_date', today);
-
-      // Reverter atributo primário
-      const { data: attr } = await supabase
-        .from('attributes')
-        .select('xp, level')
-        .eq('id', typedMission.attribute_id)
-        .single();
-
-      if (attr) {
-        const newXp = Math.max(0, attr.xp - xpEarned);
-        let newLevel = getLevelFromXp(newXp);
-        // O nível nunca pode diminuir
-        newLevel = Math.max(newLevel, attr.level);
-
-        await supabase
-          .from('attributes')
-          .update({ xp: newXp, level: newLevel })
-          .eq('id', typedMission.attribute_id);
-      }
-
-      // Reverter atributos secundários
-      const secondaryIds = (typedMission.secondary_attribute_ids as string[]) || [];
-      for (const secId of secondaryIds) {
-        const { data: secAttr } = await supabase
-          .from('attributes')
-          .select('xp, level')
-          .eq('id', secId)
-          .single();
-
-        if (secAttr) {
-          const newXp = Math.max(0, secAttr.xp - 1);
-          let newLevel = getLevelFromXp(newXp);
-          newLevel = Math.max(newLevel, secAttr.level);
-
-          await supabase
-            .from('attributes')
-            .update({ xp: newXp, level: newLevel })
-            .eq('id', secId);
-        }
-      }
-
-      // Reverter perfil
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('total_xp, xp_today, missions_completed, level')
-        .eq('user_id', user!.id)
-        .single();
-
-      if (profile) {
-        const newTotalXp = Math.max(0, profile.total_xp - xpEarned);
-        let newLevel = getLevelFromXp(newTotalXp);
-        newLevel = Math.max(newLevel, profile.level);
-
-        await supabase
-          .from('profiles')
-          .update({
-            total_xp: newTotalXp,
-            xp_today: Math.max(0, profile.xp_today - xpEarned),
-            missions_completed: Math.max(0, profile.missions_completed - 1),
-            level: newLevel,
-          })
-          .eq('user_id', user!.id);
-      }
-
-      // Reverter ouro
-      const { data: bal } = await supabase
-        .from('user_balance')
-        .select('gold')
-        .eq('user_id', user!.id)
-        .maybeSingle();
-
-      if (bal) {
-        const currentGold = (bal as any).gold ?? 100;
-
-        await supabase
-          .from('user_balance')
-          .update({ 
-            gold: Math.max(0, currentGold - goldEarned),
-            updated_at: new Date().toISOString() 
-          } as any)
-          .eq('user_id', user!.id);
-      }
-
-      // Registrar undo
-      await supabase
-        .from('activity_log')
-        .insert({
-          user_id: user!.id,
-          action: 'mission_undo',
-          description: `Missão desfeita! -${xpEarned} XP -${goldEarned} 🪙`,
-          xp_gained: -xpEarned,
-        });
-
-      return { success: true, missionId, xpEarned, goldEarned };
+      const { data, error } = await (supabase as any).rpc('undo_mission', {
+        p_mission_id: missionId,
+        p_today: today,
+      });
+      if (error) throw error;
+      const r = (data || {}) as { xpEarned?: number; goldEarned?: number };
+      return { success: true, missionId, xpEarned: r.xpEarned ?? 0, goldEarned: r.goldEarned ?? 0 };
     },
 
     onSuccess: (data) => {
