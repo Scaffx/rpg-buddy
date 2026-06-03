@@ -37,6 +37,7 @@ import PrivacyPage from "./pages/legal/PrivacyPage";
 import RefundPage from "./pages/legal/RefundPage";
 import { Loader2 } from "lucide-react";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
+import LifeonRPGSplash from "@/components/branding/LifeonRPGSplash";
 
 const queryClient = new QueryClient();
 
@@ -56,9 +57,7 @@ function ProtectedRoute({
 
   if (loading || profileLoading || subscriptionLoading || adminLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <LifeonRPGSplash fullscreen label="abrindo o portal" />
     );
   }
   // Visitantes deslogados vão pra Landing pública (raiz "/" passa a mostrar Landing).
@@ -86,9 +85,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <LifeonRPGSplash fullscreen label="abrindo o portal" />
     );
   }
   if (user) return <Navigate to="/" replace />;
@@ -102,9 +99,7 @@ function LandingRoute() {
   const { isActive, isLoading: subLoading } = useSubscription();
   if (loading || (user && subLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <LifeonRPGSplash fullscreen label="abrindo o portal" />
     );
   }
   // Usuário ativo → manda pro dashboard

@@ -5,6 +5,7 @@ import { useProfile, useClasses } from '@/hooks/useProfile';
 import { NavLink } from '@/components/NavLink';
 import ActiveTalentsBadge from '@/components/ActiveTalentsBadge';
 import HelpTutorialModal from '@/components/HelpTutorialModal';
+import { LifeonRPGEmblem } from '@/components/branding/LifeonRPGLogo';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users,
   ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
@@ -116,11 +117,14 @@ export function AppSidebar() {
           <div className="m-3 rounded-xl border border-sidebar-border/60 bg-gradient-to-b from-sidebar-accent/60 to-sidebar-background/80 p-3 space-y-2.5">
             {/* Logo + título do app */}
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 border border-primary/25">
-                <Crown className="w-4 h-4 text-primary" />
+              <div className="flex h-7 w-7 items-center justify-center flex-shrink-0">
+                <LifeonRPGEmblem size={28} uid="sb" />
               </div>
-              <span className="font-display text-xs font-bold text-primary tracking-wide uppercase">
-                {t('app.sidebar.my_rpg')}
+              <span
+                className="font-display text-xs font-bold tracking-[0.12em]"
+                style={{ color: 'oklch(0.94 0.018 92)' }}
+              >
+                Lifeon<span style={{ color: 'oklch(0.83 0.12 86)' }}>RPG</span>
               </span>
             </div>
 
@@ -176,10 +180,10 @@ export function AppSidebar() {
             )}
           </div>
         ) : (
-          /* Collapsed: apenas ícone da coroa centralizado */
+          /* Collapsed: apenas emblema LifeonRPG centralizado */
           <div className="flex justify-center py-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 border border-primary/25">
-              <Crown className="w-4 h-4 text-primary" />
+            <div className="flex h-8 w-8 items-center justify-center">
+              <LifeonRPGEmblem size={30} uid="sb-collapsed" />
             </div>
           </div>
         )}
