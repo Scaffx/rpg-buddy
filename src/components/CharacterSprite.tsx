@@ -1,71 +1,15 @@
 import { useShortRestStatus } from '@/hooks/useShortRestStatus';
+import { LifeonRPGMascot } from '@/components/branding/LifeonRPGMascot';
 
 /**
  * Personagem 2D pixel-art (CSS puro).
- * - Caminha para a direita e esquerda em loop dentro do header.
- * - Senta perto da fogueira quando descansando.
- * Tamanho reduzido para caber em um header de 64px.
+ * - Caminha para a direita e esquerda em loop dentro do header (animação `animate-hero-walk-track`).
+ * - Senta ao lado da fogueira quando descansando (animação parada).
+ *
+ * O sprite em si veio do design "LifeonRPG Mascote" (LifeonRPGMascot) — herói pixel art
+ * que respira (bob), balança a espada (sway), pisca (blink) e solta um glint na lâmina.
+ * A fogueira do estado de descanso é mantida aqui em CSS puro.
  */
-function PixelHero({ resting }: { resting: boolean }) {
-  // Sprite ocupa ~36px de altura, deixando folga no header de 64px.
-  return (
-    <div
-      className={`relative h-9 w-8 ${resting ? '' : 'animate-hero-bob'}`}
-      style={{ imageRendering: 'pixelated' }}
-      aria-hidden="true"
-    >
-      {/* Capacete */}
-      <div className="absolute left-1/2 top-0 h-[5px] w-[18px] -translate-x-1/2 rounded-sm bg-amber-400 shadow-[0_0_3px_hsl(43_96%_60%/0.7)]" />
-      {/* Penacho */}
-      <div className="absolute left-1/2 top-[-2px] h-[3px] w-[4px] -translate-x-1/2 bg-rose-500" />
-      {/* Rosto */}
-      <div className="absolute left-1/2 top-[5px] h-[4px] w-[14px] -translate-x-1/2 bg-[hsl(30_60%_72%)]" />
-      {/* Olhos */}
-      <div className="absolute left-[10px] top-[6px] h-[1.5px] w-[1.5px] bg-zinc-900" />
-      <div className="absolute left-[18px] top-[6px] h-[1.5px] w-[1.5px] bg-zinc-900" />
-
-      {/* Tronco / túnica */}
-      <div className="absolute left-1/2 top-[10px] h-[10px] w-[20px] -translate-x-1/2 rounded-sm bg-indigo-500 border-y border-indigo-300/60" />
-      {/* Cinto */}
-      <div className="absolute left-1/2 top-[18px] h-[2px] w-[20px] -translate-x-1/2 bg-amber-700" />
-
-      {/* Braços */}
-      <div
-        className={`absolute left-[3px] top-[11px] h-[8px] w-[3px] origin-top rounded-sm bg-indigo-400 ${resting ? '' : 'animate-hero-arm-l'}`}
-      />
-      <div
-        className={`absolute right-[3px] top-[11px] h-[8px] w-[3px] origin-top rounded-sm bg-indigo-400 ${resting ? '' : 'animate-hero-arm-r'}`}
-      />
-
-      {/* Espada na mão direita (apenas quando ativo) */}
-      {!resting && (
-        <>
-          <div className="absolute right-[2px] top-[10px] h-[2px] w-[4px] bg-amber-600" />
-          <div className="absolute right-[0px] top-[3px] h-[7px] w-[2px] bg-zinc-200 shadow-[0_0_3px_hsl(0_0%_100%/0.6)]" />
-        </>
-      )}
-
-      {/* Pernas */}
-      {!resting ? (
-        <>
-          <div className="absolute left-[10px] top-[20px] h-[8px] w-[3px] origin-top rounded-sm bg-zinc-800 animate-hero-leg-l" />
-          <div className="absolute left-[18px] top-[20px] h-[8px] w-[3px] origin-top rounded-sm bg-zinc-800 animate-hero-leg-r" />
-          {/* Botas */}
-          <div className="absolute left-[9px] top-[28px] h-[2px] w-[5px] rounded-sm bg-amber-700" />
-          <div className="absolute left-[17px] top-[28px] h-[2px] w-[5px] rounded-sm bg-amber-700" />
-        </>
-      ) : (
-        <>
-          <div className="absolute left-[5px] top-[22px] h-[2px] w-[10px] rounded-sm bg-zinc-800" />
-          <div className="absolute right-[5px] top-[24px] h-[2px] w-[10px] rounded-sm bg-zinc-800" />
-        </>
-      )}
-
-      {/* Sombra */}
-      <div className="absolute left-1/2 top-[31px] h-[2px] w-[24px] -translate-x-1/2 rounded-full bg-black/40 blur-[1.5px]" />
-    </div>
-  );
-}
 
 function Campfire() {
   return (
@@ -94,12 +38,13 @@ export function CharacterSprite() {
           {isResting ? (
             <div className="flex h-full items-end justify-center gap-1">
               <Campfire />
-              <PixelHero resting />
+              {/* Descansando: postura parada (sem bob/sway/blink/glint). */}
+              <LifeonRPGMascot size={36} resting />
             </div>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center animate-hero-walk-track">
               <div className="animate-hero-face-flip">
-                <PixelHero resting={false} />
+                <LifeonRPGMascot size={36} />
               </div>
             </div>
           )}
