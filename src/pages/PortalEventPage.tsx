@@ -128,6 +128,11 @@ function FragmentBar({ count }: { count: number }) {
   );
 }
 
+// Mapeia cor do portal → chave i18n da dificuldade.
+const COLOR_DIFF_KEY: Record<PortalColor, string> = {
+  blue: 'diff_facil', yellow: 'diff_medio', red: 'diff_dificil', legendary: 'diff_lendario',
+};
+
 // ── Daily portal card ─────────────────────────────────────────────────────
 function DailyPortalCard({
   portalColor, colorRevealed, alreadyCompleted, participantCount,
@@ -137,8 +142,11 @@ function DailyPortalCard({
   participantCount: number; hasScannerItem: boolean; isScanning: boolean;
   onScan: () => void; onEnter: () => void;
 }) {
+  const { t } = useTranslation();
   const meta = portalColor ? PORTAL_COLORS[portalColor] : null;
-  const diffColor: Record<string, string> = { 'Fácil': 'text-emerald-400', 'Médio': 'text-yellow-400', 'Difícil': 'text-red-400', 'Lendário': 'text-purple-300' };
+  const label = portalColor ? t(`app.portal.color_${portalColor}_label`) : null;
+  const difficulty = portalColor ? t(`app.portal.${COLOR_DIFF_KEY[portalColor]}`) : '';
+  const diffColor: Record<string, string> = { blue: 'text-emerald-400', yellow: 'text-yellow-400', red: 'text-red-400', legendary: 'text-purple-300' };
   const glowHex: Record<string, string> = { blue: '#38bdf8', yellow: '#facc15', red: '#f87171', legendary: '#a78bfa' };
   const glow = portalColor ? glowHex[portalColor] : '#7c3aed';
 
@@ -155,16 +163,16 @@ function DailyPortalCard({
             <PortalGlyph color={portalColor} size="md" />
             <div>
               <p className={`font-bold text-xl ${meta ? meta.colorClass : 'text-purple-300'}`}>
-                {meta ? meta.label : 'Portal Dimensional'}
+                {meta ? label : t('app.portal.portal_dimensional')}
               </p>
-              {meta ? (
+              {meta && portalColor ? (
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`text-xs font-semibold ${diffColor[meta.difficulty] ?? 'text-muted-foreground'}`}>{meta.difficulty}</span>
+                  <span className={`text-xs font-semibold ${diffColor[portalColor] ?? 'text-muted-foreground'}`}>{difficulty}</span>
                   <span className="text-muted-foreground text-xs">·</span>
                   <span className="text-xs text-muted-foreground">{meta.levelRange}</span>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">Raridade ainda desconhecida</p>
+                <p className="text-xs text-muted-foreground">{t('app.portal.rarity_unknown')}</p>
               )}
             </div>
           </div>
@@ -173,7 +181,7 @@ function DailyPortalCard({
               className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-full px-3 py-1"
             >
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-xs font-semibold text-emerald-400">Concluído</span>
+              <span className="text-xs font-semibold text-emerald-400">{t('app.portal.completed_badge')}</span>
             </motion.div>
           )}
         </div>
@@ -182,9 +190,9 @@ function DailyPortalCard({
           {colorRevealed && meta && (
             <motion.div key="rewards" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="grid grid-cols-3 gap-2">
               {[
-                { label: 'XP', value: `+${meta.xp}`, color: 'text-sky-300', bg: 'bg-sky-500/10 border-sky-500/20' },
-                { label: 'Ouro', value: `${meta.gold}🪙`, color: 'text-yellow-300', bg: 'bg-yellow-500/10 border-yellow-500/20' },
-                { label: 'Frag.', value: `${meta.fragmentChance}%`, color: meta.colorClass, bg: 'bg-purple-500/10 border-purple-500/20' },
+                { label: t('app.portal.reward_xp'), value: `+${meta.xp}`, color: 'text-sky-300', bg: 'bg-sky-500/10 border-sky-500/20' },
+                { label: t('app.portal.reward_gold'), value: `${meta.gold}🪙`, color: 'text-yellow-300', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+                { label: t('app.portal.reward_frag'), value: `${meta.fragmentChance}%`, color: meta.colorClass, bg: 'bg-purple-500/10 border-purple-500/20' },
               ].map(r => (
                 <div key={r.label} className={`${r.bg} border rounded-xl py-2 text-center`}>
                   <p className={`text-sm font-bold ${r.color}`}>{r.value}</p>
@@ -198,7 +206,7 @@ function DailyPortalCard({
         {participantCount > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Users className="w-3.5 h-3.5" />
-            <span>{participantCount} herói{participantCount !== 1 ? 's' : ''} já fechou este portal hoje</span>
+            <span>{t(participantCount !== 1 ? 'app.portal.participants_plural' : 'app.portal.participants', { n: participantCount })}</span>
           </div>
         )}
 
@@ -210,20 +218,20 @@ function DailyPortalCard({
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-purple-500/40 text-purple-300 hover:bg-purple-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 <Search className="w-4 h-4" />
-                {isScanning ? 'Escaneando...' : 'Escanear'}
+                {isScanning ? t('app.portal.scanning') : t('app.portal.scan_button')}
               </button>
             )}
             <button onClick={onEnter}
               className={`flex-1 py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all shadow-lg ${meta ? meta.btnClass : 'bg-purple-600 hover:bg-purple-700'}`}
             >
               <Zap className="w-4 h-4" />
-              {colorRevealed && meta ? `Entrar no ${meta.label}` : 'Entrar às Cegas'}
+              {colorRevealed && meta ? t('app.portal.enter_portal', { label }) : t('app.portal.enter_blind')}
               <ArrowRight className="w-3.5 h-3.5 opacity-70" />
             </button>
           </div>
         )}
         {!colorRevealed && !alreadyCompleted && (
-          <p className="text-xs text-center text-muted-foreground/70">Sem o escaner, a raridade só será revelada ao entrar</p>
+          <p className="text-xs text-center text-muted-foreground/70">{t('app.portal.no_scanner_hint')}</p>
         )}
       </div>
     </motion.div>
@@ -236,6 +244,7 @@ function PendingDungeonCard({
 }: {
   tier: FragmentTier; expiresAt: string; fragmentCount: number; onClaim: () => void; isClaiming: boolean;
 }) {
+  const { t } = useTranslation();
   const meta = FRAGMENT_TIERS[tier];
   const canAfford = fragmentCount >= FRAGMENT_COST;
   const [timeStr, setTimeStr] = useState(() => formatDungeonExpiry(expiresAt));
@@ -255,8 +264,8 @@ function PendingDungeonCard({
         <div className="flex items-center gap-3">
           <span className="text-3xl">{meta.emoji}</span>
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Dungeon Sorteada!</p>
-            <p className={`font-bold text-lg ${meta.colorClass}`}>{meta.label}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">{t('app.portal.dungeon_drawn')}</p>
+            <p className={`font-bold text-lg ${meta.colorClass}`}>{t(`app.portal.tier_${tier}_label`)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{meta.recommendedLevel}</p>
           </div>
         </div>
@@ -264,18 +273,18 @@ function PendingDungeonCard({
           <Timer className="w-3.5 h-3.5" /> <span>{timeStr}</span>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">{meta.description}</p>
+      <p className="text-xs text-muted-foreground">{t(`app.portal.tier_${tier}_desc`)}</p>
       {!canAfford && (
         <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 text-xs text-amber-300">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span>Você precisa de {FRAGMENT_COST} fragmentos. Você tem {fragmentCount}.</span>
+          <span>{t('app.portal.need_fragments', { cost: FRAGMENT_COST, have: fragmentCount })}</span>
         </div>
       )}
       <button onClick={onClaim} disabled={!canAfford || isClaiming}
         className={`w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all ${meta.btnClass} disabled:opacity-40 disabled:cursor-not-allowed shadow-lg`}
       >
         <Gem className="w-4 h-4" />
-        {isClaiming ? 'Confirmando...' : `Confirmar Entrada (${FRAGMENT_COST} ⬡)`}
+        {isClaiming ? t('app.portal.confirming') : t('app.portal.confirm_entry', { cost: FRAGMENT_COST })}
       </button>
     </motion.div>
   );
@@ -297,7 +306,7 @@ function WeeklyHistory({ runs }: { runs: Array<{ color: PortalColor; xp: number;
             <div key={i} className="flex items-center justify-between bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="text-lg">{m.emoji}</span>
-                <span className={`text-sm font-medium ${m.colorClass}`}>{m.label}</span>
+                <span className={`text-sm font-medium ${m.colorClass}`}>{t(`app.portal.color_${run.color}_label`)}</span>
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="text-sky-300 font-semibold">+{run.xp} XP</span>
@@ -313,6 +322,7 @@ function WeeklyHistory({ runs }: { runs: Array<{ color: PortalColor; xp: number;
 
 // ── Fragment tier card ─────────────────────────────────────────────────────
 function FragmentTierCard({ tier, canInvoke, onInvoke }: { tier: FragmentTier; canInvoke: boolean; onInvoke: (t: FragmentTier) => void }) {
+  const { t } = useTranslation();
   const meta = FRAGMENT_TIERS[tier];
   return (
     <motion.div whileHover={{ scale: canInvoke ? 1.01 : 1, y: canInvoke ? -1 : 0 }}
@@ -323,16 +333,16 @@ function FragmentTierCard({ tier, canInvoke, onInvoke }: { tier: FragmentTier; c
           <span className="text-2xl">{meta.emoji}</span>
           <div>
             <div className="flex items-center gap-2">
-              <p className={`font-bold ${meta.colorClass}`}>{meta.label}</p>
+              <p className={`font-bold ${meta.colorClass}`}>{t(`app.portal.tier_${tier}_label`)}</p>
               <span className="text-xs text-muted-foreground bg-black/30 rounded-md px-1.5 py-0.5">{meta.recommendedLevel}</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{meta.description}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t(`app.portal.tier_${tier}_desc`)}</p>
           </div>
         </div>
         <button disabled={!canInvoke} onClick={() => onInvoke(tier)}
           className={`shrink-0 px-4 py-2 rounded-xl font-semibold text-sm transition-all text-white disabled:opacity-40 disabled:cursor-not-allowed ${meta.btnClass}`}
         >
-          {canInvoke ? 'Invocar' : `${FRAGMENT_COST} ⬡`}
+          {canInvoke ? t('app.portal.invoke') : `${FRAGMENT_COST} ⬡`}
         </button>
       </div>
     </motion.div>
