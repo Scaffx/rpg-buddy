@@ -423,7 +423,11 @@
       "coach_title": "💡 Coach Tip",
       "coach_body": "Complete your daily missions to evolve your attributes and level up faster!",
       "coach_confirm_button": "Got it!",
-      "streak_risk_toast": "⚠️ Streak at risk today! Complete 60%+ of missions."
+      "streak_risk_toast": "⚠️ Streak at risk today! Complete 60%+ of missions.",
+      "greeting": "Hi, {{name}}!",
+      "default_hero_name": "Adventurer",
+      "no_missions_today": "No missions for today.",
+      "mission_complete_button": "Ok"
     },
     "boss": {
       "page_title": "Boss Arena",

@@ -376,7 +376,7 @@ export default function Dashboard() {
       <div className="space-y-6">
         <motion.div data-tour="dash-greeting" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
-            Olá, {profile?.display_name || "Aventureiro"}!
+            {t('app.dashboard.greeting', { name: profile?.display_name || t('app.dashboard.default_hero_name') })}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">{t('app.dashboard.greeting_subtitle')}</p>
 
@@ -538,7 +538,7 @@ export default function Dashboard() {
                           <Loader2 className="w-3 h-3 animate-spin" />
                         ) : (
                           <>
-                            <Check className="w-3 h-3 mr-1" /> Ok
+                            <Check className="w-3 h-3 mr-1" /> {t('app.dashboard.mission_complete_button')}
                           </>
                         )}
                       </Button>
@@ -549,7 +549,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground rpg-card text-center py-4">
-              Nenhuma missão para hoje. {t('app.dashboard.missions_today_empty')}
+              {t('app.dashboard.no_missions_today')} {t('app.dashboard.missions_today_empty')}
             </p>
           )}
         </div>

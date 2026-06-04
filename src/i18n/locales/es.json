@@ -436,7 +436,11 @@
       "coach_title": "💡 Consejo del Coach",
       "coach_body": "¡Completa tus misiones diarias para evolucionar tus atributos y subir de nivel más rápido!",
       "coach_confirm_button": "¡Entendido!",
-      "streak_risk_toast": "⚠️ ¡Racha en riesgo hoy! Completa el 60%+ de las misiones."
+      "streak_risk_toast": "⚠️ ¡Racha en riesgo hoy! Completa el 60%+ de las misiones.",
+      "greeting": "¡Hola, {{name}}!",
+      "default_hero_name": "Aventurero",
+      "no_missions_today": "No hay misiones para hoy.",
+      "mission_complete_button": "Ok"
     },
     "boss": {
       "page_title": "Arena de Jefes",
