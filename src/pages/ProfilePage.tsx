@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useUpdateRegion, useClasses, useSyncHealthMaxes } from "@/hooks/useProfile";
 import {
@@ -1298,6 +1299,24 @@ export default function ProfilePage() {
       toast.error(err.message || t('app.profile.classChangeErrorToast'));
     },
   });
+
+  // Skeleton enquanto o perfil carrega (evita render parcial/vazio no boot)
+  if (!profile) {
+    return (
+      <AppLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <div className="flex gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 flex-1 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full rounded-2xl" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
