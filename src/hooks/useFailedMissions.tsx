@@ -395,73 +395,11 @@ export function usePayPenalty() {
   return useMutation({
     mutationFn: async (mission: any) => {
       if (!user) throw new Error('Não autenticado');
-      const goldCost = 10;
-
-      const { data: bal } = await supabase
-        .from('user_balance')
-        .select('gold')
-        .eq('user_id', user.id)
-        .single();
-
-      const currentGold = (bal as any)?.gold ?? 0;
-      if (currentGold < goldCost) {
-        throw new Error('Ouro insuficiente! Custa 10 🪙 para pagar a penalidade.');
-      }
-
-      await supabase
-        .from('user_balance')
-        .update({ gold: currentGold - goldCost, updated_at: new Date().toISOString() } as any)
-        .eq('user_id', user.id);
-
-      const xpToRestore = (mission as any).xp_penalized || mission.xp_reward;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('total_xp, level')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profile) {
-        const newXp = profile.total_xp + xpToRestore;
-        const newLevel = getLevelFromXp(newXp);
-        await supabase.from('profiles').update({
-          total_xp: newXp,
-          level: newLevel,
-        }).eq('user_id', user.id);
-      }
-
-      // Marca o dia do fracasso como aceito para evitar re-avaliação
-      const { data: missionData } = await supabase
-        .from('missions')
-        .select('daily_status')
-        .eq('id', mission.id)
-        .single();
-      const dailyStatus = (missionData as any)?.daily_status || {};
-      if ((mission as any).failed_date) {
-        dailyStatus[(mission as any).failed_date] = 'failed_accepted';
-      }
-
-      await supabase
-        .from('missions')
-        .update({ is_failed: false, xp_penalized: 0, failed_date: null, daily_status: dailyStatus } as any)
-        .eq('id', mission.id);
-
-      await supabase.from('gold_history').insert({
-        user_id: user.id,
-        type: 'penalidade',
-        amount: -goldCost,
-        reason: `Pagou penalidade: ${mission.title}`,
-      });
-
-      // Log estruturado: pagamento com ouro restaura XP perdido
-      await supabase.from('xp_transactions' as any).insert({
-        user_id: user.id,
-        mission_id: mission.id,
-        reason: 'penalty_paid_with_gold',
-        xp_delta: xpToRestore,
-        gold_delta: -goldCost,
-        local_date: (mission as any).failed_date || new Date().toLocaleDateString('en-CA'),
-        description: `Pagou penalidade com ${goldCost} 🪙: ${mission.title} (+${xpToRestore} XP)`,
-      });
+      // 🔒 Server-side: o RPC pay_mission_penalty deduz o ouro, restaura o XP
+      // (lido do banco) e marca a missão atomicamente. Cliente não mexe em
+      // ouro/XP direto.
+      const { error } = await (supabase as any).rpc('pay_mission_penalty', { p_mission_id: mission.id });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
