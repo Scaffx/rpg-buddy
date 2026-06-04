@@ -215,8 +215,11 @@ export default function Auth() {
               </form>
             ) : (
               <>
-                <div className="flex mb-6 rounded-lg overflow-hidden border border-border">
+                <div role="tablist" aria-label={t('app.auth.app_title')} className="flex mb-6 rounded-lg overflow-hidden border border-border">
                   <button
+                    type="button"
+                    role="tab"
+                    aria-selected={isLogin}
                     onClick={() => setIsLogin(true)}
                     className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
                       isLogin ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
@@ -226,6 +229,9 @@ export default function Auth() {
                     {t('app.auth.tab_login')}
                   </button>
                   <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!isLogin}
                     onClick={() => setIsLogin(false)}
                     className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
                       !isLogin ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
@@ -283,10 +289,11 @@ export default function Auth() {
                       </div>
                     )}
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-1.5 block">
+                      <label htmlFor="auth-email" className="text-sm font-medium text-foreground mb-1.5 block">
                         {t('app.auth.label_email')}
                       </label>
                       <Input
+                        id="auth-email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -297,7 +304,7 @@ export default function Auth() {
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-sm font-medium text-foreground">
+                        <label htmlFor="auth-password" className="text-sm font-medium text-foreground">
                           {t('app.auth.label_password')}
                         </label>
                         {isLogin && (
@@ -311,6 +318,7 @@ export default function Auth() {
                         )}
                       </div>
                       <Input
+                        id="auth-password"
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
