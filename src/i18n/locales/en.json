@@ -869,7 +869,12 @@
       "toast_dungeon_released_title": "Dungeon unlocked!",
       "toast_dungeon_released_desc": "Prepare your team.",
       "toast_dungeon_done": "🏆 Dungeon completed!",
-      "toast_error": "Error"
+      "toast_error": "Error",
+      "time_ended": "Ended",
+      "time_expired": "Expired",
+      "expires_prefix": "Expires in",
+      "scanner_tooltip": "Buy the \"Portal Scanner\" in the shop (120🪙)",
+      "public_players": "{{count}}/{{max}} players"
     }
   },
   "footer": {

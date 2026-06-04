@@ -880,7 +880,12 @@
       "toast_dungeon_released_title": "¡Mazmorra desbloqueada!",
       "toast_dungeon_released_desc": "Prepara tu equipo.",
       "toast_dungeon_done": "🏆 ¡Mazmorra completada!",
-      "toast_error": "Error"
+      "toast_error": "Error",
+      "time_ended": "Cerrado",
+      "time_expired": "Expirado",
+      "expires_prefix": "Expira en",
+      "scanner_tooltip": "Compra el \"Escáner de Portal\" en la tienda (120🪙)",
+      "public_players": "{{count}}/{{max}} jugadores"
     }
   },
   "footer": {

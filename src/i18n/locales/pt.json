@@ -894,7 +894,12 @@
       "toast_dungeon_released_title": "Dungeon liberada!",
       "toast_dungeon_released_desc": "Prepare sua equipe.",
       "toast_dungeon_done": "🏆 Dungeon concluída!",
-      "toast_error": "Erro"
+      "toast_error": "Erro",
+      "time_ended": "Encerrado",
+      "time_expired": "Expirado",
+      "expires_prefix": "Expira em",
+      "scanner_tooltip": "Compre o \"Escaner de Portal\" na loja (120🪙)",
+      "public_players": "{{count}}/{{max}} jogadores"
     }
   },
   "footer": {

@@ -35,22 +35,23 @@ import {
 } from '@/hooks/usePortalEvent';
 
 // ── helpers ───────────────────────────────────────────────────────────────
-function formatTimeLeft(endsAt: string): string {
+function formatTimeLeft(endsAt: string, t: (k: string) => string): string {
   const ms = new Date(endsAt).getTime() - Date.now();
-  if (ms <= 0) return 'Encerrado';
+  if (ms <= 0) return t('app.portal.time_ended');
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
   return `${h}h ${m}m`;
 }
 
-function formatDungeonExpiry(expiresAt: string): string {
+function formatDungeonExpiry(expiresAt: string, t: (k: string) => string): string {
   const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return 'Expirado';
+  if (ms <= 0) return t('app.portal.time_expired');
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
-  if (h > 0) return `Expira em ${h}h ${m}m`;
-  return `Expira em ${m}m`;
+  const prefix = t('app.portal.expires_prefix');
+  if (h > 0) return `${prefix} ${h}h ${m}m`;
+  return `${prefix} ${m}m`;
 }
 
 // ── Animated portal glyph ─────────────────────────────────────────────────
@@ -214,7 +215,7 @@ function DailyPortalCard({
           <div className="flex gap-2 pt-1">
             {!colorRevealed && (
               <button onClick={onScan} disabled={!hasScannerItem || isScanning}
-                title={!hasScannerItem ? 'Compre o "Escaner de Portal" na loja (120🪙)' : ''}
+                title={!hasScannerItem ? t('app.portal.scanner_tooltip') : ''}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-purple-500/40 text-purple-300 hover:bg-purple-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 <Search className="w-4 h-4" />
@@ -247,9 +248,9 @@ function PendingDungeonCard({
   const { t } = useTranslation();
   const meta = FRAGMENT_TIERS[tier];
   const canAfford = fragmentCount >= FRAGMENT_COST;
-  const [timeStr, setTimeStr] = useState(() => formatDungeonExpiry(expiresAt));
+  const [timeStr, setTimeStr] = useState(() => formatDungeonExpiry(expiresAt, t));
   useEffect(() => {
-    const id = setInterval(() => setTimeStr(formatDungeonExpiry(expiresAt)), 60_000);
+    const id = setInterval(() => setTimeStr(formatDungeonExpiry(expiresAt, t)), 60_000);
     return () => clearInterval(id);
   }, [expiresAt]);
 
@@ -435,7 +436,7 @@ function FragmentLobbyDialog({
               <div key={d.session_id} className="flex items-center justify-between bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5">
                 <div>
                   <p className="text-sm font-medium">{d.host_name}</p>
-                  <p className="text-xs text-muted-foreground">{d.player_count}/{d.max_players} jogadores</p>
+                  <p className="text-xs text-muted-foreground">{t('app.portal.public_players', { count: d.player_count, max: d.max_players })}</p>
                 </div>
                 <button onClick={async () => { const r = await joinDungeon.mutateAsync({ inviteCode: d.invite_code, displayName: playerName, level: playerLevel, atk: playerAtk, def: playerDef, hp: playerHp, maxHp: playerMaxHp, playerClass }); if (!r.error) { setCreatedId(r.session_id); setMode('join'); } }} className={`text-xs px-3 py-1.5 rounded-lg ${tm.btnClass} text-white`}>{t('app.portal.lobby_enter')}</button>
               </div>
@@ -555,7 +556,7 @@ export default function PortalEventPage() {
 
   useEffect(() => {
     if (!portalEvent?.ends_at) return;
-    const update = () => setTimeLeft(formatTimeLeft(portalEvent.ends_at));
+    const update = () => setTimeLeft(formatTimeLeft(portalEvent.ends_at, t));
     update();
     const id = setInterval(update, 60_000);
     return () => clearInterval(id);
@@ -682,7 +683,7 @@ export default function PortalEventPage() {
             </div>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
-              <span className="tabular-nums">{timeLeft || formatTimeLeft(portalEvent.ends_at)}</span>
+              <span className="tabular-nums">{timeLeft || formatTimeLeft(portalEvent.ends_at, t)}</span>
             </div>
           </motion.div>
         ) : (
