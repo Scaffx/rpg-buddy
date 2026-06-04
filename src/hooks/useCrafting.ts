@@ -69,21 +69,12 @@ export function useCraftItem() {
         throw new Error(`Materiais insuficientes (${currentMats}/${materialsRequired} 🧪)`);
       }
 
-      // 2. Verificar e descontar ouro
+      // 2. Descontar ouro (server-side: spend_gold valida saldo e deduz)
       if (goldRequired > 0) {
-        const { data: bal } = await supabase
-          .from('user_balance' as any)
-          .select('gold')
-          .eq('user_id', user!.id)
-          .maybeSingle();
-        const currentGold = (bal as any)?.gold ?? 0;
-        if (currentGold < goldRequired) {
-          throw new Error(`Ouro insuficiente (${currentGold}/${goldRequired} 🪙)`);
-        }
-        await supabase
-          .from('user_balance' as any)
-          .update({ gold: currentGold - goldRequired })
-          .eq('user_id', user!.id);
+        const { error: spendErr } = await (supabase as any).rpc('spend_gold', {
+          p_amount: goldRequired, p_reason: 'Crafting', p_type: 'crafting',
+        });
+        if (spendErr) throw spendErr;
       }
 
       // 3. Descontar materiais

@@ -953,24 +953,8 @@ export function useToggleChecklistItem() {
           type: "sub_mission",
         } as any);
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("total_xp, xp_today, level")
-          .eq("user_id", user.id)
-          .single();
-        if (profile) {
-          const newTotalXp = profile.total_xp + bonus;
-          const calculatedLevel = getLevelFromXp(newTotalXp);
-          const newLevel = Math.max(calculatedLevel, profile.level);
-          await supabase
-            .from("profiles")
-            .update({
-              total_xp: newTotalXp,
-              xp_today: profile.xp_today + bonus,
-              level: newLevel,
-            })
-            .eq("user_id", user.id);
-        }
+        // 🔒 Server-side: bônus de XP do checklist via add_xp_to_user (auth.uid()+clamp).
+        await (supabase as any).rpc('add_xp_to_user', { p_user_id: user.id, p_xp: bonus });
       }
     },
     onSuccess: () => {

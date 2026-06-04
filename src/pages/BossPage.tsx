@@ -202,21 +202,10 @@ export default function BossPage() {
       if (bossData) {
         const xpReward   = Math.max(50, bossData.xp_reward   || (bossData.level || 10) * 80 + 20);
         const goldReward = Math.max(10, bossData.gold_reward  || (bossData.level || 10) * 15 + 10);
-        const { data: profileRow } = await supabase
-          .from('profiles' as never)
-          .select('total_xp, level' as never)
-          .eq('user_id' as never, user.id as never)
-          .maybeSingle();
-        if (profileRow) {
-          const newXp = ((profileRow as any).total_xp || 0) + xpReward;
-          // Usa XP_TABLE oficial em vez de xp/200, que pulava níveis (bug).
-          const newLevel = Math.max((profileRow as any).level || 1, getLevelFromXp(newXp));
-          await supabase.from('profiles' as never).update({ total_xp: newXp, level: newLevel } as never).eq('user_id' as never, user.id as never);
-        }
-        const { data: balRow } = await supabase.from('user_balance' as never).select('gold' as never).eq('user_id' as never, user.id as never).maybeSingle();
-        if (balRow) {
-          await supabase.from('user_balance' as never).update({ gold: ((balRow as any).gold || 0) + goldReward } as never).eq('user_id' as never, user.id as never);
-        }
+        // 🔒 Server-side: crédito de XP/ouro do combate via RPCs (valores lidos
+        // do boss no banco acima). add_xp_to_user usa a XP_TABLE oficial.
+        await (supabase as any).rpc('add_xp_to_user', { p_user_id: user.id, p_xp: xpReward });
+        await (supabase as any).rpc('add_gold_to_user', { p_user_id: user.id, p_gold: goldReward });
       }
 
       // 4. Drop Fragmento I do Pergaminho Ancestral

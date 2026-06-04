@@ -481,19 +481,9 @@ export function useMarkFailedAsDone() {
         .update({ is_failed: false, failed_date: null, xp_penalized: 0, daily_status: dailyStatus } as any)
         .eq('id', mission.id);
 
-      // Restaurar XP perdido com a penalidade
+      // Restaurar XP perdido com a penalidade (server-side via add_xp_to_user)
       const xpToRestore = mission.xp_penalized || mission.xp_reward;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('total_xp, level')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profile) {
-        const newXp = profile.total_xp + xpToRestore;
-        const newLevel = getLevelFromXp(newXp);
-        await supabase.from('profiles').update({ total_xp: newXp, level: newLevel }).eq('user_id', user.id);
-      }
+      await (supabase as any).rpc('add_xp_to_user', { p_user_id: user.id, p_xp: xpToRestore });
 
       // Registrar recuperação no log
       await supabase.from('activity_log').insert({
