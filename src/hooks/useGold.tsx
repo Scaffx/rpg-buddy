@@ -34,23 +34,10 @@ export function useAddGold() {
   return useMutation({
     mutationFn: async ({ amount, reason, type }: { amount: number; reason: string; type: string }) => {
       if (!user) throw new Error('Not authenticated');
-      
-      // Get current balance
-      const { data: bal } = await supabase
-        .from('user_balance')
-        .select('gold')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      const currentGold = (bal as any)?.gold ?? 0;
-      const newGold = currentGold + amount;
-      
-      await supabase
-        .from('user_balance')
-        .upsert(
-          { user_id: user.id, gold: newGold, updated_at: new Date().toISOString() } as any,
-          { onConflict: 'user_id' }
-        );
+
+      // 🔒 Server-side: crédito de ouro via add_gold_to_user (auth.uid() + clamp).
+      const { error } = await (supabase as any).rpc('add_gold_to_user', { p_user_id: user.id, p_gold: amount });
+      if (error) throw error;
 
       await supabase.from('gold_history' as any).insert({
         user_id: user.id,

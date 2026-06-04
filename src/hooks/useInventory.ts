@@ -164,22 +164,9 @@ export function useBuyEquipment() {
     mutationFn: async (item: GameItem) => {
       if (!user) throw new Error('Não autenticado');
 
-      const { data: bal } = await supabase
-        .from('user_balance')
-        .select('gold')
-        .eq('user_id', user.id)
-        .single();
-
-      const currentGold = (bal as any)?.gold ?? 0;
-      if (currentGold < (item.shop_price || 0)) {
-        throw new Error('Ouro insuficiente!');
-      }
-
-      const newGold = currentGold - (item.shop_price || 0);
-      await supabase
-        .from('user_balance')
-        .update({ gold: newGold, updated_at: new Date().toISOString() } as any)
-        .eq('user_id', user.id);
+      // 🔒 Server-side: preço lido do banco + dedução guardada via charge_for_item.
+      const { error: chargeErr } = await (supabase as any).rpc('charge_for_item', { p_item_id: item.id });
+      if (chargeErr) throw chargeErr;
 
       if (item.stackable) {
         const { data: existing } = await db

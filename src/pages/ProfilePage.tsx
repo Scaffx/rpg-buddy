@@ -1258,20 +1258,12 @@ export default function ProfilePage() {
       }
 
       // Tenta RPC — custo é calculado server-side (primeiro respec gratuito verificado no servidor)
+      // Custo e validação são server-side no RPC. Sem fallback de update direto
+      // (a trava de RLS bloqueia escrita de ouro pelo client).
       const { data, error } = await (supabase.rpc as any)("perform_class_respec", {
         target_class: selectedRespecClass,
       });
-
-      const isFirstRespec = !localStorage.getItem(`respec_used_${user.id}`);
-      if (error) {
-        // Fallback: verifica ouro e atualiza diretamente
-        if (!isFirstRespec) {
-          const { data: bal } = await supabase.from('user_balance').select('gold').eq('user_id', user.id).single();
-          const gold = (bal as any)?.gold ?? 0;
-          if (gold < RESPEC_COST) throw new Error(t('app.profile.insufficientGold', { gold, required: RESPEC_COST }));
-          await supabase.from('user_balance').update({ gold: gold - RESPEC_COST } as any).eq('user_id', user.id);
-        }
-      }
+      if (error) throw error;
 
       const starterItem = (data as any)?.starter_item || getStarterItemForClass(selectedRespecClass as any);
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedRespecClass);
