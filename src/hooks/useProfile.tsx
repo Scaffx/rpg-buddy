@@ -1,4 +1,3 @@
-import { Database } from '@/types/supabase';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
@@ -7,16 +6,8 @@ import { getEquipmentBonuses, type InventoryItem } from './useInventory';
 import { getLevelFromXp } from '@/lib/progression';
 import { deriveMissionCategory } from '@/lib/missionTalentRules';
 
-const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
-
 function toDateString(d: Date): string {
   return d.toLocaleDateString('en-CA');
-}
-
-function subtractDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + 'T12:00:00');
-  d.setDate(d.getDate() - days);
-  return toDateString(d);
 }
 
 type ShortRestAvailability = {
@@ -56,22 +47,6 @@ async function getShortRestUsageToday(userId: string): Promise<string | null> {
     .select('created_at')
     .eq('user_id', userId)
     .eq('action', SHORT_REST_ACTION)
-    .gte('created_at', startOfDayLocal.toISOString())
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-  return (data as any)?.created_at ?? null;
-}
-
-async function getShortRestStartOrCompletionUsageToday(userId: string): Promise<string | null> {
-  const startOfDayLocal = getStartOfLocalDay();
-  const { data, error } = await supabase
-    .from('activity_log')
-    .select('created_at')
-    .eq('user_id', userId)
-    .in('action', [SHORT_REST_STARTED_ACTION, SHORT_REST_ACTION])
     .gte('created_at', startOfDayLocal.toISOString())
     .order('created_at', { ascending: false })
     .limit(1)
