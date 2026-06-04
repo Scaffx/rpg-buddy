@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Shield, Users, Globe, Lock, Copy, CheckCheck, Zap, Clock,
   Search, AlertTriangle, Sparkles, Timer, Gem,
-  Swords, ArrowRight, ArrowLeft,
+  Swords, ArrowRight,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -487,7 +486,6 @@ export default function PortalEventPage() {
   const { user }      = useAuth();
   const { toast }     = useToast();
   const queryClient   = useQueryClient();
-  const navigate      = useNavigate();
   const { data: profile }     = useProfile();
   const { data: attributes }  = useAttributes();
   const { data: healthStats } = useHealthStats();
