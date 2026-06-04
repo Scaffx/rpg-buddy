@@ -362,6 +362,7 @@ function FragmentLobbyDialog({
   playerHp: number; playerMaxHp: number; playerMp: number; playerMaxMp: number; playerClass: string;
 }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [mode, setMode]               = useState<LobbyMode>('choose');
   const [isPublic, setIsPublic]       = useState(true);
   const [joinCode, setJoinCode]       = useState('');
@@ -391,13 +392,13 @@ function FragmentLobbyDialog({
 
   async function handleCreate() {
     const r = await createDungeon.mutateAsync({ tier, isPublic, displayName: playerName, level: playerLevel, atk: playerAtk, def: playerDef, hp: playerHp, maxHp: playerMaxHp, playerClass });
-    if (r.error) { toast({ title: 'Erro', description: r.error, variant: 'destructive' }); return; }
+    if (r.error) { toast({ title: t('app.portal.toast_error'), description: r.error, variant: 'destructive' }); return; }
     setCreatedId(r.session_id); setCreatedCode(r.invite_code); setMode('create');
   }
 
   async function handleJoinByCode() {
     const r = await joinDungeon.mutateAsync({ inviteCode: joinCode.toUpperCase(), displayName: playerName, level: playerLevel, atk: playerAtk, def: playerDef, hp: playerHp, maxHp: playerMaxHp, playerClass });
-    if (r.error) { toast({ title: 'Erro', description: r.error, variant: 'destructive' }); return; }
+    if (r.error) { toast({ title: t('app.portal.toast_error'), description: r.error, variant: 'destructive' }); return; }
     setCreatedId(r.session_id); setMode('join');
   }
 
@@ -409,7 +410,7 @@ function FragmentLobbyDialog({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{tm.emoji}</span>
-            <h2 className={`font-bold text-lg ${tm.colorClass}`}>{tm.label}</h2>
+            <h2 className={`font-bold text-lg ${tm.colorClass}`}>{t(`app.portal.tier_${tier}_label`)}</h2>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-muted-foreground transition-colors">×</button>
         </div>
@@ -418,17 +419,17 @@ function FragmentLobbyDialog({
           <div className="space-y-3">
             <div className="flex gap-2">
               <button onClick={() => setIsPublic(true)} className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-colors ${isPublic ? `${tm.btnClass} border-transparent text-white` : 'border-border text-muted-foreground hover:bg-white/5'}`}>
-                <Globe className="w-3.5 h-3.5" /> Pública
+                <Globe className="w-3.5 h-3.5" /> {t('app.portal.lobby_public')}
               </button>
               <button onClick={() => setIsPublic(false)} className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-colors ${!isPublic ? `${tm.btnClass} border-transparent text-white` : 'border-border text-muted-foreground hover:bg-white/5'}`}>
-                <Lock className="w-3.5 h-3.5" /> Privada
+                <Lock className="w-3.5 h-3.5" /> {t('app.portal.lobby_private')}
               </button>
             </div>
             <button onClick={handleCreate} disabled={createDungeon.isPending} className={`w-full py-3 rounded-xl font-semibold text-white flex items-center justify-center gap-2 ${tm.btnClass} disabled:opacity-50`}>
-              <Shield className="w-4 h-4" /> Criar Sala
+              <Shield className="w-4 h-4" /> {t('app.portal.lobby_create_room')}
             </button>
             <button onClick={() => setMode('join')} className="w-full py-3 rounded-xl font-semibold text-sm text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 flex items-center justify-center gap-2 transition-colors">
-              <Users className="w-4 h-4" /> Entrar com Código
+              <Users className="w-4 h-4" /> {t('app.portal.lobby_join_code')}
             </button>
             {publicDungeons.filter(d => d.dungeon_tier === tier).map(d => (
               <div key={d.session_id} className="flex items-center justify-between bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5">
@@ -436,7 +437,7 @@ function FragmentLobbyDialog({
                   <p className="text-sm font-medium">{d.host_name}</p>
                   <p className="text-xs text-muted-foreground">{d.player_count}/{d.max_players} jogadores</p>
                 </div>
-                <button onClick={async () => { const r = await joinDungeon.mutateAsync({ inviteCode: d.invite_code, displayName: playerName, level: playerLevel, atk: playerAtk, def: playerDef, hp: playerHp, maxHp: playerMaxHp, playerClass }); if (!r.error) { setCreatedId(r.session_id); setMode('join'); } }} className={`text-xs px-3 py-1.5 rounded-lg ${tm.btnClass} text-white`}>Entrar</button>
+                <button onClick={async () => { const r = await joinDungeon.mutateAsync({ inviteCode: d.invite_code, displayName: playerName, level: playerLevel, atk: playerAtk, def: playerDef, hp: playerHp, maxHp: playerMaxHp, playerClass }); if (!r.error) { setCreatedId(r.session_id); setMode('join'); } }} className={`text-xs px-3 py-1.5 rounded-lg ${tm.btnClass} text-white`}>{t('app.portal.lobby_enter')}</button>
               </div>
             ))}
           </div>
@@ -444,12 +445,12 @@ function FragmentLobbyDialog({
 
         {mode === 'join' && !createdId && (
           <div className="space-y-3">
-            <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} placeholder="Código (ex: AB12CD)"
+            <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} placeholder={t('app.portal.lobby_code_placeholder')}
               className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-center text-lg font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-purple-500/50"
               maxLength={8}
             />
-            <button onClick={handleJoinByCode} disabled={joinCode.length < 6 || joinDungeon.isPending} className={`w-full py-3 rounded-xl font-semibold text-white ${tm.btnClass} disabled:opacity-50`}>Entrar</button>
-            <button onClick={() => setMode('choose')} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">← Voltar</button>
+            <button onClick={handleJoinByCode} disabled={joinCode.length < 6 || joinDungeon.isPending} className={`w-full py-3 rounded-xl font-semibold text-white ${tm.btnClass} disabled:opacity-50`}>{t('app.portal.lobby_enter')}</button>
+            <button onClick={() => setMode('choose')} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">← {t('app.portal.lobby_back')}</button>
           </div>
         )}
 
@@ -457,7 +458,7 @@ function FragmentLobbyDialog({
           <div className="space-y-4">
             {createdCode && (
               <div className="bg-white/[0.05] border border-white/[0.1] rounded-xl p-4 text-center space-y-2">
-                <p className="text-xs text-muted-foreground">Código de Convite</p>
+                <p className="text-xs text-muted-foreground">{t('app.portal.lobby_invite_code')}</p>
                 <div className="flex items-center justify-center gap-3">
                   <span className="text-2xl font-mono font-bold tracking-widest text-white">{createdCode}</span>
                   <button onClick={() => { navigator.clipboard.writeText(createdCode); }} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
@@ -467,9 +468,9 @@ function FragmentLobbyDialog({
               </div>
             )}
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Jogadores ({players.length}/8)</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('app.portal.lobby_players', { n: players.length })}</p>
               {players.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4 animate-pulse">Aguardando jogadores...</p>
+                <p className="text-xs text-muted-foreground text-center py-4 animate-pulse">{t('app.portal.lobby_waiting')}</p>
               ) : (
                 players.map(p => (
                   <div key={p.userId} className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm">
@@ -484,7 +485,7 @@ function FragmentLobbyDialog({
               <button onClick={() => onSessionReady(createdId, true, players)} disabled={players.length < 1}
                 className={`w-full py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2 ${tm.btnClass} disabled:opacity-50`}
               >
-                <Swords className="w-4 h-4" /> Iniciar ({players.length} jogador{players.length !== 1 ? 'es' : ''})
+                <Swords className="w-4 h-4" /> {t('app.portal.lobby_start')} ({players.length})
               </button>
             )}
           </div>
@@ -569,9 +570,9 @@ export default function PortalEventPage() {
     if (!portalEvent) return;
     const result = await scanPortal.mutateAsync(portalEvent.event_id);
     if ((result as any).error) {
-      toast({ title: 'Erro ao escanear', description: (result as any).error, variant: 'destructive' });
+      toast({ title: t('app.portal.toast_scan_error'), description: (result as any).error, variant: 'destructive' });
     } else {
-      toast({ title: '🔍 Portal escaneado!', description: 'Raridade revelada.' });
+      toast({ title: t('app.portal.toast_scan_ok_title'), description: t('app.portal.toast_scan_ok_desc') });
     }
   }
 
@@ -580,17 +581,17 @@ export default function PortalEventPage() {
     try {
       const data = await completeRun.mutateAsync({ eventId: portalEvent.event_id, xpEarned: result.xpGained, goldEarned: result.goldGained });
       const fragsMsg   = (data.frags_dropped ?? 0) > 0 ? ` · +${data.frags_dropped} ⬡` : '';
-      const dungeonMsg = data.dungeon_tier ? ` · Dungeon ${FRAGMENT_TIERS[data.dungeon_tier]?.label ?? ''} sorteada!` : '';
-      toast({ title: '✅ Portal concluído!', description: `+${result.xpGained} XP · +${result.goldGained} 🪙${fragsMsg}${dungeonMsg}` });
+      const dungeonMsg = data.dungeon_tier ? ` · ${t(`app.portal.tier_${data.dungeon_tier}_label`)}` : '';
+      toast({ title: t('app.portal.toast_portal_done'), description: `+${result.xpGained} XP · +${result.goldGained} 🪙${fragsMsg}${dungeonMsg}` });
     } catch { /* ignore */ }
     setIsEnteringPortal(false);
   }
 
   async function handleClaimDungeon() {
     const result = await claimDungeon.mutateAsync();
-    if ((result as any).error) { toast({ title: 'Erro', description: (result as any).error, variant: 'destructive' }); return; }
+    if ((result as any).error) { toast({ title: t('app.portal.toast_error'), description: (result as any).error, variant: 'destructive' }); return; }
     const tier = result.tier as FragmentTier | undefined;
-    if (tier) { setFragmentLobbyTier(tier); toast({ title: `${FRAGMENT_TIERS[tier]?.emoji} Dungeon liberada!`, description: 'Prepare sua equipe.' }); }
+    if (tier) { setFragmentLobbyTier(tier); toast({ title: `${FRAGMENT_TIERS[tier]?.emoji} ${t('app.portal.toast_dungeon_released_title')}`, description: t('app.portal.toast_dungeon_released_desc') }); }
   }
 
   function handleLobbyReady(sessionId: string, isHost: boolean, players: SessionPlayer[]) {
@@ -602,7 +603,7 @@ export default function PortalEventPage() {
   function handleFragmentVictory(result: FragmentVictoryResult) {
     queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-    toast({ title: '🏆 Dungeon concluída!', description: `+${result.totalXp} XP · +${result.totalGold} 🪙${result.classDiversityBonus ? ' · Bônus de diversidade!' : ''}` });
+    toast({ title: t('app.portal.toast_dungeon_done'), description: `+${result.totalXp} XP · +${result.totalGold} 🪙${result.classDiversityBonus ? ' ·' : ''}` });
     setActiveFragSession(null); setActiveFragTier(null);
   }
 

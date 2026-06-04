@@ -870,7 +870,17 @@
       "lobby_waiting": "Esperando jugadores...",
       "lobby_back": "Volver",
       "lobby_enter": "Entrar",
-      "lobby_code_placeholder": "Código (ej. AB12CD)"
+      "lobby_code_placeholder": "Código (ej. AB12CD)",
+      "lobby_players": "Jugadores ({{n}}/8)",
+      "lobby_start": "Iniciar",
+      "toast_scan_error": "Error al escanear",
+      "toast_scan_ok_title": "🔍 ¡Portal escaneado!",
+      "toast_scan_ok_desc": "Rareza revelada.",
+      "toast_portal_done": "✅ ¡Portal completado!",
+      "toast_dungeon_released_title": "¡Mazmorra desbloqueada!",
+      "toast_dungeon_released_desc": "Prepara tu equipo.",
+      "toast_dungeon_done": "🏆 ¡Mazmorra completada!",
+      "toast_error": "Error"
     }
   },
   "footer": {

@@ -859,7 +859,17 @@
       "lobby_waiting": "Waiting for players...",
       "lobby_back": "Back",
       "lobby_enter": "Enter",
-      "lobby_code_placeholder": "Code (e.g. AB12CD)"
+      "lobby_code_placeholder": "Code (e.g. AB12CD)",
+      "lobby_players": "Players ({{n}}/8)",
+      "lobby_start": "Start",
+      "toast_scan_error": "Scan error",
+      "toast_scan_ok_title": "🔍 Portal scanned!",
+      "toast_scan_ok_desc": "Rarity revealed.",
+      "toast_portal_done": "✅ Portal completed!",
+      "toast_dungeon_released_title": "Dungeon unlocked!",
+      "toast_dungeon_released_desc": "Prepare your team.",
+      "toast_dungeon_done": "🏆 Dungeon completed!",
+      "toast_error": "Error"
     }
   },
   "footer": {
