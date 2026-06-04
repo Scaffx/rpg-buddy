@@ -330,18 +330,8 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   }
 
   if (totalPenalty > 0) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('total_xp, level')
-      .eq('user_id', userId)
-      .single();
-
-    if (profile) {
-      const newXp = Math.max(0, (profile as any).total_xp - totalPenalty);
-      const calculatedLevel = getLevelFromXp(newXp);
-      const newLevel = Math.max(calculatedLevel, (profile as any).level);
-      await supabase.from('profiles').update({ total_xp: newXp, level: newLevel }).eq('user_id', userId);
-    }
+    // 🔒 Server-side: dedução de XP da penalidade via RPC (nível nunca cai).
+    await (supabase as any).rpc('apply_xp_penalty', { p_amount: totalPenalty });
 
     let desc = `Missões fracassadas! -${totalPenalty} XP`;
     if (totalHpPenalty > 0) desc += `, -${totalHpPenalty} HP`;

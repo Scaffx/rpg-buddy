@@ -315,43 +315,13 @@ export default function NpcPage() {
       const alreadyDone = completedSet.has(key);
 
       if (alreadyDone) {
-        const { error } = await supabase
-          .from(npcCompletionsTable)
-          .delete()
-          .eq('user_id', user.id)
-          .eq('npc_id', challenge.npc_id)
-          .eq('challenge_id', challenge.challenge_id)
-          .eq('week_token', weekToken);
+        // 🔒 Server-side: apaga a conclusão e reverte XP/ouro exatos creditados.
+        const { error } = await (supabase as any).rpc('undo_npc_challenge', {
+          p_npc_id: challenge.npc_id,
+          p_challenge_id: challenge.challenge_id,
+          p_week_token: weekToken,
+        });
         if (error) throw error;
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('total_xp, level')
-          .eq('user_id', user.id)
-          .single();
-
-        if (profile) {
-          const newTotalXp = Math.max(0, profile.total_xp - challenge.xp_reward);
-          const newLevel = Math.max(getLevelFromXp(newTotalXp), profile.level);
-
-          await supabase
-            .from('profiles')
-            .update({ total_xp: newTotalXp, level: newLevel })
-            .eq('user_id', user.id);
-        }
-
-        const { data: balance } = await supabase
-          .from('user_balance')
-          .select('gold')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (balance) {
-          await supabase
-            .from('user_balance')
-            .update({ gold: Math.max(0, Number(balance.gold ?? 0) - challenge.gold_reward), updated_at: new Date().toISOString() })
-            .eq('user_id', user.id);
-        }
 
         if (challenge.reward_item_id && challenge.reward_item_quantity > 0) {
           const { data: inventoryRow } = await supabase
