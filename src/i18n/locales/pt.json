@@ -824,6 +824,24 @@
       "notAuthenticated": "Não autenticado",
       "alreadyInClass": "Você já está nessa classe.",
       "insufficientGold": "Ouro insuficiente! Você tem {{gold}}, precisa de {{required}}."
+    },
+    "portal": {
+      "weekly_event": "Evento Semanal",
+      "title": "Portais Dimensionais",
+      "subtitle": "Explore portais, colete fragmentos e conquiste dungeons épicas",
+      "portal_active": "Portal Ativo",
+      "no_active_title": "Nenhum portal ativo no momento",
+      "no_active_subtitle": "Volte na próxima semana!",
+      "portal_of_day": "Portal do Dia",
+      "pending_header": "Dungeon Aguardando",
+      "frag_dungeons_title": "Dungeons de Fragmento",
+      "frag_dungeons_sub": "Invoque com {{n}} fragmentos",
+      "pets_warning": "Pets não são permitidos nestas dungeons.",
+      "cooldown_warning": "Cada ação tem cooldown de {{s}} segundos. Planeje bem.",
+      "frag_bar_title": "Fragmentos de Portal",
+      "frag_bar_remaining": "Faltam {{n}} para invocar",
+      "frag_bar_ready": "Pronto para invocar uma dungeon!",
+      "weekly_history": "Histórico desta semana"
     }
   },
   "footer": {

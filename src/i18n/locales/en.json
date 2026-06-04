@@ -799,6 +799,24 @@
       "alreadyInClass": "You are already in this class.",
       "permanentClassDesc2": "Your starting class is permanent and cannot be changed after selection.",
       "insufficientGold": "Insufficient gold! You have {{gold}}, need {{required}}."
+    },
+    "portal": {
+      "weekly_event": "Weekly Event",
+      "title": "Dimensional Portals",
+      "subtitle": "Explore portals, collect fragments and conquer epic dungeons",
+      "portal_active": "Portal Active",
+      "no_active_title": "No active portal right now",
+      "no_active_subtitle": "Come back next week!",
+      "portal_of_day": "Portal of the Day",
+      "pending_header": "Dungeon Awaiting",
+      "frag_dungeons_title": "Fragment Dungeons",
+      "frag_dungeons_sub": "Summon with {{n}} fragments",
+      "pets_warning": "Pets are not allowed in these dungeons.",
+      "cooldown_warning": "Each action has a {{s}}-second cooldown. Plan carefully.",
+      "frag_bar_title": "Portal Fragments",
+      "frag_bar_remaining": "{{n}} more to summon",
+      "frag_bar_ready": "Ready to summon a dungeon!",
+      "weekly_history": "This week’s history"
     }
   },
   "footer": {

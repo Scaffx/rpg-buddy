@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -94,13 +95,14 @@ function PortalGlyph({ color, size = 'md' }: { color?: PortalColor | null; size?
 
 // ── Fragment bar ──────────────────────────────────────────────────────────
 function FragmentBar({ count }: { count: number }) {
+  const { t } = useTranslation();
   const filled = Math.min(count, FRAGMENT_COST);
   const segments = Array.from({ length: FRAGMENT_COST }, (_, i) => i < filled);
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-          <Gem className="w-3 h-3 text-purple-400" /> Fragmentos de Portal
+          <Gem className="w-3 h-3 text-purple-400" /> {t('app.portal.frag_bar_title')}
         </span>
         <span className="text-sm font-bold text-purple-300">{filled} / {FRAGMENT_COST}</span>
       </div>
@@ -116,10 +118,10 @@ function FragmentBar({ count }: { count: number }) {
         ))}
       </div>
       {filled < FRAGMENT_COST ? (
-        <p className="text-xs text-muted-foreground text-right">Faltam {FRAGMENT_COST - filled} para invocar</p>
+        <p className="text-xs text-muted-foreground text-right">{t('app.portal.frag_bar_remaining', { n: FRAGMENT_COST - filled })}</p>
       ) : (
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-center font-semibold text-purple-300 bg-purple-500/10 rounded-lg py-1">
-          ✨ Pronto para invocar uma dungeon!
+          ✨ {t('app.portal.frag_bar_ready')}
         </motion.p>
       )}
     </div>
@@ -281,11 +283,12 @@ function PendingDungeonCard({
 
 // ── Weekly history ─────────────────────────────────────────────────────────
 function WeeklyHistory({ runs }: { runs: Array<{ color: PortalColor; xp: number; fragments_received: number }> }) {
+  const { t } = useTranslation();
   if (runs.length === 0) return null;
   return (
     <div className="space-y-2">
       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-        Histórico desta semana
+        {t('app.portal.weekly_history')}
       </h3>
       <div className="flex flex-col gap-1.5">
         {runs.map((run, i) => {
@@ -485,6 +488,7 @@ function FragmentLobbyDialog({
 export default function PortalEventPage() {
   const { user }      = useAuth();
   const { toast }     = useToast();
+  const { t }         = useTranslation();
   const queryClient   = useQueryClient();
   const { data: profile }     = useProfile();
   const { data: attributes }  = useAttributes();
@@ -641,16 +645,16 @@ export default function PortalEventPage() {
         <div className="text-center pt-2 space-y-1">
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center gap-2 mb-1">
             <Sparkles className="w-4 h-4 text-purple-400" />
-            <span className="text-xs font-semibold text-purple-400 uppercase tracking-widest">Evento Semanal</span>
+            <span className="text-xs font-semibold text-purple-400 uppercase tracking-widest">{t('app.portal.weekly_event')}</span>
             <Sparkles className="w-4 h-4 text-purple-400" />
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-300 via-purple-200 to-indigo-300 bg-clip-text text-transparent"
           >
-            Portais Dimensionais
+            {t('app.portal.title')}
           </motion.h1>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-muted-foreground">
-            Explore portais, colete fragmentos e conquiste dungeons épicas
+            {t('app.portal.subtitle')}
           </motion.p>
         </div>
 
@@ -663,7 +667,7 @@ export default function PortalEventPage() {
           >
             <div className="flex items-center gap-2">
               <motion.div className="w-2 h-2 rounded-full bg-emerald-400" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
-              <span className="text-sm font-semibold text-emerald-400">Portal Ativo</span>
+              <span className="text-sm font-semibold text-emerald-400">{t('app.portal.portal_active')}</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
@@ -675,15 +679,15 @@ export default function PortalEventPage() {
             className="rounded-2xl border border-white/[0.07] bg-white/[0.03] text-center py-10 space-y-2"
           >
             <p className="text-4xl">🚪</p>
-            <p className="font-semibold text-muted-foreground">Nenhum portal ativo no momento</p>
-            <p className="text-sm text-muted-foreground/60">Volte na próxima semana!</p>
+            <p className="font-semibold text-muted-foreground">{t('app.portal.no_active_title')}</p>
+            <p className="text-sm text-muted-foreground/60">{t('app.portal.no_active_subtitle')}</p>
           </motion.div>
         )}
 
         {/* daily portal */}
         {portalEvent && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Portal do Dia</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t('app.portal.portal_of_day')}</p>
             <DailyPortalCard
               portalColor={portalEvent.portal_color}
               colorRevealed={portalEvent.color_revealed}
@@ -702,7 +706,7 @@ export default function PortalEventPage() {
           {pendingDungeon && dungeonExpiresAt && (
             <motion.div key="pending" initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-2">
               <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider px-1 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5" /> Dungeon Aguardando
+                <AlertTriangle className="w-3.5 h-3.5" /> {t('app.portal.pending_header')}
               </p>
               <PendingDungeonCard tier={pendingDungeon} expiresAt={dungeonExpiresAt} fragmentCount={fragmentCount} onClaim={handleClaimDungeon} isClaiming={claimDungeon.isPending} />
             </motion.div>
@@ -729,9 +733,9 @@ export default function PortalEventPage() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <h2 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                <Swords className="w-4 h-4 text-purple-400" /> Dungeons de Fragmento
+                <Swords className="w-4 h-4 text-purple-400" /> {t('app.portal.frag_dungeons_title')}
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Invoque com {FRAGMENT_COST} fragmentos</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t('app.portal.frag_dungeons_sub', { n: FRAGMENT_COST })}</p>
             </div>
             {!canInvokeFragDungeon && (
               <span className="text-xs text-muted-foreground bg-white/[0.04] rounded-lg px-2.5 py-1 shrink-0 border border-white/[0.08]">{fragmentCount}/{FRAGMENT_COST} ⬡</span>
@@ -741,8 +745,8 @@ export default function PortalEventPage() {
           <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-xl px-3.5 py-3">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
             <div className="text-xs text-muted-foreground space-y-0.5">
-              <p><span className="text-amber-300 font-semibold">Pets não são permitidos</span> nestas dungeons.</p>
-              <p>Cada ação tem cooldown de <span className="text-foreground font-semibold">45 segundos</span>. Planeje bem.</p>
+              <p className="text-amber-300 font-semibold">{t('app.portal.pets_warning')}</p>
+              <p>{t('app.portal.cooldown_warning', { s: 45 })}</p>
             </div>
           </div>
 

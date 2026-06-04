@@ -810,6 +810,24 @@
       "notAuthenticated": "No autenticado",
       "alreadyInClass": "Ya estás en esta clase.",
       "insufficientGold": "¡Oro insuficiente! Tienes {{gold}}, necesitas {{required}}."
+    },
+    "portal": {
+      "weekly_event": "Evento Semanal",
+      "title": "Portales Dimensionales",
+      "subtitle": "Explora portales, recoge fragmentos y conquista mazmorras épicas",
+      "portal_active": "Portal Activo",
+      "no_active_title": "Ningún portal activo ahora",
+      "no_active_subtitle": "¡Vuelve la próxima semana!",
+      "portal_of_day": "Portal del Día",
+      "pending_header": "Mazmorra en Espera",
+      "frag_dungeons_title": "Mazmorras de Fragmento",
+      "frag_dungeons_sub": "Invoca con {{n}} fragmentos",
+      "pets_warning": "No se permiten mascotas en estas mazmorras.",
+      "cooldown_warning": "Cada acción tiene un enfriamiento de {{s}} segundos. Planifica bien.",
+      "frag_bar_title": "Fragmentos de Portal",
+      "frag_bar_remaining": "Faltan {{n}} para invocar",
+      "frag_bar_ready": "¡Listo para invocar una mazmorra!",
+      "weekly_history": "Historial de esta semana"
     }
   },
   "footer": {
