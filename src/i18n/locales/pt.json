@@ -310,7 +310,18 @@
       "toast_error": "Erro ao autenticar",
       "toast_resend_error": "Erro ao reenviar email",
       "toast_reset_sent_title": "Link enviado!",
-      "toast_reset_sent_desc": "Verifique seu email para redefinir a senha."
+      "toast_reset_sent_desc": "Verifique seu email para redefinir a senha.",
+      "new_password_title": "Nova senha",
+      "new_password_label": "Digite sua nova senha",
+      "button_save_password": "Salvar nova senha",
+      "toast_password_too_short_title": "Senha muito curta",
+      "toast_password_too_short_desc": "A senha precisa ter pelo menos 6 caracteres.",
+      "toast_password_updated_title": "Senha atualizada!",
+      "toast_password_updated_desc": "Sua nova senha foi salva com sucesso.",
+      "toast_save_password_error": "Erro ao salvar senha",
+      "toast_discord_error": "Erro ao entrar com Discord",
+      "divider_or": "ou",
+      "button_discord": "Entrar com Discord"
     },
     "health": {
       "page_title": "Saúde",

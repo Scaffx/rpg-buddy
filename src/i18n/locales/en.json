@@ -310,7 +310,18 @@
       "toast_error": "Authentication error",
       "toast_resend_error": "Error resending email",
       "toast_reset_sent_title": "Link sent!",
-      "toast_reset_sent_desc": "Check your email to reset your password."
+      "toast_reset_sent_desc": "Check your email to reset your password.",
+      "new_password_title": "New password",
+      "new_password_label": "Enter your new password",
+      "button_save_password": "Save new password",
+      "toast_password_too_short_title": "Password too short",
+      "toast_password_too_short_desc": "Password must be at least 6 characters.",
+      "toast_password_updated_title": "Password updated!",
+      "toast_password_updated_desc": "Your new password was saved successfully.",
+      "toast_save_password_error": "Error saving password",
+      "toast_discord_error": "Error signing in with Discord",
+      "divider_or": "or",
+      "button_discord": "Sign in with Discord"
     },
     "health": {
       "page_title": "Health",

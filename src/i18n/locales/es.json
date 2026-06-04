@@ -39,7 +39,7 @@
     "eyebrow": "Por qué somos diferentes",
     "title": "Acceso a la app, en el plan que tenga sentido para ti.",
     "subtitle": "El cobro de R$ 4,90/mes es para acceder a LifeOnRPG. Puedes pagar mes a mes o contratar el plan anual directamente.",
-      "punish_title": "Castigo retroactivo",
+    "punish_title": "Castigo retroactivo",
     "access_plan_title": "Plan de acceso a LifeOnRPG",
     "access_plan_subtitle": "Suscripción para usar la app completa, no un premium separado.",
     "access_active": "Plan activo",
@@ -323,7 +323,18 @@
       "toast_error": "Error de autenticación",
       "toast_resend_error": "Error al reenviar correo",
       "toast_reset_sent_title": "¡Enlace enviado!",
-      "toast_reset_sent_desc": "Revisa tu correo para restablecer la contraseña."
+      "toast_reset_sent_desc": "Revisa tu correo para restablecer la contraseña.",
+      "new_password_title": "Nueva contraseña",
+      "new_password_label": "Escribe tu nueva contraseña",
+      "button_save_password": "Guardar nueva contraseña",
+      "toast_password_too_short_title": "Contraseña demasiado corta",
+      "toast_password_too_short_desc": "La contraseña debe tener al menos 6 caracteres.",
+      "toast_password_updated_title": "¡Contraseña actualizada!",
+      "toast_password_updated_desc": "Tu nueva contraseña se guardó correctamente.",
+      "toast_save_password_error": "Error al guardar la contraseña",
+      "toast_discord_error": "Error al iniciar sesión con Discord",
+      "divider_or": "o",
+      "button_discord": "Iniciar sesión con Discord"
     },
     "health": {
       "page_title": "Salud",
