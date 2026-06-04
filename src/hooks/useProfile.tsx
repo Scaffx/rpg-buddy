@@ -2,10 +2,10 @@ import { Database } from '@/types/supabase';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, getPlayerCombatStats, getRoutineXpBuffBonus } from '@/lib/combat';
+import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 import { getEquipmentBonuses, type InventoryItem } from './useInventory';
 import { getLevelFromXp } from '@/lib/progression';
-import { deriveMissionCategory, resolveMissionTalentEffects, type MissionTalentResolution } from '@/lib/missionTalentRules';
+import { deriveMissionCategory } from '@/lib/missionTalentRules';
 
 const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
@@ -145,20 +145,6 @@ export function useShortRestStart() {
   });
 }
 
-async function getPlayerTalentEffects(userId: string): Promise<Set<string>> {
-  const { data } = await (supabase as any)
-    .from('talentos_jogador')
-    .select('talentos_disponiveis(efeito)')
-    .eq('personagem_id', userId);
-
-  const effects = new Set<string>();
-  for (const row of data || []) {
-    const effect = String((row as any)?.talentos_disponiveis?.efeito || '');
-    if (effect) effects.add(effect);
-  }
-  return effects;
-}
-
 // ── STREAK HELPERS ────────────────────────────────────────────────────
 /** Calcula a streak de uma missão diária a partir do daily_status (sem query DB). */
 export function computeStreakFromDailyStatus(
@@ -203,115 +189,6 @@ export function getStreakXpBonusLabel(streak: number): string {
   return '';
 }
 
-async function getMissionGoldRewardFromStreakWithTalent(
-  missionId: string,
-  today: string,
-  hasExtendedCombo: boolean,
-): Promise<number> {
-  const { data: completions } = await (supabase as any)
-    .from('mission_daily_completions')
-    .select('completion_date')
-    .eq('mission_id', missionId)
-    .order('completion_date', { ascending: false })
-    .limit(60);
-
-  const uniqueDates = Array.from(new Set((completions || []).map((c: any) => String(c.completion_date || ''))))
-    .filter(Boolean)
-    .sort((a, b) => (a > b ? -1 : 1));
-
-  const maxGap = hasExtendedCombo ? 2 : 1;
-  let streak = 1;
-  let previous = new Date(`${today}T12:00:00`);
-
-  for (const dateStr of uniqueDates) {
-    const current = new Date(`${dateStr}T12:00:00`);
-    const diffMs = previous.getTime() - current.getTime();
-    const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-
-    if (diffDays <= 0) continue;
-    if (diffDays <= maxGap) {
-      streak += 1;
-      previous = current;
-      continue;
-    }
-    break;
-  }
-
-  const bonusGold = Math.min(2, Math.floor(streak / 3));
-  return 2 + bonusGold;
-}
-
-async function grantInspirationIfPerfectDay(userId: string, today: string): Promise<boolean> {
-  const dayIndex = new Date(today + 'T12:00:00').getDay();
-  const todayShort = DAYS_NAMES[dayIndex];
-
-  const { data: missions } = await supabase
-    .from('missions')
-    .select('id, title, days_of_week, due_date, daily_status, completed, completed_at, is_failed')
-    .eq('user_id', userId)
-    .neq('status', 'arquivada');
-
-  const requiredToday = (missions || []).filter((m: any) => {
-    if (m.is_failed) return false;
-    const days = (m.days_of_week as string[]) || [];
-    const isDailyToday = days.length > 0 && days.includes(todayShort);
-    const isUniqueToday = days.length === 0 && m.due_date === today;
-    return isDailyToday || isUniqueToday;
-  });
-
-  if (requiredToday.length === 0) return false;
-
-  const allMissionsDone = requiredToday.every((m: any) => {
-    const days = (m.days_of_week as string[]) || [];
-    if (days.length > 0) {
-      return (m.daily_status || {})[today] === 'completed';
-    }
-    return !!m.completed;
-  });
-
-  if (!allMissionsDone) return false;
-
-  const missionIds = requiredToday.map((m: any) => m.id);
-  const { data: checklist } = await supabase
-    .from('checklist_items')
-    .select('mission_id, completed')
-    .in('mission_id', missionIds);
-
-  const checklistByMission = new Map<string, { total: number; completed: number }>();
-  for (const id of missionIds) checklistByMission.set(id, { total: 0, completed: 0 });
-  for (const item of checklist || []) {
-    const current = checklistByMission.get((item as any).mission_id);
-    if (!current) continue;
-    current.total += 1;
-    if ((item as any).completed) current.completed += 1;
-  }
-
-  const checklistPerfect = Array.from(checklistByMission.values()).every((m) => m.total === 0 || m.total === m.completed);
-  if (!checklistPerfect) return false;
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('inspired_available')
-    .eq('user_id', userId)
-    .single();
-
-  if ((profile as any)?.inspired_available) return false;
-
-  await supabase
-    .from('profiles')
-    .update({ inspired_available: true, inspired_earned_at: new Date().toISOString() } as any)
-    .eq('user_id', userId);
-
-  await supabase.from('activity_log').insert({
-    user_id: userId,
-    action: 'day_perfect_inspiration',
-    description: 'Dia Perfeito concluido! Voce ganhou Inspiracao para o proximo boss.',
-    xp_gained: 0,
-  });
-
-  return true;
-}
-
 async function getActiveBuffEffects(userId: string): Promise<Set<string>> {
   const { data: buffs } = await (supabase as any)
     .from('user_buffs')
@@ -330,168 +207,6 @@ async function getActiveBuffEffects(userId: string): Promise<Set<string>> {
   }
 
   return effects;
-}
-
-async function consumeOneShotBuff(userId: string, effectNames: string[]): Promise<void> {
-  const { data: buffs } = await (supabase as any)
-    .from('user_buffs')
-    .select('id, expires_at, active, purchased_at, shop_items(effect)')
-    .eq('user_id', userId)
-    .eq('active', true)
-    .order('purchased_at', { ascending: true });
-
-  const now = Date.now();
-  const match = (buffs || []).find((b: any) => {
-    const expiresAt = b.expires_at ? new Date(b.expires_at).getTime() : null;
-    if (expiresAt && expiresAt < now) return false;
-    return effectNames.includes(String(b.shop_items?.effect || ''));
-  });
-
-  if (!match) return;
-
-  await (supabase as any)
-    .from('user_buffs')
-    .update({ active: false })
-    .eq('id', match.id)
-    .eq('user_id', userId);
-}
-
-async function grantFlowXpOneShotBuff(userId: string): Promise<void> {
-  const { data: flowItem } = await (supabase as any)
-    .from('shop_items')
-    .select('id')
-    .eq('effect', 'estado_fluxo_xp')
-    .maybeSingle();
-
-  if (!flowItem?.id) return;
-
-  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-  await (supabase as any).from('user_buffs').insert({
-    user_id: userId,
-    item_id: flowItem.id,
-    active: true,
-    expires_at: expiresAt,
-  });
-}
-
-async function applyMissionTalentPostEffects(params: {
-  userId: string;
-  missionTitle: string;
-  effects: MissionTalentResolution;
-}): Promise<void> {
-  const { userId, missionTitle, effects } = params;
-
-  const shouldTouchHealth = effects.recoverLostHpPct > 0 || effects.addMaxHp > 0 || effects.addMaxMp > 0;
-
-  if (shouldTouchHealth) {
-    let healthStats: any = null;
-    let hasTalentBonusColumns = true;
-
-    const withBonusColumns = await (supabase as any)
-      .from('user_health_stats')
-      .select('max_hp, current_hp, max_mp, current_mp, fatigue, talent_bonus_hp, talent_bonus_mp')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (withBonusColumns.error) {
-      hasTalentBonusColumns = false;
-      const fallback = await (supabase as any)
-        .from('user_health_stats')
-        .select('max_hp, current_hp, max_mp, current_mp, fatigue')
-        .eq('user_id', userId)
-        .maybeSingle();
-      healthStats = fallback.data;
-    } else {
-      healthStats = withBonusColumns.data;
-    }
-
-    const baseMaxHp = Number(healthStats?.max_hp ?? 100);
-    const baseCurrentHp = Number(healthStats?.current_hp ?? baseMaxHp);
-    const baseMaxMp = Number(healthStats?.max_mp ?? 10);
-    const baseCurrentMp = Number(healthStats?.current_mp ?? baseMaxMp);
-    const fatigue = Number(healthStats?.fatigue ?? 0);
-    const bonusHp = Number(healthStats?.talent_bonus_hp ?? 0);
-    const bonusMp = Number(healthStats?.talent_bonus_mp ?? 0);
-
-    const hpCapRemaining = hasTalentBonusColumns ? (100 - bonusHp) : Math.max(0, 200 - baseMaxHp);
-    const mpCapRemaining = hasTalentBonusColumns ? (50 - bonusMp) : Math.max(0, 60 - baseMaxMp);
-
-    const hpGainAllowed = Math.max(0, Math.min(effects.addMaxHp, hpCapRemaining));
-    const mpGainAllowed = Math.max(0, Math.min(effects.addMaxMp, mpCapRemaining));
-
-    const maxHpAfter = baseMaxHp + hpGainAllowed;
-    const maxMpAfter = baseMaxMp + mpGainAllowed;
-
-    const lostHp = Math.max(0, maxHpAfter - (baseCurrentHp + hpGainAllowed));
-    const recovered = effects.recoverLostHpPct > 0 ? Math.max(0, Math.ceil(lostHp * effects.recoverLostHpPct)) : 0;
-    const currentHpAfter = Math.min(maxHpAfter, baseCurrentHp + hpGainAllowed + recovered);
-    const currentMpAfter = Math.min(maxMpAfter, baseCurrentMp + mpGainAllowed);
-
-    if (healthStats) {
-      const payload: Record<string, any> = {
-        max_hp: maxHpAfter,
-        current_hp: currentHpAfter,
-        max_mp: maxMpAfter,
-        current_mp: currentMpAfter,
-      };
-
-      if (hasTalentBonusColumns) {
-        payload.talent_bonus_hp = bonusHp + hpGainAllowed;
-        payload.talent_bonus_mp = bonusMp + mpGainAllowed;
-      }
-
-      await (supabase as any)
-        .from('user_health_stats')
-        .update(payload)
-        .eq('user_id', userId);
-    } else {
-      const payload: Record<string, any> = {
-        user_id: userId,
-        max_hp: maxHpAfter,
-        current_hp: currentHpAfter,
-        max_mp: maxMpAfter,
-        current_mp: currentMpAfter,
-        fatigue,
-      };
-
-      if (hasTalentBonusColumns) {
-        payload.talent_bonus_hp = bonusHp + hpGainAllowed;
-        payload.talent_bonus_mp = bonusMp + mpGainAllowed;
-      }
-
-      await (supabase as any).from('user_health_stats').insert({
-        ...payload,
-      });
-    }
-  }
-
-  if (effects.grantInspired) {
-    await (supabase as any)
-      .from('profiles')
-      .update({ inspired_available: true, inspired_earned_at: new Date().toISOString() })
-      .eq('user_id', userId);
-  }
-
-  if (effects.grantFlowXpBuff) {
-    await grantFlowXpOneShotBuff(userId);
-  }
-
-  const logParts: string[] = [];
-  if (effects.doubledByOrderNoCaos) logParts.push('Ordem no Caos dobrou o ouro da missao');
-  if (effects.grantFlowXpBuff) logParts.push('Estado de Fluxo ativado (+20% XP na proxima missao)');
-  if (effects.grantInspired) logParts.push('Presenca Inspiradora concedeu buff Inspirado');
-  if (effects.addMaxMp > 0) logParts.push('Rato de Biblioteca aumentou MP maximo');
-  if (effects.addMaxHp > 0) logParts.push('Corpo de Ferro aumentou HP maximo');
-  if (effects.recoverLostHpPct > 0) logParts.push('Pulmoes de Aco recuperou parte do HP perdido');
-
-  if (logParts.length > 0) {
-    await (supabase as any).from('activity_log').insert({
-      user_id: userId,
-      action: 'mission_talent_bonus',
-      description: `[${missionTitle}] ${logParts.join(' | ')}`,
-      xp_gained: 0,
-    });
-  }
 }
 
 export function useProfile() {
