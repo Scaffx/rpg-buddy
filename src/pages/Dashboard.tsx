@@ -7,6 +7,7 @@ import { useCompleteMission } from "@/hooks/useProfile";
 import { useDailyBonus } from "@/hooks/useDailyBonus";
 import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock, Flame, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -335,8 +336,31 @@ export default function Dashboard() {
   if (profileLoading || attrsLoading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="space-y-6">
+          {/* saudação */}
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-52" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          {/* stat cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="rpg-card-glow text-center space-y-2 py-3">
+                <Skeleton className="h-5 w-5 mx-auto rounded-full" />
+                <Skeleton className="h-6 w-12 mx-auto" />
+                <Skeleton className="h-3 w-16 mx-auto" />
+              </div>
+            ))}
+          </div>
+          {/* bônus diário */}
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          {/* missões de hoje */}
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-40" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-2xl" />
+            ))}
+          </div>
         </div>
       </AppLayout>
     );
