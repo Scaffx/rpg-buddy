@@ -419,7 +419,7 @@ export default function Onboarding() {
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-3xl">{region.icon}</span>
-                      <span className="font-bold text-foreground text-lg">{region.name}</span>
+                      <span className="font-bold text-foreground text-lg">{t(`app.onboarding.region_${region.id}`)}</span>
                     </div>
                   </motion.button>
                 ))}
@@ -466,12 +466,12 @@ export default function Onboarding() {
                     <div className="flex items-center gap-3 mb-2">
                       <div className="text-foreground">{cls.icon}</div>
                       <div>
-                        <div className="font-bold text-foreground text-lg leading-none">{cls.name}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{cls.modernTitle}</div>
+                        <div className="font-bold text-foreground text-lg leading-none">{t(`app.onboarding.class_${cls.id}_name`)}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{t(`app.onboarding.class_${cls.id}_modern`)}</div>
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{cls.modernDescription}</p>
-                    <p className="text-xs text-primary mt-2">{t('app.onboarding.starter_item')}: {cls.starterItem}</p>
+                    <p className="text-sm text-muted-foreground">{t(`app.onboarding.class_${cls.id}_desc`)}</p>
+                    <p className="text-xs text-primary mt-2">{t('app.onboarding.starter_item')}: {t(`app.onboarding.class_${cls.id}_item`)}</p>
                   </motion.button>
                 ))}
               </div>
@@ -499,7 +499,7 @@ export default function Onboarding() {
               <div className="text-center mb-6">
                 <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 mb-4 ${selectedClass.color}`}>
                   {selectedClass.icon}
-                  <span className="font-bold text-lg">{selectedClass.name}</span>
+                  <span className="font-bold text-lg">{t(`app.onboarding.class_${selectedClass.id}_name`)}</span>
                 </div>
                 <h2 className="text-2xl font-display font-bold text-primary text-glow">
                   {t('app.onboarding.step3_title')}
@@ -603,7 +603,7 @@ export default function Onboarding() {
               </p>
 
               <div className="text-sm text-primary mb-4">
-                {t('app.onboarding.starter_equipment')}: <span className="font-bold">{selectedClass.starterItem}</span>
+                {t('app.onboarding.starter_equipment')}: <span className="font-bold">{t(`app.onboarding.class_${selectedClass.id}_item`)}</span>
               </div>
 
               <div className="text-left bg-muted/20 rounded-xl border border-border p-4 mb-6">
