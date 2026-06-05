@@ -145,9 +145,12 @@ export default function FeatsTree() {
   const level = Number(profile?.level ?? 1);
   const nextMilestone = (Math.floor(level / 5) + 1) * 5;
 
+  const featText = (efeito: string, field: 'title' | 'synergy' | 'desc', fallback: string) =>
+    t(`app.feats.talent_${efeito}_${field}`, { defaultValue: fallback });
+
   const handleBuy = (talento: Talent) => {
     if (talento.id.startsWith('mock-')) {
-      toast.error('Talentos mockados sem ID real no banco. Rode as migrations para habilitar compra.');
+      toast.error(t('app.feats.toast_mock'));
       return;
     }
 
@@ -162,7 +165,7 @@ export default function FeatsTree() {
     if (!row) return;
     toggleEquip.mutate(
       { rowId: row.rowId, currentlyEquipped: row.equipped, equippedCount },
-      { onError: (err: any) => toast.error(err?.message || 'Erro ao equipar talento.') },
+      { onError: (err: any) => toast.error(err?.message || t('app.feats.error_equip')) },
     );
   };
 
@@ -186,7 +189,7 @@ export default function FeatsTree() {
               {t('app.feats.points_hint', { n: nextMilestone })}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Equipados: <span className={`font-bold ${equippedCount >= MAX_EQUIPPED_TALENTS ? 'text-yellow-400' : 'text-foreground'}`}>{equippedCount}/{MAX_EQUIPPED_TALENTS}</span>
+              {t('app.feats.equipped_label')}: <span className={`font-bold ${equippedCount >= MAX_EQUIPPED_TALENTS ? 'text-yellow-400' : 'text-foreground'}`}>{equippedCount}/{MAX_EQUIPPED_TALENTS}</span>
             </p>
           </div>
         </div>
@@ -212,16 +215,16 @@ export default function FeatsTree() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Icon className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-bold text-foreground">{ui.title}</h2>
+                    <h2 className="text-lg font-bold text-foreground">{featText(talento.efeito, 'title', ui.title)}</h2>
                   </div>
-                  {equipped && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold">ATIVO</span>}
+                  {equipped && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary font-bold">{t('app.feats.active')}</span>}
                   {owned && !equipped && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
                 </div>
 
-                <p className="text-sm text-muted-foreground mb-5">{talento.descricao}</p>
+                <p className="text-sm text-muted-foreground mb-5">{featText(talento.efeito, 'desc', talento.descricao)}</p>
                 <div className="mb-4 rounded-md border border-border/60 bg-background/30 px-3 py-2">
                   <p className="text-xs text-muted-foreground">{t('app.feats.synergy_label')}</p>
-                  <p className="text-sm font-medium text-foreground">{ui.synergy}</p>
+                  <p className="text-sm font-medium text-foreground">{featText(talento.efeito, 'synergy', ui.synergy)}</p>
                 </div>
                 <p className="text-xs text-primary mb-5">{t('app.feats.cost_label')}</p>
 
@@ -246,10 +249,10 @@ export default function FeatsTree() {
                     }`}
                   >
                     {equipped
-                      ? 'Desequipar'
+                      ? t('app.feats.unequip')
                       : canEquip
-                        ? 'Equipar'
-                        : `Limite (${MAX_EQUIPPED_TALENTS}) atingido`}
+                        ? t('app.feats.equip')
+                        : t('app.feats.limit_reached', { max: MAX_EQUIPPED_TALENTS })}
                   </button>
                 )}
               </motion.div>
