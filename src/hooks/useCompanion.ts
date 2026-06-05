@@ -29,7 +29,11 @@ export interface CompanionRow {
 }
 
 /** Companheiros com stats de combate (não são animais de estimação) */
-export const COMBAT_COMPANION_TYPES = ['skeleton_pup', 'spirit_fox', 'golem_guardian'] as const;
+export const COMBAT_COMPANION_TYPES = [
+  'skeleton_pup', 'spirit_fox', 'golem_guardian',
+  // Pets da loja (minis de boss)
+  'mini_relampago', 'mini_leviata', 'mini_kraken', 'mini_dragao_sombrio', 'mini_demonio_fome',
+] as const;
 export type CombatCompanionType = (typeof COMBAT_COMPANION_TYPES)[number];
 
 export function isCombatCompanion(companion: CompanionRow): boolean {
@@ -68,6 +72,37 @@ export const COMBAT_COMPANION_META: Record<string, {
     roleColor: 'text-emerald-400',
     skills: ['Escudo de Pedra', 'Muro de Rocha', 'Terraformação'],
     description: 'Tanque e protetor. Absorve dano pelos aliados.',
+  },
+  // ── Pets da loja (minis de boss) ──
+  mini_relampago: {
+    emoji: '⚡', name: 'Mini Wyvern Relâmpago', role: 'physical',
+    roleLabel: 'Físico', roleColor: 'text-orange-400',
+    skills: ['Investida Trovejante', 'Garra Estática', 'Tempestade'],
+    description: 'Filhote do Wyvern Relâmpago. Rápido e elétrico — ataca antes que percebam.',
+  },
+  mini_leviata: {
+    emoji: '🐉', name: 'Mini Leviatã Cósmico', role: 'magic',
+    roleLabel: 'Mágico', roleColor: 'text-purple-400',
+    skills: ['Jato Abissal', 'Maré Colossal', 'Bênção das Profundezas'],
+    description: 'Cria do Leviatã Cósmico. Conjura marés e magia das profundezas.',
+  },
+  mini_kraken: {
+    emoji: '🦑', name: 'Mini Kraken Abissal', role: 'support',
+    roleLabel: 'Suporte', roleColor: 'text-emerald-400',
+    skills: ['Tentáculo Protetor', 'Tinta Curativa', 'Abraço das Profundezas'],
+    description: 'Tanque tentacular. Protege e cura os aliados com sua tinta abissal.',
+  },
+  mini_dragao_sombrio: {
+    emoji: '🐲', name: 'Mini Dragão Sombrio', role: 'physical',
+    roleLabel: 'Físico', roleColor: 'text-orange-400',
+    skills: ['Sopro Sombrio', 'Garras da Noite', 'Eclipse'],
+    description: 'Filhote do Dragão Sombrio. Devastador corpo a corpo, envolto em trevas.',
+  },
+  mini_demonio_fome: {
+    emoji: '👹', name: 'Mini Demônio da Fome', role: 'physical',
+    roleLabel: 'Físico', roleColor: 'text-orange-400',
+    skills: ['Devorar', 'Fome Insaciável', 'Banquete Sombrio'],
+    description: 'Demônio insaciável. Quanto mais luta, mais forte e faminto fica.',
   },
 };
 
@@ -266,6 +301,44 @@ export function useAdoptSkeletonPup() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
+  });
+}
+
+export type ShopPet = {
+  pet_type: string; name: string; emoji: string; role: string;
+  atk: number; def: number; hp: number; mp: number; price: number; sort: number;
+};
+
+/** Catálogo de pets da loja (minis de boss). */
+export function useShopPets() {
+  return useQuery<ShopPet[]>({
+    queryKey: ['pet_catalog'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pet_catalog')
+        .select('*')
+        .order('sort', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as ShopPet[];
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Compra de pet (server-authoritative via buy_pet). */
+export function useBuyPet() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (petType: string) => {
+      const { data, error } = await supabase.rpc('buy_pet', { p_pet_type: petType });
+      if (error) throw error;
+      return data as any;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['companions_all', user?.id] });
+      qc.invalidateQueries({ queryKey: ['gold-balance'] });
+    },
   });
 }
 

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoldBalance, useBuyItem } from '@/hooks/useGold';
 import { useShopItems, useBuyEquipment, useInventory, type GameItem, type InventoryItem } from '@/hooks/useInventory';
+import { useShopPets, useBuyPet, useAllCompanions } from '@/hooks/useCompanion';
 import AppLayout from '@/components/AppLayout';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -118,6 +119,24 @@ export default function ShopPage() {
   });
 
   const currentGold = (balance as any)?.gold ?? 100;
+
+  const { data: shopPets = [] } = useShopPets();
+  const buyPet = useBuyPet();
+  const { data: allCompanions = [] } = useAllCompanions();
+  const ownedPetTypes = useMemo(
+    () => new Set((allCompanions as any[]).map((c) => c.companion_type)),
+    [allCompanions],
+  );
+  const roleLabel = (role: string) =>
+    role === 'magic' ? t('app.shop.pet_role_magic')
+    : role === 'support' ? t('app.shop.pet_role_support')
+    : t('app.shop.pet_role_physical');
+  const handleBuyPet = (pet: any) => {
+    buyPet.mutate(pet.pet_type, {
+      onSuccess: () => toast.success(t('app.shop.toast_pet_bought', { name: pet.name })),
+      onError: (err: any) => toast.error(err?.message || t('app.shop.toast_pet_error')),
+    });
+  };
 
   const RARITY_COLORS: Record<string, string> = {
     comum: 'text-slate-400',
@@ -286,7 +305,7 @@ export default function ShopPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="tempo" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 bg-secondary/50 border border-border rounded-lg p-1">
+          <TabsList className="grid w-full max-w-xl grid-cols-3 bg-secondary/50 border border-border rounded-lg p-1">
             <TabsTrigger value="tempo" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <Clock className="w-4 h-4 mr-2" />
               {t('app.shop.tab_time_shop')}
@@ -294,6 +313,10 @@ export default function ShopPage() {
             <TabsTrigger value="equipamentos" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
               <Sword className="w-4 h-4 mr-2" />
               {t('app.shop.tab_equipment')}
+            </TabsTrigger>
+            <TabsTrigger value="pets" className="data-[state=active]:bg-fuchsia-500/20 data-[state=active]:text-fuchsia-400">
+              <span className="mr-2">🐾</span>
+              {t('app.shop.tab_pets')}
             </TabsTrigger>
           </TabsList>
 
@@ -553,6 +576,51 @@ export default function ShopPage() {
                 {t('app.shop.empty_equip')}
               </div>
             )}
+          </TabsContent>
+
+          {/* Pets (minis de boss) */}
+          <TabsContent value="pets" className="space-y-4 mt-6">
+            <div className="space-y-1">
+              <h2 className="text-lg font-display font-bold text-fuchsia-400">{t('app.shop.section_pets_title')}</h2>
+              <p className="text-sm text-muted-foreground italic">{t('app.shop.section_pets_desc')}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(shopPets as any[]).map((pet) => {
+                const owned = ownedPetTypes.has(pet.pet_type);
+                const canAfford = currentGold >= pet.price;
+                return (
+                  <div key={pet.pet_type} className="rounded-xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-500/10 to-card p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-4xl shrink-0">{pet.emoji}</span>
+                      <div className="min-w-0">
+                        <p className="font-display font-bold text-foreground text-sm">{pet.name}</p>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                          {roleLabel(pet.role)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 text-[10px]">
+                      <span className="bg-red-950/40 border border-red-500/30 rounded px-1.5 py-0.5 text-red-300">⚔️ {pet.atk}</span>
+                      <span className="bg-blue-950/40 border border-blue-500/30 rounded px-1.5 py-0.5 text-blue-300">🛡️ {pet.def}</span>
+                      <span className="bg-green-950/40 border border-green-500/30 rounded px-1.5 py-0.5 text-green-300">❤️ {pet.hp}</span>
+                      <span className="bg-purple-950/40 border border-purple-500/30 rounded px-1.5 py-0.5 text-purple-300">💧 {pet.mp}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1 text-sm font-bold text-yellow-400">
+                        <Coins className="w-4 h-4" /> {pet.price}
+                      </span>
+                      <button
+                        onClick={() => handleBuyPet(pet)}
+                        disabled={owned || !canAfford || buyPet.isPending}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-fuchsia-600 text-white hover:bg-fuchsia-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {owned ? t('app.shop.pet_owned') : !canAfford ? t('app.shop.button_no_gold') : t('app.shop.pet_buy')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

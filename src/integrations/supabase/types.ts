@@ -1692,6 +1692,45 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_catalog: {
+        Row: {
+          atk: number
+          def: number
+          emoji: string
+          hp: number
+          mp: number
+          name: string
+          pet_type: string
+          price: number
+          role: string
+          sort: number
+        }
+        Insert: {
+          atk: number
+          def: number
+          emoji: string
+          hp: number
+          mp: number
+          name: string
+          pet_type: string
+          price: number
+          role: string
+          sort?: number
+        }
+        Update: {
+          atk?: number
+          def?: number
+          emoji?: string
+          hp?: number
+          mp?: number
+          name?: string
+          pet_type?: string
+          price?: number
+          role?: string
+          sort?: number
+        }
+        Relationships: []
+      }
       plan_missions: {
         Row: {
           created_at: string
@@ -2677,6 +2716,7 @@ export type Database = {
         Returns: undefined
       }
       apply_xp_penalty: { Args: { p_amount: number }; Returns: undefined }
+      buy_pet: { Args: { p_pet_type: string }; Returns: Json }
       buy_shop_item: {
         Args: { p_item_id: string; p_today: string }
         Returns: Json

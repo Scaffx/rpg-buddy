@@ -384,7 +384,17 @@
       "button_buying": "Buying...",
       "button_no_gold": "Insufficient gold",
       "error_title": "Purchase error",
-      "error_desc": "Could not complete purchase."
+      "error_desc": "Could not complete purchase.",
+      "tab_pets": "Pets",
+      "section_pets_title": "Legendary Pets",
+      "section_pets_desc": "Boss miniatures — strong and rare. Combat companions for your battles.",
+      "pet_role_physical": "Physical",
+      "pet_role_magic": "Magic",
+      "pet_role_support": "Support",
+      "pet_owned": "Owned",
+      "pet_buy": "Buy",
+      "toast_pet_bought": "{{name}} is now your companion! 🐾",
+      "toast_pet_error": "Error buying the pet."
     },
     "calendar": {
       "page_title": "Calendar",

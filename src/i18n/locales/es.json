@@ -397,7 +397,17 @@
       "button_buying": "Comprando...",
       "button_no_gold": "Oro insuficiente",
       "error_title": "Error de compra",
-      "error_desc": "No se pudo completar la compra."
+      "error_desc": "No se pudo completar la compra.",
+      "tab_pets": "Mascotas",
+      "section_pets_title": "Mascotas Legendarias",
+      "section_pets_desc": "Miniaturas de jefes — fuertes y raras. Compañeros de combate para tus batallas.",
+      "pet_role_physical": "Físico",
+      "pet_role_magic": "Mágico",
+      "pet_role_support": "Soporte",
+      "pet_owned": "Adquirido",
+      "pet_buy": "Comprar",
+      "toast_pet_bought": "¡{{name}} ahora es tu compañero! 🐾",
+      "toast_pet_error": "Error al comprar la mascota."
     },
     "calendar": {
       "page_title": "Calendario",

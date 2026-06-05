@@ -384,7 +384,17 @@
       "button_buying": "Comprando...",
       "button_no_gold": "Ouro insuficiente",
       "error_title": "Erro na compra",
-      "error_desc": "Não foi possível concluir a compra."
+      "error_desc": "Não foi possível concluir a compra.",
+      "tab_pets": "Pets",
+      "section_pets_title": "Pets Lendários",
+      "section_pets_desc": "Miniaturas de bosses — fortes e raras. Companheiros de combate para suas batalhas.",
+      "pet_role_physical": "Físico",
+      "pet_role_magic": "Mágico",
+      "pet_role_support": "Suporte",
+      "pet_owned": "Adquirido",
+      "pet_buy": "Comprar",
+      "toast_pet_bought": "{{name}} agora é seu companheiro! 🐾",
+      "toast_pet_error": "Erro ao comprar o pet."
     },
     "calendar": {
       "page_title": "Calendário",
