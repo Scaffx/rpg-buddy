@@ -1121,7 +1121,10 @@
       "classChangeErrorToast": "Error al cambiar de clase",
       "notAuthenticated": "No autenticado",
       "alreadyInClass": "Ya estás en esta clase.",
-      "insufficientGold": "¡Oro insuficiente! Tienes {{gold}}, necesitas {{required}}."
+      "insufficientGold": "¡Oro insuficiente! Tienes {{gold}}, necesitas {{required}}.",
+      "changeAvatarTooltip": "Cambiar foto de perfil",
+      "avatarUpdatedToast": "¡Foto de perfil actualizada!",
+      "avatarErrorToast": "Error al subir la foto."
     },
     "portal": {
       "weekly_event": "Evento Semanal",

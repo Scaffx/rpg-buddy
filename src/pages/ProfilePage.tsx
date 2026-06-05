@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useUpdateRegion, useClasses, useSyncHealthMaxes } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useUpdateRegion, useClasses, useSyncHealthMaxes, useUpdateAvatar } from "@/hooks/useProfile";
 import {
   useUserAchievements,
   useAllAchievements,
@@ -23,7 +23,7 @@ import {
   Heart, Shield, Zap, Flame, Droplets, UtensilsCrossed,
   Settings, Plus, Minus, Save, Dumbbell, Brain, Eye,
   Swords, Sparkles, BookOpen, Users, Star, Palette,
-  ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull, Coins,
+  ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull, Coins, Loader2,
   Calendar, Upload, Trash2, ChevronLeft, ChevronRight, Pencil, Check, X as XIcon,
   Moon, Sun, UserPlus, UserCheck, UserX, Search, Trophy, Lock,
   AlertTriangle, Sword, Scroll, Clock, CheckCircle, XCircle, Award,
@@ -819,6 +819,18 @@ export default function ProfilePage() {
   const awardHealthXP = useAwardHealthXP();
   const updateDisplayName = useUpdateDisplayName();
   const updateRegion = useUpdateRegion();
+  const updateAvatar = useUpdateAvatar();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file) return;
+    updateAvatar.mutate(file, {
+      onSuccess: () => toast.success(t('app.profile.avatarUpdatedToast')),
+      onError: (err: any) => toast.error(err?.message || t('app.profile.avatarErrorToast')),
+    });
+  };
   const syncHealthMaxes = useSyncHealthMaxes();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -1322,15 +1334,37 @@ export default function ProfilePage() {
           <div className="relative p-5 flex items-start justify-between gap-4">
             {/* Avatar inicial + info */}
             <div className="flex items-center gap-4">
-              {/* Avatar circular com inicial */}
+              {/* Avatar circular (foto ou inicial) com upload */}
               <div className="relative shrink-0">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/30 to-accent/20 border border-primary/25 flex items-center justify-center">
-                  <span className="font-display font-bold text-2xl text-primary">
-                    {(profile?.display_name || user?.email || 'A').charAt(0).toUpperCase()}
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={updateAvatar.isPending}
+                  className="group h-16 w-16 rounded-2xl overflow-hidden bg-gradient-to-br from-primary/30 to-accent/20 border border-primary/25 flex items-center justify-center relative"
+                  title={t('app.profile.changeAvatarTooltip')}
+                >
+                  {(profile as any)?.avatar_url ? (
+                    <img src={(profile as any).avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="font-display font-bold text-2xl text-primary">
+                      {(profile?.display_name || user?.email || 'A').charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    {updateAvatar.isPending
+                      ? <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      : <Camera className="w-4 h-4 text-white" />}
                   </span>
-                </div>
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleAvatarPick}
+                />
                 {/* Badge de nível */}
-                <div className="absolute -bottom-1.5 -right-1.5 h-6 min-w-6 px-1.5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold border-2 border-background">
+                <div className="absolute -bottom-1.5 -right-1.5 h-6 min-w-6 px-1.5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold border-2 border-background pointer-events-none">
                   {profile?.level || 1}
                 </div>
               </div>

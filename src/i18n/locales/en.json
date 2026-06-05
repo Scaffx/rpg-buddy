@@ -1110,7 +1110,10 @@
       "notAuthenticated": "Not authenticated",
       "alreadyInClass": "You are already in this class.",
       "permanentClassDesc2": "Your starting class is permanent and cannot be changed after selection.",
-      "insufficientGold": "Insufficient gold! You have {{gold}}, need {{required}}."
+      "insufficientGold": "Insufficient gold! You have {{gold}}, need {{required}}.",
+      "changeAvatarTooltip": "Change profile photo",
+      "avatarUpdatedToast": "Profile photo updated!",
+      "avatarErrorToast": "Error uploading photo."
     },
     "portal": {
       "weekly_event": "Weekly Event",

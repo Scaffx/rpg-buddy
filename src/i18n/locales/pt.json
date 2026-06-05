@@ -1135,7 +1135,10 @@
       "classChangeErrorToast": "Falha ao fazer respec de classe",
       "notAuthenticated": "Não autenticado",
       "alreadyInClass": "Você já está nessa classe.",
-      "insufficientGold": "Ouro insuficiente! Você tem {{gold}}, precisa de {{required}}."
+      "insufficientGold": "Ouro insuficiente! Você tem {{gold}}, precisa de {{required}}.",
+      "changeAvatarTooltip": "Alterar foto de perfil",
+      "avatarUpdatedToast": "Foto de perfil atualizada!",
+      "avatarErrorToast": "Erro ao enviar a foto."
     },
     "portal": {
       "weekly_event": "Evento Semanal",

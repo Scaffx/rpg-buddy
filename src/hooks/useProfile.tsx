@@ -255,6 +255,36 @@ export function useAttributes() {
   });
 }
 
+/** Upload da foto de perfil (avatar) para o Storage + atualização do profiles.avatar_url. */
+export function useUpdateAvatar() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error('Não autenticado');
+      if (!file.type.startsWith('image/')) throw new Error('Selecione um arquivo de imagem.');
+      if (file.size > 2 * 1024 * 1024) throw new Error('Imagem muito grande (máximo 2MB).');
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${user.id}/avatar_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+      const url = pub.publicUrl;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: url } as any)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return url;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
 // Hooks de missões extraídos para reduzir o tamanho deste arquivo (#30).
 export { useMissions, useCompleteMission, useCreateMission } from './useMissionsHooks';
 
