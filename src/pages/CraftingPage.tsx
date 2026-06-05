@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Hammer, Package, Loader2, AlertTriangle } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useProfile, useClasses } from '@/hooks/useProfile';
@@ -20,6 +21,7 @@ const CLASS_ICONS: Record<string, string> = {
 
 export default function CraftingPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { data: profile } = useProfile();
   const { data: classes } = useClasses();
@@ -46,12 +48,12 @@ export default function CraftingPage() {
         recipeName: recipe.name,
       });
       toast({
-        title: `⚒️ ${recipe.name} fabricado!`,
-        description: 'Item adicionado ao inventário.',
+        title: t('app.crafting.toast_crafted_title', { name: recipe.name }),
+        description: t('app.crafting.toast_crafted_desc'),
       });
     } catch (err: any) {
       toast({
-        title: 'Falha ao fabricar',
+        title: t('app.crafting.toast_fail'),
         description: err?.message,
         variant: 'destructive',
       });
@@ -73,12 +75,12 @@ export default function CraftingPage() {
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-64 gap-4 text-center px-6">
           <AlertTriangle className="w-12 h-12 text-yellow-400 opacity-70" />
-          <h2 className="text-xl font-display font-bold text-foreground">Classe não compatível</h2>
+          <h2 className="text-xl font-display font-bold text-foreground">{t('app.crafting.incompatible_title')}</h2>
           <p className="text-sm text-muted-foreground max-w-xs">
-            Apenas Alquimistas, Mecânicos e suas evoluções podem fabricar itens. Evolua sua classe para acessar esta área.
+            {t('app.crafting.incompatible_desc')}
           </p>
           <Button variant="outline" onClick={() => navigate('/classes')}>
-            Ver Árvore de Classes
+            {t('app.crafting.view_class_tree')}
           </Button>
         </div>
       </AppLayout>
@@ -95,7 +97,7 @@ export default function CraftingPage() {
           <span className="text-3xl">{classIcon}</span>
           <div>
             <h1 className="text-2xl font-display font-bold text-primary text-glow">
-              Oficina de Craft
+              {t('app.crafting.title')}
             </h1>
             <p className="text-sm text-muted-foreground">{currentClass}</p>
           </div>
@@ -106,12 +108,12 @@ export default function CraftingPage() {
           <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2">
             <span className="text-lg">🧪</span>
             <span className="text-sm font-bold text-foreground">{materials ?? 0}</span>
-            <span className="text-xs text-muted-foreground">Materiais</span>
+            <span className="text-xs text-muted-foreground">{t('app.crafting.materials')}</span>
           </div>
           <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2">
             <span className="text-lg">🪙</span>
             <span className="text-sm font-bold text-foreground">{gold}</span>
-            <span className="text-xs text-muted-foreground">Ouro</span>
+            <span className="text-xs text-muted-foreground">{t('app.crafting.gold')}</span>
           </div>
         </div>
 
@@ -123,7 +125,7 @@ export default function CraftingPage() {
         ) : !recipes?.length ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3 text-muted-foreground">
             <Package className="w-10 h-10 opacity-30" />
-            <p className="text-sm">Nenhuma receita disponível para {currentClass}.</p>
+            <p className="text-sm">{t('app.crafting.no_recipes', { class: currentClass })}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -185,11 +187,11 @@ export default function CraftingPage() {
                   {/* Custo */}
                   <div className="flex items-center gap-3 text-xs">
                     <span className={`flex items-center gap-1 ${canAffordMats ? 'text-foreground' : 'text-red-400'}`}>
-                      🧪 {recipe.materials_cost} mat.
+                      🧪 {t('app.crafting.cost_mat', { count: recipe.materials_cost })}
                     </span>
                     {recipe.gold_cost > 0 && (
                       <span className={`flex items-center gap-1 ${canAffordGold ? 'text-foreground' : 'text-red-400'}`}>
-                        🪙 {recipe.gold_cost} ouro
+                        🪙 {t('app.crafting.cost_gold', { count: recipe.gold_cost })}
                       </span>
                     )}
                   </div>
@@ -205,7 +207,7 @@ export default function CraftingPage() {
                     ) : (
                       <Hammer className="w-3.5 h-3.5 mr-1.5" />
                     )}
-                    {canCraft ? 'Fabricar' : 'Recursos insuficientes'}
+                    {canCraft ? t('app.crafting.craft') : t('app.crafting.insufficient')}
                   </Button>
                 </div>
               );
@@ -214,7 +216,7 @@ export default function CraftingPage() {
         )}
 
         <p className="text-xs text-muted-foreground text-center pb-4">
-          🧪 Materiais são obtidos ao derrotar bosses. Continue explorando!
+          {t('app.crafting.footer')}
         </p>
       </div>
     </AppLayout>

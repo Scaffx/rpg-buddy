@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Trophy, Flame, Swords, Crown, Medal, Loader2, Globe, MapPin, Zap } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -70,8 +71,9 @@ function LeaderboardRow({
   scoreLabel: string;
   isCurrentUser: boolean;
 }) {
-  const name = entry.display_name ?? 'Aventureiro';
-  const displayClass = entry.current_class_name ?? entry.starter_class ?? 'Sem classe';
+  const { t } = useTranslation();
+  const name = entry.display_name ?? t('app.leaderboard.adventurer');
+  const displayClass = entry.current_class_name ?? entry.starter_class ?? t('app.leaderboard.no_class');
   const classIcon = (entry.starter_class && CLASS_ICONS[entry.starter_class]) ?? '🗡️';
 
   return (
@@ -98,12 +100,12 @@ function LeaderboardRow({
           {name}
           {isCurrentUser && (
             <Badge variant="outline" className="ml-2 text-[10px] px-1 py-0 border-primary/40 text-primary">
-              Você
+              {t('app.leaderboard.you')}
             </Badge>
           )}
         </p>
         <p className="text-[11px] text-muted-foreground">
-          Nv. {entry.level} · {displayClass}
+          {t('app.leaderboard.level_short', { level: entry.level })} · {displayClass}
         </p>
       </div>
 
@@ -125,22 +127,30 @@ function EmptyState({ text }: { text: string }) {
 }
 
 function LoadingState() {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-center py-14 text-muted-foreground gap-2">
       <Loader2 className="w-5 h-5 animate-spin" />
-      <span className="text-sm">Carregando ranking…</span>
+      <span className="text-sm">{t('app.leaderboard.loading')}</span>
     </div>
   );
 }
 
 export default function LeaderboardPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const [scope, setScope] = useState<'global' | 'regional'>('global');
   const [selectedClass, setSelectedClass] = useState<string>(CLASS_OPTIONS[0].value);
 
   const userRegion = (profile as any)?.region as string | null ?? null;
-  const regionLabel = userRegion ? (REGION_LABELS[userRegion] ?? userRegion) : null;
+  const regionLabel = userRegion
+    ? t(`app.leaderboard.region_${userRegion}`, { defaultValue: REGION_LABELS[userRegion] ?? userRegion })
+    : null;
+  const classLabel = (value: string) =>
+    t(`app.leaderboard.class_${value}`, {
+      defaultValue: CLASS_OPTIONS.find((o) => o.value === value)?.label ?? value,
+    });
 
   // Global data
   const { data: global = [],  isLoading: loadingGlobal  } = useGlobalLeaderboard();
@@ -184,8 +194,8 @@ export default function LeaderboardPage() {
         <div className="flex items-center gap-3">
           <Trophy className="w-7 h-7 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Ranking</h1>
-            <p className="text-sm text-muted-foreground">Compare seu poder com aventureiros do mundo</p>
+            <h1 className="text-2xl font-bold text-foreground">{t('app.leaderboard.title')}</h1>
+            <p className="text-sm text-muted-foreground">{t('app.leaderboard.subtitle')}</p>
           </div>
         </div>
 
@@ -198,11 +208,11 @@ export default function LeaderboardPage() {
           >
             <Crown className="w-8 h-8 text-primary shrink-0" />
             <div>
-              <p className="text-sm font-semibold">Sua posição global</p>
+              <p className="text-sm font-semibold">{t('app.leaderboard.my_global_position')}</p>
               <p className="text-2xl font-bold text-primary">#{myRankGlobal}</p>
             </div>
             <div className="ml-auto text-right">
-              <p className="text-xs text-muted-foreground">de {global.length} aventureiros</p>
+              <p className="text-xs text-muted-foreground">{t('app.leaderboard.of_adventurers', { count: global.length })}</p>
               <p className="text-sm font-semibold">
                 {global.find((e) => e.user_id === user?.id)?.total_xp?.toLocaleString('pt-BR') ?? '—'} XP
               </p>
@@ -220,7 +230,7 @@ export default function LeaderboardPage() {
                 : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Globe className="w-4 h-4" /> Global
+            <Globe className="w-4 h-4" /> {t('app.leaderboard.scope_global')}
           </button>
           <button
             onClick={() => setScope('regional')}
@@ -231,7 +241,7 @@ export default function LeaderboardPage() {
             }`}
           >
             <MapPin className="w-4 h-4" />
-            Regional
+            {t('app.leaderboard.scope_regional')}
             {regionLabel && scope === 'regional' && (
               <span className="text-xs font-normal opacity-75">({regionLabel})</span>
             )}
@@ -241,18 +251,18 @@ export default function LeaderboardPage() {
         {/* No-region warning */}
         {noRegion && (
           <div className="rpg-card bg-yellow-500/10 border-yellow-500/30">
-            <p className="text-sm text-yellow-400">⚠️ Você ainda não definiu sua região. Configure no seu perfil para ver o ranking regional.</p>
+            <p className="text-sm text-yellow-400">{t('app.leaderboard.no_region_warning')}</p>
           </div>
         )}
 
         {/* ── Inner tabs: Geral | Streak | Semanal | Campeões | Por Classe ── */}
         <Tabs defaultValue="geral">
           <TabsList className="w-full grid grid-cols-5">
-            <TabsTrigger value="geral"     className="gap-1.5"><Trophy className="w-4 h-4" />Geral</TabsTrigger>
-            <TabsTrigger value="streak"    className="gap-1.5"><Zap    className="w-4 h-4" />Streak</TabsTrigger>
-            <TabsTrigger value="semanal"   className="gap-1.5"><Flame  className="w-4 h-4" />Semanal</TabsTrigger>
-            <TabsTrigger value="campeoes"  className="gap-1.5"><Crown  className="w-4 h-4" />Campeões</TabsTrigger>
-            <TabsTrigger value="porclasse" className="gap-1.5"><Swords className="w-4 h-4" />Por Classe</TabsTrigger>
+            <TabsTrigger value="geral"     className="gap-1.5"><Trophy className="w-4 h-4" />{t('app.leaderboard.tab_general')}</TabsTrigger>
+            <TabsTrigger value="streak"    className="gap-1.5"><Zap    className="w-4 h-4" />{t('app.leaderboard.tab_streak')}</TabsTrigger>
+            <TabsTrigger value="semanal"   className="gap-1.5"><Flame  className="w-4 h-4" />{t('app.leaderboard.tab_weekly')}</TabsTrigger>
+            <TabsTrigger value="campeoes"  className="gap-1.5"><Crown  className="w-4 h-4" />{t('app.leaderboard.tab_champions')}</TabsTrigger>
+            <TabsTrigger value="porclasse" className="gap-1.5"><Swords className="w-4 h-4" />{t('app.leaderboard.tab_by_class')}</TabsTrigger>
           </TabsList>
 
           {/* ── Geral ── */}
@@ -260,7 +270,7 @@ export default function LeaderboardPage() {
             {noRegion ? null : loadingG ? (
               <LoadingState />
             ) : activeGlobal.length === 0 ? (
-              <EmptyState text="Nenhum aventureiro encontrado." />
+              <EmptyState text={t('app.leaderboard.empty_general')} />
             ) : (
               activeGlobal.map((entry, i) => (
                 <LeaderboardRow
@@ -268,7 +278,7 @@ export default function LeaderboardPage() {
                   rank={i + 1}
                   entry={entry}
                   score={entry.total_xp}
-                  scoreLabel="XP total"
+                  scoreLabel={t('app.leaderboard.score_xp_total')}
                   isCurrentUser={entry.user_id === user?.id}
                 />
               ))
@@ -278,12 +288,12 @@ export default function LeaderboardPage() {
           {/* ── Streak ── */}
           <TabsContent value="streak" className="mt-4 space-y-2">
             <p className="text-xs text-muted-foreground mb-3 px-1">
-              Quem está mantendo a maior sequência de dias consecutivos
+              {t('app.leaderboard.streak_desc')}
             </p>
             {noRegion ? null : loadingS ? (
               <LoadingState />
             ) : activeStreak.length === 0 ? (
-              <EmptyState text="Nenhuma streak ativa registrada ainda." />
+              <EmptyState text={t('app.leaderboard.empty_streak')} />
             ) : (
               (activeStreak as StreakLeaderboardEntry[]).map((entry, i) => (
                 <LeaderboardRow
@@ -291,7 +301,7 @@ export default function LeaderboardPage() {
                   rank={i + 1}
                   entry={entry}
                   score={`${entry.current_streak} 🔥`}
-                  scoreLabel={entry.current_streak === 1 ? 'dia' : 'dias'}
+                  scoreLabel={entry.current_streak === 1 ? t('app.leaderboard.streak_day') : t('app.leaderboard.streak_days')}
                   isCurrentUser={entry.user_id === user?.id}
                 />
               ))
@@ -301,12 +311,12 @@ export default function LeaderboardPage() {
           {/* ── Campeões por classe (1 por classe) ── */}
           <TabsContent value="campeoes" className="mt-4 space-y-2">
             <p className="text-xs text-muted-foreground mb-3 px-1">
-              O #1 jogador de cada classe — overview rápido sem precisar selecionar
+              {t('app.leaderboard.champions_desc')}
             </p>
             {noRegion ? null : loadingCh ? (
               <LoadingState />
             ) : activeChamps.length === 0 ? (
-              <EmptyState text="Nenhum campeão de classe encontrado." />
+              <EmptyState text={t('app.leaderboard.empty_champions')} />
             ) : (
               activeChamps.map((entry, i) => (
                 <LeaderboardRow
@@ -314,7 +324,7 @@ export default function LeaderboardPage() {
                   rank={i + 1}
                   entry={entry}
                   score={entry.total_xp}
-                  scoreLabel="XP total"
+                  scoreLabel={t('app.leaderboard.score_xp_total')}
                   isCurrentUser={entry.user_id === user?.id}
                 />
               ))
@@ -324,20 +334,20 @@ export default function LeaderboardPage() {
           {/* ── Semanal ── */}
           <TabsContent value="semanal" className="mt-4 space-y-2">
             <p className="text-xs text-muted-foreground mb-3 px-1">
-              Missões concluídas nos últimos 7 dias
+              {t('app.leaderboard.weekly_desc')}
             </p>
             {noRegion ? null : loadingW ? (
               <LoadingState />
             ) : activeWeekly.length === 0 ? (
-              <EmptyState text="Nenhuma atividade semanal registrada ainda." />
+              <EmptyState text={t('app.leaderboard.empty_weekly')} />
             ) : (
               (activeWeekly as WeeklyLeaderboardEntry[]).map((entry, i) => (
                 <LeaderboardRow
                   key={entry.user_id}
                   rank={i + 1}
                   entry={entry}
-                  score={`${entry.weekly_count} missões`}
-                  scoreLabel="esta semana"
+                  score={t('app.leaderboard.weekly_count', { count: entry.weekly_count })}
+                  scoreLabel={t('app.leaderboard.weekly_label')}
                   isCurrentUser={entry.user_id === user?.id}
                 />
               ))
@@ -348,12 +358,12 @@ export default function LeaderboardPage() {
           <TabsContent value="porclasse" className="mt-4 space-y-3">
             <Select value={selectedClass} onValueChange={setSelectedClass}>
               <SelectTrigger className="w-full sm:w-52">
-                <SelectValue placeholder="Escolha uma classe" />
+                <SelectValue placeholder={t('app.leaderboard.choose_class')} />
               </SelectTrigger>
               <SelectContent>
                 {CLASS_OPTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
-                    {opt.icon} {opt.label}
+                    {opt.icon} {classLabel(opt.value)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -363,7 +373,7 @@ export default function LeaderboardPage() {
               {noRegion ? null : loadingC ? (
                 <LoadingState />
               ) : activeClass.length === 0 ? (
-                <EmptyState text={`Nenhum aventureiro de ${CLASS_OPTIONS.find(o => o.value === selectedClass)?.label ?? selectedClass} encontrado${scope === 'regional' ? ' nesta região' : ''}.`} />
+                <EmptyState text={t(scope === 'regional' ? 'app.leaderboard.empty_class_regional' : 'app.leaderboard.empty_class', { class: classLabel(selectedClass) })} />
               ) : (
                 activeClass.map((entry, i) => (
                   <LeaderboardRow
@@ -371,7 +381,7 @@ export default function LeaderboardPage() {
                     rank={i + 1}
                     entry={entry}
                     score={entry.total_xp}
-                    scoreLabel="XP total"
+                    scoreLabel={t('app.leaderboard.score_xp_total')}
                     isCurrentUser={entry.user_id === user?.id}
                   />
                 ))
