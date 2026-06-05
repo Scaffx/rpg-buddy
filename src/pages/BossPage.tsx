@@ -10,28 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown, Eye, EyeOff, AlertTriangle, Copy, Swords, UserPlus, LogIn } from 'lucide-react';
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
-const BOSS_TOUR_STEPS: TourStep[] = [
-  {
-    target: 'boss-header',
-    title: 'Boss Arena 💀',
-    description: 'Aqui você enfrenta Bosses poderosos em batalha por turnos. Vencer bosses dá XP, ouro e itens raros. Quanto mais forte seu herói, mais dano você causa!',
-  },
-  {
-    target: 'boss-tabs',
-    title: 'Modos de Combate ⚔️',
-    description: 'Solo: enfrente bosses individualmente. Coletiva (Dungeon): entre em masmorras com outros jogadores. Ranking: veja quem são os heróis mais poderosos do servidor.',
-  },
-  {
-    target: 'boss-keys',
-    title: 'Chaves de Boss 🔑',
-    description: 'Para desafiar um boss você precisa de Chaves. Ganhe chaves completando missões diárias. O número de chaves é exibido aqui — nunca deixe acumular sem usar!',
-  },
-  {
-    target: 'boss-list',
-    title: 'Lista de Bosses 🐉',
-    description: 'Cada boss tem elemento, HP e nível mínimo recomendado. Bosses de fogo são fracos à água, etc. Estude os elementos antes de entrar na arena!',
-  },
-];
 import { useToast } from '@/hooks/use-toast';
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
@@ -164,8 +142,8 @@ export default function BossPage() {
           supabase.from('user_health_stats' as never).update({ fatigue: 100 } as never).eq('user_id' as never, user.id as never),
         ]);
         toast({
-          title: '💀 Derrota Severa',
-          description: `Você perdeu 1 nível! Agora está no nível ${newLevel}. Fadiga máxima pelo resto do dia.`,
+          title: t('app.boss.toast_severe_defeat_title'),
+          description: t('app.boss.toast_severe_defeat_desc', { level: newLevel }),
           variant: 'destructive',
         });
       } catch {
@@ -236,19 +214,19 @@ export default function BossPage() {
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
 
       toast({
-        title: '💀 O Guerreiro Imortal foi derrotado!',
-        description: '🗿 A Cabeça de Basilisco o petrificou. Ele se transformou em pedra e desmoronou!',
+        title: t('app.boss.toast_immortal_defeated_title'),
+        description: t('app.boss.toast_immortal_defeated_desc'),
       });
       setTimeout(() => {
         toast({
-          title: '📜 Fragmento obtido!',
-          description: '"Fragmento I — A Arma Proibida" adicionado ao inventário.',
+          title: t('app.boss.toast_fragment_title'),
+          description: t('app.boss.toast_fragment_desc'),
         });
       }, 2200);
 
       setActiveCombat(null);
     } catch (err: any) {
-      toast({ title: 'Erro ao aplicar derrota verdadeira', description: err?.message, variant: 'destructive' });
+      toast({ title: t('app.boss.toast_true_defeat_error'), description: err?.message, variant: 'destructive' });
     }
   };
 
@@ -273,8 +251,8 @@ export default function BossPage() {
       queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
       const nextLevel = 10 + (currentCount + 1) * 10;
       toast({
-        title: '🔥 A fênix escapou!',
-        description: `Ela ressurgirá mais poderosa. Próxima forma: Lv${nextLevel}. Busque o Tridente de Poseidon ou a Chama de Ifrit para detê-la.`,
+        title: t('app.boss.toast_phoenix_escaped_title'),
+        description: t('app.boss.toast_phoenix_escaped_desc', { level: nextLevel }),
         duration: 6000,
       });
     } catch {
@@ -287,56 +265,66 @@ export default function BossPage() {
   const dungeons = useMemo(() => [
     {
       id: '1',
-      name: 'Covil dos Orcs Selvagens',
-      difficulty: 'Médio',
+      name: t('app.boss.dungeon_1_name'),
+      difficulty: t('app.boss.diff_medium'),
+      difficultyKey: 'medium',
       icon: '🧌',
       minLevel: 3,
       requiredPlayers: 4,
       boss: { name: 'Shagor + Zoth', hp: 300 + 160, icon: '🧌👺' },
       xpReward: 240,
-      description: 'Uma caverna úmida infestada de orcs, goblins e aranhas gigantes. O chefe duplo Shagor e Zoth aguardam no covil.',
-      uniqueItem: 'Dente de Orc',
-      specialCoin: 'Moeda Orc',
-      titleReward: 'Caçador de Orcs',
+      description: t('app.boss.dungeon_1_desc'),
+      uniqueItem: t('app.boss.dungeon_1_unique_item'),
+      specialCoin: t('app.boss.dungeon_1_special_coin'),
+      titleReward: t('app.boss.dungeon_1_title_reward'),
       theme: 'orc',
-      atmosphere: 'O cheiro de suor e carne podre impregna o ar...',
-      minions: ['Goblin Sentinela', 'Aranha das Cavernas', 'Slime Fétido', 'Orc Selvagem', 'Zumbi Orc'],
+      atmosphere: t('app.boss.dungeon_1_atmosphere'),
+      minions: t('app.boss.dungeon_1_minions', { returnObjects: true }) as string[],
     },
     {
       id: '2',
-      name: 'Templo das Areias Perdidas',
-      difficulty: 'Difícil',
+      name: t('app.boss.dungeon_2_name'),
+      difficulty: t('app.boss.diff_hard'),
+      difficultyKey: 'hard',
       icon: '🏺',
       minLevel: 8,
       requiredPlayers: 4,
       boss: { name: 'Esfinge Guardiã + Djinn', hp: 420 + 230, icon: '🦁🌪️' },
       xpReward: 390,
-      description: 'Ruínas de um império antigo no deserto. Múmias, escorpiões e golens de areia guardam o segredo do boss duplo Esfinge + Djinn.',
-      uniqueItem: 'Fragmento de Hieróglifo',
-      specialCoin: 'Moeda do Deserto',
-      titleReward: 'Saqueador de Templos',
+      description: t('app.boss.dungeon_2_desc'),
+      uniqueItem: t('app.boss.dungeon_2_unique_item'),
+      specialCoin: t('app.boss.dungeon_2_special_coin'),
+      titleReward: t('app.boss.dungeon_2_title_reward'),
       theme: 'desert',
-      atmosphere: 'As areias cantam enquanto ruínas milenares te envolvem...',
-      minions: ['Escorpião do Deserto', 'Múmia Enfaixada', 'Golem de Areia', 'Zumbi do Templo', 'Serpente de Areia'],
+      atmosphere: t('app.boss.dungeon_2_atmosphere'),
+      minions: t('app.boss.dungeon_2_minions', { returnObjects: true }) as string[],
     },
     {
       id: '3',
-      name: 'Abismo das Sombras',
-      difficulty: 'Lendário',
+      name: t('app.boss.dungeon_3_name'),
+      difficulty: t('app.boss.diff_legendary'),
+      difficultyKey: 'legendary',
       icon: '🌑',
       minLevel: 15,
       requiredPlayers: 4,
       boss: { name: 'Cavaleiro do Vazio + Wyvern', hp: 520 + 310, icon: '🗡️⚡' },
       xpReward: 580,
-      description: 'O vazio entre os mundos. Sombras, zumbis das trevas e wyverns juvenis guardam o Cavaleiro do Vazio montado no Wyvern Relâmpago.',
-      uniqueItem: 'Fragmento do Vazio',
-      specialCoin: 'Essência Sombria',
-      titleReward: 'Caçador de Sombras',
+      description: t('app.boss.dungeon_3_desc'),
+      uniqueItem: t('app.boss.dungeon_3_unique_item'),
+      specialCoin: t('app.boss.dungeon_3_special_coin'),
+      titleReward: t('app.boss.dungeon_3_title_reward'),
       theme: 'shadow',
-      atmosphere: 'A escuridão é viva. Raios silenciosos rasgam o vazio...',
-      minions: ['Sombra Rastejante', 'Espectro Sombrio', 'Zumbi das Trevas', 'Wyvern Juvenil', 'Criatura do Vazio'],
+      atmosphere: t('app.boss.dungeon_3_atmosphere'),
+      minions: t('app.boss.dungeon_3_minions', { returnObjects: true }) as string[],
     },
-  ], []);
+  ], [t]);
+
+  const bossTourSteps: TourStep[] = [
+    { target: 'boss-header', title: t('app.boss.tour_1_title'), description: t('app.boss.tour_1_desc') },
+    { target: 'boss-tabs',   title: t('app.boss.tour_2_title'), description: t('app.boss.tour_2_desc') },
+    { target: 'boss-keys',   title: t('app.boss.tour_3_title'), description: t('app.boss.tour_3_desc') },
+    { target: 'boss-list',   title: t('app.boss.tour_4_title'), description: t('app.boss.tour_4_desc') },
+  ];
 
   // Set of boss IDs already defeated (via boss_battles)
   const defeatedBossIds = new Set(
@@ -459,7 +447,7 @@ export default function BossPage() {
       setSessionFlow('lobby');
       subscribeLobby(row.session_id);
     } catch (err: any) {
-      toast({ title: 'Erro ao criar sessão', description: err?.message, variant: 'destructive' });
+      toast({ title: t('app.boss.error_create_session'), description: err?.message, variant: 'destructive' });
     } finally {
       setSessionLoading(false);
     }
@@ -503,9 +491,9 @@ export default function BossPage() {
       }
       setSessionFlow('lobby');
       subscribeLobby(row.session_id);
-      toast({ title: `✅ Entrou na sessão do ${row.host_name}!` });
+      toast({ title: t('app.boss.toast_joined_session', { host: row.host_name }) });
     } catch (err: any) {
-      toast({ title: 'Erro ao entrar na sessão', description: err?.message, variant: 'destructive' });
+      toast({ title: t('app.boss.error_join_session'), description: err?.message, variant: 'destructive' });
     } finally {
       setSessionLoading(false);
     }
@@ -531,7 +519,7 @@ export default function BossPage() {
         isHost:         true,
       });
     } catch (err: any) {
-      toast({ title: 'Erro ao iniciar sessão', description: err?.message, variant: 'destructive' });
+      toast({ title: t('app.boss.error_start_session'), description: err?.message, variant: 'destructive' });
     } finally {
       setSessionLoading(false);
     }
@@ -545,9 +533,10 @@ export default function BossPage() {
 
   const handleDungeonVictory = ({ xpGained, goldGained, loot, rescued }: { xpGained: number; goldGained: number; loot: any[]; rescued: number }) => {
     setActiveDungeon(null);
+    const rescuedPart = rescued > 0 ? t('app.boss.toast_rescued', { count: rescued }) : '';
     toast({
-      title: '🏆 Dungeon Conquistada!',
-      description: `+${xpGained} XP | +${goldGained} 🪙 | ${rescued > 0 ? `${rescued} NPC(s) resgatados | ` : ''}${loot.length} tipos de materiais coletados`,
+      title: t('app.boss.toast_dungeon_victory_title'),
+      description: t('app.boss.toast_dungeon_victory_desc', { xp: xpGained, gold: goldGained, rescued: rescuedPart, loot: loot.length }),
     });
     queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
@@ -556,7 +545,7 @@ export default function BossPage() {
 
   const handleDungeonDefeat = () => {
     setActiveDungeon(null);
-    toast({ title: '💀 Derrota na Dungeon', description: 'Você foi derrotado. Prepare-se melhor e tente novamente.', variant: 'destructive' });
+    toast({ title: t('app.boss.toast_dungeon_defeat_title'), description: t('app.boss.toast_dungeon_defeat_desc'), variant: 'destructive' });
   };
 
   const handleFightButtonClick = (boss: any) => {
@@ -610,7 +599,7 @@ export default function BossPage() {
       const isSoftWarning = /fadiga|short rest|descanse|cooldown|aguarde|sem chaves|sem energia/i.test(msg);
       if (isSoftWarning) {
         toast({
-          title: '⚠️ Aviso do herói',
+          title: t('app.boss.toast_hero_warning'),
           description: msg,
           // sem variant destructive — usa o estilo padrão (amarelado/info)
         });
@@ -695,7 +684,7 @@ export default function BossPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  💡 Complete missões da rotina para ganhar 🔑 Chaves de Boss. Cada boss custa chaves para ser enfrentado!
+                  {t('app.boss.keys_hint')}
                 </p>
                 <HeroStatusBar />
               </div>
@@ -810,7 +799,7 @@ export default function BossPage() {
                     {/* Stats row */}
                     <div className="flex gap-3 text-xs flex-wrap justify-center">
                       <span className="text-health font-bold">❤️ {boss.hp} HP</span>
-                      <span className="text-primary font-bold">⭐ Nv.{boss.level}</span>
+                      <span className="text-primary font-bold">⭐ {t('app.boss.level_abbr', { level: boss.level })}</span>
                       <span className="text-xp font-bold">🏆 {boss.xp_reward} XP</span>
                       <span className="font-bold text-accent">🪙 {boss.gold_reward || 10}</span>
                       <span className="font-bold text-primary">🔑 {boss.keys_cost || 1}</span>
@@ -927,22 +916,22 @@ export default function BossPage() {
             {profile && (
               <div className="rpg-card bg-purple-500/10 border-purple-500/30">
                 <p className="text-sm text-muted-foreground">
-                  Nível: <span className="text-purple-400 font-bold">{profile.level}</span> &nbsp;•&nbsp; ATK: <span className="text-purple-400 font-bold">{playerStats?.atk ?? '—'}</span>
+                  {t('app.boss.level_label')}: <span className="text-purple-400 font-bold">{profile.level}</span> &nbsp;•&nbsp; ATK: <span className="text-purple-400 font-bold">{playerStats?.atk ?? '—'}</span>
                 </p>
-                <p className="text-xs text-purple-300 mt-1">⚔️ Dungeons são desafios co-op (2–4 jogadores). Com mais aliados o boss fica mais forte, mas a vitória é mais fácil!</p>
+                <p className="text-xs text-purple-300 mt-1">{t('app.boss.coop_explainer')}</p>
               </div>
             )}
 
             {/* Entrar por código */}
             <div className="rpg-card border-emerald-500/30 space-y-3">
               <p className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
-                <LogIn className="w-4 h-4" /> Entrar em uma sessão
+                <LogIn className="w-4 h-4" /> {t('app.boss.join_session')}
               </p>
               <div className="flex gap-2">
                 <Input
                   value={joinCodeInput}
                   onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
-                  placeholder="Código (ex: AB3X9Z)"
+                  placeholder={t('app.boss.code_placeholder')}
                   maxLength={6}
                   className="font-mono tracking-widest text-center uppercase"
                 />
@@ -951,7 +940,7 @@ export default function BossPage() {
                   disabled={sessionLoading || joinCodeInput.length < 4}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
                 >
-                  {sessionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Entrar'}
+                  {sessionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('app.boss.join_button')}
                 </Button>
               </div>
             </div>
@@ -960,10 +949,10 @@ export default function BossPage() {
               {dungeons.map((dungeon, i) => {
                 const canJoin = profile && profile.level >= dungeon.minLevel;
                 const diffColor =
-                  dungeon.difficulty === 'Médio'   ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                  dungeon.difficulty === 'Difícil'  ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                  dungeon.difficulty === 'Lendário' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                                      'bg-success/20 text-success border-success/30';
+                  dungeon.difficultyKey === 'medium'    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                  dungeon.difficultyKey === 'hard'      ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                  dungeon.difficultyKey === 'legendary' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                                          'bg-success/20 text-success border-success/30';
 
                 return (
                   <motion.div
@@ -983,20 +972,20 @@ export default function BossPage() {
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${diffColor}`}>
                             {dungeon.difficulty}
                           </span>
-                          <span className="text-xs text-muted-foreground">⭐ Nível mín: {dungeon.minLevel}</span>
-                          <span className="text-xs text-muted-foreground">👥 2–4 jogadores</span>
+                          <span className="text-xs text-muted-foreground">⭐ {t('app.boss.min_level', { level: dungeon.minLevel })}</span>
+                          <span className="text-xs text-muted-foreground">👥 {t('app.boss.players_range')}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="rpg-card bg-secondary/50 space-y-0.5">
-                        <p className="text-muted-foreground font-semibold">Boss Final</p>
+                        <p className="text-muted-foreground font-semibold">{t('app.boss.final_boss')}</p>
                         <p className="font-bold text-foreground">{dungeon.boss.icon} {dungeon.boss.name}</p>
-                        <p className="text-muted-foreground">❤️ {dungeon.boss.hp} HP total</p>
+                        <p className="text-muted-foreground">❤️ {t('app.boss.total_hp', { hp: dungeon.boss.hp })}</p>
                       </div>
                       <div className="rpg-card bg-secondary/50 space-y-0.5">
-                        <p className="text-muted-foreground font-semibold">Recompensas</p>
+                        <p className="text-muted-foreground font-semibold">{t('app.boss.rewards')}</p>
                         <p className="font-bold text-xp">✨ {dungeon.xpReward} XP</p>
                         <p className="text-muted-foreground">🪙 {dungeon.specialCoin}</p>
                         <p className="text-muted-foreground">🎁 {dungeon.uniqueItem}</p>
@@ -1010,14 +999,14 @@ export default function BossPage() {
                         disabled={!canJoin}
                         className={`flex-1 font-semibold ${!canJoin ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
                       >
-                        {!canJoin ? `🔒 Nível ${dungeon.minLevel} req` : <><UserPlus className="w-4 h-4 mr-2" />Criar Sessão Co-op</>}
+                        {!canJoin ? `🔒 ${t('app.boss.level_required', { level: dungeon.minLevel })}` : <><UserPlus className="w-4 h-4 mr-2" />{t('app.boss.create_coop_session')}</>}
                       </Button>
                       <Button
                         onClick={() => handleSoloOpen({ id: dungeon.id, name: dungeon.name })}
                         disabled={!canJoin}
                         variant="outline"
                         className={`shrink-0 ${!canJoin ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title="Entrar solo (muito mais difícil)"
+                        title={t('app.boss.solo_tooltip')}
                       >
                         <Swords className="w-4 h-4" />
                       </Button>
@@ -1035,7 +1024,7 @@ export default function BossPage() {
           <DialogContent className="max-w-xs">
             <DialogHeader>
               <DialogTitle>🗡️ {sessionDungeon?.name}</DialogTitle>
-              <DialogDescription>Como deseja jogar?</DialogDescription>
+              <DialogDescription>{t('app.boss.how_to_play')}</DialogDescription>
             </DialogHeader>
             <div className="space-y-3 mt-2">
               <Button
@@ -1044,10 +1033,10 @@ export default function BossPage() {
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white"
               >
                 {sessionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                Criar sessão e convidar amigos
+                {t('app.boss.create_session_invite')}
               </Button>
               <Button variant="outline" onClick={() => setSessionFlow('idle')} className="w-full">
-                Cancelar
+                {t('app.boss.cancel')}
               </Button>
             </div>
           </DialogContent>
@@ -1057,11 +1046,11 @@ export default function BossPage() {
         <Dialog open={sessionFlow === 'lobby'} onOpenChange={open => !open && closeDungeonSession()}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle>🏰 Lobby — {sessionDungeon?.name}</DialogTitle>
+              <DialogTitle>🏰 {t('app.boss.lobby')} — {sessionDungeon?.name}</DialogTitle>
               <DialogDescription>
                 {sessionPlayers.find(p => p.userId === user?.id)?.isHost
-                  ? 'Você é o host. Compartilhe o código e inicie quando estiver pronto (mín. 2 jogadores).'
-                  : 'Aguardando o host iniciar a dungeon...'}
+                  ? t('app.boss.lobby_host_desc')
+                  : t('app.boss.lobby_guest_desc')}
               </DialogDescription>
             </DialogHeader>
 
@@ -1070,7 +1059,7 @@ export default function BossPage() {
                 {/* Invite code */}
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
                   <div className="flex-1">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Código de convite</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{t('app.boss.invite_code')}</p>
                     <p className="font-mono font-bold text-2xl tracking-[0.25em] text-purple-300">{sessionData.inviteCode}</p>
                   </div>
                   <Button
@@ -1078,7 +1067,7 @@ export default function BossPage() {
                     size="icon"
                     onClick={() => {
                       navigator.clipboard?.writeText(sessionData.inviteCode);
-                      toast({ title: 'Código copiado!' });
+                      toast({ title: t('app.boss.code_copied') });
                     }}
                   >
                     <Copy className="w-4 h-4" />
@@ -1088,20 +1077,20 @@ export default function BossPage() {
                 {/* Players */}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Jogadores ({sessionPlayers.length}/4)
+                    {t('app.boss.players_count', { count: sessionPlayers.length })}
                   </p>
                   {sessionPlayers.map(p => (
                     <div key={p.userId} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50">
                       <span className="text-lg">{p.isHost ? '👑' : '⚔️'}</span>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-foreground">{p.displayName}{p.isHost ? ' (Host)' : ''}</p>
+                        <p className="text-sm font-semibold text-foreground">{p.displayName}{p.isHost ? ` (${t('app.boss.host')})` : ''}</p>
                         <p className="text-xs text-muted-foreground">Lv.{p.level} · ATK {p.atk} · ❤️ {p.hp}</p>
                       </div>
                       <div className={`w-2 h-2 rounded-full ${p.isAlive ? 'bg-emerald-400' : 'bg-red-500'}`} />
                     </div>
                   ))}
                   {sessionPlayers.length < 2 && (
-                    <p className="text-xs text-yellow-400 text-center py-1">Aguardando pelo menos 2 jogadores para iniciar...</p>
+                    <p className="text-xs text-yellow-400 text-center py-1">{t('app.boss.waiting_min_players')}</p>
                   )}
                 </div>
 
@@ -1120,10 +1109,10 @@ export default function BossPage() {
                     <div className={`text-xs rounded-lg p-2.5 flex items-start gap-2 ${gap > 15 ? 'bg-red-500/10 border border-red-500/30 text-red-300' : 'bg-amber-500/10 border border-amber-500/30 text-amber-300'}`}>
                       <span className="text-base shrink-0">{gap > 15 ? '🚨' : '⚠️'}</span>
                       <span>
-                        <strong>Gap de {gap} níveis.</strong> Dungeon escala pelo nível efetivo <strong>{effLv}</strong>.
+                        <strong>{t('app.boss.gap_levels', { gap })}</strong> {t('app.boss.gap_scales', { effLv })}
                         {gap > 15
-                          ? ' ATK dos jogadores de alto nível será reduzido (sidekick scaling).'
-                          : ' Combate balanceado automaticamente.'}
+                          ? ` ${t('app.boss.gap_high')}`
+                          : ` ${t('app.boss.gap_balanced')}`}
                       </span>
                     </div>
                   );
@@ -1136,7 +1125,7 @@ export default function BossPage() {
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-bold"
                   >
                     {sessionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '⚔️ '}
-                    Iniciar Dungeon ({sessionPlayers.length} jogadores)
+                    {t('app.boss.start_dungeon', { count: sessionPlayers.length })}
                   </Button>
                 )}
               </div>
@@ -1158,7 +1147,7 @@ export default function BossPage() {
                     : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Globe className="w-4 h-4" /> Mundial
+                <Globe className="w-4 h-4" /> {t('app.boss.world')}
               </button>
               <button
                 onClick={() => setRankingView('regional')}
@@ -1168,15 +1157,15 @@ export default function BossPage() {
                     : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
                 }`}
               >
-                🌎 Minha Região
+                🌎 {t('app.boss.my_region')}
                 {profile?.region && rankingView === 'regional' && (
-                  <span className="text-xs font-normal opacity-75">({REGION_LABELS[profile.region] ?? profile.region})</span>
+                  <span className="text-xs font-normal opacity-75">({t(`app.leaderboard.region_${profile.region}`, { defaultValue: REGION_LABELS[profile.region] ?? profile.region })})</span>
                 )}
               </button>
             </div>
             {rankingView === 'regional' && !profile?.region && (
               <div className="rpg-card bg-yellow-500/10 border-yellow-500/30">
-                <p className="text-sm text-yellow-400">⚠️ Você ainda não definiu sua região. Configure no seu perfil para ver o ranking regional.</p>
+                <p className="text-sm text-yellow-400">{t('app.leaderboard.no_region_warning')}</p>
               </div>
             )}
 
@@ -1187,7 +1176,7 @@ export default function BossPage() {
                 <p className="text-sm font-bold text-foreground">{t('app.boss.power_level_title')}</p>
               </div>
               <div className="bg-muted/60 rounded-lg p-3 border border-border/40 font-mono text-center">
-                <p className="text-sm text-primary font-bold">Poder = (Nível × 100) + (XP Total ÷ 10)</p>
+                <p className="text-sm text-primary font-bold">{t('app.boss.power_formula')}</p>
               </div>
               <p className="text-[11px] text-muted-foreground mt-2">
                 {t('app.boss.power_level_desc')}
@@ -1202,8 +1191,8 @@ export default function BossPage() {
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-foreground">{t('app.boss.your_position')}</p>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      <span className="text-xs text-muted-foreground">Nível {profile.level}</span>
-                      <span className="text-xs font-bold text-primary">⚡ Poder: {getPowerLevel(profile.level, profile.total_xp)}</span>
+                      <span className="text-xs text-muted-foreground">{t('app.boss.level_n', { level: profile.level })}</span>
+                      <span className="text-xs font-bold text-primary">⚡ {t('app.boss.power')}: {getPowerLevel(profile.level, profile.total_xp)}</span>
                       {(() => {
                         const pos = rankings.findIndex((r: any) => r.user_id === profile.user_id);
                         return pos >= 0 ? <span className="text-xs text-yellow-400 font-semibold">🏅 #{pos + 1}</span> : null;
@@ -1244,16 +1233,16 @@ export default function BossPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`font-semibold truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
-                          {player.display_name && player.display_name.trim() !== '' ? player.display_name : 'Aventureiro'}
+                          {player.display_name && player.display_name.trim() !== '' ? player.display_name : t('app.boss.adventurer')}
                           {isCurrentUser && <span className="text-xs text-primary ml-2">({t('app.boss.you')})</span>}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Nível {player.level} • {player.total_xp} XP • ⚡ Poder: {power}
+                          {t('app.boss.ranking_line', { level: player.level, xp: player.total_xp, power })}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-lg font-bold text-primary">{power}</p>
-                        <p className="text-[10px] text-muted-foreground">⚡ Poder</p>
+                        <p className="text-[10px] text-muted-foreground">⚡ {t('app.boss.power')}</p>
                       </div>
                     </motion.div>
                   );
@@ -1274,31 +1263,22 @@ export default function BossPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
-              💀 Um Último Segredo…
+              {t('app.boss.skeleton_title')}
             </DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
-                <p>
-                  Enquanto o Esqueletão Campeão desmorona, algo se mexe entre os ossos espalhados
-                  no chão…
-                </p>
-                <p>
-                  Um <span className="text-violet-400 font-semibold">filhote de esqueleto</span> —
-                  pequeno, confuso, olhos-de-fogo piscando — emerge da névoa.
-                  Era o filho do campeão. Agora está sozinho.
-                </p>
-                <p>
-                  Ele olha para você. Não com raiva. Com curiosidade.
-                </p>
+                <p>{t('app.boss.skeleton_p1')}</p>
+                <p>{t('app.boss.skeleton_p2')}</p>
+                <p>{t('app.boss.skeleton_p3')}</p>
                 <p className="font-semibold text-foreground">
-                  Você deseja treinar esse filhote e levá-lo como companheiro?
+                  {t('app.boss.skeleton_question')}
                 </p>
                 <div className="pt-1">
-                  <p className="text-xs">Que nome você daria a ele?</p>
+                  <p className="text-xs">{t('app.boss.skeleton_name_prompt')}</p>
                   <Input
                     value={skeletonPupName}
                     onChange={(e) => setSkeletonPupName(e.target.value)}
-                    placeholder="Ex: Ossinho, Fang, Sombra…"
+                    placeholder={t('app.boss.skeleton_name_placeholder')}
                     className="mt-1.5"
                     maxLength={32}
                   />
@@ -1312,12 +1292,12 @@ export default function BossPage() {
               className="w-full sm:w-auto"
               onClick={() => {
                 saveSkeletonChoice.mutate('reject', {
-                  onSuccess: () => toast({ title: 'O filhote desapareceu na escuridão… Por ora. 💀' }),
+                  onSuccess: () => toast({ title: t('app.boss.toast_skeleton_left') }),
                 });
                 setSkeletonStoryOpen(false);
               }}
             >
-              Deixar partir
+              {t('app.boss.skeleton_let_go')}
             </Button>
             <Button
               className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700"
@@ -1327,15 +1307,15 @@ export default function BossPage() {
                 saveSkeletonChoice.mutate('adopt', {
                   onSuccess: () => {
                     adoptSkeletonPup.mutate(name, {
-                      onSuccess: () => toast({ title: `💀 ${name} decidiu seguir você! Cuide bem dele.` }),
-                      onError: () => toast({ title: 'Erro ao adotar o filhote. Tente novamente.', variant: 'destructive' }),
+                      onSuccess: () => toast({ title: t('app.boss.toast_skeleton_adopted', { name }) }),
+                      onError: () => toast({ title: t('app.boss.toast_skeleton_adopt_error'), variant: 'destructive' }),
                     });
                   },
                 });
                 setSkeletonStoryOpen(false);
               }}
             >
-              💀 Adotar {skeletonPupName || 'Ossinho'}
+              💀 {t('app.boss.skeleton_adopt', { name: skeletonPupName || 'Ossinho' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1347,21 +1327,15 @@ export default function BossPage() {
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-400" />
-              Aliança Inesperada!
+              {t('app.boss.mantiroca_title')}
             </DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
+                <p>{t('app.boss.mantiroca_p1')}</p>
+                <p>{t('app.boss.mantiroca_p2')}</p>
                 <p>
-                  Quando você se aproxima da <span className="font-semibold text-foreground">Mantiroca Venenosa</span>,
-                  uma figura familiar surge montada em seu dorso…
-                </p>
-                <p>
-                  É o <span className="text-violet-400 font-semibold">filhote do Esqueletão</span> —
-                  o mesmo que você recusou acolher. Ele encontrou um novo lar… e um novo propósito.
-                </p>
-                <p>
-                  Juntos, eles são mais perigosos.{' '}
-                  <span className="font-semibold text-red-400">A Mantiroca tem +40% de HP!</span>
+                  {t('app.boss.mantiroca_p3')}{' '}
+                  <span className="font-semibold text-red-400">{t('app.boss.mantiroca_hp_warning')}</span>
                 </p>
               </div>
             </DialogDescription>
@@ -1372,7 +1346,7 @@ export default function BossPage() {
               className="w-full sm:w-auto"
               onClick={() => setMantirocaWarningBoss(null)}
             >
-              Voltar
+              {t('app.boss.back')}
             </Button>
             <Button
               variant="destructive"
@@ -1384,7 +1358,7 @@ export default function BossPage() {
                 handleStartArenaCombat(boss, boostedMantirocaHp);
               }}
             >
-              Enfrentar assim mesmo ⚔️
+              {t('app.boss.face_anyway')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1396,31 +1370,31 @@ export default function BossPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="w-5 h-5" />
-              ⚠️ Atenção: Risco de Morte
+              {t('app.boss.death_title')}
             </DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-4 pt-2 text-left">
                 <p className="text-foreground font-medium">
-                  Você está prestes a desafiar{' '}
+                  {t('app.boss.death_about_to_challenge')}{' '}
                   <span className="text-primary font-bold">{deathWarningBoss?.name}</span>.
                 </p>
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 space-y-2">
                   <p className="text-sm font-bold text-destructive uppercase tracking-wide">
-                    💀 Se você perder este combate:
+                    {t('app.boss.death_if_lose')}
                   </p>
                   <ul className="space-y-1.5 text-sm text-foreground">
                     <li className="flex items-start gap-2">
                       <span className="text-destructive font-bold mt-0.5">▼</span>
-                      <span><strong>Perde 1 nível</strong> — seu progresso de XP atual é descartado</span>
+                      <span><strong>{t('app.boss.death_penalty_1_bold')}</strong> {t('app.boss.death_penalty_1_rest')}</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-destructive font-bold mt-0.5">▼</span>
-                      <span><strong>Fadiga máxima</strong> — ficará com 100% de fadiga pelo resto do dia, reduzindo XP ganho</span>
+                      <span><strong>{t('app.boss.death_penalty_2_bold')}</strong> {t('app.boss.death_penalty_2_rest')}</span>
                     </li>
                   </ul>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Certifique-se de que seu loadout de habilidades está equipado e que seu HP/MP está em boas condições antes de entrar.
+                  {t('app.boss.death_advice')}
                 </p>
               </div>
             </DialogDescription>
@@ -1431,7 +1405,7 @@ export default function BossPage() {
               className="w-full sm:w-auto"
               onClick={() => setDeathWarningBoss(null)}
             >
-              Voltar (me preparar melhor)
+              {t('app.boss.death_back')}
             </Button>
             <Button
               variant="destructive"
@@ -1448,7 +1422,7 @@ export default function BossPage() {
               ) : (
                 <Skull className="w-4 h-4 mr-1" />
               )}
-              Entrar na Arena ⚔️
+              {t('app.boss.enter_arena')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1496,7 +1470,7 @@ export default function BossPage() {
           />
         );
       })()}
-      <GuidedTour tourKey="boss" steps={BOSS_TOUR_STEPS} />
+      <GuidedTour tourKey="boss" steps={bossTourSteps} />
     </AppLayout>
   );
 }
