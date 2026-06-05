@@ -69,7 +69,7 @@ export function useBuyTalent() {
 
       if (profileError) throw profileError;
 
-      const pontos = Number((profile as any)?.pontos_talento ?? 0);
+      const pontos = Number(profile?.pontos_talento ?? 0);
       if (pontos <= 0) {
         throw new Error('Voce nao tem pontos de talento suficientes.');
       }

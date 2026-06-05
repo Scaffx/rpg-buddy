@@ -95,7 +95,7 @@ export function AppSidebar() {
   const [showHelp, setShowHelp] = useState(false);
 
   const currentClass = useMemo(() => {
-    const id = (profile as any)?.current_class_id;
+    const id = profile?.current_class_id;
     if (!id || !classes) return 'Aprendiz';
     const found = (classes as any[]).find((c) => c.id === id);
     return found?.name ?? 'Aprendiz';

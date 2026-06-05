@@ -18,7 +18,7 @@ export default function LevelUpCinematic() {
   useEffect(() => {
     if (!user?.id || !profile) return;
 
-    const level = Number((profile as any).level ?? 1);
+    const level = Number(profile.level ?? 1);
     // Dado inválido ou corrompido – ignora
     if (!Number.isFinite(level) || level < 1) return;
 

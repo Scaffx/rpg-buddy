@@ -248,8 +248,8 @@ export default function Dashboard() {
       d.setUTCDate(d.getUTCDate() + diff);
       const weekToken = d.toISOString().slice(0, 10);
 
-      const currentWeek = String((profile as any).streak_protector_week || '');
-      const maxSlots = Math.min(3, Math.max(1, Number((profile as any).streak_protector_max ?? 3)));
+      const currentWeek = String(profile.streak_protector_week || '');
+      const maxSlots = Math.min(3, Math.max(1, Number(profile.streak_protector_max ?? 3)));
 
       if (currentWeek !== weekToken) {
         await supabase
@@ -274,7 +274,7 @@ export default function Dashboard() {
     const maybeAlert = () => {
       const hour = new Date().getHours();
       const hasPending = todayMissionMetrics.pending > 0;
-      const charges = Number((profile as any).streak_protector_charges ?? 0);
+      const charges = Number(profile.streak_protector_charges ?? 0);
       if (hour >= 22 && hasPending && charges <= 0 && !localStorage.getItem(key)) {
         localStorage.setItem(key, 'shown');
         toast.error(t('app.dashboard.streak_risk_toast'));

@@ -218,7 +218,7 @@ export function useUpdateDisplayName() {
         .single();
       if (fetchErr) throw fetchErr;
 
-      const lastChange = (profile as any)?.last_name_change;
+      const lastChange = profile?.last_name_change;
       if (lastChange) {
         const diff = Date.now() - new Date(lastChange).getTime();
         const sevenDays = 7 * 24 * 60 * 60 * 1000;
@@ -590,7 +590,7 @@ export function useFightBoss() {
         .eq("user_id", user!.id)
         .single();
 
-      const currentKeys = (profile as any)?.boss_keys || 0;
+      const currentKeys = profile?.boss_keys || 0;
       if (currentKeys < keysCost) {
         throw new Error("INSUFFICIENT_KEYS");
       }
@@ -632,7 +632,7 @@ export function useFightBoss() {
       // Sistema de dano com base em atributos (balanceado no estilo d20)
       const firstRoll = Math.floor(Math.random() * 20) + 1;
       const secondRoll = Math.floor(Math.random() * 20) + 1;
-      const hasInspiration = !!(profile as any)?.inspired_available;
+      const hasInspiration = !!profile?.inspired_available;
       const attackRoll = (combatBuffs.hasAdrenaline || hasInspiration) ? Math.max(firstRoll, secondRoll) : firstRoll;
       const attackRollMultiplier = 3 + combatBuffs.attackRollMultiplierBonus;
       const critMultiplier = attackRoll === 20 ? 1.5 : 1;

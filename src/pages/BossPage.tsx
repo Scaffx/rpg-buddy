@@ -134,7 +134,7 @@ export default function BossPage() {
   const handleCombatDefeat = async () => {
     // ── Penalidade de morte: -1 nível + fadiga 100 ──────────────────────────
     if (user && profile) {
-      const currentLevel = (profile as any).level ?? 1;
+      const currentLevel = profile.level ?? 1;
       const newLevel = Math.max(1, currentLevel - 1);
       try {
         await Promise.all([
@@ -423,7 +423,7 @@ export default function BossPage() {
 
       const { data, error } = await supabase.rpc('create_dungeon_session', {
         p_dungeon_id:   dungeon.id,
-        p_display_name: (profile as any).display_name || 'Herói',
+        p_display_name: profile.display_name || 'Herói',
         p_current_hp:   curHp,
         p_max_hp:       maxHp,
         p_player_level: profile.level || 1,
@@ -435,7 +435,7 @@ export default function BossPage() {
       setSessionData({ id: row.session_id, inviteCode: row.invite_code, layoutIndex: row.layout_index });
       setSessionPlayers([{
         userId:      user.id,
-        displayName: (profile as any).display_name || 'Herói',
+        displayName: profile.display_name || 'Herói',
         hp:          curHp,
         maxHp:       maxHp,
         level:       profile.level || 1,
@@ -464,7 +464,7 @@ export default function BossPage() {
 
       const { data, error } = await supabase.rpc('join_dungeon_session', {
         p_invite_code:  joinCodeInput.trim().toUpperCase(),
-        p_display_name: (profile as any).display_name || 'Herói',
+        p_display_name: profile.display_name || 'Herói',
         p_current_hp:   curHp,
         p_max_hp:       maxHp,
         p_player_level: profile.level || 1,
@@ -679,7 +679,7 @@ export default function BossPage() {
                   </p>
                   <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
                     <span className="text-lg">🔑</span>
-                    <span className="font-bold text-primary text-lg">{(profile as any).boss_keys || 0}</span>
+                    <span className="font-bold text-primary text-lg">{profile.boss_keys || 0}</span>
                     <span className="text-xs text-muted-foreground">{t('app.boss.keys_label')}</span>
                   </div>
                 </div>
@@ -855,9 +855,9 @@ export default function BossPage() {
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
                         🔒 {t('app.boss.requires_level', { n: boss.level })}
                       </Button>
-                    ) : ((profile as any)?.boss_keys || 0) < (boss.keys_cost || 1) ? (
+                    ) : (profile?.boss_keys || 0) < (boss.keys_cost || 1) ? (
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔑 {t('app.boss.needs_keys', { need: boss.keys_cost || 1, have: (profile as any)?.boss_keys || 0 })}
+                        🔑 {t('app.boss.needs_keys', { need: boss.keys_cost || 1, have: profile?.boss_keys || 0 })}
                       </Button>
                     ) : (
                       <div className="w-full grid grid-cols-1 gap-2">

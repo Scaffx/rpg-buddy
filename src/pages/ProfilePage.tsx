@@ -846,7 +846,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    const savedClass = (profile as any)?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
+    const savedClass = profile?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
     setSelectedRespecClass(savedClass);
   }, [user, profile]);
 
@@ -864,7 +864,7 @@ export default function ProfilePage() {
   // Sync region from profile
   useEffect(() => {
     if (profile) {
-      setSelectedRegion((profile as any)?.region ?? null);
+      setSelectedRegion(profile?.region ?? null);
     }
   }, [profile]);
 
@@ -927,7 +927,7 @@ export default function ProfilePage() {
   const attributeLevels = useMemo(() => getAttributeLevels(attributes as any[]), [attributes]);
   const starterClass = useMemo(() => {
     // Priority 1: resolve from current_class_id in the class progression tree
-    const currentClassId = (profile as any)?.current_class_id;
+    const currentClassId = profile?.current_class_id;
     if (currentClassId && classes) {
       const classMap = new Map<string, any>();
       (classes as any[]).forEach((c) => classMap.set(c.id, c));
@@ -939,15 +939,15 @@ export default function ProfilePage() {
       if (resolved) return resolved;
     }
     // Priority 2: stored starter_class from onboarding / respec
-    return (profile as any)?.starter_class || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null) || 'novato';
+    return profile?.starter_class || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null) || 'novato';
   }, [user, profile, classes]);
   const starterItem = useMemo(
-    () => (profile as any)?.starter_item || (user ? localStorage.getItem(`starter_item_v1_${user.id}`) : null) || "Adaga de Treino",
+    () => profile?.starter_item || (user ? localStorage.getItem(`starter_item_v1_${user.id}`) : null) || "Adaga de Treino",
     [user, profile],
   );
   // Nome completo da classe atual (ex: "Alquimista", "Mecânico") para lookup em T3_CLASS_SKILLS
   const currentClassName = useMemo(() => {
-    const currentClassId = (profile as any)?.current_class_id;
+    const currentClassId = profile?.current_class_id;
     if (currentClassId && classes) {
       const cls = (classes as any[]).find((c) => c.id === currentClassId);
       if (cls?.name) return cls.name as string;
@@ -985,8 +985,8 @@ export default function ProfilePage() {
   );
 
   useEffect(() => {
-    const rawLoadout = Array.isArray((profile as any)?.combat_skill_loadout)
-      ? (profile as any).combat_skill_loadout
+    const rawLoadout = Array.isArray(profile?.combat_skill_loadout)
+      ? profile.combat_skill_loadout
       : [];
 
     const ids = rawLoadout
@@ -1252,7 +1252,7 @@ export default function ProfilePage() {
   const respecClass = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error(t('app.profile.notAuthenticated'));
-      const currentClass = (profile as any)?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
+      const currentClass = profile?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
       if (selectedRespecClass === currentClass) {
         throw new Error(t('app.profile.alreadyInClass'));
       }
@@ -1390,7 +1390,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/15 border border-accent/25 text-[11px] font-semibold text-accent-foreground/80">
                     <Swords className="w-3 h-3" />
-                    {(classes as any[])?.find((c: any) => c.id === (profile as any)?.current_class_id)?.name || 'Aprendiz'}
+                    {(classes as any[])?.find((c: any) => c.id === profile?.current_class_id)?.name || 'Aprendiz'}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
                     {xpProgress.currentLevelXp.toLocaleString()} / {xpProgress.xpForNextLevel.toLocaleString()} XP
@@ -1561,7 +1561,7 @@ export default function ProfilePage() {
               onClick={() => {
                 saveSettings.mutate();
                 setVolume(volume);
-                if (selectedRegion !== ((profile as any)?.region ?? null)) {
+                if (selectedRegion !== (profile?.region ?? null)) {
                   updateRegion.mutate(selectedRegion, {
                     onSuccess: () => toast.success('Região atualizada!'),
                     onError: (err: any) => toast.error(err.message || 'Erro ao salvar região'),
@@ -2144,7 +2144,7 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-bold text-foreground">{t('app.profile.inventoryTitle')}</h3>
               </div>
 
-              {!(profile as any)?.starter_kit_claimed ? (
+              {!profile?.starter_kit_claimed ? (
                 <div className="space-y-4">
                   <div className="text-center space-y-2">
                     <p className="text-4xl">🥚</p>
@@ -2170,7 +2170,7 @@ export default function ProfilePage() {
                 <div className="space-y-2 text-center">
                   <p className="text-4xl">🛡️</p>
                   <p className="text-sm text-muted-foreground">
-                    {(profile as any)?.class_kit_claimed
+                    {profile?.class_kit_claimed
                       ? t('app.profile.defeatBossesForItems')
                       : t('app.profile.reachLevel5ForKit')
                     }

@@ -87,7 +87,7 @@ export default function ClassesPage() {
   // Get starter_class from profile or localStorage
   const starterClass = useMemo(() => {
     if (!user) return null;
-    const fromProfile = (profile as any)?.starter_class;
+    const fromProfile = profile?.starter_class;
     if (fromProfile) return fromProfile as string;
     return localStorage.getItem(`starter_class_v1_${user.id}`);
   }, [profile, user]);

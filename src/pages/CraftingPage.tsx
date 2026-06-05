@@ -29,7 +29,7 @@ export default function CraftingPage() {
   const gold = (goldBalance as any)?.gold ?? 0;
 
   const currentClass = useMemo(() => {
-    const id = (profile as any)?.current_class_id;
+    const id = profile?.current_class_id;
     if (!id || !classes) return null;
     return (classes as any[]).find((c: any) => c.id === id)?.name ?? null;
   }, [profile, classes]);

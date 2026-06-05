@@ -489,7 +489,7 @@ export default function CompanionPage() {
   // Show full-screen loader only when there is no cached data yet
   const isLoading = (profileLoading && profile === undefined)
     || (loadingCompanions && _allCompanions === undefined);
-  const level     = (profile as any)?.level ?? 0;
+  const level     = profile?.level ?? 0;
 
   if (isLoading) {
     return (

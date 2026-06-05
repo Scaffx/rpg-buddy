@@ -391,7 +391,7 @@ export function useConsumeItem() {
         if (healthError) throw healthError;
 
         const computed = getPlayerCombatStats(
-          Number((profile as any)?.level ?? 1),
+          Number(profile?.level ?? 1),
           getAttributeLevels((attrs || []) as any[]),
         );
 
@@ -507,7 +507,7 @@ export function useClaimStarterKit() {
         .eq('user_id', user.id)
         .single();
 
-      if ((profile as any)?.starter_kit_claimed) {
+      if (profile?.starter_kit_claimed) {
         throw new Error('Kit inicial já foi resgatado!');
       }
 
@@ -573,7 +573,7 @@ export function useClaimClassKit() {
         .eq('user_id', user.id)
         .single();
 
-      if ((profile as any)?.class_kit_claimed) {
+      if (profile?.class_kit_claimed) {
         return []; // silently skip
       }
 

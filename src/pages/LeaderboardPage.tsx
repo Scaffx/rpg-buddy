@@ -143,7 +143,7 @@ export default function LeaderboardPage() {
   const [scope, setScope] = useState<'global' | 'regional'>('global');
   const [selectedClass, setSelectedClass] = useState<string>(CLASS_OPTIONS[0].value);
 
-  const userRegion = (profile as any)?.region as string | null ?? null;
+  const userRegion = profile?.region as string | null ?? null;
   const regionLabel = userRegion
     ? t(`app.leaderboard.region_${userRegion}`, { defaultValue: REGION_LABELS[userRegion] ?? userRegion })
     : null;

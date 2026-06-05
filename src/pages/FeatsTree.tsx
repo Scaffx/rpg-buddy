@@ -141,7 +141,7 @@ export default function FeatsTree() {
   );
   const equippedCount = (ownedRows || []).filter((r: any) => r.equipped).length;
 
-  const pontos = Number((profile as any)?.pontos_talento ?? 0);
+  const pontos = Number(profile?.pontos_talento ?? 0);
   const level = Number(profile?.level ?? 1);
   const nextMilestone = (Math.floor(level / 5) + 1) * 5;
 
