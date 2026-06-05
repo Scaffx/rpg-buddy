@@ -72,10 +72,10 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     .eq('user_id', userId)
     .maybeSingle();
 
-  const maxSlots = Math.min(3, Math.max(1, Number((streakProfile as any)?.streak_protector_max ?? 3)));
+  const maxSlots = Math.min(3, Math.max(1, Number(streakProfile?.streak_protector_max ?? 3)));
   let availableProtectors =
-    String((streakProfile as any)?.streak_protector_week || '') === currentWeek
-      ? Number((streakProfile as any)?.streak_protector_charges ?? 2)
+    String(streakProfile?.streak_protector_week || '') === currentWeek
+      ? Number(streakProfile?.streak_protector_charges ?? 2)
       : 2;
 
   await supabase
@@ -272,14 +272,14 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       .single();
     let maxHp = 100;
     let maxMp = 40;
-    if (profileLv && (profileLv as any).level > 15) {
+    if (profileLv && profileLv.level > 15) {
       const { data: attrs } = await supabase
         .from('attributes')
         .select('name, level')
         .eq('user_id', userId);
       if (attrs) {
         const attrLevels = getAttributeLevels(attrs);
-        const stats = getPlayerCombatStats((profileLv as any).level, attrLevels);
+        const stats = getPlayerCombatStats(profileLv.level, attrLevels);
         maxHp = stats.hp;
         maxMp = stats.mp;
       }
@@ -500,7 +500,7 @@ export function useMarkFailedAsDone() {
         reason: 'mission_recovered',
         xp_delta: xpToRestore,
         gold_delta: 0,
-        local_date: (mission as any).failed_date || new Date().toLocaleDateString('en-CA'),
+        local_date: mission.failed_date || new Date().toLocaleDateString('en-CA'),
         description: `Recuperou missão fracassada: ${mission.title} (+${xpToRestore} XP)`,
       });
     },

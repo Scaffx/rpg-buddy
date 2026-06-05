@@ -854,8 +854,8 @@ export default function ProfilePage() {
     if (healthStats) {
       setWeight(Number(healthStats.weight_kg) || 70);
       setMealsTarget(healthStats.meals_target || 3);
-      const rawSleep = String((healthStats as any).sleep_time || '23:00');
-      const rawWake = String((healthStats as any).wake_time || '07:00');
+      const rawSleep = String(healthStats.sleep_time || '23:00');
+      const rawWake = String(healthStats.wake_time || '07:00');
       setSleepTime(rawSleep.slice(0, 5));
       setWakeTime(rawWake.slice(0, 5));
     }
@@ -1016,8 +1016,8 @@ export default function ProfilePage() {
   // accumulating the day's effects.
   const heroAwake = useMemo(
     () => isHeroAwake(
-      (healthStats as any)?.sleep_time,
-      (healthStats as any)?.wake_time,
+      healthStats?.sleep_time,
+      healthStats?.wake_time,
     ),
     [healthStats],
   );
@@ -1246,7 +1246,7 @@ export default function ProfilePage() {
 
   const hpPercent = Math.round((currentHp / maxHp) * 100);
   const mpPercent = Math.round((currentMp / maxMp) * 100);
-  const currentGold = (goldBalance as any)?.gold ?? 100;
+  const currentGold = goldBalance?.gold ?? 100;
   const xpProgress = getLevelProgress(profile?.total_xp || 0);
 
   const respecClass = useMutation({

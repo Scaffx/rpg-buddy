@@ -91,7 +91,7 @@ export function AppSidebar() {
   const { data: goldBalance } = useGoldBalance();
   const { isTrial, daysUntilBlock } = useSubscription();
   const { t } = useTranslation();
-  const currentGold = (goldBalance as any)?.gold ?? 100;
+  const currentGold = goldBalance?.gold ?? 100;
   const [showHelp, setShowHelp] = useState(false);
 
   const currentClass = useMemo(() => {

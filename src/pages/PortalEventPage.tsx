@@ -527,12 +527,12 @@ export default function PortalEventPage() {
     atk: playerStatsBase.atk + equipBonuses.atk,
     def: playerStatsBase.def + equipBonuses.def,
     hp:  playerStatsBase.hp  + equipBonuses.hp,
-    mp:  (playerStatsBase as any).mp + equipBonuses.mp,
+    mp:  playerStatsBase.mp + equipBonuses.mp,
   };
   const curHp = healthStats?.current_hp != null ? Number(healthStats.current_hp) : playerStats.hp  ?? 120;
-  const curMp = healthStats?.current_mp != null ? Number(healthStats.current_mp) : (playerStats as any).mp ?? 40;
+  const curMp = healthStats?.current_mp != null ? Number(healthStats.current_mp) : playerStats.mp ?? 40;
   const maxHp = healthStats?.max_hp     != null ? Number(healthStats.max_hp)     : playerStats.hp  ?? 120;
-  const maxMp = healthStats?.max_mp     != null ? Number(healthStats.max_mp)     : (playerStats as any).mp ?? 40;
+  const maxMp = healthStats?.max_mp     != null ? Number(healthStats.max_mp)     : playerStats.mp ?? 40;
 
   const potions: PotionItem[] = (inventory || [])
     .filter(inv => inv.game_items?.is_consumable && (

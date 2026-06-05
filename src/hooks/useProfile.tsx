@@ -750,9 +750,9 @@ export function useStartActiveCombat() {
 
       if (healthStatsError) throw healthStatsError;
 
-      let fatigue = Number((healthStats as any)?.fatigue ?? 0);
+      let fatigue = Number(healthStats?.fatigue ?? 0);
       const today = new Date().toLocaleDateString('en-CA');
-      const shouldApplyDailyHydrationCheck = Boolean(healthStats) && String((healthStats as any)?.last_reset_date || '') !== today;
+      const shouldApplyDailyHydrationCheck = Boolean(healthStats) && String(healthStats?.last_reset_date || '') !== today;
 
       if (shouldApplyDailyHydrationCheck) {
         const yesterday = new Date();
@@ -767,7 +767,7 @@ export function useStartActiveCombat() {
 
         if (waterError) throw waterError;
 
-        const waterTarget = Number((healthStats as any)?.water_target_ml ?? Math.round(Number((healthStats as any)?.weight_kg ?? 70) * 35));
+        const waterTarget = Number(healthStats?.water_target_ml ?? Math.round(Number(healthStats?.weight_kg ?? 70) * 35));
         const halfTarget = waterTarget / 2;
         const yesterdayTotal = (yesterdayWater || []).reduce((sum: number, row: any) => sum + Number(row.amount_ml || 0), 0);
         const hydrationFailed = waterTarget > 0 && yesterdayTotal < halfTarget;
@@ -825,7 +825,7 @@ export function useStartActiveCombat() {
         );
       }
 
-      const hpAtualPersistido = Number((healthStats as any)?.current_hp ?? hpMaxPersonagem);
+      const hpAtualPersistido = Number(healthStats?.current_hp ?? hpMaxPersonagem);
       const hpInicialPersonagem = Math.max(1, Math.min(hpMaxPersonagem, hpAtualPersistido));
 
       if (healthStats) {
@@ -898,7 +898,7 @@ export function useSelectClass() {
       if (starterClass) updates.starter_class = starterClass;
       const { error } = await supabase
         .from("profiles")
-        .update(updates as any)
+        .updateupdates
         .eq("user_id", user!.id);
       if (error) throw error;
     },

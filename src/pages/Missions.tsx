@@ -453,7 +453,7 @@ const handleSave = async () => {
         missionId: mission.id,
         attributeId: mission.attribute_id,
         xpReward: mission.xp_reward,
-        secondaryAttributeIds: (mission as any).secondary_attribute_ids || [],
+        secondaryAttributeIds: mission.secondary_attribute_ids || [],
       });
 
       const streak = (result as any)?.streakDays ?? 0;
@@ -1057,7 +1057,7 @@ function MissionCard({
   // Get all attributes for this mission
   // Busca o atributo primário pelo ID na lista de atributos (a query de missions não faz join)
   const primaryAttr = attrs.find((a: any) => a.id === mission.attribute_id) || null;
-  const secondaryIds: string[] = (mission as any).secondary_attribute_ids || [];
+  const secondaryIds: string[] = mission.secondary_attribute_ids || [];
   const secondaryAttrs = attrs.filter((a) => secondaryIds.includes(a.id));
 
   const allMissionAttrs = [

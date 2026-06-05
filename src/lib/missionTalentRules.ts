@@ -62,7 +62,7 @@ export function normalizeMissionCategory(value: unknown): MissionCategory | null
 }
 
 export function deriveMissionCategory({ mission, primaryAttributeName }: DeriveCategoryInput): MissionCategory {
-  const explicit = normalizeMissionCategory((mission as any)?.mission_category ?? (mission as any)?.category);
+  const explicit = normalizeMissionCategory(mission?.mission_category ?? mission?.category);
   if (explicit) return explicit;
 
   const attr = normalize(primaryAttributeName || '');
@@ -70,7 +70,7 @@ export function deriveMissionCategory({ mission, primaryAttributeName }: DeriveC
     return ATTRIBUTE_TO_CATEGORY[attr];
   }
 
-  const haystack = normalize(`${String((mission as any)?.title || '')} ${String((mission as any)?.description || '')}`);
+  const haystack = normalize(`${String(mission?.title || '')} ${String(mission?.description || '')}`);
   for (const [category, words] of Object.entries(KEYWORDS_BY_CATEGORY) as Array<[MissionCategory, string[]]>) {
     if (category === 'geral') continue;
     if (words.some((w) => haystack.includes(normalize(w)))) {

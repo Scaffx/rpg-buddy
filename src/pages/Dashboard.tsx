@@ -166,7 +166,7 @@ export default function Dashboard() {
       const state = dailyStatus[todayDate];
       if (state === 'completed' || state === 'protected') completed += 1;
       if (state === 'failed' || state === 'failed_accepted') failed += 1;
-      if ((mission as any).is_failed && (mission as any).failed_date === todayDate) failed += 1;
+      if (mission.is_failed && mission.failed_date === todayDate) failed += 1;
     }
 
     return {
@@ -313,7 +313,7 @@ export default function Dashboard() {
         const state = dailyStatus[dateStr];
         if (state === 'failed' || state === 'failed_accepted') {
           failed += 1;
-        } else if ((mission as any).failed_date === dateStr) {
+        } else if (mission.failed_date === dateStr) {
           failed += 1;
         }
       }

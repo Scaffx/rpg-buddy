@@ -26,7 +26,7 @@ export default function CraftingPage() {
   const { data: profile } = useProfile();
   const { data: classes } = useClasses();
   const { data: goldBalance } = useGoldBalance();
-  const gold = (goldBalance as any)?.gold ?? 0;
+  const gold = goldBalance?.gold ?? 0;
 
   const currentClass = useMemo(() => {
     const id = profile?.current_class_id;

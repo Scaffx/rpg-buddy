@@ -21,7 +21,7 @@ export function useUpdateMission() {
     }) => {
       const { error } = await supabase
         .from('missions')
-        .update(updates as any)
+        .updateupdates
         .eq('id', missionId);
       if (error) throw error;
     },

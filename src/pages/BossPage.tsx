@@ -115,7 +115,7 @@ export default function BossPage() {
     agi:  playerStatsBase.agi  + equipBonuses.agi,
     crit: playerStatsBase.crit + equipBonuses.crit,
     hp:   playerStatsBase.hp   + equipBonuses.hp,
-    mp:   (playerStatsBase as any).mp + equipBonuses.mp,
+    mp:   playerStatsBase.mp + equipBonuses.mp,
   };
 
   const handleCombatVictory = () => {
@@ -571,12 +571,12 @@ export default function BossPage() {
         : Number(healthStats?.current_hp ?? playerStats.hp ?? 120);
       const currentMp = combat.mp_atual_personagem != null
         ? Number(combat.mp_atual_personagem)
-        : Number(healthStats?.current_mp ?? (playerStats as any).mp ?? 40);
+        : Number(healthStats?.current_mp ?? playerStats.mp ?? 40);
       const maxMp = healthStats?.max_mp != null
         ? Number(healthStats.max_mp)
-        : Number((playerStats as any).mp ?? 40);
+        : Number(playerStats.mp ?? 40);
       const currentFatigue = healthStats?.fatigue != null
-        ? Number((healthStats as any).fatigue)
+        ? Number(healthStats.fatigue)
         : 0;
 
       setActiveCombat({
@@ -1444,9 +1444,9 @@ export default function BossPage() {
         }));
 
         const curHp  = healthStats?.current_hp  != null ? Number(healthStats.current_hp)  : playerStats.hp ?? 120;
-        const curMp  = healthStats?.current_mp  != null ? Number(healthStats.current_mp)  : (playerStats as any).mp ?? 40;
+        const curMp  = healthStats?.current_mp  != null ? Number(healthStats.current_mp)  : playerStats.mp ?? 40;
         const maxHp  = healthStats?.max_hp      != null ? Number(healthStats.max_hp)      : playerStats.hp ?? 120;
-        const maxMp  = healthStats?.max_mp      != null ? Number(healthStats.max_mp)      : (playerStats as any).mp ?? 40;
+        const maxMp  = healthStats?.max_mp      != null ? Number(healthStats.max_mp)      : playerStats.mp ?? 40;
 
         return (
           <DungeonArena
