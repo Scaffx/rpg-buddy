@@ -1260,7 +1260,7 @@ export default function ProfilePage() {
       // Tenta RPC — custo é calculado server-side (primeiro respec gratuito verificado no servidor)
       // Custo e validação são server-side no RPC. Sem fallback de update direto
       // (a trava de RLS bloqueia escrita de ouro pelo client).
-      const { data, error } = await (supabase.rpc as any)("perform_class_respec", {
+      const { data, error } = await supabase.rpc("perform_class_respec", {
         target_class: selectedRespecClass,
       });
       if (error) throw error;

@@ -306,7 +306,7 @@ export default function NpcPage() {
 
       if (alreadyDone) {
         // 🔒 Server-side: apaga a conclusão e reverte XP/ouro exatos creditados.
-        const { error } = await (supabase as any).rpc('undo_npc_challenge', {
+        const { error } = await supabase.rpc('undo_npc_challenge', {
           p_npc_id: challenge.npc_id,
           p_challenge_id: challenge.challenge_id,
           p_week_token: weekToken,

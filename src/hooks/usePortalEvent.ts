@@ -152,7 +152,7 @@ export function usePortalEvent() {
   return useQuery({
     queryKey: ['portal-event'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc('get_active_portal_event');
+      const { data, error } = await supabase.rpc('get_active_portal_event');
       if (error) throw error;
       if (!data || data.length === 0) return null;
       return data[0] as PortalEvent;
@@ -166,7 +166,7 @@ export function useMyFragments() {
   return useQuery({
     queryKey: ['my-fragments'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc('get_my_fragments');
+      const { data, error } = await supabase.rpc('get_my_fragments');
       if (error) throw error;
       if (!data || data.length === 0) return { fragments: 0, lifetime_fragments: 0, weekly_fragments: 0, pending_dungeon: null, dungeon_expires_at: null };
       return data[0] as {
@@ -186,7 +186,7 @@ export function useScanPortal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (eventId: string) => {
-      const { data, error } = await (supabase as any).rpc('scan_portal', { p_event_id: eventId });
+      const { data, error } = await supabase.rpc('scan_portal', { p_event_id: eventId });
       if (error) throw error;
       return data as { portal_color?: PortalColor; already_scanned?: boolean; error?: string };
     },
@@ -205,7 +205,7 @@ export function useCompletePortalRun() {
       xpEarned: number;
       goldEarned: number;
     }) => {
-      const { data, error } = await (supabase as any).rpc('complete_portal_run', {
+      const { data, error } = await supabase.rpc('complete_portal_run', {
         p_event_id:   params.eventId,
         p_xp_earned:  params.xpEarned,
         p_gold_earned: params.goldEarned,
@@ -236,7 +236,7 @@ export function useClaimPendingDungeon() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { data, error } = await (supabase as any).rpc('claim_pending_dungeon');
+      const { data, error } = await supabase.rpc('claim_pending_dungeon');
       if (error) throw error;
       return data as { tier?: FragmentTier; ok?: boolean; error?: string };
     },
@@ -251,7 +251,7 @@ export function usePublicFragmentDungeons() {
   return useQuery({
     queryKey: ['public-fragment-dungeons'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc('get_public_fragment_dungeons');
+      const { data, error } = await supabase.rpc('get_public_fragment_dungeons');
       if (error) throw error;
       return (data ?? []) as PublicFragmentSession[];
     },
@@ -274,7 +274,7 @@ export function useCreateFragmentDungeon() {
       maxHp: number;
       playerClass: string;
     }) => {
-      const { data, error } = await (supabase as any).rpc('create_fragment_dungeon', {
+      const { data, error } = await supabase.rpc('create_fragment_dungeon', {
         p_tier:         params.tier,
         p_is_public:    params.isPublic,
         p_display_name: params.displayName,
@@ -307,7 +307,7 @@ export function useJoinFragmentDungeon() {
       maxHp: number;
       playerClass: string;
     }) => {
-      const { data, error } = await (supabase as any).rpc('join_fragment_dungeon', {
+      const { data, error } = await supabase.rpc('join_fragment_dungeon', {
         p_invite_code:  params.inviteCode,
         p_display_name: params.displayName,
         p_level:        params.level,

@@ -71,7 +71,7 @@ export function useCraftItem() {
 
       // 2. Descontar ouro (server-side: spend_gold valida saldo e deduz)
       if (goldRequired > 0) {
-        const { error: spendErr } = await (supabase as any).rpc('spend_gold', {
+        const { error: spendErr } = await supabase.rpc('spend_gold', {
           p_amount: goldRequired, p_reason: 'Crafting', p_type: 'crafting',
         });
         if (spendErr) throw spendErr;

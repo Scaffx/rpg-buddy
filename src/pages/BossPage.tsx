@@ -40,7 +40,7 @@ function useRankings(region: string | null) {
   return useQuery({
     queryKey: ['rankings', region],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)('get_rankings', {
+      const { data, error } = await supabase.rpc('get_rankings', {
         p_region: region,
       });
       if (error) throw error;
@@ -182,8 +182,8 @@ export default function BossPage() {
         const goldReward = Math.max(10, bossData.gold_reward  || (bossData.level || 10) * 15 + 10);
         // 🔒 Server-side: crédito de XP/ouro do combate via RPCs (valores lidos
         // do boss no banco acima). add_xp_to_user usa a XP_TABLE oficial.
-        await (supabase as any).rpc('add_xp_to_user', { p_user_id: user.id, p_xp: xpReward });
-        await (supabase as any).rpc('add_gold_to_user', { p_user_id: user.id, p_gold: goldReward });
+        await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: xpReward });
+        await supabase.rpc('add_gold_to_user', { p_user_id: user.id, p_gold: goldReward });
       }
 
       // 4. Drop Fragmento I do Pergaminho Ancestral
@@ -421,7 +421,7 @@ export default function BossPage() {
       const curHp  = healthStats?.current_hp  != null ? Number(healthStats.current_hp)  : statsLocal.hp ?? 120;
       const maxHp  = healthStats?.max_hp      != null ? Number(healthStats.max_hp)      : statsLocal.hp ?? 120;
 
-      const { data, error } = await (supabase as any).rpc('create_dungeon_session', {
+      const { data, error } = await supabase.rpc('create_dungeon_session', {
         p_dungeon_id:   dungeon.id,
         p_display_name: (profile as any).display_name || 'Herói',
         p_current_hp:   curHp,
@@ -462,7 +462,7 @@ export default function BossPage() {
       const curHp  = healthStats?.current_hp  != null ? Number(healthStats.current_hp)  : statsLocal.hp ?? 120;
       const maxHp  = healthStats?.max_hp      != null ? Number(healthStats.max_hp)      : statsLocal.hp ?? 120;
 
-      const { data, error } = await (supabase as any).rpc('join_dungeon_session', {
+      const { data, error } = await supabase.rpc('join_dungeon_session', {
         p_invite_code:  joinCodeInput.trim().toUpperCase(),
         p_display_name: (profile as any).display_name || 'Herói',
         p_current_hp:   curHp,
@@ -503,7 +503,7 @@ export default function BossPage() {
     if (!sessionData) return;
     setSessionLoading(true);
     try {
-      const { error } = await (supabase as any).rpc('start_dungeon_session', { p_session_id: sessionData.id });
+      const { error } = await supabase.rpc('start_dungeon_session', { p_session_id: sessionData.id });
       if (error) throw error;
       // The Realtime listener will fire and open DungeonArena for all
       // But also open it directly for host as fallback

@@ -46,7 +46,7 @@ function useAdminFeedback() {
   return useQuery({
     queryKey: ['system-feedback-admin', user?.id],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)('list_system_feedback_admin');
+      const { data, error } = await supabase.rpc('list_system_feedback_admin');
       if (error) throw error;
       return (data || []) as any[];
     },
@@ -95,7 +95,7 @@ export default function SystemInfoPage() {
   const updateFeedbackStatus = useMutation({
     mutationFn: async ({ feedbackId, status }: { feedbackId: string; status: string }) => {
       setUpdatingFeedbackId(feedbackId);
-      const { error } = await (supabase.rpc as any)('update_system_feedback_status', {
+      const { error } = await supabase.rpc('update_system_feedback_status', {
         feedback_id: feedbackId,
         next_status: status,
       });

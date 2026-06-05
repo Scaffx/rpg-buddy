@@ -62,7 +62,7 @@ export function useDungeonPartnerships() {
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc('get_my_partnerships');
+      const { data, error } = await supabase.rpc('get_my_partnerships');
       if (error) throw error;
       return (data ?? []) as Partnership[];
     },
@@ -84,7 +84,7 @@ export function useRecordPartnership() {
 
   return useMutation({
     mutationFn: async ({ playerIds, victory }: { playerIds: string[]; victory: boolean }) => {
-      const { error } = await (supabase as any).rpc('record_dungeon_partnership', {
+      const { error } = await supabase.rpc('record_dungeon_partnership', {
         p_player_ids: playerIds,
         p_victory: victory,
       });

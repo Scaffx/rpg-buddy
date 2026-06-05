@@ -318,7 +318,7 @@ export const useCompleteMission = () => {
       // talento, inspiração) roda no RPC transacional `complete_mission`.
       // O client não envia mais valores — o servidor lê tudo do banco, então
       // não é possível forjar XP/ouro/level pelo navegador.
-      const { data, error } = await (supabase as any).rpc('complete_mission', {
+      const { data, error } = await supabase.rpc('complete_mission', {
         p_mission_id: missionId,
         p_today: today,
         p_hour: hour,
@@ -658,7 +658,7 @@ export function useFightBoss() {
       // XP/ouro lendo os valores do boss no banco — não confia em
       // xpReward/keysCost do client. O combate (won/damage) ainda é resolvido
       // aqui; o combate 100% autoritativo virá com a reformulação de combate.
-      const { error: rpcError } = await (supabase as any).rpc('resolve_boss_battle', {
+      const { error: rpcError } = await supabase.rpc('resolve_boss_battle', {
         p_boss_id: bossId,
         p_won: won,
         p_damage: damage,
@@ -954,7 +954,7 @@ export function useToggleChecklistItem() {
         } as any);
 
         // 🔒 Server-side: bônus de XP do checklist via add_xp_to_user (auth.uid()+clamp).
-        await (supabase as any).rpc('add_xp_to_user', { p_user_id: user.id, p_xp: bonus });
+        await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: bonus });
       }
     },
     onSuccess: () => {
@@ -1073,7 +1073,7 @@ export function useAwardHealthXP() {
     mutationFn: async () => {
       // 🔒 Server-side: guard diário, +35 XP e restauração de HP no RPC
       // claim_health_challenge (XP é escrito pelo servidor, não pelo client).
-      const { error } = await (supabase as any).rpc('claim_health_challenge');
+      const { error } = await supabase.rpc('claim_health_challenge');
       if (error) throw error;
       return { success: true, xpAwarded: 35 };
     },

@@ -188,7 +188,7 @@ export function useSearchProfile(query: string) {
     queryKey: ['profile_search', query],
     enabled: query.trim().length >= 2 && !!user,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)('search_profiles', {
+      const { data, error } = await supabase.rpc('search_profiles', {
         p_query: query.trim(),
         p_exclude_id: user!.id,
         p_limit: 10,
@@ -744,7 +744,7 @@ export function useCreateCoOpMission() {
   return useMutation({
     mutationFn: async (params: { title: string; description: string; memberIds: string[] }) => {
       if (!user) throw new Error('Não autenticado');
-      const { data, error } = await (supabase.rpc as any)('create_co_op_mission', {
+      const { data, error } = await supabase.rpc('create_co_op_mission', {
         p_title: params.title,
         p_description: params.description,
         p_member_ids: params.memberIds,
@@ -765,7 +765,7 @@ export function useCompleteCoOpMission() {
   return useMutation({
     mutationFn: async (missionId: string) => {
       if (!user) throw new Error('Não autenticado');
-      const { error } = await (supabase.rpc as any)('complete_co_op_mission', {
+      const { error } = await supabase.rpc('complete_co_op_mission', {
         p_mission_id: missionId,
       });
       if (error) throw error;

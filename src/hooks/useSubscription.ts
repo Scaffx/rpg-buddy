@@ -38,7 +38,7 @@ export function useSubscription() {
         .maybeSingle();
       if (error) throw error;
       if (!data) {
-        await (supabase.rpc as any)("ensure_trial_subscription");
+        await supabase.rpc("ensure_trial_subscription");
         const { data: fresh } = await supabase
           .from("subscriptions" as any)
           .select("*")

@@ -25,7 +25,7 @@ export function useGlobalLeaderboard() {
   return useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard_global'],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)('get_global_leaderboard', { p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_global_leaderboard', { p_limit: 100 });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
@@ -37,7 +37,7 @@ export function useWeeklyLeaderboard() {
   return useQuery<WeeklyLeaderboardEntry[]>({
     queryKey: ['leaderboard_weekly'],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)('get_weekly_leaderboard', { p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_weekly_leaderboard', { p_limit: 100 });
       if (error) throw error;
       return ((data ?? []) as any[]).map((r: any) => ({ ...r, weekly_count: Number(r.weekly_count ?? 0) }));
     },
@@ -50,7 +50,7 @@ export function useClassLeaderboard(starterClass: string | null) {
     queryKey: ['leaderboard_class', starterClass],
     queryFn: async () => {
       if (!starterClass) return [];
-      const { data, error } = await (supabase.rpc as any)('get_class_leaderboard', { p_class: starterClass, p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_class_leaderboard', { p_class: starterClass, p_limit: 100 });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
@@ -66,7 +66,7 @@ export function useRegionalLeaderboard(region: string | null) {
     queryKey: ['leaderboard_regional', region],
     queryFn: async () => {
       if (!region) return [];
-      const { data, error } = await (supabase.rpc as any)('get_regional_leaderboard', { p_region: region, p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_regional_leaderboard', { p_region: region, p_limit: 100 });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
@@ -80,7 +80,7 @@ export function useRegionalWeeklyLeaderboard(region: string | null) {
     queryKey: ['leaderboard_regional_weekly', region],
     queryFn: async () => {
       if (!region) return [];
-      const { data, error } = await (supabase.rpc as any)('get_regional_weekly_leaderboard', { p_region: region, p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_regional_weekly_leaderboard', { p_region: region, p_limit: 100 });
       if (error) throw error;
       return ((data ?? []) as any[]).map((r: any) => ({ ...r, weekly_count: Number(r.weekly_count ?? 0) }));
     },
@@ -94,7 +94,7 @@ export function useRegionalClassLeaderboard(region: string | null, starterClass:
     queryKey: ['leaderboard_regional_class', region, starterClass],
     queryFn: async () => {
       if (!starterClass || !region) return [];
-      const { data, error } = await (supabase.rpc as any)('get_regional_class_leaderboard', { p_region: region, p_class: starterClass, p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_regional_class_leaderboard', { p_region: region, p_class: starterClass, p_limit: 100 });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
@@ -109,7 +109,7 @@ export function useStreakLeaderboard() {
   return useQuery<StreakLeaderboardEntry[]>({
     queryKey: ['leaderboard_streak'],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)('get_streak_leaderboard', { p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_streak_leaderboard', { p_limit: 100 });
       if (error) throw error;
       return ((data ?? []) as any[]).map((r: any) => ({ ...r, current_streak: Number(r.current_streak ?? 0) }));
     },
@@ -122,7 +122,7 @@ export function useRegionalStreakLeaderboard(region: string | null) {
     queryKey: ['leaderboard_regional_streak', region],
     queryFn: async () => {
       if (!region) return [];
-      const { data, error } = await (supabase.rpc as any)('get_regional_streak_leaderboard', { p_region: region, p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_regional_streak_leaderboard', { p_region: region, p_limit: 100 });
       if (error) throw error;
       return ((data ?? []) as any[]).map((r: any) => ({ ...r, current_streak: Number(r.current_streak ?? 0) }));
     },
@@ -137,7 +137,7 @@ export function useClassChampions() {
   return useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard_class_champions'],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)('get_class_champions');
+      const { data, error } = await supabase.rpc('get_class_champions');
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },
@@ -150,7 +150,7 @@ export function useRegionalClassChampions(region: string | null) {
     queryKey: ['leaderboard_regional_class_champions', region],
     queryFn: async () => {
       if (!region) return [];
-      const { data, error } = await (supabase.rpc as any)('get_regional_class_champions', { p_region: region });
+      const { data, error } = await supabase.rpc('get_regional_class_champions', { p_region: region });
       if (error) throw error;
       return (data ?? []) as LeaderboardEntry[];
     },

@@ -45,7 +45,7 @@ export function useRedeemKey() {
   const queryClient = useQueryClient();
   return useMutation<RedeemResult, Error, string>({
     mutationFn: async (code: string) => {
-      const { data, error } = await (supabase.rpc as any)("redeem_access_key", {
+      const { data, error } = await supabase.rpc("redeem_access_key", {
         p_code: code.trim().toUpperCase(),
       });
       if (error) throw new Error(error.message);

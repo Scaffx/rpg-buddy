@@ -136,7 +136,7 @@ export function useUnreadCounts() {
     enabled: !!user,
     staleTime: 10_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)('get_unread_counts_by_sender');
+      const { data, error } = await supabase.rpc('get_unread_counts_by_sender');
       if (error) throw error;
       const map: Record<string, number> = {};
       for (const row of (data || []) as Array<{ sender_id: string; unread: number }>) {

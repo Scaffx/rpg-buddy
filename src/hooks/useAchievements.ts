@@ -142,7 +142,7 @@ export function useClaimAchievement() {
 
       // RPC atômica: lock da linha + verificação claimed_at + grant XP/ouro
       // Previne double-claim por race condition ou cache stale
-      const { error } = await (supabase.rpc as any)('claim_achievement', {
+      const { error } = await supabase.rpc('claim_achievement', {
         p_user_achievement_id: userAchievement.id,
       });
       if (error) throw new Error(error.message || 'Erro ao resgatar');

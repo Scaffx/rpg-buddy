@@ -19,7 +19,7 @@ export function usePresenceHeartbeat() {
 
     const beat = async () => {
       try {
-        await (supabase.rpc as any)('update_my_last_seen');
+        await supabase.rpc('update_my_last_seen');
       } catch {
         /* heartbeat silencioso */
       }

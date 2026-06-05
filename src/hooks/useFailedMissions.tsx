@@ -331,7 +331,7 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
 
   if (totalPenalty > 0) {
     // 🔒 Server-side: dedução de XP da penalidade via RPC (nível nunca cai).
-    await (supabase as any).rpc('apply_xp_penalty', { p_amount: totalPenalty });
+    await supabase.rpc('apply_xp_penalty', { p_amount: totalPenalty });
 
     let desc = `Missões fracassadas! -${totalPenalty} XP`;
     if (totalHpPenalty > 0) desc += `, -${totalHpPenalty} HP`;
@@ -388,7 +388,7 @@ export function usePayPenalty() {
       // 🔒 Server-side: o RPC pay_mission_penalty deduz o ouro, restaura o XP
       // (lido do banco) e marca a missão atomicamente. Cliente não mexe em
       // ouro/XP direto.
-      const { error } = await (supabase as any).rpc('pay_mission_penalty', { p_mission_id: mission.id });
+      const { error } = await supabase.rpc('pay_mission_penalty', { p_mission_id: mission.id });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -483,7 +483,7 @@ export function useMarkFailedAsDone() {
 
       // Restaurar XP perdido com a penalidade (server-side via add_xp_to_user)
       const xpToRestore = mission.xp_penalized || mission.xp_reward;
-      await (supabase as any).rpc('add_xp_to_user', { p_user_id: user.id, p_xp: xpToRestore });
+      await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: xpToRestore });
 
       // Registrar recuperação no log
       await supabase.from('activity_log').insert({

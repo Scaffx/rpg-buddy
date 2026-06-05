@@ -165,7 +165,7 @@ export function useBuyEquipment() {
       if (!user) throw new Error('Não autenticado');
 
       // 🔒 Server-side: preço lido do banco + dedução guardada via charge_for_item.
-      const { error: chargeErr } = await (supabase as any).rpc('charge_for_item', { p_item_id: item.id });
+      const { error: chargeErr } = await supabase.rpc('charge_for_item', { p_item_id: item.id });
       if (chargeErr) throw chargeErr;
 
       if (item.stackable) {

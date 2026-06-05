@@ -15,7 +15,7 @@ export function useUndoMission() {
       // creditados e reverte XP/ouro/atributos/chaves atomicamente. Fecha o
       // farm via loop completar/desfazer (secundários -12, chave revertida).
       const today = new Date().toLocaleDateString('en-CA');
-      const { data, error } = await (supabase as any).rpc('undo_mission', {
+      const { data, error } = await supabase.rpc('undo_mission', {
         p_mission_id: missionId,
         p_today: today,
       });

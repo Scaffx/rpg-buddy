@@ -1112,11 +1112,11 @@ export default function DungeonArena({
 
     try {
       // XP — server-side (add_xp_to_user usa auth.uid() e clampa o valor)
-      const { error: xpErr } = await (supabase as any).rpc('add_xp_to_user', { p_user_id: user.id, p_xp: totalXp });
+      const { error: xpErr } = await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: totalXp });
       if (xpErr) console.error('add_xp_to_user falhou:', xpErr.message);
 
       // Gold — server-side (corrigido: o parâmetro é p_gold, não p_amount)
-      const { error: goldErr } = await (supabase as any).rpc('add_gold_to_user', { p_user_id: user.id, p_gold: totalGold });
+      const { error: goldErr } = await supabase.rpc('add_gold_to_user', { p_user_id: user.id, p_gold: totalGold });
       if (goldErr) console.error('add_gold_to_user falhou:', goldErr.message);
 
       // Crafting materials → game_items by effect

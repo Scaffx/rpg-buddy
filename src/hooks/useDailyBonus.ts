@@ -50,7 +50,7 @@ export function useDailyBonus() {
       // Anjo são calculados e validados no RPC. O client não consegue mais
       // burlar o cooldown nem forjar os valores.
       const today = new Date().toLocaleDateString('en-CA');
-      const { data, error } = await (supabase as any).rpc('claim_daily_bonus', { p_today: today });
+      const { data, error } = await supabase.rpc('claim_daily_bonus', { p_today: today });
       if (error) throw error;
       const result = (data || {}) as { xp?: number; gold?: number };
       return { xp: result.xp ?? 0, gold: result.gold ?? 0 };
