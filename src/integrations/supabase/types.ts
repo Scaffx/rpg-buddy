@@ -2065,7 +2065,15 @@ export type Database = {
           user_id?: string
           xp_today?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_current_class_id_fkey"
+            columns: ["current_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shop_items: {
         Row: {
