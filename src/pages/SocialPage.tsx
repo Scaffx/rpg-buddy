@@ -36,6 +36,7 @@ function CoOpMissionModal({
   onClose: () => void;
   preselectedFriendId?: string;
 }) {
+  const { t } = useTranslation();
   const { data: friends = [] } = useFriends();
   const createMission = useCreateCoOpMission();
   const [title, setTitle] = useState("");
@@ -51,16 +52,16 @@ function CoOpMissionModal({
   };
 
   const handleCreate = () => {
-    if (!title.trim()) return toast.error("Adicione um título para a missão");
-    if (selectedIds.length === 0) return toast.error("Selecione ao menos 1 amigo");
+    if (!title.trim()) return toast.error(t('app.social.toast_title_required'));
+    if (selectedIds.length === 0) return toast.error(t('app.social.toast_select_friend'));
     createMission.mutate(
       { title: title.trim(), description: description.trim(), memberIds: selectedIds },
       {
         onSuccess: () => {
-          toast.success("Missão em conjunto criada! Cada herói receberá 25 XP ao concluir.");
+          toast.success(t('app.social.toast_mission_created'));
           onClose();
         },
-        onError: (e: any) => toast.error(e.message || "Erro ao criar missão"),
+        onError: (e: any) => toast.error(e.message || t('app.social.toast_mission_error')),
       }
     );
   };
@@ -77,7 +78,7 @@ function CoOpMissionModal({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Swords className="w-5 h-5 text-primary" />
-            <h2 className="text-base font-bold text-foreground">Missão em Conjunto</h2>
+            <h2 className="text-base font-bold text-foreground">{t('app.social.coop_mission')}</h2>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="w-4 h-4" />
@@ -85,31 +86,31 @@ function CoOpMissionModal({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Convide 1–4 amigos. Cada herói que concluir ganha <strong className="text-primary">25 XP</strong>.
+          {t('app.social.invite_desc')} <strong className="text-primary">{t('app.social.invite_xp')}</strong>.
         </p>
 
         {/* Título */}
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Título da Missão *</label>
+          <label className="text-xs text-muted-foreground mb-1 block">{t('app.social.mission_title_label')}</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={60}
-            placeholder="Ex: Treinar 3 vezes esta semana"
+            placeholder={t('app.social.mission_title_placeholder')}
             className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:border-primary/60"
           />
         </div>
 
         {/* Descrição */}
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Descrição (opcional)</label>
+          <label className="text-xs text-muted-foreground mb-1 block">{t('app.social.mission_desc_label')}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={200}
             rows={2}
-            placeholder="Detalhes do objetivo..."
+            placeholder={t('app.social.mission_desc_placeholder')}
             className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:border-primary/60 resize-none"
           />
         </div>
@@ -117,10 +118,10 @@ function CoOpMissionModal({
         {/* Selecionar amigos */}
         <div>
           <label className="text-xs text-muted-foreground mb-2 block">
-            Convidar amigos ({selectedIds.length}/4)
+            {t('app.social.invite_friends', { count: selectedIds.length })}
           </label>
           {friends.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-3">Sem amigos adicionados ainda</p>
+            <p className="text-xs text-muted-foreground text-center py-3">{t('app.social.no_friends_yet')}</p>
           ) : (
             <div className="space-y-1.5 max-h-40 overflow-y-auto">
               {friends.map((f) => {
@@ -138,8 +139,8 @@ function CoOpMissionModal({
                         : "border-border bg-muted/30 text-foreground hover:bg-muted/60 disabled:opacity-40"
                     }`}
                   >
-                    <span className="font-medium truncate">{profile.display_name || "Herói"}</span>
-                    <span className="text-xs text-muted-foreground">Nv {profile.level}</span>
+                    <span className="font-medium truncate">{profile.display_name || t('app.social.hero')}</span>
+                    <span className="text-xs text-muted-foreground">{t('app.social.level_short', { level: profile.level })}</span>
                     {selected && <CheckCircle className="w-3.5 h-3.5 text-primary flex-shrink-0 ml-2" />}
                   </button>
                 );
@@ -153,7 +154,7 @@ function CoOpMissionModal({
           disabled={createMission.isPending}
           className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          {createMission.isPending ? "Criando…" : "⚔ Criar Missão em Conjunto"}
+          {createMission.isPending ? t('app.social.creating') : t('app.social.create_coop_mission')}
         </button>
       </motion.div>
     </div>
@@ -164,6 +165,7 @@ function CoOpMissionModal({
 // Card: Missão em Conjunto
 // ────────────────────────────────────────────────────────────────
 function CoOpMissionCard({ mission, currentUserId }: { mission: CoOpMission; currentUserId: string }) {
+  const { t } = useTranslation();
   const completeMission = useCompleteCoOpMission();
   const myMember = mission.members?.find((m) => m.user_id === currentUserId);
   const allDone = mission.members?.every((m) => m.completed) ?? false;
@@ -194,7 +196,7 @@ function CoOpMissionCard({ mission, currentUserId }: { mission: CoOpMission; cur
             }`}
           >
             {m.completed ? <CheckCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-            <span>{m.profile?.display_name || "Herói"}</span>
+            <span>{m.profile?.display_name || t('app.social.hero')}</span>
           </div>
         ))}
       </div>
@@ -204,18 +206,18 @@ function CoOpMissionCard({ mission, currentUserId }: { mission: CoOpMission; cur
         <button
           onClick={() =>
             completeMission.mutate(mission.id, {
-              onSuccess: () => toast.success(`+${mission.xp_per_player} XP resgatado!`),
+              onSuccess: () => toast.success(t('app.social.toast_xp_claimed', { xp: mission.xp_per_player })),
               onError: (e: any) => toast.error(e.message),
             })
           }
           disabled={completeMission.isPending}
           className="w-full py-2 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-semibold hover:bg-emerald-600/30 transition-colors disabled:opacity-50"
         >
-          {completeMission.isPending ? "Concluindo…" : "✔ Marcar como Concluída"}
+          {completeMission.isPending ? t('app.social.completing') : t('app.social.mark_completed')}
         </button>
       ) : myMember?.completed ? (
         <p className="text-xs text-center text-emerald-400 font-medium py-1">
-          ✓ Você já concluiu! {allDone ? "— Missão encerrada 🎉" : "Aguardando os demais…"}
+          {t('app.social.you_completed')} {allDone ? t('app.social.mission_closed') : t('app.social.waiting_others')}
         </p>
       ) : null}
     </div>
@@ -290,13 +292,13 @@ export default function SocialPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" /> Social
+              <Users className="w-5 h-5 text-primary" /> {t('app.social.title')}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {friends.length} amigo{friends.length !== 1 ? "s" : ""}
+              {t('app.social.friends_count', { count: friends.length })}
               {pendingRequests.length > 0 && (
                 <span className="ml-2 px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full text-xs font-bold">
-                  {pendingRequests.length} pendente{pendingRequests.length !== 1 ? "s" : ""}
+                  {t('app.social.pending_count', { count: pendingRequests.length })}
                 </span>
               )}
             </p>
@@ -305,23 +307,23 @@ export default function SocialPage() {
             onClick={() => openCoOpModal()}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-bold hover:bg-primary/30 transition-colors"
           >
-            <Plus className="w-3.5 h-3.5" /> Nova Missão
+            <Plus className="w-3.5 h-3.5" /> {t('app.social.new_mission')}
           </button>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-2 bg-muted/30 rounded-xl p-1">
-          {(["friends", "missions"] as const).map((t) => (
+          {(["friends", "missions"] as const).map((tabId) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabId}
+              onClick={() => setTab(tabId)}
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                tab === t
+                tab === tabId
                   ? "bg-card text-foreground shadow"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t === "friends" ? "👥 Amigos" : "⚔ Missões em Conjunto"}
+              {tabId === "friends" ? t('app.social.tab_friends') : t('app.social.tab_missions')}
             </button>
           ))}
         </div>
@@ -333,7 +335,7 @@ export default function SocialPage() {
             {pendingRequests.length > 0 && (
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 space-y-2">
                 <p className="text-xs font-bold text-amber-400">
-                  {pendingRequests.length} solicitação{pendingRequests.length !== 1 ? "ões" : ""} pendente{pendingRequests.length !== 1 ? "s" : ""}
+                  {t('app.social.requests_pending_count', { count: pendingRequests.length })}
                 </p>
                 {pendingRequests.map((req) => (
                   <div
@@ -342,10 +344,10 @@ export default function SocialPage() {
                   >
                     <div>
                       <p className="text-sm font-semibold text-foreground">
-                        {req.other_profile?.display_name || "Aventureiro"}
+                        {req.other_profile?.display_name || t('app.social.adventurer')}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Nv {req.other_profile?.level || "?"} · {req.other_profile?.starter_class || "Iniciante"}
+                        {t('app.social.level_class', { level: req.other_profile?.level || "?", class: req.other_profile?.starter_class || t('app.social.beginner') })}
                       </p>
                     </div>
                     <div className="flex gap-1.5">
@@ -354,7 +356,7 @@ export default function SocialPage() {
                           respondFriendRequest.mutate(
                             { requestId: req.id, accept: true },
                             {
-                              onSuccess: () => toast.success("Amigo adicionado!"),
+                              onSuccess: () => toast.success(t('app.social.toast_friend_added')),
                               onError: (e: any) => toast.error(e.message),
                             }
                           )
@@ -386,11 +388,11 @@ export default function SocialPage() {
                 <div className="flex items-center gap-2">
                   <Send className="w-4 h-4 text-primary" />
                   <h3 className="text-sm font-bold text-foreground">
-                    Solicitações enviadas
+                    {t('app.social.sent_requests')}
                   </h3>
                   {sentPending.length > 0 && (
                     <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full font-bold">
-                      {sentPending.length} aguardando
+                      {t('app.social.waiting_count', { count: sentPending.length })}
                     </span>
                   )}
                 </div>
@@ -404,24 +406,24 @@ export default function SocialPage() {
                       >
                         <div>
                           <p className="text-sm font-semibold text-foreground">
-                            {req.other_profile?.display_name || "Aventureiro"}
+                            {req.other_profile?.display_name || t('app.social.adventurer')}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Nv {req.other_profile?.level || "?"} · {req.other_profile?.starter_class || "Iniciante"}
+                            {t('app.social.level_class', { level: req.other_profile?.level || "?", class: req.other_profile?.starter_class || t('app.social.beginner') })}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs px-2 py-0.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-full font-medium">
-                            Pendente
+                            {t('app.social.status_pending')}
                           </span>
                           <button
                             onClick={() =>
                               cancelSentRequest.mutate(req.id, {
-                                onSuccess: () => toast.success("Solicitação cancelada"),
-                                onError: (e: any) => toast.error(e.message || "Erro ao cancelar"),
+                                onSuccess: () => toast.success(t('app.social.toast_request_cancelled')),
+                                onError: (e: any) => toast.error(e.message || t('app.social.toast_cancel_error')),
                               })
                             }
-                            title="Cancelar solicitação"
+                            title={t('app.social.cancel_request')}
                             className="p-1.5 bg-muted/50 text-muted-foreground border border-border rounded-lg hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-colors"
                           >
                             <Ban className="w-3.5 h-3.5" />
@@ -443,19 +445,19 @@ export default function SocialPage() {
                         >
                           <div>
                             <p className="text-sm font-semibold text-foreground">
-                              {req.other_profile?.display_name || "Aventureiro"}
+                              {req.other_profile?.display_name || t('app.social.adventurer')}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Nv {req.other_profile?.level || "?"} · {req.other_profile?.starter_class || "Iniciante"}
+                              {t('app.social.level_class', { level: req.other_profile?.level || "?", class: req.other_profile?.starter_class || t('app.social.beginner') })}
                             </p>
                           </div>
                           {accepted ? (
                             <span className="text-xs px-2 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full font-medium flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" /> Aceita
+                              <CheckCircle className="w-3 h-3" /> {t('app.social.status_accepted')}
                             </span>
                           ) : (
                             <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground border border-border rounded-full font-medium">
-                              Recusada
+                              {t('app.social.status_declined')}
                             </span>
                           )}
                         </div>
@@ -470,7 +472,7 @@ export default function SocialPage() {
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Adicionar Amigo</h3>
+                <h3 className="text-sm font-bold text-foreground">{t('app.social.add_friend')}</h3>
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -478,7 +480,7 @@ export default function SocialPage() {
                   type="text"
                   value={friendSearch}
                   onChange={(e) => setFriendSearch(e.target.value)}
-                  placeholder="Buscar herói por nome…"
+                  placeholder={t('app.social.search_placeholder')}
                   className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-primary/50 outline-none"
                 />
                 {isSearching && (
@@ -499,31 +501,31 @@ export default function SocialPage() {
                       >
                         <div>
                           <p className="text-sm font-semibold text-foreground">
-                            {profile.display_name || "Aventureiro"}
+                            {profile.display_name || t('app.social.adventurer')}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Nv {profile.level} · {profile.starter_class || "Iniciante"}
+                            {t('app.social.level_class', { level: profile.level, class: profile.starter_class || t('app.social.beginner') })}
                           </p>
                         </div>
                         {alreadyFriend ? (
                           <span className="text-xs text-emerald-400 flex items-center gap-1">
-                            <UserCheck className="w-3.5 h-3.5" /> Amigos
+                            <UserCheck className="w-3.5 h-3.5" /> {t('app.social.friends_label')}
                           </span>
                         ) : (
                           <button
                             onClick={() =>
                               sendFriendRequest.mutate(profile.user_id, {
                                 onSuccess: () => {
-                                  toast.success(`Solicitação enviada para ${profile.display_name}!`);
+                                  toast.success(t('app.social.toast_request_sent', { name: profile.display_name }));
                                   setFriendSearch("");
                                 },
-                                onError: (e: any) => toast.error(e.message || "Erro ao enviar solicitação"),
+                                onError: (e: any) => toast.error(e.message || t('app.social.toast_send_error')),
                               })
                             }
                             disabled={sendFriendRequest.isPending}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-medium hover:bg-primary/30 transition-colors disabled:opacity-50"
                           >
-                            <UserPlus className="w-3 h-3" /> Adicionar
+                            <UserPlus className="w-3 h-3" /> {t('app.social.add')}
                           </button>
                         )}
                       </div>
@@ -533,7 +535,7 @@ export default function SocialPage() {
               )}
 
               {friendSearch.length >= 2 && !isSearching && searchResults.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">Nenhum herói encontrado</p>
+                <p className="text-xs text-muted-foreground text-center py-2">{t('app.social.no_hero_found')}</p>
               )}
             </div>
 
@@ -542,14 +544,14 @@ export default function SocialPage() {
               {friends.length === 0 ? (
                 <div className="bg-card border border-border rounded-xl p-8 text-center space-y-2">
                   <Users className="w-8 h-8 text-muted-foreground mx-auto opacity-40" />
-                  <p className="text-sm text-muted-foreground">Sem amigos ainda. Busque um herói acima!</p>
+                  <p className="text-sm text-muted-foreground">{t('app.social.no_friends_search')}</p>
                 </div>
               ) : (
                 friends.map((f) => {
                   const profile = f.other_profile;
                   if (!profile) return null;
                   const online = isOnline(profile.last_seen_at);
-                  const className = profile.current_class_name ?? profile.starter_class ?? "Iniciante";
+                  const className = profile.current_class_name ?? profile.starter_class ?? t('app.social.beginner');
                   const unread = unreadCounts[profile.user_id] ?? 0;
                   return (
                     <motion.div
@@ -567,22 +569,22 @@ export default function SocialPage() {
                             className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${
                               online ? "bg-emerald-500" : "bg-muted-foreground"
                             }`}
-                            title={online ? "Online" : "Offline"}
+                            title={online ? t('app.social.online') : t('app.social.offline')}
                           />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">
-                            {profile.display_name || "Herói"}
+                            {profile.display_name || t('app.social.hero')}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            Nv {profile.level} · {className} · {online ? "Online" : "Offline"}
+                            {t('app.social.level_class_status', { level: profile.level, class: className, status: online ? t('app.social.online') : t('app.social.offline') })}
                           </p>
                         </div>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
                         <button
                           onClick={() => setChatFriendId(profile.user_id)}
-                          title="Enviar mensagem"
+                          title={t('app.social.send_message')}
                           className="relative flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium hover:bg-emerald-500/25 transition-colors"
                         >
                           <MessageSquare className="w-3 h-3" />
@@ -594,19 +596,19 @@ export default function SocialPage() {
                         </button>
                         <button
                           onClick={() => openCoOpModal(profile.user_id)}
-                          title="Chamar para missão em conjunto"
+                          title={t('app.social.invite_coop')}
                           className="flex items-center gap-1 px-2.5 py-1.5 bg-primary/15 text-primary border border-primary/30 rounded-lg text-xs font-medium hover:bg-primary/25 transition-colors"
                         >
-                          <Swords className="w-3 h-3" /> Missão
+                          <Swords className="w-3 h-3" /> {t('app.social.mission')}
                         </button>
                         <button
                           onClick={() =>
                             removeFriend.mutate(f.id, {
-                              onSuccess: () => toast.success("Amigo removido"),
+                              onSuccess: () => toast.success(t('app.social.toast_friend_removed')),
                               onError: (e: any) => toast.error(e.message),
                             })
                           }
-                          title="Remover amigo"
+                          title={t('app.social.remove_friend')}
                           className="p-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -627,13 +629,13 @@ export default function SocialPage() {
               <div className="bg-card border border-border rounded-xl p-8 text-center space-y-3">
                 <Swords className="w-8 h-8 text-muted-foreground mx-auto opacity-40" />
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma missão em conjunto ativa.
+                  {t('app.social.no_active_missions')}
                 </p>
                 <button
                   onClick={() => openCoOpModal()}
                   className="mx-auto flex items-center gap-1.5 px-4 py-2 bg-primary/20 text-primary border border-primary/30 rounded-lg text-sm font-bold hover:bg-primary/30 transition-colors"
                 >
-                  <Plus className="w-4 h-4" /> Criar Missão
+                  <Plus className="w-4 h-4" /> {t('app.social.create_mission')}
                 </button>
               </div>
             ) : (
@@ -645,7 +647,7 @@ export default function SocialPage() {
                   onClick={() => openCoOpModal()}
                   className="w-full py-2.5 border border-dashed border-primary/30 text-primary/70 rounded-xl text-sm font-medium hover:border-primary/60 hover:text-primary transition-colors"
                 >
-                  + Criar nova missão
+                  {t('app.social.create_new_mission')}
                 </button>
               </>
             )}
