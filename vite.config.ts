@@ -20,4 +20,10 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
+  // Limita o scan de dependências ao código-fonte. Sem isso, o vite varre a
+  // pasta android/ (cópia de build antigo do Capacitor) e tenta resolver deps
+  // que não existem no projeto web (ex.: @emotion/is-prop-valid), poluindo o dev.
+  optimizeDeps: {
+    entries: ["index.html", "src/**/*.{ts,tsx}"],
+  },
 }));
