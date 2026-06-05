@@ -466,6 +466,7 @@ export type Database = {
           description: string | null
           icon: string
           id: string
+          is_healer: boolean
           level_max: number
           level_min: number
           name: string
@@ -478,6 +479,7 @@ export type Database = {
           description?: string | null
           icon?: string
           id?: string
+          is_healer?: boolean
           level_max?: number
           level_min?: number
           name: string
@@ -490,6 +492,7 @@ export type Database = {
           description?: string | null
           icon?: string
           id?: string
+          is_healer?: boolean
           level_max?: number
           level_min?: number
           name?: string
@@ -871,10 +874,12 @@ export type Database = {
           display_name: string
           id: string
           is_alive: boolean
+          is_healer: boolean
           is_host: boolean
           joined_at: string
           max_hp: number
           player_atk: number
+          player_class_id: string | null
           player_def: number
           player_level: number
           session_id: string
@@ -885,10 +890,12 @@ export type Database = {
           display_name: string
           id?: string
           is_alive?: boolean
+          is_healer?: boolean
           is_host?: boolean
           joined_at?: string
           max_hp: number
           player_atk?: number
+          player_class_id?: string | null
           player_def?: number
           player_level?: number
           session_id: string
@@ -899,10 +906,12 @@ export type Database = {
           display_name?: string
           id?: string
           is_alive?: boolean
+          is_healer?: boolean
           is_host?: boolean
           joined_at?: string
           max_hp?: number
           player_atk?: number
+          player_class_id?: string | null
           player_def?: number
           player_level?: number
           session_id?: string
@@ -923,10 +932,12 @@ export type Database = {
           created_at: string
           current_room: number
           dungeon_id: string
+          event_boss_id: string | null
           host_user_id: string
           id: string
           invite_code: string
           layout_index: number
+          max_players: number
           session_log: Json
           session_loot: Json
           status: string
@@ -936,10 +947,12 @@ export type Database = {
           created_at?: string
           current_room?: number
           dungeon_id: string
+          event_boss_id?: string | null
           host_user_id: string
           id?: string
           invite_code: string
           layout_index?: number
+          max_players?: number
           session_log?: Json
           session_loot?: Json
           status?: string
@@ -949,16 +962,26 @@ export type Database = {
           created_at?: string
           current_room?: number
           dungeon_id?: string
+          event_boss_id?: string | null
           host_user_id?: string
           id?: string
           invite_code?: string
           layout_index?: number
+          max_players?: number
           session_log?: Json
           session_loot?: Json
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dungeon_sessions_event_boss_id_fkey"
+            columns: ["event_boss_id"]
+            isOneToOne: false
+            referencedRelation: "bosses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fragment_dungeon_players: {
         Row: {
@@ -2691,6 +2714,22 @@ export type Database = {
           p_current_hp: number
           p_display_name: string
           p_dungeon_id: string
+          p_max_hp: number
+          p_player_atk: number
+          p_player_def: number
+          p_player_level: number
+        }
+        Returns: {
+          invite_code: string
+          layout_index: number
+          session_id: string
+        }[]
+      }
+      create_event_session: {
+        Args: {
+          p_boss_id: string
+          p_current_hp: number
+          p_display_name: string
           p_max_hp: number
           p_player_atk: number
           p_player_def: number
