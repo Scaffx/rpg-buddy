@@ -18,6 +18,7 @@ export default {
         body: ["Inter", "sans-serif"],
       },
       colors: {
+        discord: "#5865F2",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

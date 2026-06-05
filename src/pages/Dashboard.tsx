@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { evaluateTodayStreakRisk, DAYS_MAP } from "@/lib/streakUtils";
+import { currentWeekToken } from "@/lib/dateUtils";
 import RemindersCard from "@/components/RemindersCard";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
@@ -241,12 +242,7 @@ export default function Dashboard() {
     const tryWeeklyProtectorReset = async () => {
       if (!user || !profile) return;
 
-      const now = new Date();
-      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      const day = d.getUTCDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      d.setUTCDate(d.getUTCDate() + diff);
-      const weekToken = d.toISOString().slice(0, 10);
+      const weekToken = currentWeekToken();
 
       const currentWeek = String(profile.streak_protector_week || '');
       const maxSlots = Math.min(3, Math.max(1, Number(profile.streak_protector_max ?? 3)));

@@ -24,19 +24,12 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { computeSixtyPercentStreak } from '@/lib/streakUtils';
+import { currentWeekToken } from '@/lib/dateUtils';
 
 const DAILY_RESET_EVENT = 'daily-reset-processed';
 
 function getDailyResetStorageKey(userId: string): string {
   return `daily_reset_last_processed_${userId}`;
-}
-
-function getWeekToken(date: Date = new Date()): string {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = d.getUTCDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setUTCDate(d.getUTCDate() + diff);
-  return d.toISOString().slice(0, 10);
 }
 
 type StreakProtectorStatus = {
@@ -75,7 +68,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       const row = data as StreakProtectorProfileRow | null;
 
-      const weekToken = getWeekToken();
+      const weekToken = currentWeekToken();
       const profileWeek = String(row?.streak_protector_week || '');
       const max = Math.min(3, Math.max(1, Number(row?.streak_protector_max ?? 3)));
       const charges = profileWeek === weekToken
