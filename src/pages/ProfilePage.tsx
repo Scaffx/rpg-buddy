@@ -1108,7 +1108,7 @@ export default function ProfilePage() {
           effectLabel: skill.effectLabel,
         }));
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('profiles')
         .update({ combat_skill_loadout: payload })
         .eq('user_id', user.id);

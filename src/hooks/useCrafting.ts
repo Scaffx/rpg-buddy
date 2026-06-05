@@ -6,7 +6,7 @@ export function useRecipes(className: string | null) {
   return useQuery({
     queryKey: ['crafting_recipes', className],
     queryFn: async () => {
-      const { data: recipes, error } = await (supabase as any)
+      const { data: recipes, error } = await supabase
         .from('crafting_recipes')
         .select('*')
         .eq('class_required', className);
@@ -31,7 +31,7 @@ export function useCraftingMaterials() {
   return useQuery({
     queryKey: ['crafting_materials', user?.id],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from('user_crafting_materials')
         .select('quantity')
         .eq('user_id', user!.id)
@@ -59,7 +59,7 @@ export function useCraftItem() {
       recipeName: string;
     }) => {
       // 1. Verificar materiais
-      const { data: mats } = await (supabase as any)
+      const { data: mats } = await supabase
         .from('user_crafting_materials')
         .select('quantity')
         .eq('user_id', user!.id)
@@ -78,7 +78,7 @@ export function useCraftItem() {
       }
 
       // 3. Descontar materiais
-      await (supabase as any)
+      await supabase
         .from('user_crafting_materials')
         .update({ quantity: currentMats - materialsRequired })
         .eq('user_id', user!.id);

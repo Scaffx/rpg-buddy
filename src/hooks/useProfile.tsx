@@ -165,7 +165,7 @@ export function getStreakXpBonusLabel(streak: number): string {
 }
 
 async function getActiveBuffEffects(userId: string): Promise<Set<string>> {
-  const { data: buffs } = await (supabase as any)
+  const { data: buffs } = await supabase
     .from('user_buffs')
     .select('id, expires_at, active, shop_items(effect)')
     .eq('user_id', userId)
@@ -610,7 +610,7 @@ export function useFightBoss() {
       const attrLevels = getAttributeLevels((attrs || []) as any[]);
       const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
 
-      const { data: inventoryData } = await (supabase as any)
+      const { data: inventoryData } = await supabase
         .from('user_inventory')
         .select('equipped, sintonizado, game_items(rarity, requer_sintonizacao, atk_bonus, matk_bonus, def_bonus, hp_bonus, mp_bonus, agi_bonus, crit_bonus)')
         .eq('user_id', user!.id);
@@ -684,7 +684,7 @@ export function useStartActiveCombat() {
     mutationFn: async ({ bossId }: { bossId: string }) => {
       if (!user) throw new Error('Não autenticado');
 
-      const { data: existingCombat, error: existingCombatError } = await (supabase as any)
+      const { data: existingCombat, error: existingCombatError } = await supabase
         .from('combates_ativos')
         .select('*')
         .eq('personagem_id', user.id)
@@ -717,13 +717,13 @@ export function useStartActiveCombat() {
         xp_atual: totalXp,
       };
 
-      const { error: personagemUpsertError } = await (supabase as any)
+      const { error: personagemUpsertError } = await supabase
         .from('personagens')
         .upsert(personagemPayload, { onConflict: 'id' });
 
       if (personagemUpsertError) throw personagemUpsertError;
 
-      const { data: personagem, error: personagemFetchError } = await (supabase as any)
+      const { data: personagem, error: personagemFetchError } = await supabase
         .from('personagens')
         .select('id, hp_max')
         .eq('id', user.id)
@@ -731,7 +731,7 @@ export function useStartActiveCombat() {
 
       if (personagemFetchError) throw personagemFetchError;
 
-      const { data: boss, error: bossError } = await (supabase as any)
+      const { data: boss, error: bossError } = await supabase
         .from('bosses')
         .select('id, hp, hp_max, level')
         .eq('id', bossId)
@@ -742,7 +742,7 @@ export function useStartActiveCombat() {
       const hpInicialBoss = Number((boss as any).hp_max ?? (boss as any).hp ?? 100);
       const hpMaxPersonagem = Number((personagem as any).hp_max ?? 120);
 
-      const { data: healthStats, error: healthStatsError } = await (supabase as any)
+      const { data: healthStats, error: healthStatsError } = await supabase
         .from('user_health_stats')
         .select('id, current_hp, max_hp, fatigue, water_target_ml, weight_kg, last_reset_date')
         .eq('user_id', user.id)
@@ -759,7 +759,7 @@ export function useStartActiveCombat() {
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toLocaleDateString('en-CA');
 
-        const { data: yesterdayWater, error: waterError } = await (supabase as any)
+        const { data: yesterdayWater, error: waterError } = await supabase
           .from('water_log')
           .select('amount_ml')
           .eq('user_id', user.id)
@@ -776,7 +776,7 @@ export function useStartActiveCombat() {
           fatigue = Math.min(100, fatigue + 35);
         }
 
-        const { error: daySyncError } = await (supabase as any)
+        const { error: daySyncError } = await supabase
           .from('user_health_stats')
           .update({ fatigue, last_reset_date: today })
           .eq('user_id', user.id);
@@ -829,7 +829,7 @@ export function useStartActiveCombat() {
       const hpInicialPersonagem = Math.max(1, Math.min(hpMaxPersonagem, hpAtualPersistido));
 
       if (healthStats) {
-        const { error: updateHealthError } = await (supabase as any)
+        const { error: updateHealthError } = await supabase
           .from('user_health_stats')
           .update({
             max_hp: hpMaxPersonagem,
@@ -839,7 +839,7 @@ export function useStartActiveCombat() {
 
         if (updateHealthError) throw updateHealthError;
       } else {
-        const { error: insertHealthError } = await (supabase as any)
+        const { error: insertHealthError } = await supabase
           .from('user_health_stats')
           .insert({
             user_id: user.id,
@@ -851,7 +851,7 @@ export function useStartActiveCombat() {
         if (insertHealthError) throw insertHealthError;
       }
 
-      const { data: newCombat, error: combatInsertError } = await (supabase as any)
+      const { data: newCombat, error: combatInsertError } = await supabase
         .from('combates_ativos')
         .insert({
           personagem_id: user.id,
@@ -1092,7 +1092,7 @@ export function useHealthStats() {
     queryKey: ['health_stats', user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_health_stats')
         .select('current_hp, current_mp, max_hp, max_mp, fatigue')
         .eq('user_id', user!.id)
@@ -1117,7 +1117,7 @@ export function useShortRestRecovery() {
         throw new Error(`Você já realizou o descanso breve hoje. Disponível novamente em ${formatPtBrDateTime(nextAvailableDate)}.`);
       }
 
-      const { data: healthStats, error: healthError } = await (supabase as any)
+      const { data: healthStats, error: healthError } = await supabase
         .from('user_health_stats')
         .select('max_hp, current_hp, max_mp, current_mp, fatigue')
         .eq('user_id', user.id)
@@ -1155,14 +1155,14 @@ export function useShortRestRecovery() {
       };
 
       if (healthStats) {
-        const { error: updateError } = await (supabase as any)
+        const { error: updateError } = await supabase
           .from('user_health_stats')
           .update(payload)
           .eq('user_id', user.id);
 
         if (updateError) throw updateError;
       } else {
-        const { error: insertError } = await (supabase as any)
+        const { error: insertError } = await supabase
           .from('user_health_stats')
           .insert({ user_id: user.id, ...payload });
 
@@ -1214,7 +1214,7 @@ export function useSyncHealthMaxes() {
       if (!user) return;
       const { computedMaxHp, computedMaxMp } = params;
 
-      const { data: stats } = await (supabase as any)
+      const { data: stats } = await supabase
         .from('user_health_stats')
         .select('max_hp, max_mp, current_hp, current_mp')
         .eq('user_id', user.id)
@@ -1235,7 +1235,7 @@ export function useSyncHealthMaxes() {
       const currentMp = stats?.current_mp ?? newMaxMp;
 
       if (stats) {
-        await (supabase as any)
+        await supabase
           .from('user_health_stats')
           .update({ max_hp: newMaxHp, max_mp: newMaxMp })
           .eq('user_id', user.id);

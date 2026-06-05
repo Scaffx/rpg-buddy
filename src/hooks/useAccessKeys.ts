@@ -22,7 +22,7 @@ export function useMyGiftKeys() {
     enabled: !!user,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("subscription_access_keys")
         .select("*")
         .eq("owner_user_id", user!.id)

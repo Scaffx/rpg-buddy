@@ -15,7 +15,7 @@ export function useAvailableTalents() {
   return useQuery({
     queryKey: ['talentos-disponiveis'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('talentos_disponiveis')
         .select('id, nome, descricao, efeito')
         .order('nome');
@@ -30,7 +30,7 @@ export function usePlayerTalents() {
   return useQuery({
     queryKey: ['talentos-jogador', user?.id],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('talentos_jogador')
         .select('id, talento_id, equipped, talentos_disponiveis(id, nome, descricao, efeito)')
         .eq('personagem_id', user!.id);
@@ -61,7 +61,7 @@ export function useBuyTalent() {
     mutationFn: async (talento: Talent) => {
       if (!user) throw new Error('Nao autenticado');
 
-      const { data: profile, error: profileError } = await (supabase as any)
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('pontos_talento')
         .eq('user_id', user.id)
@@ -74,7 +74,7 @@ export function useBuyTalent() {
         throw new Error('Voce nao tem pontos de talento suficientes.');
       }
 
-      const { data: existing } = await (supabase as any)
+      const { data: existing } = await supabase
         .from('talentos_jogador')
         .select('id')
         .eq('personagem_id', user.id)
@@ -88,7 +88,7 @@ export function useBuyTalent() {
       // Auto-equipar se ainda houver vaga (até MAX_EQUIPPED_TALENTS).
       // Evita o paradoxo do usuário comprar um talento e ele não estar
       // equipado/ativo até ele tomar uma segunda ação manual.
-      const { count: currentlyEquipped } = await (supabase as any)
+      const { count: currentlyEquipped } = await supabase
         .from('talentos_jogador')
         .select('id', { count: 'exact', head: true })
         .eq('personagem_id', user.id)
@@ -96,7 +96,7 @@ export function useBuyTalent() {
 
       const shouldAutoEquip = (currentlyEquipped ?? 0) < MAX_EQUIPPED_TALENTS;
 
-      const { error: insertError } = await (supabase as any)
+      const { error: insertError } = await supabase
         .from('talentos_jogador')
         .insert({
           personagem_id: user.id,
@@ -106,7 +106,7 @@ export function useBuyTalent() {
 
       if (insertError) throw insertError;
 
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ pontos_talento: pontos - 1 })
         .eq('user_id', user.id);
@@ -140,7 +140,7 @@ export function useToggleEquipTalent() {
         throw new Error(`Limite de ${MAX_EQUIPPED_TALENTS} talentos equipados atingido.`);
       }
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('talentos_jogador')
         .update({ equipped: !currentlyEquipped })
         .eq('id', rowId)

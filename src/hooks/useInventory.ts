@@ -358,7 +358,7 @@ export function useConsumeItem() {
       // Consider consumable if is_consumable flag is set OR if effect is defined (for older items)
       const isConsumable = Boolean(relatedItem?.is_consumable) || !!itemEffect;
 
-      const { data: talents } = await (supabase as any)
+      const { data: talents } = await supabase
         .from('talentos_jogador')
         .select('talentos_disponiveis(efeito)')
         .eq('personagem_id', user.id);

@@ -369,7 +369,7 @@ export default function BossPage() {
         filter: `session_id=eq.${sessionId}`,
       }, async () => {
         // Re-fetch players
-        const { data } = await (supabase as any)
+        const { data } = await supabase
           .from('dungeon_session_players')
           .select('user_id,display_name,current_hp,max_hp,player_level,player_atk,player_def,is_host,is_alive')
           .eq('session_id', sessionId);
@@ -479,7 +479,7 @@ export default function BossPage() {
       setSessionData({ id: row.session_id, inviteCode: joinCodeInput.trim().toUpperCase(), layoutIndex: row.layout_index });
 
       // Fetch current players
-      const { data: playersData } = await (supabase as any)
+      const { data: playersData } = await supabase
         .from('dungeon_session_players')
         .select('user_id,display_name,current_hp,max_hp,player_level,player_atk,player_def,is_host,is_alive')
         .eq('session_id', row.session_id);

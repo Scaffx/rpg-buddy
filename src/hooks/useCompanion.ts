@@ -211,14 +211,14 @@ export function useSkeletonBossDefeated() {
     enabled: !!user,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data: skeletonBosses, error: bossErr } = await (supabase as any)
+      const { data: skeletonBosses, error: bossErr } = await supabase
         .from('bosses')
         .select('id')
         .ilike('name', '%esquelet%');
       if (bossErr) throw bossErr;
       const ids = (skeletonBosses ?? []).map((b: any) => b.id);
       if (ids.length === 0) return false;
-      const { count, error } = await (supabase as any)
+      const { count, error } = await supabase
         .from('boss_battles')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user!.id)
