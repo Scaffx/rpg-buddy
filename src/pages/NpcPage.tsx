@@ -8,23 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2, Coins, Gift, MessageCircle, Send, TrendingUp } from 'lucide-react';
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
-const NPC_TOUR_STEPS: TourStep[] = [
-  {
-    target: 'npc-header',
-    title: 'Missões de NPC 🧙',
-    description: 'Cada semana 6 NPCs geram desafios exclusivos para você. Completar desafios aumenta sua Afinidade com o NPC e dá recompensas únicas — XP, ouro e itens raros.',
-  },
-  {
-    target: 'npc-grid',
-    title: 'Os 6 NPCs Mentores 🏆',
-    description: 'Atlas (Corpo), Nova (Mente), Elara (Alma), Zephyr (Criatividade), Midas (Riqueza) e Vox (Social). Clique num card para ver e aceitar os desafios semanais. Converse para gerar missões personalizadas!',
-  },
-  {
-    target: 'npc-footer',
-    title: 'Progresso Semanal 📊',
-    description: 'Acompanhe quantos desafios você já concluiu nesta semana. Os desafios resetam toda segunda-feira — tente zerar todos os NPCs antes do reset!',
-  },
-];
 import { useNpcAffinity, useIncrementNpcAffinity, getAffinityTier } from '@/hooks/useNpcAffinity';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -187,6 +170,13 @@ export default function NpcPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const npcText = (npc: Npc, field: 'title' | 'description' | 'personality') =>
+    t(`app.npc.npc_${npc.id}_${field}`, { defaultValue: npc[field] });
+  const npcTourSteps: TourStep[] = [
+    { target: 'npc-header', title: t('app.npc.tour_1_title'), description: t('app.npc.tour_1_desc') },
+    { target: 'npc-grid',   title: t('app.npc.tour_2_title'), description: t('app.npc.tour_2_desc') },
+    { target: 'npc-footer', title: t('app.npc.tour_3_title'), description: t('app.npc.tour_3_desc') },
+  ];
   const weekToken = currentWeekToken();
   const weekStart = useMemo(() => {
     const now = new Date();
@@ -359,7 +349,7 @@ export default function NpcPage() {
             gold_earned: challenge.gold_reward,
           } as never);
         if (error) {
-          if (error.code === '23505') throw new Error('Desafio já concluído esta semana.');
+          if (error.code === '23505') throw new Error(t('app.npc.error_already_done'));
           throw error;
         }
 
@@ -406,7 +396,7 @@ export default function NpcPage() {
           description: buildRewardText(challenge),
         });
       } else {
-        toast('Desafio desfeito', {
+        toast(t('app.npc.challenge_undone'), {
           description: buildRewardText(challenge),
         });
       }
@@ -453,7 +443,7 @@ export default function NpcPage() {
       );
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({})) as { error?: string };
-        if (resp.status === 402) toast.error('Assinatura necessária para conversar com NPCs.');
+        if (resp.status === 402) toast.error(t('app.npc.error_subscription'));
         else toast.error(errData?.error ?? `Erro ${resp.status}`);
         return;
       }
@@ -496,7 +486,7 @@ export default function NpcPage() {
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({})) as { error?: string };
         const errMsg = errData?.error ?? `Erro ${resp.status}`;
-        if (resp.status === 402) toast.error('Assinatura necessária para conversar com NPCs.');
+        if (resp.status === 402) toast.error(t('app.npc.error_subscription'));
         else toast.error(errMsg);
         return;
       }
@@ -528,13 +518,13 @@ export default function NpcPage() {
             </div>
           </div>
           <Button size="sm" className="gap-2" disabled>
-            <Sparkles className="w-4 h-4" /> Semana {weekToken}
+            <Sparkles className="w-4 h-4" /> {t('app.npc.week', { token: weekToken })}
           </Button>
         </div>
 
         {(loadingChallenges || loadingCompletions) && (
           <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card/50 px-4 py-6 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Gerando desafios semanais dos NPCs...
+            <Loader2 className="h-4 w-4 animate-spin" /> {t('app.npc.generating')}
           </div>
         )}
 
@@ -559,16 +549,16 @@ export default function NpcPage() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-bold text-foreground text-base truncate">{npc.name}</h3>
-                      <p className="text-xs text-muted-foreground italic">{npc.title}</p>
+                      <p className="text-xs text-muted-foreground italic">{npcText(npc, 'title')}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{npc.description}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{npcText(npc, 'description')}</p>
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] text-muted-foreground">🎭 {npc.personality}</span>
+                    <span className="text-[11px] text-muted-foreground">🎭 {npcText(npc, 'personality')}</span>
                     <span className="text-[11px] font-semibold text-primary">{done}/{total} ✓</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground">Afinidade:</span>
+                    <span className="text-[10px] text-muted-foreground">{t('app.npc.affinity')}:</span>
                     <span className={`text-[10px] font-semibold ${affTier.color}`}>
                       {affTier.icon} {affTier.label}
                     </span>
@@ -588,7 +578,7 @@ export default function NpcPage() {
                     className="w-full mt-1 gap-2 border-primary/30 hover:bg-primary/10"
                     onClick={(e) => { e.stopPropagation(); setChatNpc(npc); }}
                   >
-                    <MessageCircle className="w-3.5 h-3.5" /> Conversar
+                    <MessageCircle className="w-3.5 h-3.5" /> {t('app.npc.chat')}
                   </Button>
                 </CardContent>
               </Card>
@@ -623,7 +613,7 @@ export default function NpcPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <DialogTitle className="text-lg">{chatNpc.name}</DialogTitle>
-                    <DialogDescription className="text-xs italic">{chatNpc.title} • {chatNpc.personality}</DialogDescription>
+                    <DialogDescription className="text-xs italic">{npcText(chatNpc, 'title')} • {npcText(chatNpc, 'personality')}</DialogDescription>
                   </div>
                   <div className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-bold tabular-nums ${atWeeklyLimit ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-primary/30 bg-primary/10 text-primary'}`}>
                     {weeklyNpcCount}/3
@@ -631,7 +621,7 @@ export default function NpcPage() {
                 </div>
                 {atWeeklyLimit && (
                   <p className="text-[11px] text-rose-400/80 mt-1">
-                    ⚠️ Limite semanal atingido — peça ao NPC para trocar uma missão existente
+                    {t('app.npc.weekly_limit')}
                   </p>
                 )}
               </DialogHeader>
@@ -640,7 +630,7 @@ export default function NpcPage() {
               <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1" style={{ minHeight: 200, maxHeight: 380 }}>
                 {chatMessages.length === 0 && chatLoading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> {chatNpc.name} está analisando seu progresso...
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t('app.npc.analyzing', { name: chatNpc.name })}
                   </div>
                 )}
                 {chatMessages.map((msg, i) => (
@@ -660,7 +650,7 @@ export default function NpcPage() {
                 ))}
                 {chatLoading && chatMessages.length > 0 && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground mr-6">
-                    <Loader2 className="h-3 w-3 animate-spin" /> digitando...
+                    <Loader2 className="h-3 w-3 animate-spin" /> {t('app.npc.typing')}
                   </div>
                 )}
                 <div ref={chatEndRef} />
@@ -670,7 +660,7 @@ export default function NpcPage() {
               <div className="flex gap-2 pt-2 border-t border-border">
                 <input
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder={`Pergunte algo para ${chatNpc.name}...`}
+                  placeholder={t('app.npc.chat_placeholder', { name: chatNpc.name })}
                   value={chatInput}
                   disabled={chatLoading}
                   onChange={(e) => setChatInput(e.target.value)}
@@ -701,7 +691,7 @@ export default function NpcPage() {
                   </div>
                   <div>
                     <DialogTitle className="text-lg">{selectedNpc.name}</DialogTitle>
-                    <DialogDescription className="text-xs italic">{selectedNpc.title} • {selectedNpc.personality}</DialogDescription>
+                    <DialogDescription className="text-xs italic">{npcText(selectedNpc, 'title')} • {npcText(selectedNpc, 'personality')}</DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
@@ -710,9 +700,9 @@ export default function NpcPage() {
                 <p className="text-sm font-semibold text-foreground">⚔️ {t('app.npc.weekly_challenges')}</p>
                 {selectedNpcChallenges.length === 0 && !loadingChallenges && (
                   <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                    Nenhum desafio semanal gerado ainda para este NPC.
+                    {t('app.npc.no_challenges')}
                     <Button variant="ghost" size="sm" className="mt-2" onClick={() => refetchChallenges()}>
-                      Tentar novamente
+                      {t('app.npc.try_again')}
                     </Button>
                   </div>
                 )}
@@ -776,7 +766,7 @@ export default function NpcPage() {
                   <div className="border-t border-border pt-3 space-y-2">
                     <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <MessageCircle className="w-4 h-4 text-primary" />
-                      Missões geradas por {selectedNpc.name}
+                      {t('app.npc.missions_by', { name: selectedNpc.name })}
                     </p>
                     <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                       {myMissions.map(m => (
@@ -793,7 +783,7 @@ export default function NpcPage() {
                             <span className="block text-xs text-muted-foreground mt-0.5">{m.description}</span>
                           )}
                           <span className="block text-[10px] text-muted-foreground mt-1">
-                            {new Date(m.created_at).toLocaleDateString('pt-BR')} • {m.completed ? '✓ Concluída' : 'Pendente'}
+                            {new Date(m.created_at).toLocaleDateString('pt-BR')} • {m.completed ? t('app.npc.status_completed') : t('app.npc.status_pending')}
                           </span>
                         </div>
                       ))}
@@ -805,7 +795,7 @@ export default function NpcPage() {
           )}
         </DialogContent>
       </Dialog>
-      <GuidedTour tourKey="npc" steps={NPC_TOUR_STEPS} />
+      <GuidedTour tourKey="npc" steps={npcTourSteps} />
     </AppLayout>
   );
 }
