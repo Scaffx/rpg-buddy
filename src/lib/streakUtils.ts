@@ -3,7 +3,7 @@
 // missions were completed (or protected). Days with no required missions
 // are skipped, days in the future are ignored.
 
-const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+export const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const STREAK_THRESHOLD = 0.6;
 
 export function getLocalDateString(date: Date = new Date()): string {

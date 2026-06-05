@@ -12,7 +12,7 @@ import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { evaluateTodayStreakRisk } from "@/lib/streakUtils";
+import { evaluateTodayStreakRisk, DAYS_MAP } from "@/lib/streakUtils";
 import RemindersCard from "@/components/RemindersCard";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
@@ -38,8 +38,6 @@ const DASHBOARD_TOUR_STEPS: TourStep[] = [
     description: 'Estas são as missões programadas para hoje. Conclua-as para ganhar XP nos atributos e manter sua streak ativa. Cumprir 60% delas mantém o fogo aceso! 🔥',
   },
 ];
-
-const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 type DashboardMission = {
   completed?: boolean | null;
@@ -271,13 +269,14 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user || !profile) return;
 
+    // localStorage (não sessionStorage): mostra no máximo 1×/dia, persistindo entre sessões.
     const key = `streak_risk_alert_${user.id}_${todayDate}`;
     const maybeAlert = () => {
       const hour = new Date().getHours();
       const hasPending = todayMissionMetrics.pending > 0;
       const charges = Number((profile as any).streak_protector_charges ?? 0);
-      if (hour >= 22 && hasPending && charges <= 0 && !sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, 'shown');
+      if (hour >= 22 && hasPending && charges <= 0 && !localStorage.getItem(key)) {
+        localStorage.setItem(key, 'shown');
         toast.error(t('app.dashboard.streak_risk_toast'));
       }
     };
@@ -324,10 +323,14 @@ export default function Dashboard() {
     };
 
     const critical3Days = [0, 1, 2].every((offset) => isCriticalFailureDay(getDateDaysAgo(offset)));
-    const popupKey = `mission_coach_popup_${user.id}_${todayDate}`;
+    // localStorage com TTL de 7 dias: não reaparece a cada nova sessão.
+    const popupKey = `mission_coach_popup_${user.id}`;
+    const lastShown = Number(localStorage.getItem(popupKey) ?? 0);
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const cooldownPassed = Date.now() - lastShown > sevenDaysMs;
 
-    if (critical3Days && !sessionStorage.getItem(popupKey)) {
-      sessionStorage.setItem(popupKey, 'shown');
+    if (critical3Days && cooldownPassed) {
+      localStorage.setItem(popupKey, String(Date.now()));
       setCoachQuote(philosopherQuotes[Math.floor(Math.random() * philosopherQuotes.length)]);
       setShowCoachPopup(true);
     }
@@ -441,7 +444,7 @@ export default function Dashboard() {
               key={stat.key}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
+              transition={{ delay: Math.min(i * 0.08, 0.4) }}
               className="rpg-card-glow text-center"
             >
               <stat.icon className="w-5 h-5 text-primary mx-auto mb-1" />
@@ -534,7 +537,7 @@ export default function Dashboard() {
                     key={m.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
+                    transition={{ delay: Math.min(idx * 0.05, 0.4) }}
                     className="rpg-card flex items-center justify-between gap-3"
                   >
                     <div className="flex-1 min-w-0">

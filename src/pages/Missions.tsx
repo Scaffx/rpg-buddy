@@ -1110,7 +1110,7 @@ function MissionCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
+      transition={{ delay: Math.min(index * 0.03, 0.4) }}
       className={`group rounded-xl bg-card border border-border border-l-2 ${priorityBorderColor} p-3 flex flex-col justify-between aspect-square transition-all hover:border-border/80 hover:shadow-md ${
         isCompleted ? 'opacity-55' : isCompletedToday ? 'opacity-75 border-yellow-400/40' : ''
       }`}
