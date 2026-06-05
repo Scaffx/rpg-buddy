@@ -56,7 +56,7 @@ export function computeSixtyPercentStreak(missions: StreakMission[] | null | und
 
     const completedCount = requiredMissions.filter((mission) => {
       const state = getMissionStateForDate(mission, dateStr);
-      return state === 'completed' || state === 'protected';
+      return state === 'completed' || state === 'protected' || state === 'grace';
     }).length;
 
     const ratio = completedCount / requiredMissions.length;
@@ -111,7 +111,7 @@ export function evaluateTodayStreakRisk(missions: StreakMission[] | null | undef
   let failed = 0;
   for (const m of requiredMissions) {
     const state = getMissionStateForDate(m, dateStr);
-    if (state === 'completed' || state === 'protected') completed += 1;
+    if (state === 'completed' || state === 'protected' || state === 'grace') completed += 1;
     else if (state === 'failed' || state === 'failed_accepted') failed += 1;
   }
   const pending = Math.max(0, required - completed - failed);

@@ -24,6 +24,39 @@ function getWeekToken(date: Date = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
 
+// "Nunca falhe duas vezes" (psicologia de hábito): determina se a ocorrência agendada
+// ANTERIOR a `pastDate` foi uma falha. Se a anterior foi concluída/protegida (ou não existe
+// dia anterior), a falha atual é a PRIMEIRA → perdoada (graça, só alerta, sem penalidade).
+// Se a anterior também foi falha/graça, a atual é a 2ª consecutiva → penaliza.
+async function previousScheduledWasMiss(
+  missionId: string,
+  days: string[],
+  createdAtStr: string | undefined,
+  pastDate: Date,
+  effectiveStatus: Record<string, string>,
+): Promise<boolean> {
+  for (let back = 1; back <= 10; back++) {
+    const d = new Date(pastDate);
+    d.setDate(d.getDate() - back);
+    const dName = DAYS_NAMES[d.getDay()];
+    if (!days.includes(dName)) continue; // não era dia agendado
+    const dStr = getLocalDateString(d);
+    if (createdAtStr && createdAtStr > dStr) return false; // missão não existia → 1ª falha
+    const st = effectiveStatus[dStr];
+    if (st === 'completed' || st === 'protected') return false; // anterior OK → 1ª falha
+    if (st === 'grace' || st === 'failed' || st === 'failed_accepted') return true; // anterior falhou → consecutiva
+    // status desconhecido em memória → confere a tabela de conclusões
+    const { data: comp } = await supabase
+      .from('mission_daily_completions')
+      .select('id')
+      .eq('mission_id', missionId)
+      .eq('completion_date', dStr)
+      .limit(1);
+    return !(comp && comp.length > 0);
+  }
+  return false; // nenhum dia agendado anterior → 1ª ocorrência → graça
+}
+
 export function useCheckFailedMissions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -57,6 +90,7 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   let totalSilentPenalty = 0; // D+2+: auto-penalizado sem diálogo
   let totalHpPenalty = 0;
   let totalMpPenalty = 0;
+  let totalGrace = 0; // 1ª falha perdoada (nunca falhe 2x) — só alerta gentil
   const startOfToday = getStartOfLocalDay();
   const currentWeek = getWeekToken();
 
@@ -118,6 +152,7 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       if (effectiveStatus[pastDateStr] === 'completed') continue;
       if (effectiveStatus[pastDateStr] === 'failed_accepted') continue;
       if (effectiveStatus[pastDateStr] === 'protected') continue;
+      if (effectiveStatus[pastDateStr] === 'grace') continue;
 
       // Pular se failed_date já aponta para esta data (segurança extra)
       if ((m as any).failed_date === pastDateStr) continue;
@@ -131,6 +166,28 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
         .limit(1);
 
       if (completions && completions.length > 0) continue;
+
+      // "Nunca falhe duas vezes": a PRIMEIRA falha (dia agendado anterior não foi falha)
+      // é perdoada — apenas um alerta gentil, sem penalidade e sem gastar protetor.
+      // Só a 2ª falha consecutiva (e seguintes) entra na lógica de protetor/penalidade.
+      const isConsecutiveMiss = await previousScheduledWasMiss(
+        m.id, days, createdAt, pastDate, effectiveStatus,
+      );
+      if (!isConsecutiveMiss) {
+        totalGrace += 1;
+        effectiveStatus[pastDateStr] = 'grace';
+        await supabase
+          .from('missions')
+          .update({ daily_status: effectiveStatus } as any)
+          .eq('id', m.id);
+        await supabase.from('activity_log').insert({
+          user_id: userId,
+          action: 'mission_grace',
+          description: `Você pulou "${m.title}" em ${pastDateStr} — tudo bem, um dia não quebra nada. Só não deixe acumular: faltar dois dias seguidos te desconecta do hábito.`,
+          xp_gained: 0,
+        });
+        continue;
+      }
 
       if (availableProtectors > 0) {
         effectiveStatus[pastDateStr] = 'protected';
@@ -358,6 +415,17 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     queryClient.invalidateQueries({ queryKey: ['missions'] });
     queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
+  }
+
+  // Alerta gentil da 1ª falha perdoada (nunca falhe 2x) — sem penalidade.
+  if (totalGrace > 0) {
+    toast(
+      totalGrace === 1
+        ? '🌙 Você pulou uma missão — tudo bem, um dia não quebra nada. Só não deixe acumular dois dias seguidos. 💪'
+        : `🌙 Você pulou ${totalGrace} missões — sem penalidade. Só evite faltar dois dias seguidos na mesma. 💪`,
+      { duration: 6000 },
+    );
+    queryClient.invalidateQueries({ queryKey: ['missions'] });
   }
 }
 
