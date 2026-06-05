@@ -12,29 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
-const PRIORITY_TOUR_STEPS: TourStep[] = [
-  {
-    target: 'priority-header',
-    title: 'Prioridades e Metas 🎯',
-    description: 'Aqui você cria Planos de Meta: objetivos grandes que você alcança completando missões. Cada missão concluída avança o progresso do plano automaticamente.',
-  },
-  {
-    target: 'priority-howto',
-    title: 'Como Funciona 💡',
-    description: 'Vincule missões ao plano e defina quantas conclusões são necessárias para atingir a meta. Ex: fazer 30 treinos para ganhar um novo equipamento.',
-  },
-  {
-    target: 'priority-new',
-    title: 'Criar Novo Plano ➕',
-    description: 'Clique aqui para criar um plano. Nomeie seu objetivo, descreva a motivação, vincule as missões e defina a quantidade alvo. O progresso é atualizado automaticamente.',
-  },
-  {
-    target: 'priority-list',
-    title: 'Seus Planos Ativos 📈',
-    description: 'Cada card mostra o progresso atual vs a meta, as missões vinculadas e o percentual de conclusão. Quando chegar a 100% você vence o plano!',
-  },
-];
-
 type MissionOption = {
   id: string;
   title: string;
@@ -122,8 +99,8 @@ export default function PrioridadePage() {
     e.preventDefault();
     if (form.missions.length === 0 || calculatedTargetValue <= 0) {
       toast({
-        title: "Adicione ao menos uma missão",
-        description: "Selecione uma missão e defina a quantidade antes de salvar.",
+        title: t('app.priority.toast_add_mission_title'),
+        description: t('app.priority.toast_add_mission_desc'),
         variant: "destructive",
       });
       return;
@@ -133,12 +110,12 @@ export default function PrioridadePage() {
       onSuccess: () => {
         setModalOpen(false);
         setForm({ title: "", description: "", missions: [] });
-        toast({ title: "Plano criado!", description: form.title });
+        toast({ title: t('app.priority.toast_plan_created'), description: form.title });
       },
       onError: (err) => {
         toast({
-          title: "Erro ao salvar plano",
-          description: err instanceof Error ? err.message : "Tente novamente.",
+          title: t('app.priority.toast_save_error'),
+          description: err instanceof Error ? err.message : t('app.priority.toast_try_again'),
           variant: "destructive",
         });
       },
@@ -146,17 +123,24 @@ export default function PrioridadePage() {
   }
 
   const TEMPLATES = [
-    { title: "Viagem dos Sonhos", description: "Juntar dinheiro para uma viagem inesquecível." },
-    { title: "Comprar PC Gamer", description: "Economizar para o setup ideal." },
-    { title: "Ler 12 livros no ano", description: "Cultivar o hábito de leitura." },
-    { title: "100h de Estudo", description: "Dominar uma nova habilidade ou idioma." },
-    { title: "Perder 10kg", description: "Meta de transformação física." },
-    { title: "Correr 100km", description: "Distância acumulada de corridas." },
+    { title: t('app.priority.template_1_title'), description: t('app.priority.template_1_desc') },
+    { title: t('app.priority.template_2_title'), description: t('app.priority.template_2_desc') },
+    { title: t('app.priority.template_3_title'), description: t('app.priority.template_3_desc') },
+    { title: t('app.priority.template_4_title'), description: t('app.priority.template_4_desc') },
+    { title: t('app.priority.template_5_title'), description: t('app.priority.template_5_desc') },
+    { title: t('app.priority.template_6_title'), description: t('app.priority.template_6_desc') },
   ];
 
-  function applyTemplate(t: typeof TEMPLATES[number]) {
-    setForm((f) => ({ ...f, title: t.title, description: t.description }));
+  function applyTemplate(tpl: typeof TEMPLATES[number]) {
+    setForm((f) => ({ ...f, title: tpl.title, description: tpl.description }));
   }
+
+  const tourSteps: TourStep[] = [
+    { target: 'priority-header', title: t('app.priority.tour_1_title'), description: t('app.priority.tour_1_desc') },
+    { target: 'priority-howto',  title: t('app.priority.tour_2_title'), description: t('app.priority.tour_2_desc') },
+    { target: 'priority-new',    title: t('app.priority.tour_3_title'), description: t('app.priority.tour_3_desc') },
+    { target: 'priority-list',   title: t('app.priority.tour_4_title'), description: t('app.priority.tour_4_desc') },
+  ];
 
   return (
     <AppLayout>
@@ -183,15 +167,15 @@ export default function PrioridadePage() {
             <div className="space-y-2">
               <Label className="text-xs">⚡ {t('app.priority.quick_templates')}</Label>
               <div className="flex flex-wrap gap-1.5">
-                {TEMPLATES.map((t) => (
+                {TEMPLATES.map((tpl) => (
                   <button
-                    key={t.title}
+                    key={tpl.title}
                     type="button"
-                    onClick={() => applyTemplate(t)}
+                    onClick={() => applyTemplate(tpl)}
                     className="text-[11px] px-2 py-1 rounded-md bg-muted/50 border border-border/60 hover:bg-primary/10 hover:border-primary/40 transition-colors"
-                    title={t.description}
+                    title={tpl.description}
                   >
-                    {t.title}
+                    {tpl.title}
                   </button>
                 ))}
               </div>
@@ -200,7 +184,7 @@ export default function PrioridadePage() {
             <Label htmlFor="plan-title">{t('app.priority.label_title')}</Label>
               <Input
                 id="plan-title"
-                placeholder="Ex: Viagem dos Sonhos, Novo PC Gamer, Curso de Inglês..."
+                placeholder={t('app.priority.placeholder_title')}
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 required
@@ -211,7 +195,7 @@ export default function PrioridadePage() {
             <Label htmlFor="plan-desc">{t('app.priority.label_description')}</Label>
               <Textarea
                 id="plan-desc"
-                placeholder="Ex: Juntar dinheiro para viajar, comprar um item caro, conquistar uma certificação, etc."
+                placeholder={t('app.priority.placeholder_description')}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 className="bg-muted/60 border-border/60 placeholder:text-muted-foreground/80"
@@ -220,7 +204,7 @@ export default function PrioridadePage() {
             <div className="space-y-2">
               <Label>{t('app.priority.label_missions')}</Label>
               <p className="text-xs text-muted-foreground">
-                Cada missão concluída soma 1 no progresso. O total do plano é a soma das quantidades definidas abaixo.
+                {t('app.priority.missions_help')}
               </p>
               <div className="space-y-2">
                 {form.missions.length === 0 && (
@@ -261,7 +245,7 @@ export default function PrioridadePage() {
                     type="number"
                     min={1}
                     className="w-20 bg-background/80 border-border/60"
-                    placeholder="Qtd"
+                    placeholder={t('app.priority.placeholder_qty')}
                     value={missionValue || ""}
                     onChange={(e) => setMissionValue(Number(e.target.value))}
                     disabled={!missionToAdd}
@@ -320,7 +304,7 @@ export default function PrioridadePage() {
                   <ul className="list-disc ml-4 text-xs text-muted-foreground">
                     {plan.plan_missions?.map((pm) => (
                       <li key={pm.id}>
-                        {pm.missions?.title} ({pm.value_per_completion} conclusoes necessarias)
+                        {pm.missions?.title} ({t('app.priority.completions_needed', { count: pm.value_per_completion })})
                       </li>
                     ))}
                   </ul>
@@ -333,7 +317,7 @@ export default function PrioridadePage() {
           })
         )}
       </div>
-      <GuidedTour tourKey="priority" steps={PRIORITY_TOUR_STEPS} />
+      <GuidedTour tourKey="priority" steps={tourSteps} />
     </AppLayout>
   );
 }
