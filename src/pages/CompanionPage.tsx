@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PawPrint, Sparkles, Heart, Swords, Clock, Loader2, Edit2, Check, X, Skull } from 'lucide-react';
+import { PawPrint, Sparkles, Heart, Swords, Clock, Loader2, Edit2, Check, X, Skull, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,7 @@ const PLAY_COOLDOWN_MIN = 60;
 // ─── Level gate ────────────────────────────────────────────────────────────────────────────
 
 function LockedScreen({ level }: { level: number }) {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen p-4 md:p-6 flex flex-col items-center justify-center gap-6 text-center">
       <motion.div
@@ -53,16 +55,15 @@ function LockedScreen({ level }: { level: number }) {
           </div>
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-bold">Companheiro — Bloqueado</h2>
+          <h2 className="text-xl font-bold">{t('app.companion.locked_title')}</h2>
           <p className="text-muted-foreground text-sm max-w-xs">
-            Ao alcançar o <span className="font-bold text-primary">Nível 3</span>, você poderá escolher um
-            companheiro fiel que crescerá junto com sua jornada.
+            {t('app.companion.locked_desc')}
           </p>
         </div>
         <div className="w-full max-w-xs space-y-2">
           <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Seu nível atual</span>
-            <span className="font-bold text-primary">Nv. {level} / 3</span>
+            <span className="text-muted-foreground">{t('app.companion.locked_current_level')}</span>
+            <span className="font-bold text-primary">{t('app.companion.locked_level_progress', { level })}</span>
           </div>
           <Progress value={Math.min(100, (level / 3) * 100)} className="h-2" />
         </div>
@@ -74,21 +75,22 @@ function LockedScreen({ level }: { level: number }) {
 // ─── Selection Screen ────────────────────────────────────────────────────────
 
 function SelectionScreen() {
+  const { t } = useTranslation();
   const [picked, setPicked] = useState<string | null>(null);
   const [name, setName]     = useState('');
   const createCompanion = useCreateCompanion();
 
   function handleCreate() {
-    if (!picked) { toast.error('Escolha um companheiro antes de continuar.'); return; }
-    if (!name.trim()) { toast.error('Dê um nome ao seu companheiro!'); return; }
+    if (!picked) { toast.error(t('app.companion.toast_pick_first')); return; }
+    if (!name.trim()) { toast.error(t('app.companion.toast_name_required')); return; }
     createCompanion.mutate(
       { type: picked, name: name.trim() },
       {
-        onSuccess: () => toast.success(`${name} acordou e está pronto para aventuras! 🎉`),
+        onSuccess: () => toast.success(t('app.companion.toast_created', { name })),
         onError: (err: unknown) => {
           const msg = (err as any)?.message ?? '';
           console.error('[CompanionPage] create error:', err);
-          toast.error('Erro ao criar companheiro.', { description: msg || 'Tente novamente.' });
+          toast.error(t('app.companion.toast_create_error'), { description: msg || t('app.companion.toast_try_again') });
         },
       },
     );
@@ -99,8 +101,8 @@ function SelectionScreen() {
       <div className="flex items-center gap-3">
         <PawPrint className="w-7 h-7 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold">Escolha seu Companheiro</h1>
-          <p className="text-sm text-muted-foreground">Seu familiar irá crescer junto com você</p>
+          <h1 className="text-2xl font-bold">{t('app.companion.select_title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('app.companion.select_subtitle')}</p>
         </div>
       </div>
 
@@ -118,8 +120,8 @@ function SelectionScreen() {
             }`}
           >
             <div className="text-6xl mb-4 text-center w-full">{ct.emoji}</div>
-            <h3 className="font-bold text-base text-center">{ct.name}</h3>
-            <p className="text-xs text-muted-foreground mt-2 leading-relaxed text-center">{ct.description}</p>
+            <h3 className="font-bold text-base text-center">{t(`app.companion.type_${ct.id}_name`, { defaultValue: ct.name })}</h3>
+            <p className="text-xs text-muted-foreground mt-2 leading-relaxed text-center">{t(`app.companion.type_${ct.id}_desc`, { defaultValue: ct.description })}</p>
           </motion.button>
         ))}
       </div>
@@ -132,17 +134,17 @@ function SelectionScreen() {
             exit={{ opacity: 0, y: 8 }}
             className="space-y-3 max-w-sm"
           >
-            <p className="text-sm font-medium">Qual é o nome do seu companheiro?</p>
+            <p className="text-sm font-medium">{t('app.companion.select_name_prompt')}</p>
             <div className="flex gap-2">
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Bolinha, Faísca, Pipoca…"
+                placeholder={t('app.companion.select_name_placeholder')}
                 maxLength={32}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               />
               <Button onClick={handleCreate} disabled={createCompanion.isPending}>
-                {createCompanion.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Escolher'}
+                {createCompanion.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t('app.companion.select_choose')}
               </Button>
             </div>
           </motion.div>
@@ -163,6 +165,7 @@ function CompanionCard({
   queryKey: string;
   isSkeletonPup?: boolean;
 }) {
+  const { t }     = useTranslation();
   const { user }  = useAuth();
   const qc        = useQueryClient();
   const interact  = useInteractCompanion();
@@ -177,6 +180,8 @@ function CompanionCard({
   const isCombat   = isCombatCompanion(companion);
   const liveMood = useMemo(() => computeLiveMood(companion), [companion]);
   const moodTier = getMoodTier(liveMood);
+  const moodKey  = liveMood < 20 ? 'deprimido' : liveMood < 40 ? 'triste' : liveMood < 70 ? 'neutro' : liveMood < 90 ? 'feliz' : 'euforico';
+  const moodLabel = t(`app.companion.mood_${moodKey}`, { defaultValue: moodTier.label });
   const xpNeeded = xpForNextLevel(companion.level, isCombat);
   const xpPct    = Math.min(100, Math.round((companion.xp / xpNeeded) * 100));
   const canFeed  = isCooldownDone(companion.last_fed_at,    FEED_COOLDOWN_MIN);
@@ -196,10 +201,10 @@ function CompanionCard({
       .from('companions' as never)
       .update({ name: nameInput.trim() } as never)
       .eq('id' as never, companion.id as never);
-    if (error) { toast.error('Erro ao salvar nome.'); return; }
+    if (error) { toast.error(t('app.companion.toast_name_error')); return; }
     qc.invalidateQueries({ queryKey: ['companions_all', user.id] });
     setEditingName(false);
-    toast.success('Nome atualizado!');
+    toast.success(t('app.companion.toast_name_updated'));
   }
 
   function handleInteract(action: 'feed' | 'play') {
@@ -207,11 +212,11 @@ function CompanionCard({
       { companionId: companion.id, action, currentCompanion: companion },
       {
         onSuccess: ({ didLevel, newLevel }) => {
-          if (action === 'feed') toast.success(`${companion.name} comeu e ganhou energia! +12 humor, +10 XP 🍖`);
-          else toast.success(`${companion.name} adorou brincar! +20 humor, +20 XP 🎮`);
-          if (didLevel) toast(`🎉 ${companion.name} subiu para o nível ${newLevel}!`, { duration: 4000 });
+          if (action === 'feed') toast.success(t('app.companion.toast_fed', { name: companion.name }));
+          else toast.success(t('app.companion.toast_played', { name: companion.name }));
+          if (didLevel) toast(t('app.companion.toast_levelup', { name: companion.name, level: newLevel }), { duration: 4000 });
         },
-        onError: () => toast.error('Algo deu errado. Tente novamente.'),
+        onError: () => toast.error(t('app.companion.toast_interact_error')),
       },
     );
   }
@@ -265,11 +270,11 @@ function CompanionCard({
           variant="outline"
           className={`text-xs ${isSkeletonPup ? 'border-violet-500/40 text-violet-400' : ''}`}
         >
-          {ct?.name ?? companion.companion_type}
+          {ct ? t(`app.companion.type_${ct.id}_name`, { defaultValue: ct.name }) : companion.companion_type}
         </Badge>
         {isCombat && combatMeta && (
           <Badge variant="outline" className={`text-xs border-orange-500/40 ${combatMeta.roleColor}`}>
-            ⚔️ {combatMeta.roleLabel}
+            ⚔️ {t(`app.companion.role_${combatMeta.role}`, { defaultValue: combatMeta.roleLabel })}
           </Badge>
         )}
       </div>
@@ -277,7 +282,7 @@ function CompanionCard({
       {/* Combat stats — only for non-starter combat companions */}
       {isCombat && companion.max_hp > 0 && (
         <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 space-y-2">
-          <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Stats de Combate</p>
+          <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">{t('app.companion.combat_stats')}</p>
           <div className="grid grid-cols-3 gap-2 text-xs text-center">
             <div className="space-y-0.5">
               <p className="text-health font-bold">❤️ {companion.current_hp}/{companion.max_hp}</p>
@@ -299,10 +304,10 @@ function CompanionCard({
           </div>
           {combatMeta && combatMeta.skills.length > 0 && (
             <div className="mt-1">
-              <p className="text-xs text-muted-foreground mb-1">Habilidades:</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('app.companion.skills_label')}</p>
               <div className="flex flex-wrap gap-1">
-                {combatMeta.skills.map((s) => (
-                  <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-muted/40 border border-border/40 text-muted-foreground">{s}</span>
+                {(t(`app.companion.skills_${companion.companion_type}`, { returnObjects: true, defaultValue: combatMeta.skills }) as string[]).map((s, i) => (
+                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-muted/40 border border-border/40 text-muted-foreground">{s}</span>
                 ))}
               </div>
             </div>
@@ -313,8 +318,8 @@ function CompanionCard({
       {/* Mood bar */}
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs font-medium">
-          <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> Humor</span>
-          <span className={moodTier.color}>{moodTier.label} · {liveMood}%</span>
+          <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> {t('app.companion.mood')}</span>
+          <span className={moodTier.color}>{moodLabel} · {liveMood}%</span>
         </div>
         <div className="h-2.5 rounded-full bg-muted overflow-hidden">
           <motion.div
@@ -329,7 +334,7 @@ function CompanionCard({
       {/* Level / XP bar */}
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs font-medium">
-          <span className="flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> Nível {companion.level}</span>
+          <span className="flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> {t('app.companion.level', { level: companion.level })}</span>
           <span className="text-muted-foreground">{companion.xp} / {xpNeeded} XP</span>
         </div>
         <Progress value={xpPct} className="h-2" />
@@ -344,7 +349,7 @@ function CompanionCard({
           variant={canFeed ? 'default' : 'outline'}
           className="text-xs"
         >
-          {canFeed ? '🍖 Alimentar' : (
+          {canFeed ? t('app.companion.feed') : (
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" /> {cooldownLabel(companion.last_fed_at, FEED_COOLDOWN_MIN)}
             </span>
@@ -357,7 +362,7 @@ function CompanionCard({
           variant={canPlay ? 'default' : 'outline'}
           className="text-xs"
         >
-          {canPlay ? '🎮 Brincar' : (
+          {canPlay ? t('app.companion.play') : (
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" /> {cooldownLabel(companion.last_played_at, PLAY_COOLDOWN_MIN)}
             </span>
@@ -370,7 +375,7 @@ function CompanionCard({
         <div className="flex items-start gap-2">
           <Swords className="w-4 h-4 text-primary shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Completar missões diárias dá +5 humor e +15 XP automaticamente!
+            {t('app.companion.card_tip')}
           </p>
         </div>
       </div>
@@ -383,6 +388,7 @@ function CompanionCard({
 // SkeletonPupSlot só é renderizado quando defeatedBoss=true ou isOrphaned=true
 // (o grid pai garante que nunca aparece sem a derrota do boss)
 function SkeletonPupSlot({ defeatedBoss, isOrphaned }: { defeatedBoss: boolean; isOrphaned?: boolean }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const adoptSkeletonPup = useAdoptSkeletonPup();
   const [name, setName] = useState('Ossinho');
@@ -399,20 +405,19 @@ function SkeletonPupSlot({ defeatedBoss, isOrphaned }: { defeatedBoss: boolean; 
       >
         <div className="flex flex-col items-center gap-3 pt-2">
           <div className="text-7xl select-none">{SKELETON_PUP.emoji}</div>
-          <h2 className="text-xl font-bold">{SKELETON_PUP.name}</h2>
+          <h2 className="text-xl font-bold">{t(`app.companion.type_${SKELETON_PUP.id}_name`, { defaultValue: SKELETON_PUP.name })}</h2>
           <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400">
-            Aguardando adoção
+            {t('app.companion.skeleton_awaiting')}
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground text-center leading-relaxed">
-          Você escolheu adotar o filhote, mas algo deu errado ao salvá-lo.
-          Dê um nome a ele e confirme a adoção.
+          {t('app.companion.skeleton_orphan_desc')}
         </p>
         <div className="space-y-2">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Ossinho, Fang, Sombra…"
+            placeholder={t('app.companion.skeleton_name_placeholder')}
             maxLength={32}
             className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
           />
@@ -422,7 +427,7 @@ function SkeletonPupSlot({ defeatedBoss, isOrphaned }: { defeatedBoss: boolean; 
             className="w-full bg-violet-600 hover:bg-violet-700"
           >
             <Skull className="w-4 h-4 mr-2" />
-            {adoptSkeletonPup.isPending ? 'Adotando…' : 'Confirmar adoção'}
+            {adoptSkeletonPup.isPending ? t('app.companion.skeleton_adopting') : t('app.companion.skeleton_confirm_adopt')}
           </Button>
         </div>
       </motion.div>
@@ -439,15 +444,14 @@ function SkeletonPupSlot({ defeatedBoss, isOrphaned }: { defeatedBoss: boolean; 
         <div className="relative text-7xl select-none">
           {SKELETON_PUP.emoji}
         </div>
-        <h2 className="text-xl font-bold">{SKELETON_PUP.name}</h2>
+        <h2 className="text-xl font-bold">{t(`app.companion.type_${SKELETON_PUP.id}_name`, { defaultValue: SKELETON_PUP.name })}</h2>
         <Badge variant="outline" className="text-xs border-violet-500/40 text-violet-400">
-          Pronto para adotar
+          {t('app.companion.skeleton_ready')}
         </Badge>
       </div>
 
       <p className="text-xs text-muted-foreground text-center leading-relaxed">
-        Você venceu o Esqueletão Campeão. O filhote sobreviveu e espera por você.
-        Vá até a página de Bosses para conhecê-lo e dar um nome.
+        {t('app.companion.skeleton_ready_desc')}
       </p>
 
       <Button
@@ -455,7 +459,7 @@ function SkeletonPupSlot({ defeatedBoss, isOrphaned }: { defeatedBoss: boolean; 
         className="w-full bg-violet-600 hover:bg-violet-700"
       >
         <Skull className="w-4 h-4 mr-2" />
-        Ir adotar o filhote
+        {t('app.companion.skeleton_go_adopt')}
       </Button>
     </motion.div>
   );
@@ -464,6 +468,7 @@ function SkeletonPupSlot({ defeatedBoss, isOrphaned }: { defeatedBoss: boolean; 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CompanionPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   // Single query — useCompanion() e useSkeletonCompanion() compartilham o mesmo cache 'companions_all'
@@ -491,7 +496,7 @@ export default function CompanionPage() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen gap-2 text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Carregando companheiro…</span>
+          <span className="text-sm">{t('app.companion.loading')}</span>
         </div>
       </AppLayout>
     );
@@ -508,8 +513,8 @@ export default function CompanionPage() {
         <div className="flex items-center gap-3">
           <PawPrint className="w-7 h-7 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Meus Companheiros</h1>
-            <p className="text-sm text-muted-foreground">Cuide bem dos seus fiéis aliados</p>
+            <h1 className="text-2xl font-bold">{t('app.companion.page_title')}</h1>
+            <p className="text-sm text-muted-foreground">{t('app.companion.page_subtitle')}</p>
           </div>
         </div>
 
@@ -528,7 +533,7 @@ export default function CompanionPage() {
           {showSkeletonSection && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-violet-400 uppercase tracking-wide px-1">
-                💀 Companheiro do Chefe
+                {t('app.companion.boss_companion')}
               </p>
               {skeletonCompanion ? (
                 <CompanionCard
@@ -548,13 +553,13 @@ export default function CompanionPage() {
 
         {/* Tips */}
         <div className="rounded-xl border border-border bg-card/40 p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Dicas</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t('app.companion.tips_title')}</p>
           <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-            <li>Humor cai ~1% por hora sem interação</li>
-            <li>Alimentar: cooldown 3h · +12 humor, +10 XP</li>
-            <li>Brincar: cooldown 1h · +20 humor, +20 XP</li>
-            <li>Missões diárias: +5 humor, +15 XP automático</li>
-            <li>A cada 50×nível XP, seu companheiro sobe de nível</li>
+            <li>{t('app.companion.tip_1')}</li>
+            <li>{t('app.companion.tip_2')}</li>
+            <li>{t('app.companion.tip_3')}</li>
+            <li>{t('app.companion.tip_4')}</li>
+            <li>{t('app.companion.tip_5')}</li>
           </ul>
         </div>
       </div>
