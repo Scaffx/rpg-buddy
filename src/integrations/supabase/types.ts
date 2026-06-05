@@ -356,6 +356,8 @@ export type Database = {
           description: string | null
           difficulty: string | null
           element: string | null
+          event_starts_at: string | null
+          event_status: string
           gold_reward: number
           hp: number
           hp_max: number
@@ -381,6 +383,8 @@ export type Database = {
           description?: string | null
           difficulty?: string | null
           element?: string | null
+          event_starts_at?: string | null
+          event_status?: string
           gold_reward?: number
           hp?: number
           hp_max?: number
@@ -406,6 +410,8 @@ export type Database = {
           description?: string | null
           difficulty?: string | null
           element?: string | null
+          event_starts_at?: string | null
+          event_status?: string
           gold_reward?: number
           hp?: number
           hp_max?: number

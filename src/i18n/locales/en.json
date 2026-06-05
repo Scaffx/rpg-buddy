@@ -620,7 +620,13 @@
       "death_advice": "Make sure your skill loadout is equipped and your HP/MP is in good shape before entering.",
       "death_back": "Back (prepare better)",
       "enter_arena": "Enter the Arena ⚔️",
-      "final_boss_badge": "Final Boss"
+      "final_boss_badge": "Final Boss",
+      "events_title": "World Events",
+      "events_subtitle": "Raids of 10 level-60 heroes — requires a healer in the team",
+      "event_soon": "Coming soon",
+      "event_live": "Live",
+      "event_in_days": "{{days}}d {{hours}}h left",
+      "event_in_hours": "{{hours}}h left"
     },
     "classes": {
       "page_title": "Classes",

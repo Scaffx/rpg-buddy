@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats } from '@/hooks/useProfile';
+import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats, useWorldEventBosses } from '@/hooks/useProfile';
 import { getLevelFromXp } from '@/lib/progression';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,70 @@ function useRankings(region: string | null) {
     },
     refetchInterval: 60000,
   });
+}
+
+// ── Eventos Mundiais (teaser) ───────────────────────────────────────────────
+// Mostra os bosses de raide-evento em modo "em breve"/"anunciado" (com data).
+// A parte jogável (lobby + combate) é ligada quando event_status vira 'live'.
+function WorldEventsTeaser() {
+  const { t, i18n } = useTranslation();
+  const { data: events = [] } = useWorldEventBosses();
+  if (!events.length) return null;
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' });
+  const relative = (iso: string) => {
+    const diff = new Date(iso).getTime() - Date.now();
+    if (diff <= 0) return null;
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    if (days > 0) return t('app.boss.event_in_days', { days, hours });
+    return t('app.boss.event_in_hours', { hours: Math.max(1, hours) });
+  };
+
+  return (
+    <div className="rpg-card-glow border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-500/10 to-slate-900/40 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-2xl">🌍</span>
+        <div>
+          <h2 className="font-display font-bold text-lg text-fuchsia-300">{t('app.boss.events_title')}</h2>
+          <p className="text-[11px] text-muted-foreground">{t('app.boss.events_subtitle')}</p>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {(events as any[]).map((ev) => {
+          const announced = ev.event_status === 'announced' && ev.event_starts_at;
+          const live = ev.event_status === 'live';
+          return (
+            <div key={ev.id} className="rounded-xl border border-border/60 bg-card/50 p-3 flex items-center gap-3">
+              <span className="text-3xl shrink-0">{ev.icon ?? '🌑'}</span>
+              <div className="min-w-0">
+                <p className="font-display font-bold text-sm text-foreground truncate">{ev.name}</p>
+                {live ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    🟢 {t('app.boss.event_live')}
+                  </span>
+                ) : announced ? (
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      📅 {fmtDate(ev.event_starts_at)}
+                    </span>
+                    {relative(ev.event_starts_at) && (
+                      <p className="text-[10px] text-amber-300/80">{relative(ev.event_starts_at)}</p>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                    🔒 {t('app.boss.event_soon')}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function BossPage() {
@@ -633,6 +697,9 @@ export default function BossPage() {
             {t('app.boss.page_title')}
           </h1>
         </div>
+
+        {/* Eventos mundiais (teaser — em breve / anunciado) */}
+        <WorldEventsTeaser />
 
         {/* Abas */}
         <div data-tour="boss-tabs" className="flex gap-2 flex-wrap">

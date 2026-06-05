@@ -633,7 +633,13 @@
       "death_advice": "Asegúrate de que tu equipamiento de habilidades esté equipado y que tu HP/MP esté en buenas condiciones antes de entrar.",
       "death_back": "Volver (prepararme mejor)",
       "enter_arena": "Entrar a la Arena ⚔️",
-      "final_boss_badge": "Jefe Final"
+      "final_boss_badge": "Jefe Final",
+      "events_title": "Eventos Mundiales",
+      "events_subtitle": "Raides de 10 héroes nivel 60 — requiere un curandero en el equipo",
+      "event_soon": "Próximamente",
+      "event_live": "En vivo",
+      "event_in_days": "Faltan {{days}}d {{hours}}h",
+      "event_in_hours": "Faltan {{hours}}h"
     },
     "classes": {
       "page_title": "Clases",
