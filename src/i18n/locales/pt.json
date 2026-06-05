@@ -1413,6 +1413,23 @@
       "you_completed": "✓ Você já concluiu!",
       "mission_closed": "— Missão encerrada 🎉",
       "waiting_others": "Aguardando os demais…"
+    },
+    "reset_password": {
+      "title": "Nova Senha",
+      "subtitle": "Crie uma nova senha para sua conta",
+      "verifying": "Verificando link de recuperação...",
+      "new_label": "Nova senha",
+      "new_placeholder": "Mínimo 6 caracteres",
+      "confirm_label": "Confirmar senha",
+      "confirm_placeholder": "Repita a senha",
+      "button": "Redefinir Senha",
+      "toast_short_title": "Senha muito curta",
+      "toast_short_desc": "A senha deve ter pelo menos 6 caracteres.",
+      "toast_mismatch_title": "Senhas não coincidem",
+      "toast_mismatch_desc": "Verifique os campos e tente novamente.",
+      "toast_success_title": "Senha redefinida!",
+      "toast_success_desc": "Você já pode entrar com sua nova senha.",
+      "toast_error": "Erro"
     }
   },
   "footer": {

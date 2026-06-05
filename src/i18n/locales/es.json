@@ -1399,6 +1399,23 @@
       "you_completed": "✓ ¡Ya la completaste!",
       "mission_closed": "— Misión cerrada 🎉",
       "waiting_others": "Esperando a los demás…"
+    },
+    "reset_password": {
+      "title": "Nueva Contraseña",
+      "subtitle": "Crea una nueva contraseña para tu cuenta",
+      "verifying": "Verificando enlace de recuperación...",
+      "new_label": "Nueva contraseña",
+      "new_placeholder": "Mínimo 6 caracteres",
+      "confirm_label": "Confirmar contraseña",
+      "confirm_placeholder": "Repite la contraseña",
+      "button": "Restablecer Contraseña",
+      "toast_short_title": "Contraseña demasiado corta",
+      "toast_short_desc": "La contraseña debe tener al menos 6 caracteres.",
+      "toast_mismatch_title": "Las contraseñas no coinciden",
+      "toast_mismatch_desc": "Verifica los campos e inténtalo de nuevo.",
+      "toast_success_title": "¡Contraseña restablecida!",
+      "toast_success_desc": "Ya puedes iniciar sesión con tu nueva contraseña.",
+      "toast_error": "Error"
     }
   },
   "footer": {

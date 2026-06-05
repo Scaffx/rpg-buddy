@@ -1388,6 +1388,23 @@
       "you_completed": "✓ You already completed it!",
       "mission_closed": "— Mission closed 🎉",
       "waiting_others": "Waiting for the others…"
+    },
+    "reset_password": {
+      "title": "New Password",
+      "subtitle": "Create a new password for your account",
+      "verifying": "Verifying recovery link...",
+      "new_label": "New password",
+      "new_placeholder": "At least 6 characters",
+      "confirm_label": "Confirm password",
+      "confirm_placeholder": "Repeat the password",
+      "button": "Reset Password",
+      "toast_short_title": "Password too short",
+      "toast_short_desc": "The password must be at least 6 characters.",
+      "toast_mismatch_title": "Passwords do not match",
+      "toast_mismatch_desc": "Check the fields and try again.",
+      "toast_success_title": "Password reset!",
+      "toast_success_desc": "You can now sign in with your new password.",
+      "toast_error": "Error"
     }
   },
   "footer": {
