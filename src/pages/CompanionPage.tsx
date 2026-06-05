@@ -198,9 +198,9 @@ function CompanionCard({
   async function saveName() {
     if (!nameInput.trim() || !user) return;
     const { error } = await supabase
-      .from('companions' as never)
-      .update({ name: nameInput.trim() } as never)
-      .eq('id' as never, companion.id as never);
+      .from('companions')
+      .update({ name: nameInput.trim() })
+      .eq('id', companion.id);
     if (error) { toast.error(t('app.companion.toast_name_error')); return; }
     qc.invalidateQueries({ queryKey: ['companions_all', user.id] });
     setEditingName(false);

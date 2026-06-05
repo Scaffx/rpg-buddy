@@ -747,10 +747,10 @@ export default function DungeonArena({
 
     // DB: reduce quantity
     if (user) {
-      (supabase as any).from('user_inventory').select('quantity').eq('id', potion.invId).maybeSingle().then(({ data }: any) => {
+      supabase.from('user_inventory').select('quantity').eq('id', potion.invId).maybeSingle().then(({ data }: any) => {
         const qty = data?.quantity ?? 1;
-        if (qty <= 1) (supabase as any).from('user_inventory').delete().eq('id', potion.invId);
-        else (supabase as any).from('user_inventory').update({ quantity: qty - 1 }).eq('id', potion.invId);
+        if (qty <= 1) supabase.from('user_inventory').delete().eq('id', potion.invId);
+        else supabase.from('user_inventory').update({ quantity: qty - 1 }).eq('id', potion.invId);
       });
     }
     return true;
@@ -1122,20 +1122,20 @@ export default function DungeonArena({
       // Crafting materials → game_items by effect
       for (const loot of allLoot.filter(l => l.id !== 'moeda_cobre')) {
         try {
-          const { data: gi } = await (supabase as any).from('game_items').select('id').eq('effect', loot.id).maybeSingle();
+          const { data: gi } = await supabase.from('game_items').select('id').eq('effect', loot.id).maybeSingle();
           if (gi?.id) {
-            const { data: ex } = await (supabase as any).from('user_inventory').select('id, quantity').eq('user_id', user.id).eq('item_id', gi.id).maybeSingle();
+            const { data: ex } = await supabase.from('user_inventory').select('id, quantity').eq('user_id', user.id).eq('item_id', gi.id).maybeSingle();
             if (ex?.id) {
-              await (supabase as any).from('user_inventory').update({ quantity: ex.quantity + loot.qty }).eq('id', ex.id);
+              await supabase.from('user_inventory').update({ quantity: ex.quantity + loot.qty }).eq('id', ex.id);
             } else {
-              await (supabase as any).from('user_inventory').insert({ user_id: user.id, item_id: gi.id, quantity: loot.qty, equipped: false });
+              await supabase.from('user_inventory').insert({ user_id: user.id, item_id: gi.id, quantity: loot.qty, equipped: false });
             }
           }
         } catch { /* item not in game_items yet — tracked in activity_log */ }
       }
 
       // Activity log
-      await (supabase as any).from('activity_log').insert({
+      await supabase.from('activity_log').insert({
         user_id: user.id,
         action: 'dungeon_completed',
         description: `Dungeon "${dungeonName}" concluída! Resgatou ${rescued} NPC(s). Materiais: ${allLoot.map(l => `${l.qty}x ${l.name}`).join(', ')}`,

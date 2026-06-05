@@ -16,9 +16,9 @@ export function useHeroStoryChoices() {
     queryKey: ['hero_story_choices', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('hero_story_choices' as never)
+        .from('hero_story_choices')
         .select('*')
-        .eq('user_id' as never, user!.id as never)
+        .eq('user_id', user!.id)
         .maybeSingle();
       if (error) throw error;
       return (data as HeroStoryChoicesRow | null) ?? null;
@@ -35,14 +35,14 @@ export function useSaveSkeletonChoice() {
     mutationFn: async (choice: 'adopt' | 'reject') => {
       if (!user) throw new Error('Não autenticado');
       const { error } = await supabase
-        .from('hero_story_choices' as never)
+        .from('hero_story_choices')
         .upsert(
           {
             user_id: user.id,
             skeleton_champion: choice,
             updated_at: new Date().toISOString(),
-          } as never,
-          { onConflict: 'user_id' } as never,
+          },
+          { onConflict: 'user_id' },
         );
       if (error) throw error;
     },

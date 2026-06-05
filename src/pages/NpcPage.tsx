@@ -194,9 +194,9 @@ export default function NpcPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const conversationHistoryRef = useRef<ChatMessage[]>([]);
-  const npcWeeklyChallengesTable = 'npc_weekly_challenges' as never;
-  const npcCompletionsTable = 'npc_challenge_completions' as never;
-  const userInventoryTable = 'user_inventory' as never;
+  const npcWeeklyChallengesTable = 'npc_weekly_challenges';
+  const npcCompletionsTable = 'npc_challenge_completions';
+  const userInventoryTable = 'user_inventory';
 
   // Missões criadas por cada NPC via chat
   const { data: npcCreatedMissions = [], refetch: refetchNpcMissions } = useQuery<{
@@ -206,12 +206,12 @@ export default function NpcPage() {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('missions' as never)
-        .select('id, npc_id, title, description, completed, created_at' as never)
-        .eq('user_id' as never, user!.id as never)
-        .not('npc_id' as never, 'is' as never, null as never)
-        .gte('created_at' as never, weekStart as never)
-        .order('created_at' as never, { ascending: false } as never)
+        .from('missions')
+        .select('id, npc_id, title, description, completed, created_at')
+        .eq('user_id', user!.id)
+        .not('npc_id', 'is', null)
+        .gte('created_at', weekStart)
+        .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
       return (data ?? []) as any;
@@ -327,7 +327,7 @@ export default function NpcPage() {
             if (nextQuantity > 0) {
               await supabase
                 .from(userInventoryTable)
-                .update({ quantity: nextQuantity } as never)
+                .update({ quantity: nextQuantity })
                 .eq('id', typedInventoryRow.id);
             } else {
               await supabase
@@ -347,14 +347,14 @@ export default function NpcPage() {
             week_token: weekToken,
             xp_earned: challenge.xp_reward,
             gold_earned: challenge.gold_reward,
-          } as never);
+          });
         if (error) {
           if (error.code === '23505') throw new Error(t('app.npc.error_already_done'));
           throw error;
         }
 
-        await supabase.rpc('add_xp_to_user' as never, { p_user_id: user.id, p_xp: challenge.xp_reward } as never);
-        await supabase.rpc('add_gold_to_user' as never, { p_user_id: user.id, p_gold: challenge.gold_reward } as never);
+        await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: challenge.xp_reward });
+        await supabase.rpc('add_gold_to_user', { p_user_id: user.id, p_gold: challenge.gold_reward });
 
         if (challenge.reward_item_id && challenge.reward_item_quantity > 0) {
           const { data: inventoryRow } = await supabase
@@ -368,7 +368,7 @@ export default function NpcPage() {
             const typedInventoryRow = inventoryRow as unknown as InventoryRow;
             await supabase
               .from(userInventoryTable)
-              .update({ quantity: Number(typedInventoryRow.quantity ?? 0) + challenge.reward_item_quantity } as never)
+              .update({ quantity: Number(typedInventoryRow.quantity ?? 0) + challenge.reward_item_quantity })
               .eq('id', typedInventoryRow.id);
           } else {
             await supabase.from(userInventoryTable).insert({
@@ -376,7 +376,7 @@ export default function NpcPage() {
               item_id: challenge.reward_item_id,
               quantity: challenge.reward_item_quantity,
               equipped: false,
-            } as never);
+            });
           }
         }
       }

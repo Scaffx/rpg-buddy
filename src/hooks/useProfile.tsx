@@ -1240,7 +1240,7 @@ export function useSyncHealthMaxes() {
           .update({ max_hp: newMaxHp, max_mp: newMaxMp })
           .eq('user_id', user.id);
       } else {
-        await (supabase as any).from('user_health_stats').insert({
+        await supabase.from('user_health_stats').insert({
           user_id: user.id,
           max_hp: newMaxHp,
           max_mp: newMaxMp,

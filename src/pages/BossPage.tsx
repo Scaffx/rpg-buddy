@@ -138,8 +138,8 @@ export default function BossPage() {
       const newLevel = Math.max(1, currentLevel - 1);
       try {
         await Promise.all([
-          supabase.from('profiles' as never).update({ level: newLevel } as never).eq('user_id' as never, user.id as never),
-          supabase.from('user_health_stats' as never).update({ fatigue: 100 } as never).eq('user_id' as never, user.id as never),
+          supabase.from('profiles').update({ level: newLevel }).eq('user_id', user.id),
+          supabase.from('user_health_stats').update({ fatigue: 100 }).eq('user_id', user.id),
         ]);
         toast({
           title: t('app.boss.toast_severe_defeat_title'),
@@ -163,17 +163,17 @@ export default function BossPage() {
         (inv) => (inv.game_items as any)?.effect === 'derrota_guerreiro_imortal',
       );
       if (basiliscoInv) {
-        await supabase.from('user_inventory' as never).delete().eq('id' as never, basiliscoInv.id as never);
+        await supabase.from('user_inventory').delete().eq('id', basiliscoInv.id);
         queryClient.invalidateQueries({ queryKey: ['inventory', user.id] });
       }
 
       // 2. Registrar vitória verdadeira em boss_battles
-      await supabase.from('boss_battles' as never).insert({
+      await supabase.from('boss_battles').insert({
         user_id: user.id,
         boss_id: activeCombat.bossId,
         damage_dealt: 1,
         won: true,
-      } as never);
+      });
 
       // 3. Recompensas de XP — usa xp_reward do DB (mesmo valor exibido no card)
       const bossData = (bosses as any[])?.find((b: any) => b.id === activeCombat.bossId);
@@ -188,24 +188,24 @@ export default function BossPage() {
 
       // 4. Drop Fragmento I do Pergaminho Ancestral
       const { data: fragmentItem } = await supabase
-        .from('game_items' as never)
-        .select('id' as never)
-        .eq('effect' as never, 'quest_scroll_fragment_1' as never)
+        .from('game_items')
+        .select('id')
+        .eq('effect', 'quest_scroll_fragment_1')
         .maybeSingle();
       if (fragmentItem) {
-        await supabase.from('user_inventory' as never).insert({
+        await supabase.from('user_inventory').insert({
           user_id: user.id,
           item_id: (fragmentItem as any).id,
           quantity: 1,
           equipped: false,
-        } as never);
+        });
       }
 
       // 5. Marcar como verdadeiramente derrotado
-      await supabase.from('hero_story_choices' as never).upsert({
+      await supabase.from('hero_story_choices').upsert({
         user_id: user.id,
         guerreiro_imortal_defeated: true,
-      } as never, { onConflict: 'user_id' });
+      }, { onConflict: 'user_id' });
 
       queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
@@ -239,15 +239,15 @@ export default function BossPage() {
     if (!user) return;
     try {
       const { data: choices } = await supabase
-        .from('hero_story_choices' as never)
-        .select('phoenix_escape_count' as never)
-        .eq('user_id' as never, user.id as never)
+        .from('hero_story_choices')
+        .select('phoenix_escape_count')
+        .eq('user_id', user.id)
         .maybeSingle();
       const currentCount = (choices as any)?.phoenix_escape_count ?? 0;
-      await supabase.from('hero_story_choices' as never).upsert({
+      await supabase.from('hero_story_choices').upsert({
         user_id: user.id,
         phoenix_escape_count: currentCount + 1,
-      } as never, { onConflict: 'user_id' });
+      }, { onConflict: 'user_id' });
       queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
       const nextLevel = 10 + (currentCount + 1) * 10;
       toast({

@@ -42,9 +42,9 @@ export function useNpcAffinity() {
     queryKey: ['npc_affinity', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('npc_affinity' as never)
+        .from('npc_affinity')
         .select('npc_id, affinity_xp, affinity_level')
-        .eq('user_id' as never, user!.id as never);
+        .eq('user_id', user!.id);
       if (error) throw error;
       return (data ?? []) as AffinityRow[];
     },
@@ -61,10 +61,10 @@ export function useIncrementNpcAffinity() {
       if (!user) throw new Error('Não autenticado');
 
       const { data: existing } = await supabase
-        .from('npc_affinity' as never)
+        .from('npc_affinity')
         .select('id, affinity_xp')
-        .eq('user_id' as never, user.id as never)
-        .eq('npc_id' as never, npcId as never)
+        .eq('user_id', user.id)
+        .eq('npc_id', npcId)
         .maybeSingle();
 
       const existingRow = existing as { id: string; affinity_xp: number } | null;
@@ -73,22 +73,22 @@ export function useIncrementNpcAffinity() {
 
       if (existingRow) {
         await supabase
-          .from('npc_affinity' as never)
+          .from('npc_affinity')
           .update({
             affinity_xp: newXp,
             affinity_level: newLevel,
             updated_at: new Date().toISOString(),
-          } as never)
-          .eq('id' as never, existingRow.id as never);
+          })
+          .eq('id', existingRow.id);
       } else {
         await supabase
-          .from('npc_affinity' as never)
+          .from('npc_affinity')
           .insert({
             user_id: user.id,
             npc_id: npcId,
             affinity_xp: newXp,
             affinity_level: newLevel,
-          } as never);
+          });
       }
 
       return { newXp, newLevel };

@@ -106,7 +106,7 @@ export function useUpdatePlan() {
     mutationFn: async ({ id, ...fields }: UpdatePlanPayload) => {
       const { error } = await supabase
         .from("plans")
-        .update(fields as never)
+        .update(fields)
         .eq("id", id);
       if (error) throw error;
     },

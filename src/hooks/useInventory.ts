@@ -475,7 +475,7 @@ export function useConsumeItem() {
       }
 
       if (preserveCharge) {
-        await (supabase as any).from('activity_log').insert({
+        await supabase.from('activity_log').insert({
           user_id: user.id,
           action: 'alquimista_amador_proc',
           description: `Alquimista Amador preservou a carga de ${itemName}.`,

@@ -593,9 +593,9 @@ export default function CombatArena({
     // Resetar HP do boss no banco de dados para que processar_turno use o valor correto
     if (combateId && user) {
       void supabase
-        .from('combates_ativos' as never)
-        .update({ hp_atual_boss: initialBossHp } as never)
-        .eq('id' as never, combateId as never);
+        .from('combates_ativos')
+        .update({ hp_atual_boss: initialBossHp })
+        .eq('id', combateId);
     }
     setImmortalPhase('none');
     currentBattleTokenRef.current += 1;
@@ -636,9 +636,9 @@ export default function CombatArena({
     const newHp = Math.ceil(initialBossHp * 0.5);
     if (combateId && user) {
       void supabase
-        .from('combates_ativos' as never)
-        .update({ hp_atual_boss: newHp, status: 'em_andamento' } as never)
-        .eq('id' as never, combateId as never);
+        .from('combates_ativos')
+        .update({ hp_atual_boss: newHp, status: 'em_andamento' })
+        .eq('id', combateId);
     }
     setRancorPhase('none');
     currentBattleTokenRef.current += 1;
@@ -688,10 +688,10 @@ export default function CombatArena({
       setRancorBoostBadge(false);
       if (user) {
         void supabase
-          .from('missions' as never)
-          .select('title' as never)
-          .eq('user_id' as never, user.id as never)
-          .or('is_failed.eq.true,status.eq.failed' as never)
+          .from('missions')
+          .select('title')
+          .eq('user_id', user.id)
+          .or('is_failed.eq.true,status.eq.failed')
           .limit(60)
           .then(({ data }) => {
             if (!data) return;
@@ -936,9 +936,9 @@ export default function CombatArena({
               setBossHp(newHp);
               if (combateId && user) {
                 void supabase
-                  .from('combates_ativos' as never)
-                  .update({ hp_atual_boss: newHp, status: 'em_andamento' } as never)
-                  .eq('id' as never, combateId as never);
+                  .from('combates_ativos')
+                  .update({ hp_atual_boss: newHp, status: 'em_andamento' })
+                  .eq('id', combateId);
               }
               sfx.stopRancorBattle();
               setRancorPhase('reconstituted');
@@ -986,9 +986,9 @@ export default function CombatArena({
             setBossHp(newHp);
             if (combateId && user) {
               void supabase
-                .from('combates_ativos' as never)
-                .update({ hp_atual_boss: newHp, status: 'em_andamento' } as never)
-                .eq('id' as never, combateId as never);
+                .from('combates_ativos')
+                .update({ hp_atual_boss: newHp, status: 'em_andamento' })
+                .eq('id', combateId);
             }
             sfx.stopRancorBattle();
             setRancorPhase('reconstituted');
@@ -1400,8 +1400,8 @@ export default function CombatArena({
                   height: `${p.size}px`,
                   background: `radial-gradient(circle, hsl(${p.hue} 95% 65%) 0%, hsl(${p.hue} 90% 45% / 0.85) 60%, transparent 100%)`,
                   boxShadow: `0 0 12px hsl(${p.hue} 95% 60% / 0.9)`,
-                  ['--px-end' as never]: `${p.pxEnd}px`,
-                  ['--py-end' as never]: `${p.pyEnd}px`,
+                  ['--px-end']: `${p.pxEnd}px`,
+                  ['--py-end']: `${p.pyEnd}px`,
                   animationDuration: `${p.duration}ms`,
                 }}
               />
@@ -1517,8 +1517,8 @@ export default function CombatArena({
                   height: `${p.size}px`,
                   background: `radial-gradient(circle, hsl(${p.hue} 95% 65%) 0%, hsl(${p.hue} 85% 40% / 0.85) 55%, transparent 100%)`,
                   boxShadow: `0 0 14px hsl(${p.hue} 95% 55% / 0.9)`,
-                  ['--px-end' as never]: `${p.pxEnd}px`,
-                  ['--py-end' as never]: `${p.pyEnd}px`,
+                  ['--px-end']: `${p.pxEnd}px`,
+                  ['--py-end']: `${p.pyEnd}px`,
                   animationDuration: `${p.duration}ms`,
                 }}
               />
@@ -1631,8 +1631,8 @@ export default function CombatArena({
                 width: `${c.size}px`,
                 height: `${c.size * 1.6}px`,
                 background: c.color,
-                ['--cdx' as never]: `${c.cdx}px`,
-                ['--cdur' as never]: `${c.duration}s`,
+                ['--cdx']: `${c.cdx}px`,
+                ['--cdur']: `${c.duration}s`,
                 animationDelay: `${c.delay}s`,
                 animationDuration: `${c.duration}s`,
                 boxShadow: `0 0 8px ${c.color}`,

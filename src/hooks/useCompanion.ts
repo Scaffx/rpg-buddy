@@ -154,10 +154,10 @@ export function isCooldownDone(timestamp: string | null, cooldownMinutes: number
 
 async function fetchAllCompanions(userId: string): Promise<CompanionRow[]> {
   const { data, error } = await supabase
-    .from('companions' as never)
+    .from('companions')
     .select('*')
-    .eq('user_id' as never, userId as never)
-    .order('created_at' as never, { ascending: true } as never);
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
   if (error) throw error;
   return (data ?? []) as CompanionRow[];
 }
@@ -238,8 +238,8 @@ export function useCreateCompanion() {
     mutationFn: async ({ type, name }: { type: string; name: string }) => {
       if (!user) throw new Error('Não autenticado');
       const { data, error } = await supabase
-        .from('companions' as never)
-        .insert({ user_id: user.id, companion_type: type, origin: 'lvl3_choice', name } as never)
+        .from('companions')
+        .insert({ user_id: user.id, companion_type: type, origin: 'lvl3_choice', name })
         .select('*')
         .single();
       if (error) throw error;
@@ -256,13 +256,13 @@ export function useAdoptSkeletonPup() {
     mutationFn: async (name: string) => {
       if (!user) throw new Error('Não autenticado');
       const { error } = await supabase
-        .from('companions' as never)
+        .from('companions')
         .insert({
           user_id: user.id,
           companion_type: 'skeleton_pup',
           origin: 'boss_story',
           name,
-        } as never);
+        });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
@@ -304,9 +304,9 @@ export function useInteractCompanion() {
       if (action === 'play') updates.last_played_at = new Date().toISOString();
 
       const { error } = await supabase
-        .from('companions' as never)
-        .update(updates as never)
-        .eq('id' as never, companionId as never);
+        .from('companions')
+        .update(updates)
+        .eq('id', companionId);
 
       if (error) throw error;
       return { didLevel, newLevel };
@@ -326,9 +326,9 @@ export function useMissionRewardCompanion() {
       if (!user) return;
       // Update all companions of this user
       const { data: allCompanions } = await supabase
-        .from('companions' as never)
+        .from('companions')
         .select('id, xp, level, mood, updated_at, last_fed_at, last_played_at')
-        .eq('user_id' as never, user.id as never);
+        .eq('user_id', user.id);
 
       for (const c of (allCompanions ?? []) as CompanionRow[]) {
         const liveMood = computeLiveMood(c);
@@ -339,9 +339,9 @@ export function useMissionRewardCompanion() {
         const newLevel = didLevel ? Number(c.level ?? 1) + 1 : Number(c.level ?? 1);
         const finalXp  = didLevel ? newXp - xpNeeded : newXp;
         await supabase
-          .from('companions' as never)
-          .update({ xp: finalXp, level: newLevel, mood: newMood, updated_at: new Date().toISOString() } as never)
-          .eq('id' as never, c.id as never);
+          .from('companions')
+          .update({ xp: finalXp, level: newLevel, mood: newMood, updated_at: new Date().toISOString() })
+          .eq('id', c.id);
       }
     },
     onSuccess: () => {
