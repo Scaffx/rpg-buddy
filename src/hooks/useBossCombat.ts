@@ -29,7 +29,29 @@ export function useBosses() {
   return useQuery({
     queryKey: ["bosses"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("bosses").select("*").order("level");
+      // Escada normal: exclui os bosses de evento mundial (raides de 10),
+      // que têm fluxo de entrada próprio (Fase 2).
+      const { data, error } = await supabase
+        .from("bosses")
+        .select("*")
+        .eq("is_world_event", false)
+        .order("level");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** Bosses de evento mundial (raides de 10 jogadores) — usado na seção de Eventos. */
+export function useWorldEventBosses() {
+  return useQuery({
+    queryKey: ["bosses_world_event"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bosses")
+        .select("*")
+        .eq("is_world_event", true)
+        .order("level");
       if (error) throw error;
       return data;
     },

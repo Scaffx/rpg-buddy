@@ -277,7 +277,7 @@ export function useActivityLog() {
 }
 
 // Hooks de boss/combate extraídos para reduzir o tamanho deste arquivo (#30).
-export { useBosses, useBossBattles, useFightBoss, useStartActiveCombat } from './useBossCombat';
+export { useBosses, useBossBattles, useFightBoss, useStartActiveCombat, useWorldEventBosses } from './useBossCombat';
 
 export function useClasses() {
   return useQuery({

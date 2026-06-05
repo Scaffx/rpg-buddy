@@ -790,6 +790,11 @@ export default function BossPage() {
                     <span className="text-5xl animate-float">{boss.icon}</span>
                     <div>
                       <h3 className="font-display font-bold text-foreground">{boss.name}</h3>
+                      {boss.is_final_boss && (
+                        <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          👑 {t('app.boss.final_boss_badge')}
+                        </span>
+                      )}
                       <p className={`text-xs font-semibold mt-1 ${elementColors[boss.element] || 'text-muted-foreground'}`}>
                         🔮 {boss.element || 'Neutro'}
                       </p>

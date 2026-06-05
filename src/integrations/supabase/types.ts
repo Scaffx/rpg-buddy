@@ -361,6 +361,8 @@ export type Database = {
           hp_max: number
           icon: string
           id: string
+          is_final_boss: boolean
+          is_world_event: boolean
           keys_cost: number
           level: number
           mechanic: string | null
@@ -384,6 +386,8 @@ export type Database = {
           hp_max?: number
           icon?: string
           id?: string
+          is_final_boss?: boolean
+          is_world_event?: boolean
           keys_cost?: number
           level?: number
           mechanic?: string | null
@@ -407,6 +411,8 @@ export type Database = {
           hp_max?: number
           icon?: string
           id?: string
+          is_final_boss?: boolean
+          is_world_event?: boolean
           keys_cost?: number
           level?: number
           mechanic?: string | null

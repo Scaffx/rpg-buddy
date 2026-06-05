@@ -619,7 +619,8 @@
       "death_penalty_2_rest": "— you will have 100% fatigue for the rest of the day, reducing XP gained",
       "death_advice": "Make sure your skill loadout is equipped and your HP/MP is in good shape before entering.",
       "death_back": "Back (prepare better)",
-      "enter_arena": "Enter the Arena ⚔️"
+      "enter_arena": "Enter the Arena ⚔️",
+      "final_boss_badge": "Final Boss"
     },
     "classes": {
       "page_title": "Classes",

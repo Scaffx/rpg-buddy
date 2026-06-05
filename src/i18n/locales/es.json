@@ -632,7 +632,8 @@
       "death_penalty_2_rest": "— tendrás 100% de fatiga por el resto del día, reduciendo la XP ganada",
       "death_advice": "Asegúrate de que tu equipamiento de habilidades esté equipado y que tu HP/MP esté en buenas condiciones antes de entrar.",
       "death_back": "Volver (prepararme mejor)",
-      "enter_arena": "Entrar a la Arena ⚔️"
+      "enter_arena": "Entrar a la Arena ⚔️",
+      "final_boss_badge": "Jefe Final"
     },
     "classes": {
       "page_title": "Clases",
