@@ -179,7 +179,15 @@
       "failed_short": "F",
       "table_rate": "Taxa",
       "table_legend": "C = Concluídas no dia · R = Recuperadas (marcadas como feitas após falhar) · F = Falhadas",
-      "empty_state": "Nenhuma atividade de missões nos últimos 7 dias. Comece a cumprir suas missões diárias para ver seu relatório aqui!"
+      "empty_state": "Nenhuma atividade de missões nos últimos 7 dias. Comece a cumprir suas missões diárias para ver seu relatório aqui!",
+      "tour_1_title": "Virtudes e Consistência 🔵",
+      "tour_1_desc": "Esta tela mostra seu desempenho dos últimos 7 dias. Aqui você enfrenta a realidade: quantas missões cumpriu, falhou ou recuperou.",
+      "tour_2_title": "Resumo da Semana 📊",
+      "tour_2_desc": "Quatro métricas rápidas: missões concluídas (verde), falhadas (vermelho), recuperadas (âmbar) e sua taxa de sucesso geral. Mire sempre acima de 80%!",
+      "tour_3_title": "Atividade Diária 📅",
+      "tour_3_desc": "Cada coluna é um dia da semana. As barras mostram a proporção entre conclusões, recuperações e falhas. Dias cheios e verdes = herói em forma!",
+      "tour_4_title": "Virtudes e Pontos de Atenção 🌟",
+      "tour_4_desc": "As 5 missões que você mais cumpre são suas Virtudes. As 5 que mais falha são seus Pontos de Atenção. Use isso para ajustar sua rotina!"
     },
     "progress": {
       "xp_last_7_days": "XP Ganho nos Últimos 7 Dias",
@@ -628,7 +636,20 @@
       "error_select": "Erro ao selecionar classe",
       "reward_collected": "Recompensa coletada!",
       "reward_collected_desc": "Confira seu inventário.",
-      "error_reward": "Erro ao resgatar recompensa"
+      "error_reward": "Erro ao resgatar recompensa",
+      "tour_1_title": "Árvore de Progressão de Classes ⚔️",
+      "tour_1_desc": "Existem 55+ classes organizadas em 6 tiers. Você começa como Aprendiz e evolui ao longo da linha da sua classe, desbloqueando habilidades únicas a cada tier.",
+      "tour_2_title": "Cores de Tier 🎨",
+      "tour_2_desc": "Cada cor indica um nível de evolução. Do cinza (início) ao vermelho (lendário). Classes de tiers superiores exigem nível mínimo para serem desbloqueadas.",
+      "tour_3_title": "Como Evoluir de Classe 🌳",
+      "tour_3_desc": "Clique em qualquer card para ver detalhes, habilidades e requisitos. Para evoluir, você precisa estar no nível mínimo e seguir a linha de progressão — não é possível pular tiers ou mudar de ramo.",
+      "tier_1": "Início",
+      "tier_2": "Classe 1",
+      "tier_3": "Classe 2",
+      "tier_4": "Classe 3",
+      "tier_5": "Classe 4",
+      "tier_6": "Classe 5",
+      "level_label": "Nível"
     },
     "feats": {
       "page_title": "Talentos",

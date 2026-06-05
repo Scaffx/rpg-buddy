@@ -8,29 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Circle, AlertTriangle, CheckCircle2, RotateCcw, TrendingDown, TrendingUp, Calendar } from 'lucide-react';
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
-const VIRTUES_TOUR_STEPS: TourStep[] = [
-  {
-    target: 'virtues-header',
-    title: 'Virtudes e Consistência 🔵',
-    description: 'Esta tela mostra seu desempenho dos últimos 7 dias. Aqui você enfrenta a realidade: quantas missões cumpriu, falhou ou recuperou.',
-  },
-  {
-    target: 'virtues-stats',
-    title: 'Resumo da Semana 📊',
-    description: 'Quatro métricas rápidas: missoes concluídas (verde), falhadas (vermelho), recuperadas (ambar) e sua taxa de sucesso geral. Mire sempre acima de 80%!',
-  },
-  {
-    target: 'virtues-calendar',
-    title: 'Atividade Diária 📅',
-    description: 'Cada coluna é um dia da semana. As barras mostram a proporção entre conclusões, recuperações e falhas. Dias cheios e verdes = herói em forma!',
-  },
-  {
-    target: 'virtues-rankings',
-    title: 'Virtudes e Pontos de Atenção 🌟',
-    description: 'As 5 missões que você mais cumpre são suas Virtudes. As 5 que mais falha são seus Pontos de Atenção. Use isso para ajustar sua rotina!',
-  },
-];
-
 function toLocalDate(d: Date) {
   return d.toLocaleDateString('en-CA');
 }
@@ -71,6 +48,12 @@ function useWeeklyActivity() {
 
 export default function VirtuesPage() {
   const { t, i18n } = useTranslation();
+  const virtuesTourSteps: TourStep[] = [
+    { target: 'virtues-header',   title: t('app.virtues.tour_1_title'), description: t('app.virtues.tour_1_desc') },
+    { target: 'virtues-stats',    title: t('app.virtues.tour_2_title'), description: t('app.virtues.tour_2_desc') },
+    { target: 'virtues-calendar', title: t('app.virtues.tour_3_title'), description: t('app.virtues.tour_3_desc') },
+    { target: 'virtues-rankings', title: t('app.virtues.tour_4_title'), description: t('app.virtues.tour_4_desc') },
+  ];
   const { data: missions = [] } = useMissions();
   const { data: activity = [] } = useWeeklyActivity();
 
@@ -331,7 +314,7 @@ export default function VirtuesPage() {
           </div>
         )}
       </div>
-      <GuidedTour tourKey="virtues" steps={VIRTUES_TOUR_STEPS} />
+      <GuidedTour tourKey="virtues" steps={virtuesTourSteps} />
     </AppLayout>
   );
 }

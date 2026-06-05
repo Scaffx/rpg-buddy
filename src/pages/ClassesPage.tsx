@@ -13,24 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { getClassProfileByTreeName, type ClassProfile } from '@/lib/classProfiles';
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
-const CLASSES_TOUR_STEPS: TourStep[] = [
-  {
-    target: 'classes-title',
-    title: 'Árvore de Progressão de Classes ⚔️',
-    description: 'Existem 55+ classes organizadas em 6 tiers. Você começa como Aprendiz e evolui ao longo da linha da sua classe, desbloqueando habilidades únicas a cada tier.',
-  },
-  {
-    target: 'classes-legend',
-    title: 'Cores de Tier 🎨',
-    description: 'Cada cor indica um nível de evolução. Do cinza (início) ao vermelho (lendário). Classes de tiers superiores exigem nível mínimo para serem desbloqueadas.',
-  },
-  {
-    target: 'classes-tree',
-    title: 'Como Evoluir de Classe 🌳',
-    description: 'Clique em qualquer card para ver detalhes, habilidades e requisitos. Para evoluir, você precisa estar no nível mínimo e seguir a linha de progressão — não é possível pular tiers ou mudar de ramo.',
-  },
-];
-
 interface ClassNode {
   id: string;
   name: string;
@@ -78,6 +60,12 @@ const CLASS_NAME_TO_STARTER: Record<string, string> = Object.fromEntries(
 
 export default function ClassesPage() {
   const { t } = useTranslation();
+  const classesTourSteps: TourStep[] = [
+    { target: 'classes-title',  title: t('app.classes.tour_1_title'), description: t('app.classes.tour_1_desc') },
+    { target: 'classes-legend', title: t('app.classes.tour_2_title'), description: t('app.classes.tour_2_desc') },
+    { target: 'classes-tree',   title: t('app.classes.tour_3_title'), description: t('app.classes.tour_3_desc') },
+  ];
+  const tierLabel = (tier: number) => t(`app.classes.tier_${tier}`, { defaultValue: tierColors[tier]?.label ?? '' });
   const { data: profile, isLoading: pLoading } = useProfile();
   const { data: classes, isLoading: cLoading } = useClasses();
   const selectClass = useSelectClass();
@@ -447,9 +435,9 @@ export default function ClassesPage() {
 
         {/* Legend */}
         <div data-tour="classes-legend" className="flex flex-wrap gap-2">
-          {Object.entries(tierColors).map(([idx, t]) => (
-            <span key={idx} className={`text-[10px] px-2 py-0.5 rounded-full border ${t.bg} ${t.border} text-foreground`}>
-              {t.label}
+          {Object.entries(tierColors).map(([idx, tier]) => (
+            <span key={idx} className={`text-[10px] px-2 py-0.5 rounded-full border ${tier.bg} ${tier.border} text-foreground`}>
+              {tierLabel(Number(idx))}
             </span>
           ))}
         </div>
@@ -462,7 +450,7 @@ export default function ClassesPage() {
         </div>
       </div>
 
-      <GuidedTour tourKey="classes" steps={CLASSES_TOUR_STEPS} />
+      <GuidedTour tourKey="classes" steps={classesTourSteps} />
 
       {/* Detail modal */}
       <Dialog open={!!selectedDetail} onOpenChange={() => setSelectedDetail(null)}>
@@ -475,7 +463,7 @@ export default function ClassesPage() {
                   <div>
                     <DialogTitle className="font-display text-xl text-foreground">{selectedDetail.name}</DialogTitle>
                     <DialogDescription className="text-muted-foreground text-xs">
-                      {tierColors[selectedDetail.column_index]?.label} • Nível {selectedDetail.level_min}
+                      {tierLabel(selectedDetail.column_index)} • {t('app.classes.level_label')} {selectedDetail.level_min}
                       {selectedDetail.level_max < 99 ? `–${selectedDetail.level_max}` : '+'}
                     </DialogDescription>
                   </div>

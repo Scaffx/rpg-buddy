@@ -192,7 +192,15 @@
       "failed_short": "F",
       "table_rate": "Tasa",
       "table_legend": "C = Completadas en el día · R = Recuperadas (marcadas como hechas después de fallar) · F = Falladas",
-      "empty_state": "No hubo actividad de misiones en los últimos 7 días. Empieza a completar tus misiones diarias para ver tu informe aquí."
+      "empty_state": "No hubo actividad de misiones en los últimos 7 días. Empieza a completar tus misiones diarias para ver tu informe aquí.",
+      "tour_1_title": "Virtudes y Consistencia 🔵",
+      "tour_1_desc": "Esta pantalla muestra tu desempeño de los últimos 7 días. Aquí enfrentas la realidad: cuántas misiones cumpliste, fallaste o recuperaste.",
+      "tour_2_title": "Resumen de la Semana 📊",
+      "tour_2_desc": "Cuatro métricas rápidas: misiones completadas (verde), falladas (rojo), recuperadas (ámbar) y tu tasa de éxito general. ¡Apunta siempre por encima del 80%!",
+      "tour_3_title": "Actividad Diaria 📅",
+      "tour_3_desc": "Cada columna es un día de la semana. Las barras muestran la proporción entre completados, recuperaciones y fallos. ¡Días llenos y verdes = héroe en forma!",
+      "tour_4_title": "Virtudes y Puntos de Atención 🌟",
+      "tour_4_desc": "Las 5 misiones que más cumples son tus Virtudes. Las 5 que más fallas son tus Puntos de Atención. ¡Úsalo para ajustar tu rutina!"
     },
     "progress": {
       "xp_last_7_days": "XP Ganado en los Últimos 7 Días",
@@ -641,7 +649,20 @@
       "error_select": "Error al seleccionar clase",
       "reward_collected": "¡Recompensa reclamada!",
       "reward_collected_desc": "Revisa tu inventario.",
-      "error_reward": "Error al reclamar recompensa"
+      "error_reward": "Error al reclamar recompensa",
+      "tour_1_title": "Árbol de Progresión de Clases ⚔️",
+      "tour_1_desc": "Hay 55+ clases organizadas en 6 niveles. Empiezas como Aprendiz y evolucionas a lo largo de la línea de tu clase, desbloqueando habilidades únicas en cada nivel.",
+      "tour_2_title": "Colores de Nivel 🎨",
+      "tour_2_desc": "Cada color indica un nivel de evolución. Del gris (inicio) al rojo (legendario). Las clases de niveles superiores requieren un nivel mínimo para desbloquearse.",
+      "tour_3_title": "Cómo Evolucionar de Clase 🌳",
+      "tour_3_desc": "Haz clic en cualquier tarjeta para ver detalles, habilidades y requisitos. Para evolucionar, debes estar en el nivel mínimo y seguir la línea de progresión — no puedes saltar niveles ni cambiar de rama.",
+      "tier_1": "Inicio",
+      "tier_2": "Clase 1",
+      "tier_3": "Clase 2",
+      "tier_4": "Clase 3",
+      "tier_5": "Clase 4",
+      "tier_6": "Clase 5",
+      "level_label": "Nivel"
     },
     "feats": {
       "page_title": "Talentos",

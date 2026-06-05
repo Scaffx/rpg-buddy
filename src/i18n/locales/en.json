@@ -179,7 +179,15 @@
       "failed_short": "F",
       "table_rate": "Rate",
       "table_legend": "C = Completed on the day · R = Recovered (marked done after failing) · F = Failed",
-      "empty_state": "No quest activity in the last 7 days. Start completing your daily quests to see your report here!"
+      "empty_state": "No quest activity in the last 7 days. Start completing your daily quests to see your report here!",
+      "tour_1_title": "Virtues and Consistency 🔵",
+      "tour_1_desc": "This screen shows your performance over the last 7 days. Here you face reality: how many missions you completed, failed or recovered.",
+      "tour_2_title": "Week Summary 📊",
+      "tour_2_desc": "Four quick metrics: completed missions (green), failed (red), recovered (amber) and your overall success rate. Always aim above 80%!",
+      "tour_3_title": "Daily Activity 📅",
+      "tour_3_desc": "Each column is a day of the week. The bars show the ratio between completions, recoveries and failures. Full green days = hero in shape!",
+      "tour_4_title": "Virtues and Attention Points 🌟",
+      "tour_4_desc": "The 5 missions you complete most are your Virtues. The 5 you fail most are your Attention Points. Use this to adjust your routine!"
     },
     "progress": {
       "xp_last_7_days": "XP Gained in the Last 7 Days",
@@ -628,7 +636,20 @@
       "error_select": "Error selecting class",
       "reward_collected": "Reward collected!",
       "reward_collected_desc": "Check your inventory.",
-      "error_reward": "Error claiming reward"
+      "error_reward": "Error claiming reward",
+      "tour_1_title": "Class Progression Tree ⚔️",
+      "tour_1_desc": "There are 55+ classes organized in 6 tiers. You start as an Apprentice and evolve along your class line, unlocking unique skills at each tier.",
+      "tour_2_title": "Tier Colors 🎨",
+      "tour_2_desc": "Each color indicates an evolution level. From gray (start) to red (legendary). Higher-tier classes require a minimum level to be unlocked.",
+      "tour_3_title": "How to Evolve Class 🌳",
+      "tour_3_desc": "Click any card to see details, skills and requirements. To evolve, you must be at the minimum level and follow the progression line — you cannot skip tiers or switch branches.",
+      "tier_1": "Start",
+      "tier_2": "Class 1",
+      "tier_3": "Class 2",
+      "tier_4": "Class 3",
+      "tier_5": "Class 4",
+      "tier_6": "Class 5",
+      "level_label": "Level"
     },
     "feats": {
       "page_title": "Talents",
