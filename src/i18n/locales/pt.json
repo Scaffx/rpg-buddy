@@ -329,7 +329,9 @@
       "toast_save_password_error": "Erro ao salvar senha",
       "toast_discord_error": "Erro ao entrar com Discord",
       "divider_or": "ou",
-      "button_discord": "Entrar com Discord"
+      "button_discord": "Entrar com Discord",
+      "toast_invalid_credentials_title": "Credenciais incorretas",
+      "toast_invalid_credentials_desc": "E-mail ou senha incorretos. Verifique e tente novamente."
     },
     "health": {
       "page_title": "Saúde",

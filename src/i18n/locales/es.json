@@ -342,7 +342,9 @@
       "toast_save_password_error": "Error al guardar la contraseña",
       "toast_discord_error": "Error al iniciar sesión con Discord",
       "divider_or": "o",
-      "button_discord": "Iniciar sesión con Discord"
+      "button_discord": "Iniciar sesión con Discord",
+      "toast_invalid_credentials_title": "Credenciales incorrectas",
+      "toast_invalid_credentials_desc": "Correo o contraseña incorrectos. Verifica e inténtalo de nuevo."
     },
     "health": {
       "page_title": "Salud",

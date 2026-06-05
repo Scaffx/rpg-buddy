@@ -4,6 +4,10 @@ import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type Conversation = { id: string; title: string; updated_at: string };
@@ -25,6 +29,7 @@ export default function FloatingAiChat() {
   const [messages, setMessages] = useState<Msg[]>([WELCOME]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Carrega lista de conversas ao abrir
@@ -66,9 +71,15 @@ export default function FloatingAiChat() {
     setShowSidebar(false);
   }
 
-  async function deleteConversation(id: string, e: React.MouseEvent) {
+  function requestDeleteConversation(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm('Apagar esta conversa?')) return;
+    setPendingDeleteId(id);
+  }
+
+  async function confirmDeleteConversation() {
+    const id = pendingDeleteId;
+    if (!id) return;
+    setPendingDeleteId(null);
     await supabase.from('ai_conversations').delete().eq('id', id);
     if (activeId === id) startNewChat();
     loadConversations();
@@ -192,7 +203,7 @@ export default function FloatingAiChat() {
                     <MessageSquare className="w-3 h-3 flex-shrink-0 opacity-60" />
                     <span className="truncate flex-1">{c.title}</span>
                     <Trash2
-                      onClick={(e) => deleteConversation(c.id, e)}
+                      onClick={(e) => requestDeleteConversation(c.id, e)}
                       className="w-3 h-3 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-destructive flex-shrink-0"
                     />
                   </button>
@@ -287,6 +298,26 @@ export default function FloatingAiChat() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={!!pendingDeleteId} onOpenChange={(o) => { if (!o) setPendingDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar esta conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A conversa e suas mensagens serão removidas permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteConversation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

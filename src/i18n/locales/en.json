@@ -329,7 +329,9 @@
       "toast_save_password_error": "Error saving password",
       "toast_discord_error": "Error signing in with Discord",
       "divider_or": "or",
-      "button_discord": "Sign in with Discord"
+      "button_discord": "Sign in with Discord",
+      "toast_invalid_credentials_title": "Incorrect credentials",
+      "toast_invalid_credentials_desc": "Wrong email or password. Check and try again."
     },
     "health": {
       "page_title": "Health",
