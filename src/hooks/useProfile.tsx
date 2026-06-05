@@ -146,20 +146,20 @@ export function computeStreakFromDailyStatus(
   return streak;
 }
 
-/** Retorna o multiplicador de XP com base na streak de missão. */
+/** Multiplicador de XP por hábito (streak da missão). Teto em 21 dias (formação de hábito). */
 export function getStreakXpMultiplier(streak: number): number {
-  if (streak >= 30) return 2.0;   // +100% XP
+  if (streak >= 21) return 1.75;  // +75% XP (hábito consolidado — teto)
   if (streak >= 14) return 1.5;   // +50%
-  if (streak >= 7)  return 1.25;  // +25%
-  if (streak >= 3)  return 1.10;  // +10%
+  if (streak >= 7)  return 1.3;   // +30%
+  if (streak >= 3)  return 1.1;   // +10%
   return 1.0;
 }
 
 /** Rótulo legível do bônus de streak para exibir na UI. */
 export function getStreakXpBonusLabel(streak: number): string {
-  if (streak >= 30) return '+100% XP';
+  if (streak >= 21) return '+75% XP';
   if (streak >= 14) return '+50% XP';
-  if (streak >= 7)  return '+25% XP';
+  if (streak >= 7)  return '+30% XP';
   if (streak >= 3)  return '+10% XP';
   return '';
 }
