@@ -13,6 +13,13 @@ export interface HeroStoryChoicesRow {
   phoenix_kill_count?: number;
   /** True após a Fênix se unir à Esfinge do Deserto (encadeamento de história). */
   phoenix_fused?: boolean;
+  // ── Cadeia nórdica (roadmap #5) ──
+  /** Possui a Picareta de Adamantina (drop do Golem lv34). */
+  picareta_adamantina?: boolean;
+  /** Libertou o Ferreiro preso (evento de história). */
+  ferreiro_rescued?: boolean;
+  /** Libertou Fenrir das correntes -> vira aliado contra Odin. */
+  fenrir_allied?: boolean;
 }
 
 export function useHeroStoryChoices() {

@@ -29,6 +29,10 @@ const IMMORTAL_BOSS_PATTERN   = /guerreiro\s+imortal/i;
 // Sphinx do Deserto (lv14): gatilho da fusão Fênix -> Esfinge (roadmap #2).
 // Não casa com "Esfinge Guardiã" (lv41), que é outro boss.
 const SPHINX_BOSS_PATTERN     = /sphinx\s+do\s+deserto/i;
+// Cadeia nórdica (roadmap #5).
+const GOLEM_ADAMANTINA_PATTERN = /golem\s+de\s+adamantina/i;
+const FENRIR_BOSS_PATTERN      = /fenrir/i;
+const ODIN_BOSS_PATTERN        = /\bodin\b/i;
 
 const REGION_LABELS: Record<string, string> = {
   south_america: 'América do Sul',
@@ -140,6 +144,12 @@ export default function BossPage() {
   const [skeletonPupName,      setSkeletonPupName]      = useState('Ossinho');
   const [phoenixFusionOpen,    setPhoenixFusionOpen]    = useState(false);
   const [phoenixFusing,        setPhoenixFusing]        = useState(false);
+  // ── Cadeia nórdica (roadmap #5) ──
+  const [ferreiroRescueOpen,   setFerreiroRescueOpen]   = useState(false);
+  const [ferreiroRescuing,     setFerreiroRescuing]     = useState(false);
+  const [fenrirChoiceOpen,     setFenrirChoiceOpen]     = useState(false);
+  const [fenrirChoosing,       setFenrirChoosing]       = useState(false);
+  const [odinIntroBoss,        setOdinIntroBoss]        = useState<any | null>(null);
   const [mantirocaWarningBoss, setMantirocaWarningBoss] = useState<any | null>(null);
   const [boostedMantirocaHp,   setBoostedMantirocaHp]   = useState(0);
   const [deathWarningBoss,     setDeathWarningBoss]     = useState<any | null>(null);
@@ -208,6 +218,105 @@ export default function BossPage() {
       !storyChoices?.phoenix_fused
     ) {
       setTimeout(() => setPhoenixFusionOpen(true), 1500);
+    }
+
+    // ── Cadeia nórdica (roadmap #5) ──────────────────────────────────────────
+    // Golem de Adamantina derrotado -> dropa a Picareta e abre o resgate do Ferreiro.
+    if (GOLEM_ADAMANTINA_PATTERN.test(bossName) && !storyChoices?.picareta_adamantina) {
+      void grantPicaretaAdamantina();
+    }
+    // Fenrir derrotado -> oferece libertá-lo das correntes (vira aliado contra Odin).
+    if (FENRIR_BOSS_PATTERN.test(bossName) && !storyChoices?.fenrir_allied) {
+      setTimeout(() => setFenrirChoiceOpen(true), 1500);
+    }
+  };
+
+  /** Golem de Adamantina: concede a Picareta de Adamantina e dispara o resgate do Ferreiro. */
+  const grantPicaretaAdamantina = async () => {
+    if (!user) return;
+    try {
+      const { data: picareta } = await supabase
+        .from('game_items')
+        .select('id')
+        .eq('effect', 'quest_picareta_adamantina')
+        .maybeSingle();
+      if (picareta) {
+        const { data: existing } = await supabase
+          .from('user_inventory')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('item_id', (picareta as any).id)
+          .maybeSingle();
+        if (!existing) {
+          await supabase.from('user_inventory').insert({
+            user_id: user.id, item_id: (picareta as any).id, quantity: 1, equipped: false,
+          });
+        }
+      }
+      await supabase.from('hero_story_choices').upsert({
+        user_id: user.id, picareta_adamantina: true,
+      }, { onConflict: 'user_id' });
+      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', user.id] });
+      toast({
+        title: t('app.boss.toast_picareta_title'),
+        description: t('app.boss.toast_picareta_desc'),
+        duration: 6000,
+      });
+      // Abre o evento de resgate do Ferreiro logo em seguida.
+      if (!storyChoices?.ferreiro_rescued) {
+        setTimeout(() => setFerreiroRescueOpen(true), 2200);
+      }
+    } catch {
+      // silencioso — UI atualiza via invalidate
+    }
+  };
+
+  const FERREIRO_RESCUE_XP = 300;
+  /** Resgate do Ferreiro (evento de história): liberta o Ferreiro com a Picareta. */
+  const handleConfirmFerreiroRescue = async () => {
+    if (!user) { setFerreiroRescueOpen(false); return; }
+    setFerreiroRescuing(true);
+    try {
+      await supabase.from('hero_story_choices').upsert({
+        user_id: user.id, ferreiro_rescued: true,
+      }, { onConflict: 'user_id' });
+      await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: FERREIRO_RESCUE_XP });
+      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
+      toast({
+        title: t('app.boss.toast_ferreiro_title'),
+        description: t('app.boss.toast_ferreiro_desc', { xp: FERREIRO_RESCUE_XP }),
+        duration: 6000,
+      });
+    } catch (err: any) {
+      toast({ title: t('app.boss.toast_ferreiro_error'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setFerreiroRescuing(false);
+      setFerreiroRescueOpen(false);
+    }
+  };
+
+  /** Fenrir: o jogador decide libertá-lo das correntes divinas (vira aliado) ou não. */
+  const handleFenrirChoice = async (ally: boolean) => {
+    if (!user) { setFenrirChoiceOpen(false); return; }
+    setFenrirChoosing(true);
+    try {
+      await supabase.from('hero_story_choices').upsert({
+        user_id: user.id, fenrir_allied: ally,
+      }, { onConflict: 'user_id' });
+      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
+      toast({
+        title: ally ? t('app.boss.toast_fenrir_ally_title') : t('app.boss.toast_fenrir_left_title'),
+        description: ally ? t('app.boss.toast_fenrir_ally_desc') : t('app.boss.toast_fenrir_left_desc'),
+        duration: 6000,
+      });
+    } catch (err: any) {
+      toast({ title: t('app.boss.toast_fenrir_error'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setFenrirChoosing(false);
+      setFenrirChoiceOpen(false);
     }
   };
 
@@ -677,7 +786,31 @@ export default function BossPage() {
   };
 
   const handleFightButtonClick = (boss: any) => {
+    // Odin (roadmap #5): intro do 3v1 (Thor + Loki) antes da luta.
+    if (ODIN_BOSS_PATTERN.test(boss?.name ?? '')) {
+      setOdinIntroBoss(boss);
+      return;
+    }
     setDeathWarningBoss(boss);
+  };
+
+  /** Inicia a luta contra Odin (3v1). Se Fenrir for aliado, concede Inspiração (vantagem). */
+  const handleStartOdinFight = async () => {
+    const boss = odinIntroBoss;
+    setOdinIntroBoss(null);
+    if (!boss) return;
+    if (storyChoices?.fenrir_allied && user) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ inspired_available: true, inspired_earned_at: new Date().toISOString() })
+          .eq('user_id', user.id);
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+      } catch {
+        // silencioso — a luta começa de qualquer forma
+      }
+    }
+    handleStartArenaCombat(boss);
   };
 
   const handleStartArenaCombat = async (boss: any, overrideBossHp?: number) => {
@@ -1487,6 +1620,105 @@ export default function BossPage() {
             >
               {phoenixFusing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '✨ '}
               {t('app.boss.phoenix_fusion_confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Resgate do Ferreiro (roadmap #5) ───────────────────────────────── */}
+      <Dialog open={ferreiroRescueOpen} onOpenChange={(open) => { if (!open && !ferreiroRescuing) setFerreiroRescueOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              ⛏️ {t('app.boss.ferreiro_title')}
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
+                <p>{t('app.boss.ferreiro_p1')}</p>
+                <p>{t('app.boss.ferreiro_p2')}</p>
+                <p className="font-semibold text-foreground">{t('app.boss.ferreiro_p3')}</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              className="w-full bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-700 hover:to-yellow-600 text-white font-bold"
+              disabled={ferreiroRescuing}
+              onClick={handleConfirmFerreiroRescue}
+            >
+              {ferreiroRescuing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '⛓️‍💥 '}
+              {t('app.boss.ferreiro_confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Escolha do Fenrir (roadmap #5) ─────────────────────────────────── */}
+      <Dialog open={fenrirChoiceOpen} onOpenChange={(open) => { if (!open && !fenrirChoosing) setFenrirChoiceOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              🐺 {t('app.boss.fenrir_title')}
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
+                <p>{t('app.boss.fenrir_p1')}</p>
+                <p>{t('app.boss.fenrir_p2')}</p>
+                <p className="font-semibold text-foreground">{t('app.boss.fenrir_question')}</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={fenrirChoosing}
+              onClick={() => handleFenrirChoice(false)}
+            >
+              {t('app.boss.fenrir_leave')}
+            </Button>
+            <Button
+              className="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 text-white font-bold"
+              disabled={fenrirChoosing}
+              onClick={() => handleFenrirChoice(true)}
+            >
+              {fenrirChoosing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '⛓️‍💥 '}
+              {t('app.boss.fenrir_free')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Intro do Odin 3v1 (roadmap #5) ─────────────────────────────────── */}
+      <Dialog open={!!odinIntroBoss} onOpenChange={(open) => { if (!open) setOdinIntroBoss(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              ⚡ {t('app.boss.odin_title')}
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
+                <p>{t('app.boss.odin_p1')}</p>
+                <p>{t('app.boss.odin_p2')}</p>
+                {storyChoices?.fenrir_allied ? (
+                  <p className="font-semibold text-emerald-400">🐺 {t('app.boss.odin_fenrir_ally')}</p>
+                ) : (
+                  <p className="font-semibold text-amber-400">{t('app.boss.odin_no_ally')}</p>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setOdinIntroBoss(null)}>
+              {t('app.boss.back')}
+            </Button>
+            <Button
+              className="w-full sm:w-auto bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold"
+              disabled={startActiveCombat.isPending}
+              onClick={handleStartOdinFight}
+            >
+              {startActiveCombat.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Swords className="w-4 h-4 mr-1" />}
+              {t('app.boss.odin_confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

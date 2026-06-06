@@ -1316,25 +1316,34 @@ export type Database = {
       }
       hero_story_choices: {
         Row: {
+          fenrir_allied: boolean
+          ferreiro_rescued: boolean
           guerreiro_imortal_defeated: boolean
           phoenix_fused: boolean
           phoenix_kill_count: number
+          picareta_adamantina: boolean
           skeleton_champion: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          fenrir_allied?: boolean
+          ferreiro_rescued?: boolean
           guerreiro_imortal_defeated?: boolean
           phoenix_fused?: boolean
           phoenix_kill_count?: number
+          picareta_adamantina?: boolean
           skeleton_champion?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          fenrir_allied?: boolean
+          ferreiro_rescued?: boolean
           guerreiro_imortal_defeated?: boolean
           phoenix_fused?: boolean
           phoenix_kill_count?: number
+          picareta_adamantina?: boolean
           skeleton_champion?: string | null
           updated_at?: string
           user_id?: string

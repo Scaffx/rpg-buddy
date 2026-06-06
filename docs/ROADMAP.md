@@ -50,11 +50,19 @@ Leviatã Primitivo, Wyvern Relâmpago, Dragão Sombrio, Kraken Abissal, Demônio
 **Necromante Eterno (lv24)** e **Wyrm de Gelo Eterno (lv32)**.
 - ⏳ (Opcional) só liberar o pet na loja DEPOIS de derrotar o boss correspondente.
 
-### 5. Cadeia épica nórdica (a maior)
-- **Golem de Adamantina (lv34)** → dropa **Picareta de Adamantina**.
-- **Resgate do Ferreiro**: equipar picareta → mini-dungeon na área de boss (criaturas nórdicas) → libertar o Ferreiro (não se luta contra ele).
-- **Fenrir (lv38)**: ajudar na fuga → vira aliado. **Pré-requisito de Odin** ✅ (precisa derrotar/libertar Fenrir antes de enfrentar Odin).
-- **Odin (lv47)**: chama **Thor + Loki** → combate **3 contra 1**; se ajudou Fenrir, ele entra do seu lado.
+### 5. Cadeia épica nórdica ✅ (decisões 2026-06-06: Odin em fases / resgate = evento)
+- **Golem de Adamantina (lv34)** → ao derrotar, dropa a **Picareta de Adamantina**
+  (item de quest `quest_picareta_adamantina`) + flag `picareta_adamantina`. ✅
+- **Resgate do Ferreiro** = **evento de história** (não mini-dungeon): com a picareta,
+  diálogo liberta o Ferreiro → flag `ferreiro_rescued` + **+300 XP** (RPC). ✅
+- **Fenrir (lv38)**: ao derrotar, **escolha** "Libertar das correntes" (vira aliado,
+  `fenrir_allied`) ou deixá-lo. Transitivamente já é pré-requisito de Odin (cadeia linear). ✅
+- **Odin (lv47)**: **encontro em fases (3v1)** reusando a engine 1v1 — HP 1296→**2400**,
+  pool de golpes ganha **Mjölnir de Thor** e **Trapaça de Loki** (Loki = maldição/curse).
+  Intro narrativo antes da luta; se **Fenrir aliado**, jogador entra com **Inspiração**
+  (vantagem no 1º ataque). ✅
+- i18n pt/en/es de todos os diálogos/toasts. ✅
+- ⏳ Futuro (opcional): Fenrir como unidade aliada visível na arena; HP do Odin é tunável.
 
 ### 6. Mecânica de QUIZ (Esfinge)
 - **Esfinge Guardiã solo (lv41)**: ~**20 perguntas fáceis**; golpe especial **+50% dano se errar**.
@@ -154,7 +162,7 @@ quantos pontos, e como amarra com os limites de equipe (4/5/6).
    - 4a limites: solo=4 ✅; dungeon/evento 5/6 ⏳ (quando esses modos usarem skills)
    - 4b árvore unificada (UX) ⏳
 5. Quiz da Esfinge
-6. Cadeia nórdica (Golem→picareta→ferreiro→Fenrir→Odin 3v1)
+6. Cadeia nórdica (Golem→picareta→ferreiro→Fenrir→Odin 3v1) ✅
 7. Dungeon dos Três
 8. Endgame fase 2b/2c: tornar as raides de evento jogáveis (lobby 10 + combate)
 
