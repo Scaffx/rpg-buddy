@@ -8,6 +8,23 @@ import { useToast } from '@/hooks/use-toast';
 
 type Turn = 'idle' | 'player' | 'boss' | 'finished' | 'rancor_challenge';
 
+// Status de combate do boss (combos — roadmap #4). Espelha o edge function.
+type BossCombatStatus = {
+  burning: number;    // turnos de queimadura (DoT)
+  bleeding: number;   // stacks de sangramento (DoT)
+  wet: number;        // turnos molhado (habilita combo de raio)
+  frozen: number;     // turnos congelado (boss perde o turno; físico estilhaça)
+  vulnerable: number; // turnos vulnerável (+20% de dano recebido)
+};
+const EMPTY_BOSS_STATUS: BossCombatStatus = { burning: 0, bleeding: 0, wet: 0, frozen: 0, vulnerable: 0 };
+const normalizeBossStatus = (raw?: Partial<BossCombatStatus> | null): BossCombatStatus => ({
+  burning: Math.max(0, Math.floor(Number(raw?.burning ?? 0)) || 0),
+  bleeding: Math.max(0, Math.floor(Number(raw?.bleeding ?? 0)) || 0),
+  wet: Math.max(0, Math.floor(Number(raw?.wet ?? 0)) || 0),
+  frozen: Math.max(0, Math.floor(Number(raw?.frozen ?? 0)) || 0),
+  vulnerable: Math.max(0, Math.floor(Number(raw?.vulnerable ?? 0)) || 0),
+});
+
 type TurnSummary = {
   dado_player: number;
   dano_player: number;
@@ -21,6 +38,12 @@ type TurnSummary = {
   debuff_defense_shred?: number;
   /** Tipo de efeito que foi aplicado neste turno */
   skill_effect_applied?: string;
+  /** Dano por status (queimadura/sangramento) aplicado ao boss neste turno (combos) */
+  dot_damage?: number;
+  /** Status persistente do boss após o turno (combos): burning/bleeding/wet/frozen/vulnerable */
+  boss_status?: Partial<BossCombatStatus>;
+  /** Log de combos disparados neste turno (ex.: "shatter:+12", "shock:+9", "apply:wet") */
+  combo_log?: string[];
   hp_boss_restante: number;
   hp_player_restante: number;
   status: 'em_andamento' | 'vitoria' | 'derrota';
@@ -370,6 +393,10 @@ export default function CombatArena({
   const [lastBuffShield, setLastBuffShield] = useState<number | null>(null);
   /** Quantidade de defesa reduzida pelo debuff do turno atual */
   const [lastDebuffShred, setLastDebuffShred] = useState<number | null>(null);
+  /** Status de combate ativos no boss (combos — roadmap #4) */
+  const [bossStatus, setBossStatus] = useState<BossCombatStatus>(EMPTY_BOSS_STATUS);
+  /** Banner de combo disparado (Estilhaçar / Choque / Vapor) */
+  const [comboFlash, setComboFlash] = useState<string | null>(null);
   // Rancor Sombrio
   const [rancorPhase, setRancorPhase] = useState<'none' | 'reconstituted'>('none');
   const [rancorQuestion, setRancorQuestion] = useState('');
@@ -594,9 +621,11 @@ export default function CombatArena({
     if (combateId && user) {
       void supabase
         .from('combates_ativos')
-        .update({ hp_atual_boss: initialBossHp })
+        .update({ hp_atual_boss: initialBossHp, boss_status: {} })
         .eq('id', combateId);
     }
+    setBossStatus(EMPTY_BOSS_STATUS);
+    setComboFlash(null);
     setImmortalPhase('none');
     currentBattleTokenRef.current += 1;
     skillCursorRef.current = 0;
@@ -637,9 +666,11 @@ export default function CombatArena({
     if (combateId && user) {
       void supabase
         .from('combates_ativos')
-        .update({ hp_atual_boss: newHp, status: 'em_andamento' })
+        .update({ hp_atual_boss: newHp, status: 'em_andamento', boss_status: {} })
         .eq('id', combateId);
     }
+    setBossStatus(EMPTY_BOSS_STATUS);
+    setComboFlash(null);
     setRancorPhase('none');
     currentBattleTokenRef.current += 1;
     sfx.rancorBattle();
@@ -675,6 +706,8 @@ export default function CombatArena({
     setBossStunnedVisual(false);
     setLastBuffShield(null);
     setLastDebuffShred(null);
+    setBossStatus(EMPTY_BOSS_STATUS);
+    setComboFlash(null);
     // Rancor Sombrio: música épica + carregar missões com mais falhas
     if (isRancorBoss) {
       questionsAnsweredRef.current = 0;
@@ -860,6 +893,27 @@ export default function CombatArena({
       if (turnResult.boss_stunned) {
         setBossStunnedVisual(true);
         window.setTimeout(() => setBossStunnedVisual(false), 2200);
+      }
+
+      // ── Status / Combos (roadmap #4) ─────────────────────────────────────────
+      if (turnResult.boss_status) {
+        setBossStatus(normalizeBossStatus(turnResult.boss_status));
+      }
+      const comboLog = turnResult.combo_log || [];
+      if (turnResult.dot_damage && turnResult.dot_damage > 0) {
+        // DoT já está embutido em hp_boss_restante; só mostramos o número.
+        const did = Date.now() + Math.floor(Math.random() * 1000);
+        setDamagePopups((prev) => [...prev, { id: did, value: turnResult.dot_damage!, target: 'boss' }]);
+        window.setTimeout(() => setDamagePopups((prev) => prev.filter((p) => p.id !== did)), 1100);
+      }
+      const comboBanner =
+        comboLog.some((c) => c.startsWith('shatter')) ? '💥 ESTILHAÇAR!' :
+        comboLog.some((c) => c.startsWith('shock'))   ? '⚡ CHOQUE!' :
+        comboLog.includes('steam')                    ? '♨️ Vapor!' : null;
+      if (comboBanner) {
+        setComboFlash(comboBanner);
+        window.setTimeout(() => setComboFlash(null), 1800);
+        sfx.hit();
       }
       // ─────────────────────────────────────────────────────────────────────────
 
@@ -1293,6 +1347,41 @@ export default function CombatArena({
           )}
         </div>
       )}
+
+      {/* Status de combate do boss (combos — roadmap #4) */}
+      {(bossStatus.burning || bossStatus.bleeding || bossStatus.wet || bossStatus.frozen || bossStatus.vulnerable) > 0 && (
+        <div className="mb-3 flex gap-2 flex-wrap">
+          {bossStatus.frozen > 0 && (
+            <span className="rounded-md border border-cyan-400/40 bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200">❄️ Congelado <span className="font-mono">{bossStatus.frozen}</span></span>
+          )}
+          {bossStatus.wet > 0 && (
+            <span className="rounded-md border border-blue-400/40 bg-blue-400/10 px-2 py-1 text-xs text-blue-200">💧 Molhado <span className="font-mono">{bossStatus.wet}</span></span>
+          )}
+          {bossStatus.burning > 0 && (
+            <span className="rounded-md border border-orange-500/40 bg-orange-500/10 px-2 py-1 text-xs text-orange-200">🔥 Queimando <span className="font-mono">{bossStatus.burning}</span></span>
+          )}
+          {bossStatus.bleeding > 0 && (
+            <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200">🩸 Sangrando <span className="font-mono">x{bossStatus.bleeding}</span></span>
+          )}
+          {bossStatus.vulnerable > 0 && (
+            <span className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">🎯 Vulnerável <span className="font-mono">{bossStatus.vulnerable}</span></span>
+          )}
+        </div>
+      )}
+
+      {/* Banner de combo disparado */}
+      <AnimatePresence>
+        {comboFlash && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.7, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="mb-3 text-center text-lg font-black tracking-wide text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]"
+          >
+            {comboFlash}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {insufficientResourceWarning && (
         <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">

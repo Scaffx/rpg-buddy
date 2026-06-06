@@ -72,10 +72,32 @@ Leviatã Primitivo, Wyvern Relâmpago, Dragão Sombrio, Kraken Abissal, Demônio
 ## SISTEMA DE HABILIDADES (redesenho) — alta prioridade
 Objetivo: combate tático com **escolhas limitadas** e **combos**, não "uso tudo".
 
-### Limites de equipe (slots de habilidade)
-- **Boss solo: até 4** · **Dungeon: até 5** · **Evento: até 6**.
+> Decisões (sessão 2026-06-06): (A) **camada unificada incremental** (reaproveita
+> tabelas existentes; sem rebuild); (B) **motor de status+combos agora**;
+> (C) limites 4/5/6 valem **só para skills ativas** (passivos mantêm limite 5).
 
-### Combos / status (proposta)
+### 4c — Motor de status + combos ✅ (código; deploy pendente)
+- Coluna `combates_ativos.boss_status` (JSONB) persiste status entre turnos. ✅ (migração aplicada)
+- Edge function `processar_turno` reescrita de forma **ADITIVA** (combate idêntico quando
+  `boss_status` vazio). Status: **Molhado, Congelado, Queimando, Sangramento, Vulnerável**. ✅ (no repo)
+- Combos: **Congelar + físico → Estilhaçar** (+60% e quebra o gelo, boss perde o turno);
+  **Molhado + Raio → Choque** (+50% e atordoa); **Queimando/Sangramento** = DoT por turno;
+  **Vulnerável** = +20% de dano; fogo em molhado vira **Vapor** (evapora). ✅
+- Elemento `raio` adicionado à detecção; água é fraca a raio. ✅
+- Cliente (CombatArena): badges de status do boss + banner de combo + popups de DoT. ✅
+- **⚠️ Deploy pendente**: `npx supabase functions deploy processar_turno` (fonte versionada em
+  `supabase/functions/processar_turno/index.ts`). Rollback = redeploy do git anterior. Playtest necessário.
+
+### Limites de equipe (slots de habilidade) — 4a (parcial)
+- **Boss solo: até 4** (já aplicado via `MAX_COMBAT_SKILLS=4`). ⏳ Dungeon (5) e Evento (6)
+  ligam quando esses modos consumirem o loadout de skills (hoje `DungeonArena` não usa skills
+  individuais; amarra com o endgame 2b/2c). Sem dead-code até lá.
+
+### 4b — Árvore unificada (UX) — ⏳ pendente
+- Uma página única organizada por área/elemento juntando passivos (talentos, `FeatsTree`) e
+  ativos (loadout do Perfil). Reaproveita `talentos_*` + `combat_skill_loadout`.
+
+### Combos / status (proposta — implementada em 4c)
 Pequeno conjunto de status + skills que APLICAM vs. EXPLORAM:
 - **Molhado** + Raio → dano bônus / atordoa.
 - **Congelado** + Físico → "estilhaçar" (bônus de dano), pula turno do inimigo.
@@ -128,6 +150,9 @@ quantos pontos, e como amarra com os limites de equipe (4/5/6).
 2. Limpeza combo Fênix+Esfinge + chain de história
 3. Salamandra (pet não-combate) + Tiamat (escolha de dragão)
 4. **Sistema de Habilidades + combos + limites 4/5/6** (coração do combate)
+   - 4c motor de status+combos ✅ (código; **deploy do edge function pendente**)
+   - 4a limites: solo=4 ✅; dungeon/evento 5/6 ⏳ (quando esses modos usarem skills)
+   - 4b árvore unificada (UX) ⏳
 5. Quiz da Esfinge
 6. Cadeia nórdica (Golem→picareta→ferreiro→Fenrir→Odin 3v1)
 7. Dungeon dos Três

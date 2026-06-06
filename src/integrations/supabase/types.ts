@@ -667,6 +667,7 @@ export type Database = {
       combates_ativos: {
         Row: {
           boss_id: string
+          boss_status: Json
           created_at: string
           hp_atual_boss: number
           hp_atual_personagem: number
@@ -678,6 +679,7 @@ export type Database = {
         }
         Insert: {
           boss_id: string
+          boss_status?: Json
           created_at?: string
           hp_atual_boss: number
           hp_atual_personagem: number
@@ -689,6 +691,7 @@ export type Database = {
         }
         Update: {
           boss_id?: string
+          boss_status?: Json
           created_at?: string
           hp_atual_boss?: number
           hp_atual_personagem?: number
