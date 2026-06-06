@@ -35,9 +35,9 @@ Cadeia linear por nível. **Base de várias mecânicas abaixo.**
   fogo, raio, escuridão, planta, água.
 
 ### 4. Pets de loja (minis de boss) ✅ + pendências
-Conceito: boss "encolhe" → vai pra LOJA → compra em ouro. Já no jogo:
-Leviatã Primitivo, Wyvern Relâmpago, Dragão Sombrio, Kraken Abissal, Demônio da Fome.
-- ❓ 6º pet "Ivan Virgílio eterna" = qual boss? (Necromante Eterno lv24 / Archlich Eterno lv55 / Wyrm de Gelo Eterno lv32)
+Conceito: boss "encolhe" → vai pra LOJA → compra em ouro. **7 pets no jogo** ✅:
+Leviatã Primitivo, Wyvern Relâmpago, Dragão Sombrio, Kraken Abissal, Demônio da Fome,
+**Necromante Eterno (lv24)** e **Wyrm de Gelo Eterno (lv32)**.
 - ⏳ (Opcional) só liberar o pet na loja DEPOIS de derrotar o boss correspondente.
 
 ### 5. Cadeia épica nórdica (a maior)
@@ -51,9 +51,11 @@ Leviatã Primitivo, Wyvern Relâmpago, Dragão Sombrio, Kraken Abissal, Demônio
 - **Djinn do Deserto Infinito + Esfinge (lv39+41)**: ~**40 perguntas mais difíceis**, aleatórias.
 - Impl.: banco de perguntas (categoria/dificuldade) + UI de pergunta entre turnos.
 
-### 7. Dungeon dos Três
-- Dungeon com **Djinn do Deserto Infinito + Esfinge Guardiã + Anúbis (lv48)**;
-  boss final = **Anúbis + um Deus** ❓ (qual deus?).
+### 7. Dungeon dos Três (base: "Templo das Areias Perdidas") ✅ definido
+- Estrutura: **fase de bosses = Esfinge Guardiã + Djinn do Deserto** → **boss final = Anúbis + Rá** (2 deuses).
+- Ou seja: 2 bosses (Esfinge, Djinn) e depois o duo divino (Anúbis + Rá) como final.
+- ⏳ A confirmar na implementação: reformular a dungeon existente "Templo das Areias Perdidas"
+  (hoje lv8, Esfinge+Djinn 650 HP) numa versão endgame, ou criar dungeon nova de alto nível.
 
 ---
 
@@ -121,8 +123,8 @@ quantos pontos, e como amarra com os limites de equipe (4/5/6).
 7. Dungeon dos Três
 8. Endgame fase 2b/2c: tornar as raides de evento jogáveis (lobby 10 + combate)
 
-## Perguntas em aberto (❓)
-1. **6º pet** (eu entendi "Ivan Virgílio eterna", mas não bate com nenhum boss). Candidatos com "Eterno": **Necromante Eterno (lv24)**, **Wyrm de Gelo Eterno (lv32)**, **Archlich Eterno (lv55)**. ❓ Qual?
-2. Fenrir = pré-requisito de **Odin** ✅
-3. Dungeon dos Três: dono respondeu "Esfinge e Djinn do Deserto". ❓ Interpretação a confirmar: o boss final é **Anúbis + Esfinge + Djinn juntos** (sem deus extra)? Ou ainda quer um **deus egípcio** junto do Anúbis (ex.: Rá, Osíris, Set)?
-4. Talentos + Habilidades = **árvore única** ✅
+## Perguntas resolvidas ✅
+1. Pets extras = **Necromante Eterno** + **Wyrm de Gelo Eterno** (já adicionados → 7 pets). ✅
+2. Fenrir = pré-requisito de **Odin**. ✅
+3. Dungeon dos Três: bosses **Esfinge + Djinn**, final = **Anúbis + Rá**. ✅
+4. Talentos + Habilidades = **árvore única**. ✅

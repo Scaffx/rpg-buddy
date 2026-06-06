@@ -33,6 +33,7 @@ export const COMBAT_COMPANION_TYPES = [
   'skeleton_pup', 'spirit_fox', 'golem_guardian',
   // Pets da loja (minis de boss)
   'mini_relampago', 'mini_leviata', 'mini_kraken', 'mini_dragao_sombrio', 'mini_demonio_fome',
+  'mini_necromante', 'mini_wyrm_gelo',
 ] as const;
 export type CombatCompanionType = (typeof COMBAT_COMPANION_TYPES)[number];
 
@@ -103,6 +104,18 @@ export const COMBAT_COMPANION_META: Record<string, {
     roleLabel: 'Físico', roleColor: 'text-orange-400',
     skills: ['Devorar', 'Fome Insaciável', 'Banquete Sombrio'],
     description: 'Demônio insaciável. Quanto mais luta, mais forte e faminto fica.',
+  },
+  mini_necromante: {
+    emoji: '🧟', name: 'Mini Necromante Eterno', role: 'magic',
+    roleLabel: 'Mágico', roleColor: 'text-purple-400',
+    skills: ['Toque Necrótico', 'Legião dos Mortos', 'Maldição Eterna'],
+    description: 'Aprendiz do Necromante Eterno. Comanda os mortos e drena a vida dos inimigos.',
+  },
+  mini_wyrm_gelo: {
+    emoji: '❄️', name: 'Mini Wyrm de Gelo Eterno', role: 'magic',
+    roleLabel: 'Mágico', roleColor: 'text-purple-400',
+    skills: ['Sopro Congelante', 'Lança de Gelo', 'Era Glacial'],
+    description: 'Filhote do Wyrm de Gelo. Congela tudo ao redor — controle e dano gélido.',
   },
 };
 
