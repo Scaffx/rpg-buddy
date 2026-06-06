@@ -395,6 +395,24 @@ export default function BossPage() {
     battles?.filter((b) => b.won).map((b) => b.boss_id) || []
   );
 
+  // Conjunto "efetivo" de derrotados: inclui o boss de esqueleto se ele foi
+  // derrotado permanentemente (hero_story_choices), mesmo após reset de admin.
+  // Usado para checar pré-requisitos de sequência (roadmap #1).
+  const effectiveDefeatedIds = useMemo(() => {
+    const set = new Set<string>(battles?.filter((b) => b.won).map((b) => b.boss_id) || []);
+    if (storyChoices?.skeleton_champion) {
+      const skeletonBoss = (bosses as any[])?.find((b) => SKELETON_BOSS_PATTERN.test(b.name ?? ''));
+      if (skeletonBoss) set.add(skeletonBoss.id);
+    }
+    return set;
+  }, [battles, bosses, storyChoices?.skeleton_champion]);
+
+  // Mapa id -> boss, para resolver o nome do pré-requisito a exibir.
+  const bossById = useMemo(
+    () => new Map<string, any>(((bosses as any[]) || []).map((b) => [b.id, b])),
+    [bosses],
+  );
+
   /** Retorna true se o boss de esqueleto está permanentemente derrotado,
    *  mesmo que boss_battles tenha sido resetado via script de admin.
    *  A escolha na hero_story_choices é o registro definitivo. */
@@ -845,6 +863,9 @@ export default function BossPage() {
                   const difficultyStars = (boss.difficulty || '+P').split('+P').length - 1;
                   const isDefeated = defeatedBossIds.has(boss.id) || isSkeletonPermanentlyDefeated(boss.name ?? '');
                   const isLocked = profile && profile.level < boss.level;
+                  // Pré-requisito de sequência (roadmap #1): precisa derrotar o boss anterior da cadeia.
+                  const prereqBoss = boss.prereq_boss_id ? bossById.get(boss.prereq_boss_id) : null;
+                  const prereqMet = !boss.prereq_boss_id || effectiveDefeatedIds.has(boss.prereq_boss_id);
 
                   return (
                   <motion.div
@@ -922,6 +943,10 @@ export default function BossPage() {
                     {isDefeated ? (
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
                         ✅ {t('app.boss.boss_defeated')}
+                      </Button>
+                    ) : !prereqMet ? (
+                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
+                        🔒 {t('app.boss.requires_prereq', { name: prereqBoss?.name ?? '???' })}
                       </Button>
                     ) : isLocked ? (
                       <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">

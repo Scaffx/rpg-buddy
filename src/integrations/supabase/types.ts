@@ -369,6 +369,7 @@ export type Database = {
           level: number
           mechanic: string | null
           name: string
+          prereq_boss_id: string | null
           signature_item_name: string | null
           skills: Json | null
           xp_reward: number
@@ -396,6 +397,7 @@ export type Database = {
           level?: number
           mechanic?: string | null
           name: string
+          prereq_boss_id?: string | null
           signature_item_name?: string | null
           skills?: Json | null
           xp_reward?: number
@@ -423,11 +425,20 @@ export type Database = {
           level?: number
           mechanic?: string | null
           name?: string
+          prereq_boss_id?: string | null
           signature_item_name?: string | null
           skills?: Json | null
           xp_reward?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bosses_prereq_boss_id_fkey"
+            columns: ["prereq_boss_id"]
+            isOneToOne: false
+            referencedRelation: "bosses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       checklist_items: {
         Row: {

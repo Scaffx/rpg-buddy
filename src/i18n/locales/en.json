@@ -483,6 +483,7 @@
       "threat_label": "Threat",
       "boss_defeated": "Boss defeated!",
       "requires_level": "Requires level {{n}}",
+      "requires_prereq": "Defeat {{name}} first",
       "needs_keys": "Needs {{need}} keys (you have {{have}})",
       "fight_boss": "Fight Boss",
       "battle_history": "Battle History",

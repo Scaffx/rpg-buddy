@@ -19,10 +19,14 @@
 
 ## ROADMAP DE CONTEÚDO (por sistema)
 
-### 1. Sequenciamento de bosses (ordem obrigatória) — FUNDAÇÃO
+### 1. Sequenciamento de bosses (ordem obrigatória) — FUNDAÇÃO ✅
 Não dá pra derrotar um boss sem o pré-requisito (ex.: Lobo Cinzento exige Goblin Feroz).
 Cadeia linear por nível. **Base de várias mecânicas abaixo.**
-- Impl.: coluna `prereq_boss_id` (ou derivar por `level-1`) em `bosses` + gate no client/RPC de combate.
+- Impl.: coluna `prereq_boss_id` em `bosses` (FK self, ON DELETE SET NULL) + gate no client
+  (botão "Derrote X primeiro") **e** no RPC `resolve_boss_battle` (`PREREQ_NOT_MET`, autoritativo). ✅
+- Bosses condicionais (escape/fuga) **não bloqueiam** ninguém: Fênix Renascente, Guerreiro
+  Imortal e o combo Fênix+Esfinge (a remover). A cadeia "pula" eles. ✅
+- Derivação re-executável por window/lateral em `(level, name)`; eventos mundiais ficam sem prereq. ✅
 
 ### 2. Encadeamentos de história (boss chama outro)
 - **Fênix Renascente (lv10)** derrotada → busca a **Sphinx do Deserto (lv14)** → se unem.
