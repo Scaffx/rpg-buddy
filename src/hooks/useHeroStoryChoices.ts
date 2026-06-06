@@ -8,6 +8,11 @@ export interface HeroStoryChoicesRow {
   user_id: string;
   skeleton_champion: SkeletonChoice;
   updated_at: string;
+  guerreiro_imortal_defeated?: boolean;
+  /** Quantas vezes a Fênix Renascente escapou (renasceu) ao ser enfrentada. */
+  phoenix_kill_count?: number;
+  /** True após a Fênix se unir à Esfinge do Deserto (encadeamento de história). */
+  phoenix_fused?: boolean;
 }
 
 export function useHeroStoryChoices() {

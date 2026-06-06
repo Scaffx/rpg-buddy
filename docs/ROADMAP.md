@@ -28,9 +28,15 @@ Cadeia linear por nível. **Base de várias mecânicas abaixo.**
   Imortal e o combo Fênix+Esfinge (a remover). A cadeia "pula" eles. ✅
 - Derivação re-executável por window/lateral em `(level, name)`; eventos mundiais ficam sem prereq. ✅
 
-### 2. Encadeamentos de história (boss chama outro)
-- **Fênix Renascente (lv10)** derrotada → busca a **Sphinx do Deserto (lv14)** → se unem.
-- **Remover** o boss-combo fixo "Fênix + Esfinge do Deserto (lv12)" — vira encadeamento, não boss da lista.
+### 2. Encadeamentos de história (boss chama outro) ✅
+- **Fênix Renascente (lv10)** escapa → ao vencer a **Sphinx do Deserto (lv14)** com a Fênix já
+  enfrentada (`phoenix_kill_count >= 1`), dispara a fusão: diálogo de história + `phoenix_fused=true`
+  + bônus de +250 XP (o "XP devido" da Fênix, creditado server-side via `add_xp_to_user`). ✅
+- **Removido** o boss-combo fixo "Fênix + Esfinge do Deserto (lv12)" (0 batalhas; vira encadeamento). ✅
+- **Bug corrigido**: `handlePhoenixEscaped` gravava em `phoenix_escape_count` (coluna inexistente)
+  → agora usa `phoenix_kill_count` (real). As colunas `phoenix_kill_count`/`phoenix_fused`, antes
+  órfãs, foram efetivamente ligadas. ✅
+- i18n pt/en/es do diálogo de fusão e toasts. ✅
 
 ### 3. Companheiros por derrota
 - **Esqueleto Campeão → filhote de combate** ✅ (já existe).

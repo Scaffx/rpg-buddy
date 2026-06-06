@@ -26,6 +26,9 @@ import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/u
 const SKELETON_BOSS_PATTERN   = /esquelet/i;
 const MANTIROCA_BOSS_PATTERN  = /mantiroca/i;
 const IMMORTAL_BOSS_PATTERN   = /guerreiro\s+imortal/i;
+// Sphinx do Deserto (lv14): gatilho da fusão Fênix -> Esfinge (roadmap #2).
+// Não casa com "Esfinge Guardiã" (lv41), que é outro boss.
+const SPHINX_BOSS_PATTERN     = /sphinx\s+do\s+deserto/i;
 
 const REGION_LABELS: Record<string, string> = {
   south_america: 'América do Sul',
@@ -135,6 +138,8 @@ export default function BossPage() {
 
   const [skeletonStoryOpen,    setSkeletonStoryOpen]    = useState(false);
   const [skeletonPupName,      setSkeletonPupName]      = useState('Ossinho');
+  const [phoenixFusionOpen,    setPhoenixFusionOpen]    = useState(false);
+  const [phoenixFusing,        setPhoenixFusing]        = useState(false);
   const [mantirocaWarningBoss, setMantirocaWarningBoss] = useState<any | null>(null);
   const [boostedMantirocaHp,   setBoostedMantirocaHp]   = useState(0);
   const [deathWarningBoss,     setDeathWarningBoss]     = useState<any | null>(null);
@@ -189,9 +194,20 @@ export default function BossPage() {
     queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
 
     // Skeleton story: fires once after defeating an "Esquelet…" boss
-    const bossName = activeCombat?.bossName?.toLowerCase() ?? '';
+    const bossName = activeCombat?.bossName ?? '';
     if (SKELETON_BOSS_PATTERN.test(bossName) && !storyChoices?.skeleton_champion) {
       setTimeout(() => setSkeletonStoryOpen(true), 1500);
+    }
+
+    // Fusão Fênix -> Esfinge (roadmap #2): ao vencer a Sphinx do Deserto, se o
+    // herói já enfrentou a Fênix Renascente (que escapou ao menos 1×) e ainda
+    // não houve a união, dispara o encadeamento de história uma única vez.
+    if (
+      SPHINX_BOSS_PATTERN.test(bossName) &&
+      (storyChoices?.phoenix_kill_count ?? 0) >= 1 &&
+      !storyChoices?.phoenix_fused
+    ) {
+      setTimeout(() => setPhoenixFusionOpen(true), 1500);
     }
   };
 
@@ -298,19 +314,20 @@ export default function BossPage() {
     setActiveCombat(null);
   };
 
-  /** Fênix Renascente: escapa — incrementa o escape count e fecha o combate */
+  /** Fênix Renascente: escapa — incrementa phoenix_kill_count e fecha o combate.
+   *  (Antes gravava em 'phoenix_escape_count', coluna inexistente — bug silencioso.) */
   const handlePhoenixEscaped = async () => {
     if (!user) return;
     try {
       const { data: choices } = await supabase
         .from('hero_story_choices')
-        .select('phoenix_escape_count')
+        .select('phoenix_kill_count')
         .eq('user_id', user.id)
         .maybeSingle();
-      const currentCount = (choices as any)?.phoenix_escape_count ?? 0;
+      const currentCount = (choices as any)?.phoenix_kill_count ?? 0;
       await supabase.from('hero_story_choices').upsert({
         user_id: user.id,
-        phoenix_escape_count: currentCount + 1,
+        phoenix_kill_count: currentCount + 1,
       }, { onConflict: 'user_id' });
       queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
       const nextLevel = 10 + (currentCount + 1) * 10;
@@ -323,6 +340,35 @@ export default function BossPage() {
       // silencioso — UI atualiza via invalidate
     } finally {
       setActiveCombat(null);
+    }
+  };
+
+  /** Fusão Fênix -> Esfinge (roadmap #2): marca phoenix_fused e concede o XP
+   *  "devido" pela Fênix (que nunca premiou ao escapar). Servidor credita via RPC. */
+  const PHOENIX_FUSION_XP = 250;
+  const handleConfirmPhoenixFusion = async () => {
+    if (!user) { setPhoenixFusionOpen(false); return; }
+    setPhoenixFusing(true);
+    try {
+      await supabase.from('hero_story_choices').upsert({
+        user_id: user.id,
+        phoenix_fused: true,
+      }, { onConflict: 'user_id' });
+      // 🔒 XP creditado server-side (XP_TABLE oficial), como nos outros marcos.
+      await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: PHOENIX_FUSION_XP });
+      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
+      toast({
+        title: t('app.boss.toast_phoenix_fused_title'),
+        description: t('app.boss.toast_phoenix_fused_desc', { xp: PHOENIX_FUSION_XP }),
+        duration: 6000,
+      });
+    } catch (err: any) {
+      toast({ title: t('app.boss.toast_phoenix_fused_error'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setPhoenixFusing(false);
+      setPhoenixFusionOpen(false);
     }
   };
 
@@ -1413,6 +1459,34 @@ export default function BossPage() {
               }}
             >
               💀 {t('app.boss.skeleton_adopt', { name: skeletonPupName || 'Ossinho' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Fusão Fênix + Esfinge (roadmap #2) ─────────────────────────────── */}
+      <Dialog open={phoenixFusionOpen} onOpenChange={(open) => { if (!open && !phoenixFusing) setPhoenixFusionOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              🔥🦁 {t('app.boss.phoenix_fusion_title')}
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
+                <p>{t('app.boss.phoenix_fusion_p1')}</p>
+                <p>{t('app.boss.phoenix_fusion_p2')}</p>
+                <p className="font-semibold text-foreground">{t('app.boss.phoenix_fusion_p3')}</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-bold"
+              disabled={phoenixFusing}
+              onClick={handleConfirmPhoenixFusion}
+            >
+              {phoenixFusing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '✨ '}
+              {t('app.boss.phoenix_fusion_confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
