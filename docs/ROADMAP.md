@@ -43,7 +43,7 @@ Leviatã Primitivo, Wyvern Relâmpago, Dragão Sombrio, Kraken Abissal, Demônio
 ### 5. Cadeia épica nórdica (a maior)
 - **Golem de Adamantina (lv34)** → dropa **Picareta de Adamantina**.
 - **Resgate do Ferreiro**: equipar picareta → mini-dungeon na área de boss (criaturas nórdicas) → libertar o Ferreiro (não se luta contra ele).
-- **Fenrir (lv38)**: ajudar na fuga → vira aliado. ❓ É pré-requisito de qual boss?
+- **Fenrir (lv38)**: ajudar na fuga → vira aliado. **Pré-requisito de Odin** ✅ (precisa derrotar/libertar Fenrir antes de enfrentar Odin).
 - **Odin (lv47)**: chama **Thor + Loki** → combate **3 contra 1**; se ajudou Fenrir, ele entra do seu lado.
 
 ### 6. Mecânica de QUIZ (Esfinge)
@@ -105,10 +105,11 @@ Sólido. Melhorias: pacing inicial, visibilidade do hábito, e metas de identida
 
 ---
 
-## TALENTOS (a revisar)
-Ideia do dono: talentos como **árvore de habilidades de classe** (escolher alguns por área,
-limitado) — possivelmente fundir/realinhar com o sistema de Habilidades acima.
-Proposta a detalhar: 3 trilhas (Corpo / Mente / Disciplina) com capstone, escolhas limitadas.
+## TALENTOS + HABILIDADES = ÁRVORE ÚNICA ✅ (decidido)
+Decisão do dono: **fundir** talentos com habilidades numa **árvore única** de escolhas
+limitadas (estilo skill-tree de classe). Não haverá dois sistemas separados — talentos
+e skills viram a mesma progressão. A detalhar: estrutura da árvore (por área/elemento),
+quantos pontos, e como amarra com os limites de equipe (4/5/6).
 
 ## Ordem de build sugerida
 1. Sequenciamento de bosses (fundação)
@@ -121,7 +122,7 @@ Proposta a detalhar: 3 trilhas (Corpo / Mente / Disciplina) com capstone, escolh
 8. Endgame fase 2b/2c: tornar as raides de evento jogáveis (lobby 10 + combate)
 
 ## Perguntas em aberto (❓)
-1. 6º pet "Ivan Virgílio eterna" = qual boss?
-2. Fenrir é pré-requisito de qual boss?
-3. Qual Deus acompanha o Anúbis na Dungeon dos Três?
-4. Talentos: fundir com Habilidades ou manter separado (trilhas próprias)?
+1. **6º pet** (eu entendi "Ivan Virgílio eterna", mas não bate com nenhum boss). Candidatos com "Eterno": **Necromante Eterno (lv24)**, **Wyrm de Gelo Eterno (lv32)**, **Archlich Eterno (lv55)**. ❓ Qual?
+2. Fenrir = pré-requisito de **Odin** ✅
+3. Dungeon dos Três: dono respondeu "Esfinge e Djinn do Deserto". ❓ Interpretação a confirmar: o boss final é **Anúbis + Esfinge + Djinn juntos** (sem deus extra)? Ou ainda quer um **deus egípcio** junto do Anúbis (ex.: Rá, Osíris, Set)?
+4. Talentos + Habilidades = **árvore única** ✅
