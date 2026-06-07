@@ -196,7 +196,21 @@ nova no estilo Diablo 4 — clusters por área que só abrem com **X pontos gast
   Próximas árvores: Mago feito; depois Guerreiro/Espadachim, Gatuno, Ferreiro, Arqueiro, Noviço,
   e então as evoluções (Sábio/Bruxo/Arquimago, etc.).
 
-### Fase 2a ✅ código (deploy do edge function pendente)
+### Árvores por classe (ordem do dono)
+- Página `/skill-tree` agora é **agnóstica de classe**: mostra a árvore da classe base do jogador
+  (`profile.starter_class`); galhos renderizados dinamicamente; "em breve" se a classe não tem árvore. ✅
+- **Mago** ✅ · **Espadachim (guerreiro)** ✅ — Força (pesado), Sangramento (rápido, estilo ER),
+  Infusão de Fogo (embainhar a espada → golpe físico que aplica Queimadura).
+- ⏳ Próximas (nesta ordem): **Gatuno** (furtividade/veneno/sangramento), **Ferreiro**
+  (força/forja — ver economia abaixo), **Arqueiro** (precisão/flechas elementais), **Noviço**
+  (suporte/cura + sagrado vs mortos-vivos). Depois: evoluções (Sábio/Bruxo/Arquimago, etc.).
+
+### Ferreiro — fabricação exclusiva (a desenvolver com o dono) ⏳
+- Ideia: **só o Ferreiro fabrica armas**. Para uma arma melhor que drop/aprimorada, contate um
+  Ferreiro. Há um **Ferreiro NPC padrão** (limitado), mas um **Ferreiro player** faz melhor →
+  cria demanda por desenvolver um Ferreiro. (Design em discussão — ver proposta na conversa.)
+
+### Fase 2a ✅ (deploy feito — processar_turno v28 ACTIVE)
 - **Skills da árvore → loadout**: nós `skill` com rank ≥ 1 entram no pool equipável do Perfil
   (mapeados com power escalando por rank + elemento). ✅
 - **Elemento explícito**: o loadout carrega `element`; o cliente envia `skill_element` ao

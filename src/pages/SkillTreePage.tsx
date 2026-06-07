@@ -17,18 +17,31 @@ import {
 
 // Galhos (branches) do node-graph + cor/ícone.
 const BRANCH_META: Record<string, { emoji: string; color: string; ring: string }> = {
-  tronco: { emoji: '✦', color: 'text-primary',     ring: 'ring-primary/50' },
-  fogo:   { emoji: '🔥', color: 'text-orange-400',  ring: 'ring-orange-500/50' },
-  gelo:   { emoji: '❄️', color: 'text-cyan-300',    ring: 'ring-cyan-400/50' },
-  raio:   { emoji: '⚡', color: 'text-yellow-300',  ring: 'ring-yellow-400/50' },
-  arcano: { emoji: '🔮', color: 'text-fuchsia-300', ring: 'ring-fuchsia-500/50' },
+  tronco:      { emoji: '✦', color: 'text-primary',     ring: 'ring-primary/50' },
+  fogo:        { emoji: '🔥', color: 'text-orange-400',  ring: 'ring-orange-500/50' },
+  gelo:        { emoji: '❄️', color: 'text-cyan-300',    ring: 'ring-cyan-400/50' },
+  raio:        { emoji: '⚡', color: 'text-yellow-300',  ring: 'ring-yellow-400/50' },
+  arcano:      { emoji: '🔮', color: 'text-fuchsia-300', ring: 'ring-fuchsia-500/50' },
+  fisico:      { emoji: '⚔️', color: 'text-rose-300',    ring: 'ring-rose-500/50' },
+  forca:       { emoji: '💪', color: 'text-red-300',     ring: 'ring-red-500/50' },
+  sangramento: { emoji: '🩸', color: 'text-rose-400',    ring: 'ring-rose-600/50' },
+  veneno:      { emoji: '🧪', color: 'text-lime-300',    ring: 'ring-lime-500/50' },
+  furtividade: { emoji: '🗡️', color: 'text-slate-300',   ring: 'ring-slate-400/50' },
+  precisao:    { emoji: '🎯', color: 'text-amber-300',   ring: 'ring-amber-500/50' },
+  infusao:     { emoji: '🜂', color: 'text-orange-300',  ring: 'ring-orange-500/50' },
+  defesa:      { emoji: '🛡️', color: 'text-sky-300',     ring: 'ring-sky-500/50' },
+  suporte:     { emoji: '🌿', color: 'text-emerald-300', ring: 'ring-emerald-500/50' },
+  sagrado:     { emoji: '✨', color: 'text-yellow-200',  ring: 'ring-yellow-300/50' },
+  forja:       { emoji: '🔨', color: 'text-amber-400',   ring: 'ring-amber-600/50' },
 };
-const BRANCH_ORDER = ['fogo', 'gelo', 'raio', 'arcano'];
+// Ordem de preferência dos galhos (os demais entram depois, na ordem do banco).
+const BRANCH_ORDER = ['forca', 'fisico', 'sangramento', 'fogo', 'gelo', 'raio', 'arcano', 'veneno', 'furtividade', 'precisao', 'infusao', 'defesa', 'sagrado', 'suporte', 'forja'];
 
 export default function SkillTreePage() {
   const { t } = useTranslation();
   const { data: profile } = useProfile();
-  const tree = 'mago'; // Fase 1: árvore do Mago (próximas classes virão).
+  // Árvore da CLASSE base do jogador (mago/guerreiro/gatuno/ferreiro/arqueiro/novato).
+  const tree = (profile?.starter_class as string) || 'mago';
   const { data: nodes = [], isLoading } = useSkillTreeNodes(tree);
   const { data: ranks = {} } = usePlayerSkillNodes();
   const allocate = useAllocateSkillNode();
@@ -42,7 +55,9 @@ export default function SkillTreePage() {
   const branches = useMemo(() => {
     const groups: Record<string, SkillTreeNode[]> = {};
     for (const n of nodes) if (n.branch !== 'tronco') (groups[n.branch] ||= []).push(n);
-    return BRANCH_ORDER.filter((b) => groups[b]?.length).map((b) => {
+    const present = Object.keys(groups);
+    const ordered = [...BRANCH_ORDER.filter((b) => groups[b]?.length), ...present.filter((b) => !BRANCH_ORDER.includes(b))];
+    return ordered.map((b) => {
       const items = groups[b];
       const tiers = Array.from(new Set(items.map((n) => n.tier))).sort((a, z) => a - z);
       return { branch: b, rows: tiers.map((tr) => items.filter((n) => n.tier === tr).sort((a, z) => a.sort - z.sort)) };
@@ -146,7 +161,7 @@ export default function SkillTreePage() {
         <div className="flex items-center gap-2">
           <Network className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">{t('app.skilltree.page_title')}</h1>
-          <span className="ml-1 text-sm text-muted-foreground">· {t('app.skilltree.class_mago')}</span>
+          <span className="ml-1 text-sm text-muted-foreground">· {t(`app.skilltree.class_${tree}`, { defaultValue: tree })}</span>
         </div>
 
         {/* Barra de pontos + respec */}
@@ -172,6 +187,8 @@ export default function SkillTreePage() {
 
         {isLoading ? (
           <div className="rpg-card text-center py-10 text-muted-foreground">…</div>
+        ) : nodes.length === 0 ? (
+          <div className="rpg-card text-center py-10 text-muted-foreground">{t('app.skilltree.coming_soon')}</div>
         ) : (
           <div className="rpg-card overflow-x-auto">
             {/* Tronco */}
