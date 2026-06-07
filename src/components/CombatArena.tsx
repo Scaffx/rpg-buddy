@@ -70,6 +70,7 @@ type CombatDataProvider = {
     skillPower?: number;
     skillEffectType?: string;
     skillMpCost?: number;
+    skillElement?: string;
   }) => Promise<TurnSummary>;
 };
 
@@ -149,6 +150,8 @@ type CombatSkill = {
   mpCost?: number;
   effectType?: string;
   effectLabel?: string;
+  /** Elemento da skill (fogo/gelo/raio/arcano/...), vindo da árvore. */
+  element?: string;
 };
 
 type HealPopup = {
@@ -231,7 +234,7 @@ const isSummonSkill = (skillName?: string): boolean =>
 
 // Default provider with Supabase integration and local mock fallback.
 const mockProvider: CombatDataProvider = {
-  async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower, skillEffectType, skillMpCost }) {
+  async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower, skillEffectType, skillMpCost, skillElement }) {
     if (combateId) {
       const { data, error } = await supabase.functions.invoke('processar_turno', {
         body: {
@@ -243,6 +246,7 @@ const mockProvider: CombatDataProvider = {
           current_mp: currentPlayerMp,
           ...(skillEffectType ? { skill_effect_type: skillEffectType } : {}),
           ...(skillMpCost !== undefined ? { skill_mp_cost: skillMpCost } : {}),
+          ...(skillElement ? { skill_element: skillElement } : {}),
         },
       });
 
@@ -498,6 +502,7 @@ export default function CombatArena({
               mpCost: safeEntry.mpCost !== undefined ? Number(safeEntry.mpCost) : undefined,
               effectType: safeEntry.effectType ? String(safeEntry.effectType) : undefined,
               effectLabel: safeEntry.effectLabel ? String(safeEntry.effectLabel) : undefined,
+              element: safeEntry.element ? String(safeEntry.element) : undefined,
             };
           })
           .filter((skill: CombatSkill) => skill.id);
@@ -819,6 +824,7 @@ export default function CombatArena({
           skillPower: chosenSkill?.power,
           skillEffectType: chosenSkill?.effectType,
           skillMpCost: chosenSkill?.mpCost,
+          skillElement: chosenSkill?.element,
         });
       } catch (err: unknown) {
         if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;

@@ -19,6 +19,8 @@ type ProcessarTurnoBody = {
   skill_mp_cost?: number;
   /** Tipo de efeito da habilidade (T3+). 'dano' usa fluxo normal; outros têm efeitos especiais. */
   skill_effect_type?: 'dano' | 'heal' | 'buff' | 'debuff' | 'cc' | 'utility';
+  /** Elemento explícito da skill (vindo da árvore). Se ausente, é inferido pelo nome. */
+  skill_element?: string;
 };
 
 // Custo de MP de uma habilidade do jogador, derivado do "power".
@@ -189,7 +191,9 @@ const buildPlayerSkillResolution = (body: ProcessarTurnoBody): SkillResolution =
   const isDefensive = /escudo|guarda|postura|oracao|amparo|voto/.test(idAndName);
   const isSlow = /lateral|passo|fantasma|vetor|cortina|selo|ritmo|finta/.test(idAndName);
   const isMagical = /lanca|raio|magia|arcan|igni|piro|crio|necro|trevas|sombra|sagrad|luz|runa|encant|magic|lucid|vetor|rel[âa]mpago|trov[aã]o|eletr|choque/.test(idAndName);
-  const element = detectSkillElement(idAndName);
+  const explicitEl = String(body.skill_element || '').toLowerCase();
+  const validEls = ['fogo','gelo','sagrado','trevas','natureza','agua','raio','arcano','neutro'];
+  const element: SkillElement = (validEls.includes(explicitEl) ? explicitEl : detectSkillElement(idAndName)) as SkillElement;
 
   const effects: string[] = [];
   if (isDefensive) effects.push('damage_reduction');
@@ -478,6 +482,36 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // ── Passivos da Árvore de Combate (Fase 2a): agrega modificadores alocados. ──
+    // Aditivo: sem alocações, os mapas ficam vazios e o combate não muda.
+    const treeMods = {
+      elementDmg: {} as Record<string, number>,
+      schoolDmg: {} as Record<string, number>,
+      comboDmg: {} as Record<string, number>,
+      vsStatusDmg: {} as Record<string, number>,
+      statusDur: {} as Record<string, number>,
+    };
+    {
+      const { data: allocRows } = await supabase
+        .from('player_skill_nodes')
+        .select('rank, skill_tree_nodes(effect)')
+        .eq('user_id', user.id);
+      for (const row of allocRows || []) {
+        const rank = Math.max(0, toNumber((row as any).rank, 0));
+        const eff = (row as any).skill_tree_nodes?.effect;
+        if (!eff || rank <= 0 || eff.kind !== 'mod') continue;
+        const per = toNumber(eff.pct_per_rank, 0) * rank;
+        const turns = toNumber(eff.turns_per_rank, 0) * rank;
+        switch (eff.mod) {
+          case 'element_dmg':  if (eff.element) treeMods.elementDmg[eff.element]   = (treeMods.elementDmg[eff.element]   || 0) + per; break;
+          case 'school_dmg':   if (eff.school)  treeMods.schoolDmg[eff.school]     = (treeMods.schoolDmg[eff.school]     || 0) + per; break;
+          case 'combo_dmg':    if (eff.combo)   treeMods.comboDmg[eff.combo]       = (treeMods.comboDmg[eff.combo]       || 0) + per; break;
+          case 'vs_status_dmg':if (eff.status)  treeMods.vsStatusDmg[eff.status]   = (treeMods.vsStatusDmg[eff.status]   || 0) + per; break;
+          case 'status_dur':   if (eff.status)  treeMods.statusDur[eff.status]     = (treeMods.statusDur[eff.status]     || 0) + turns; break;
+        }
+      }
+    }
+
     let bossItem: BossItem | null = null;
     if (combat.bosses) {
       const signatureItemName = String(combat.bosses.signature_item_name || '').trim();
@@ -604,6 +638,14 @@ Deno.serve(async (req) => {
       bossEffectLog.push(`element_weak:${playerElement}:+${danoPlayer - before}`);
     }
 
+    // ── Passivos da árvore: +% dano por ELEMENTO e por ESCOLA (físico/mágico) ──
+    if (danoPlayer > 0) {
+      const elPct = treeMods.elementDmg[playerElement] || 0;
+      const schPct = treeMods.schoolDmg[playerSkill.isMagical ? 'magico' : 'fisico'] || 0;
+      if (elPct > 0)  { danoPlayer = Math.floor(danoPlayer * (1 + elPct / 100));  bossEffectLog.push(`tree_element:${playerElement}:${elPct}`); }
+      if (schPct > 0) { danoPlayer = Math.floor(danoPlayer * (1 + schPct / 100)); }
+    }
+
     // ── COMBOS / STATUS (roadmap #4) ───────────────────────────────────────────
     // Aditivo: usa boss_status persistido. Status existentes ticam/exploram AGORA;
     // novos status entram em vigor a partir do próximo turno.
@@ -635,14 +677,14 @@ Deno.serve(async (req) => {
       // Estilhaçar: golpe FÍSICO em alvo CONGELADO -> bônus e quebra o gelo
       if (incomingStatus.frozen > 0 && isPhysicalSkill) {
         const before = danoPlayer;
-        danoPlayer = Math.floor(danoPlayer * 1.6);
+        danoPlayer = Math.floor(danoPlayer * (1.6 + (treeMods.comboDmg.shatter || 0) / 100));
         comboLog.push(`shatter:+${danoPlayer - before}`);
         nextStatus.frozen = 0;
       }
       // Choque: RAIO em alvo MOLHADO -> bônus e atordoa (boss perde o turno)
       if (incomingStatus.wet > 0 && playerElement === 'raio') {
         const before = danoPlayer;
-        danoPlayer = Math.floor(danoPlayer * 1.5);
+        danoPlayer = Math.floor(danoPlayer * (1.5 + (treeMods.comboDmg.shock || 0) / 100));
         comboStun = true;
         comboLog.push(`shock:+${danoPlayer - before}`);
         nextStatus.wet = 0;
@@ -655,6 +697,14 @@ Deno.serve(async (req) => {
       comboLog.push(`vulnerable:+${danoPlayer - before}`);
     }
 
+    // Passivos da árvore: +% dano contra alvos COM status (ex.: Penetração vs Vulnerável).
+    if (danoPlayer > 0) {
+      for (const st of ['bleeding', 'burning', 'wet', 'frozen', 'vulnerable'] as const) {
+        const p = treeMods.vsStatusDmg[st] || 0;
+        if (p > 0 && (incomingStatus as any)[st] > 0) danoPlayer = Math.floor(danoPlayer * (1 + p / 100));
+      }
+    }
+
     // (c) Decaimento natural dos status NÃO consumidos por combo
     if (nextStatus.frozen === incomingStatus.frozen && incomingStatus.frozen > 0) nextStatus.frozen = incomingStatus.frozen - 1;
     if (nextStatus.wet === incomingStatus.wet && incomingStatus.wet > 0) nextStatus.wet = incomingStatus.wet - 1;
@@ -664,13 +714,13 @@ Deno.serve(async (req) => {
     if (!isNonDamageSkill || isDebuffSkill) {
       if (playerElement === 'agua') { nextStatus.wet = Math.max(nextStatus.wet, 2); comboLog.push('apply:wet'); }
       if (playerElement === 'gelo') {
-        nextStatus.frozen = Math.max(nextStatus.frozen, incomingStatus.wet > 0 ? 2 : 1);
+        nextStatus.frozen = Math.max(nextStatus.frozen, (incomingStatus.wet > 0 ? 2 : 1) + (treeMods.statusDur.frozen || 0));
         nextStatus.burning = 0; // gelo apaga queimadura
         comboLog.push('apply:frozen');
       }
       if (playerElement === 'fogo') {
         if (incomingStatus.wet > 0 || nextStatus.wet > 0) { nextStatus.wet = 0; comboLog.push('steam'); } // evapora
-        nextStatus.burning = Math.max(nextStatus.burning, 3);
+        nextStatus.burning = Math.max(nextStatus.burning, 3 + (treeMods.statusDur.burning || 0));
         comboLog.push('apply:burning');
       }
       // Sangramento: golpe físico cortante empilha (DoT crescente)

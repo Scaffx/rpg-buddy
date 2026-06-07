@@ -13,6 +13,7 @@ import {
 } from "@/hooks/useAchievements";
 import { useGoldBalance } from "@/hooks/useGold";
 import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
+import { useSkillTreeNodes, usePlayerSkillNodes } from "@/hooks/useSkillTree";
 import { supabase } from "@/integrations/supabase/client";
 import { setVolume } from "@/lib/sfx";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -983,9 +984,37 @@ export default function ProfilePage() {
     () => [...classSkills, ...specialtySkills],
     [classSkills, specialtySkills],
   );
+  // Skills desbloqueadas na Árvore de Combate (fase 2a): viram equipáveis no loadout.
+  const { data: treeNodes = [] } = useSkillTreeNodes(starterClass);
+  const { data: treeRanks = {} } = usePlayerSkillNodes();
+  const treeSkills = useMemo(() => {
+    return (treeNodes || [])
+      .filter((n) => n.node_type === 'skill' && (treeRanks[n.id] || 0) >= 1)
+      .map((n) => {
+        const eff: any = n.effect || {};
+        const rank = treeRanks[n.id] || 1;
+        const pct = Number(eff.pct_per_rank ?? 10);
+        const power = Math.round(Number(eff.power ?? 30) * (1 + (rank - 1) * pct / 100));
+        const element = String(eff.element || 'arcano');
+        return {
+          id: n.id,
+          name: n.name,
+          power,
+          cooldown: Number(eff.cooldown ?? 2),
+          category: element === 'fisico' ? 'fisica' : 'magica',
+          tier: 'classe',
+          mpCost: Number(eff.mpCost ?? 0),
+          effectType: String(eff.effectType || 'dano'),
+          effectLabel: n.description,
+          element,
+          unlocked: true,
+        } as any;
+      });
+  }, [treeNodes, treeRanks]);
+
   const unlockedSkills = useMemo(
-    () => [...noviceSkills, ...allClassSkills].filter((s) => s.unlocked),
-    [noviceSkills, allClassSkills],
+    () => [...noviceSkills, ...allClassSkills, ...treeSkills].filter((s: any) => s.unlocked),
+    [noviceSkills, allClassSkills, treeSkills],
   );
   const unlockedSkillsById = useMemo(
     () => new Map(unlockedSkills.map((skill) => [skill.id, skill])),
@@ -1118,6 +1147,7 @@ export default function ProfilePage() {
           mpCost: skill.mpCost,
           effectType: skill.effectType,
           effectLabel: skill.effectLabel,
+          element: (skill as any).element,
         }));
 
       const { error } = await supabase

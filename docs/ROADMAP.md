@@ -196,13 +196,25 @@ nova no estilo Diablo 4 — clusters por área que só abrem com **X pontos gast
   Próximas árvores: Mago feito; depois Guerreiro/Espadachim, Gatuno, Ferreiro, Arqueiro, Noviço,
   e então as evoluções (Sábio/Bruxo/Arquimago, etc.).
 
-### Fase 2 ⏳ (ligar a árvore ao combate)
-- **Skills da árvore → loadout**: nós `skill` desbloqueados/equipáveis no loadout 4/5/6
-  (hoje o loadout vem da classe/nível; passará a vir da árvore).
-- **Passivos no combate**: `processar_turno` lê as alocações e aplica os `effect`
-  (+% dano por elemento/escola, duração de status, +% combos, variantes/AOE).
-- Hoje a árvore é **alocável e visível** (gates/ranks/exclusivos funcionam), mas **ainda não
-  altera o combate** — esse é o próximo passo.
+### Fase 2a ✅ código (deploy do edge function pendente)
+- **Skills da árvore → loadout**: nós `skill` com rank ≥ 1 entram no pool equipável do Perfil
+  (mapeados com power escalando por rank + elemento). ✅
+- **Elemento explícito**: o loadout carrega `element`; o cliente envia `skill_element` ao
+  `processar_turno`, que passa a usá-lo (em vez de inferir só pelo nome) — combos elementais
+  das skills da árvore funcionam certos. ✅
+- **Passivos no combate** (`processar_turno`): lê as alocações (`player_skill_nodes`) e aplica
+  os `effect` de forma ADITIVA — `element_dmg` (+% por elemento), `school_dmg` (+% físico/mágico),
+  `combo_dmg` (+% Estilhaçar/Choque), `vs_status_dmg` (+% vs alvo com status), `status_dur`
+  (Queimadura/Congelado +turnos). ✅ (no repo; **deploy pendente**)
+- ⚠️ **Deploy**: `npx supabase functions deploy processar_turno`. Rollback = redeploy anterior.
+
+### Fase 2b ⏳ (Elden Ring: atributos + medidor de sangramento)
+- **Escala por atributo** (ER): dano da skill escala pelos atributos de vida — Força = pesado/
+  lento/forte, Agilidade = rápido + governa Sangramento, Int/Sab = magia. (Hoje o combate usa
+  só o nível.)
+- **Sangramento estilo ER**: medidor que enche → **proc de % do HP máx** do alvo; acúmulo
+  escala com Agilidade; ótimo vs bosses tanky. (Substitui o DoT por stacks atual.)
+- **Variantes** (Meteoro/Nova Gélida/Tornado/Singularidade): transformar a skill (AOE/burst).
 
 ## Ordem de build sugerida
 1. Sequenciamento de bosses (fundação)
