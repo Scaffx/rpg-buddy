@@ -706,6 +706,20 @@
       "tier_6": "Classe 5",
       "level_label": "Nível"
     },
+    "quiz": {
+      "title": "Os Enigmas de {{boss}}",
+      "subtitle": "Resolva os enigmas para provar seu valor. Errar desperta a fúria do guardião (+50% no golpe especial).",
+      "no_questions": "Nenhum enigma disponível no momento.",
+      "back": "Voltar",
+      "progress": "Enigma {{n}} de {{total}}",
+      "wrong_warning": "❌ Resposta errada — o guardião fica mais perigoso!",
+      "toast_fail_title": "🦁 A Esfinge te rejeita",
+      "toast_fail_desc": "Você acertou {{correct}}/{{total}}. Estude e tente novamente para enfrentá-lo.",
+      "toast_pass_title": "✅ Enigmas resolvidos!",
+      "toast_pass_desc": "{{correct}}/{{total}} corretos. O guardião aceita o duelo.",
+      "toast_perfect_title": "🌟 Sabedoria perfeita!",
+      "toast_perfect_desc": "Você gabaritou os enigmas e entra na luta com Inspiração (vantagem)."
+    },
     "feats": {
       "page_title": "Talentos",
       "available_points": "Pontos disponíveis: {{n}}",

@@ -706,6 +706,20 @@
       "tier_6": "Class 5",
       "level_label": "Level"
     },
+    "quiz": {
+      "title": "The Riddles of {{boss}}",
+      "subtitle": "Solve the riddles to prove your worth. A wrong answer awakens the guardian's fury (+50% special hit).",
+      "no_questions": "No riddles available right now.",
+      "back": "Back",
+      "progress": "Riddle {{n}} of {{total}}",
+      "wrong_warning": "❌ Wrong answer — the guardian grows more dangerous!",
+      "toast_fail_title": "🦁 The Sphinx rejects you",
+      "toast_fail_desc": "You got {{correct}}/{{total}}. Study up and try again to face it.",
+      "toast_pass_title": "✅ Riddles solved!",
+      "toast_pass_desc": "{{correct}}/{{total}} correct. The guardian accepts the duel.",
+      "toast_perfect_title": "🌟 Perfect wisdom!",
+      "toast_perfect_desc": "You aced the riddles and enter the fight with Inspiration (advantage)."
+    },
     "feats": {
       "page_title": "Talents",
       "available_points": "Available points: {{n}}",

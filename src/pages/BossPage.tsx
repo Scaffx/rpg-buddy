@@ -15,6 +15,7 @@ import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CombatArena from '@/components/CombatArena';
+import SphinxQuizModal from '@/components/SphinxQuizModal';
 import DungeonArena, { type PotionItem, type SessionPlayer } from '@/components/DungeonArena';
 import HeroStatusBar from '@/components/HeroStatusBar';
 import { useHeroStoryChoices, useSaveSkeletonChoice } from '@/hooks/useHeroStoryChoices';
@@ -33,6 +34,9 @@ const SPHINX_BOSS_PATTERN     = /sphinx\s+do\s+deserto/i;
 const GOLEM_ADAMANTINA_PATTERN = /golem\s+de\s+adamantina/i;
 const FENRIR_BOSS_PATTERN      = /fenrir/i;
 const ODIN_BOSS_PATTERN        = /\bodin\b/i;
+// Quiz da Esfinge / Djinn (roadmap #6).
+const ESFINGE_GUARDIA_PATTERN  = /esfinge\s+guardi/i; // lv41 (não casa com "Sphinx do Deserto" lv14)
+const DJINN_BOSS_PATTERN       = /djinn/i;             // lv39
 
 const REGION_LABELS: Record<string, string> = {
   south_america: 'América do Sul',
@@ -150,6 +154,8 @@ export default function BossPage() {
   const [fenrirChoiceOpen,     setFenrirChoiceOpen]     = useState(false);
   const [fenrirChoosing,       setFenrirChoosing]       = useState(false);
   const [odinIntroBoss,        setOdinIntroBoss]        = useState<any | null>(null);
+  // ── Quiz da Esfinge/Djinn (roadmap #6) ──
+  const [quizConfig, setQuizConfig] = useState<{ boss: any; difficulty: 'easy' | 'hard'; count: number; passThreshold: number } | null>(null);
   const [mantirocaWarningBoss, setMantirocaWarningBoss] = useState<any | null>(null);
   const [boostedMantirocaHp,   setBoostedMantirocaHp]   = useState(0);
   const [deathWarningBoss,     setDeathWarningBoss]     = useState<any | null>(null);
@@ -786,12 +792,52 @@ export default function BossPage() {
   };
 
   const handleFightButtonClick = (boss: any) => {
+    const name = boss?.name ?? '';
     // Odin (roadmap #5): intro do 3v1 (Thor + Loki) antes da luta.
-    if (ODIN_BOSS_PATTERN.test(boss?.name ?? '')) {
+    if (ODIN_BOSS_PATTERN.test(name)) {
       setOdinIntroBoss(boss);
       return;
     }
+    // Esfinge Guardiã / Djinn (roadmap #6): resolver enigmas antes de enfrentar.
+    if (ESFINGE_GUARDIA_PATTERN.test(name)) {
+      setQuizConfig({ boss, difficulty: 'easy', count: 5, passThreshold: 0.6 });
+      return;
+    }
+    if (DJINN_BOSS_PATTERN.test(name)) {
+      setQuizConfig({ boss, difficulty: 'hard', count: 7, passThreshold: 0.5 });
+      return;
+    }
     setDeathWarningBoss(boss);
+  };
+
+  /** Resultado do quiz da Esfinge/Djinn: passar libera a luta; gabaritar dá Inspiração. */
+  const handleQuizComplete = async (result: { correct: number; total: number; passed: boolean; perfect: boolean }) => {
+    const boss = quizConfig?.boss;
+    setQuizConfig(null);
+    if (!boss) return;
+    if (!result.passed) {
+      toast({
+        title: t('app.quiz.toast_fail_title'),
+        description: t('app.quiz.toast_fail_desc', { correct: result.correct, total: result.total }),
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (result.perfect && user) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ inspired_available: true, inspired_earned_at: new Date().toISOString() })
+          .eq('user_id', user.id);
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+      } catch {
+        // silencioso — a luta começa de qualquer forma
+      }
+      toast({ title: t('app.quiz.toast_perfect_title'), description: t('app.quiz.toast_perfect_desc') });
+    } else {
+      toast({ title: t('app.quiz.toast_pass_title'), description: t('app.quiz.toast_pass_desc', { correct: result.correct, total: result.total }) });
+    }
+    handleStartArenaCombat(boss);
   };
 
   /** Inicia a luta contra Odin (3v1). Se Fenrir for aliado, concede Inspiração (vantagem). */
@@ -1729,6 +1775,19 @@ export default function BossPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Quiz da Esfinge / Djinn (roadmap #6) ───────────────────────────── */}
+      {quizConfig && (
+        <SphinxQuizModal
+          open={!!quizConfig}
+          bossName={quizConfig.boss?.name ?? ''}
+          difficulty={quizConfig.difficulty}
+          count={quizConfig.count}
+          passThreshold={quizConfig.passThreshold}
+          onComplete={handleQuizComplete}
+          onCancel={() => setQuizConfig(null)}
+        />
+      )}
 
       {/* ── Mantiroca Warning Dialog ───────────────────────────────────────── */}
       <Dialog open={!!mantirocaWarningBoss} onOpenChange={(open) => { if (!open) setMantirocaWarningBoss(null); }}>

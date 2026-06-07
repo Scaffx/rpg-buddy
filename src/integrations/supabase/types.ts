@@ -2137,6 +2137,36 @@ export type Database = {
           },
         ]
       }
+      quiz_questions: {
+        Row: {
+          category: string
+          correct_index: number
+          created_at: string
+          difficulty: string
+          id: string
+          options: Json
+          question: string
+        }
+        Insert: {
+          category?: string
+          correct_index: number
+          created_at?: string
+          difficulty?: string
+          id?: string
+          options: Json
+          question: string
+        }
+        Update: {
+          category?: string
+          correct_index?: number
+          created_at?: string
+          difficulty?: string
+          id?: string
+          options?: Json
+          question?: string
+        }
+        Relationships: []
+      }
       shop_items: {
         Row: {
           cost_percent: number

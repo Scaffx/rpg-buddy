@@ -62,12 +62,18 @@ Leviatã Primitivo, Wyvern Relâmpago, Dragão Sombrio, Kraken Abissal, Demônio
   Intro narrativo antes da luta; se **Fenrir aliado**, jogador entra com **Inspiração**
   (vantagem no 1º ataque). ✅
 - i18n pt/en/es de todos os diálogos/toasts. ✅
-- ⏳ Futuro (opcional): Fenrir como unidade aliada visível na arena; HP do Odin é tunável.
+- **Fenrir aliado visível na arena** ✅: na luta do Odin, se libertado, Fenrir (🐺) luta ao seu
+  lado como companheiro que ataca o boss a cada turno (reusa o sistema de companheiro) + Inspiração.
+- Balanceamento: Odin HP **2200** (tunável). ✅
 
-### 6. Mecânica de QUIZ (Esfinge)
-- **Esfinge Guardiã solo (lv41)**: ~**20 perguntas fáceis**; golpe especial **+50% dano se errar**.
-- **Djinn do Deserto Infinito + Esfinge (lv39+41)**: ~**40 perguntas mais difíceis**, aleatórias.
-- Impl.: banco de perguntas (categoria/dificuldade) + UI de pergunta entre turnos.
+### 6. Mecânica de QUIZ (Esfinge) ✅ (gate pré-luta)
+- Tabela `quiz_questions` (RLS leitura autenticada) + seed (12 fáceis + 12 difíceis, PT; expansível). ✅
+- `SphinxQuizModal`: enigmas de múltipla escolha antes da luta. **Esfinge Guardiã (lv41)** = 5 fáceis
+  (passa com ≥60%); **Djinn (lv39)** = 7 difíceis (≥50%). Passar libera o duelo; **gabaritar → Inspiração**
+  (vantagem); falhar → a Esfinge rejeita (sem gastar chave, pode tentar de novo). ✅
+- i18n pt/en/es da UI do quiz (perguntas ficam em PT no banco). ✅
+- ⏳ Futuro: integração mid-combat ("+50% no golpe especial a cada erro" durante a luta);
+  expandir o banco de perguntas; conteúdo das perguntas em en/es.
 
 ### 7. Dungeon dos Três (base: "Templo das Areias Perdidas") ✅ definido
 - Estrutura: **fase de bosses = Esfinge Guardiã + Djinn do Deserto** → **boss final = Anúbis + Rá** (2 deuses).
@@ -93,8 +99,8 @@ Objetivo: combate tático com **escolhas limitadas** e **combos**, não "uso tud
   **Vulnerável** = +20% de dano; fogo em molhado vira **Vapor** (evapora). ✅
 - Elemento `raio` adicionado à detecção; água é fraca a raio. ✅
 - Cliente (CombatArena): badges de status do boss + banner de combo + popups de DoT. ✅
-- **⚠️ Deploy pendente**: `npx supabase functions deploy processar_turno` (fonte versionada em
-  `supabase/functions/processar_turno/index.ts`). Rollback = redeploy do git anterior. Playtest necessário.
+- **Deploy feito** ✅ (`processar_turno` v27, ACTIVE — 2026-06-06). Fonte versionada em
+  `supabase/functions/processar_turno/index.ts`. Rollback = redeploy do git anterior. (Playtest recomendado.)
 
 ### Limites de equipe (slots de habilidade) — 4a (parcial)
 - **Boss solo: até 4** (já aplicado via `MAX_COMBAT_SKILLS=4`). Constante `MODE_SKILL_LIMITS
@@ -164,7 +170,7 @@ quantos pontos, e como amarra com os limites de equipe (4/5/6).
    - 4c motor de status+combos ✅ (código; **deploy do edge function pendente**)
    - 4a limites: solo=4 ✅ + constante MODE_SKILL_LIMITS; dungeon/evento 5/6 ⏳
    - 4b árvore unificada (UX) ✅
-5. Quiz da Esfinge
+5. Quiz da Esfinge ✅ (gate pré-luta)
 6. Cadeia nórdica (Golem→picareta→ferreiro→Fenrir→Odin 3v1) ✅
 7. Dungeon dos Três
 8. Endgame fase 2b/2c: tornar as raides de evento jogáveis (lobby 10 + combate)
