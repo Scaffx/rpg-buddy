@@ -97,13 +97,16 @@ Objetivo: combate tático com **escolhas limitadas** e **combos**, não "uso tud
   `supabase/functions/processar_turno/index.ts`). Rollback = redeploy do git anterior. Playtest necessário.
 
 ### Limites de equipe (slots de habilidade) — 4a (parcial)
-- **Boss solo: até 4** (já aplicado via `MAX_COMBAT_SKILLS=4`). ⏳ Dungeon (5) e Evento (6)
-  ligam quando esses modos consumirem o loadout de skills (hoje `DungeonArena` não usa skills
-  individuais; amarra com o endgame 2b/2c). Sem dead-code até lá.
+- **Boss solo: até 4** (já aplicado via `MAX_COMBAT_SKILLS=4`). Constante `MODE_SKILL_LIMITS
+  = { solo:4, dungeon:5, event:6 }` adicionada (`lib/constants.ts`) e exibida na árvore. ✅
+- ⏳ Dungeon (5) e Evento (6) entram em vigor quando esses modos consumirem o loadout de
+  skills (hoje `DungeonArena` não usa skills individuais; amarra com o endgame 2b/2c).
 
-### 4b — Árvore unificada (UX) — ⏳ pendente
-- Uma página única organizada por área/elemento juntando passivos (talentos, `FeatsTree`) e
-  ativos (loadout do Perfil). Reaproveita `talentos_*` + `combat_skill_loadout`.
+### 4b — Árvore unificada (UX) ✅
+- Página `/feats` virou a **árvore unificada**: talentos (passivos) **agrupados por área**
+  (Ofensivo/Magia/Defensivo/Foco/Economia/Social/Sorte/Vitalidade) + seção **Habilidades de
+  Combate** mostrando o loadout ativo (efeito/MP) com os limites por modo e atalho pra editar
+  no Perfil. Reaproveita `talentos_*` + `profiles.combat_skill_loadout`. i18n pt/en/es. ✅
 
 ### Combos / status (proposta — implementada em 4c)
 Pequeno conjunto de status + skills que APLICAM vs. EXPLORAM:
@@ -159,8 +162,8 @@ quantos pontos, e como amarra com os limites de equipe (4/5/6).
 3. Salamandra (pet não-combate) + Tiamat (escolha de dragão)
 4. **Sistema de Habilidades + combos + limites 4/5/6** (coração do combate)
    - 4c motor de status+combos ✅ (código; **deploy do edge function pendente**)
-   - 4a limites: solo=4 ✅; dungeon/evento 5/6 ⏳ (quando esses modos usarem skills)
-   - 4b árvore unificada (UX) ⏳
+   - 4a limites: solo=4 ✅ + constante MODE_SKILL_LIMITS; dungeon/evento 5/6 ⏳
+   - 4b árvore unificada (UX) ✅
 5. Quiz da Esfinge
 6. Cadeia nórdica (Golem→picareta→ferreiro→Fenrir→Odin 3v1) ✅
 7. Dungeon dos Três

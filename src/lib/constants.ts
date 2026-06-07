@@ -8,6 +8,13 @@ export const RESPEC_COST = 120;
 export const MAX_COMBAT_SKILLS = 4;
 export const NAME_CHANGE_COOLDOWN_DAYS = 7;
 
+// === Habilidades por modo (roadmap #4a) ===
+// Limite de habilidades ATIVAS equipadas por tipo de combate.
+// Solo já aplicado (= MAX_COMBAT_SKILLS); dungeon/evento entram em vigor quando
+// esses modos passarem a consumir o loadout de skills.
+export const MODE_SKILL_LIMITS = { solo: 4, dungeon: 5, event: 6 } as const;
+export type CombatMode = keyof typeof MODE_SKILL_LIMITS;
+
 // === Saúde / Cuidado ===
 /** ml de água por kg de peso corporal */
 export const WATER_ML_PER_KG = 35;
