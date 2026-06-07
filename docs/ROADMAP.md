@@ -205,10 +205,32 @@ nova no estilo Diablo 4 — clusters por área que só abrem com **X pontos gast
   (força/forja — ver economia abaixo), **Arqueiro** (precisão/flechas elementais), **Noviço**
   (suporte/cura + sagrado vs mortos-vivos). Depois: evoluções (Sábio/Bruxo/Arquimago, etc.).
 
-### Ferreiro — fabricação exclusiva (a desenvolver com o dono) ⏳
-- Ideia: **só o Ferreiro fabrica armas**. Para uma arma melhor que drop/aprimorada, contate um
-  Ferreiro. Há um **Ferreiro NPC padrão** (limitado), mas um **Ferreiro player** faz melhor →
-  cria demanda por desenvolver um Ferreiro. (Design em discussão — ver proposta na conversa.)
+### Ferreiro — fabricação exclusiva de armas (spec co-desenvolvido 2026-06-06) ⏳
+Base existente: crafting por receitas para classes `Alquimista/Mecânico/Mestre-Ferreiro/Criador`
+(`useRecipes`/`useCraftItem`, materials_cost + gold_cost -> item). A ideia ESTENDE isso para armas.
+
+**Decisões do dono:**
+- **Distribuição (núcleo social): Encomenda + Mercado/Bazar (ambos).**
+  - *Encomenda*: jogador faz um pedido (tipo de arma + paga material/ouro); um Ferreiro player
+    aceita e entrega a arma forjada.
+  - *Mercado/Bazar*: Ferreiros listam armas forjadas; qualquer um compra com ouro.
+- **Ferreiro player supera o NPC via:** (1) **qualidade rola com atributos** do Ferreiro
+  (Força/Disciplina — estilo ER); (2) **receitas exclusivas** (NPC não tem as top); (3) **bônus
+  aleatórios** (afixos extras nas armas de player); (4) **custo menor** de material/ouro;
+  (5) **+ "algo a mais"** — *a definir pelo dono* (pendente).
+- **Poder:** armas forjadas por Ferreiro player = **melhores do jogo** (acima de drops/aprimorados).
+- **Ferreiro NPC padrão:** aberto a todos, porém limitado (só receitas básicas, qualidade ≤ drop,
+  custo alto) — rede de segurança que NÃO compete com o Ferreiro player.
+- **Amarra com a árvore:** o galho **Forja** da árvore do Ferreiro terá passivos de crafting
+  (+% qualidade, chance de afixo, desbloquear receita rara, -custo) — investir no Ferreiro o
+  torna melhor ferreiro.
+
+**Build sugerido (faseado — é grande):**
+1. Schema: receitas de ARMA (flag) + qualidade/afixos + Ferreiro NPC como serviço aberto.
+2. Forja com qualidade escalando por atributos + galho Forja na árvore do Ferreiro.
+3. Encomendas (pedido → Ferreiro aceita → entrega). 
+4. Mercado/Bazar (listar/comprar armas forjadas).
+- ⚠️ Multiplayer/trading: maior parte da complexidade está em 3 e 4 (P2P, RLS, anti-abuso).
 
 ### Fase 2a ✅ (deploy feito — processar_turno v28 ACTIVE)
 - **Skills da árvore → loadout**: nós `skill` com rank ≥ 1 entram no pool equipável do Perfil
