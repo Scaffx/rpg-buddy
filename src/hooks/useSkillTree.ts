@@ -4,28 +4,31 @@ import { useAuth } from './useAuth';
 
 export type SkillTreeNode = {
   id: string;
+  tree: string;
+  branch: string;
   area: string;
   tier: number;
   cost: number;
   max_rank: number;
-  node_type: 'passive' | 'skill';
+  node_type: 'passive' | 'skill' | 'variant';
   name: string;
   description: string;
   effect: Record<string, any>;
   gate_points: number;
   prereq_node_id: string | null;
+  exclusive_group: string | null;
   sort: number;
 };
 
-/** Definição da árvore (estática, vinda do banco — fonte única). */
-export function useSkillTreeNodes() {
+/** Definição da árvore de uma classe (estática, vinda do banco — fonte única). */
+export function useSkillTreeNodes(tree = 'mago') {
   return useQuery({
-    queryKey: ['skill_tree_nodes'],
+    queryKey: ['skill_tree_nodes', tree],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('skill_tree_nodes')
         .select('*')
-        .order('area')
+        .eq('tree', tree)
         .order('tier')
         .order('sort');
       if (error) throw error;

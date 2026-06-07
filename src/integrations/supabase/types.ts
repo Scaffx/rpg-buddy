@@ -2235,9 +2235,11 @@ export type Database = {
       skill_tree_nodes: {
         Row: {
           area: string
+          branch: string
           cost: number
           description: string
           effect: Json
+          exclusive_group: string | null
           gate_points: number
           id: string
           max_rank: number
@@ -2246,12 +2248,15 @@ export type Database = {
           prereq_node_id: string | null
           sort: number
           tier: number
+          tree: string
         }
         Insert: {
           area: string
+          branch?: string
           cost?: number
           description: string
           effect?: Json
+          exclusive_group?: string | null
           gate_points?: number
           id: string
           max_rank?: number
@@ -2260,12 +2265,15 @@ export type Database = {
           prereq_node_id?: string | null
           sort?: number
           tier?: number
+          tree?: string
         }
         Update: {
           area?: string
+          branch?: string
           cost?: number
           description?: string
           effect?: Json
+          exclusive_group?: string | null
           gate_points?: number
           id?: string
           max_rank?: number
@@ -2274,6 +2282,7 @@ export type Database = {
           prereq_node_id?: string | null
           sort?: number
           tier?: number
+          tree?: string
         }
         Relationships: [
           {

@@ -180,11 +180,29 @@ nova no estilo Diablo 4 — clusters por área que só abrem com **X pontos gast
 - Bug corrigido: `SELECT COALESCE(rank,0) INTO var` sem linha atribui NULL → prereq não disparava;
   trocado por subquery escalar + COALESCE. ✅
 
-### Fase 2 ⏳ (aplicar os bônus no combate)
-- `processar_turno` (edge function) lê as alocações do jogador e aplica os modificadores
-  (`effect`) no dano/duração/combos. Hoje os nós são alocáveis e visíveis, mas **ainda não
-  alteram o combate**.
-- Possível: nós do tipo `skill` que desbloqueiam skills ativas pro loadout; respec com custo.
+### Redesenho 2026-06-06: árvore POR CLASSE + node-graph (decisões do dono)
+- Elementos viraram **propriedade das skills** (não galhos genéricos). A árvore é **por classe**.
+- Modelo: `skill_tree_nodes` ganhou `tree` (classe), `branch` (galho), `exclusive_group`
+  (modificadores que se excluem) e `node_type` agora aceita `variant`. ✅
+- Nós: **skill** (quadrado, sobe rank) → **modificadores** (círculo, escolha 1 de 2 via grupo
+  exclusivo) → **variante** (losango, transforma a skill). Gate é **por árvore**; pontos = nível
+  (pool único). RPC `allocate_skill_node` atualizado + testado (gate/prereq/exclusivo/pontos). ✅
+- **Árvore do MAGO** semeada (tree='mago'): tronco *Dardo Arcano* + 4 galhos —
+  🔥 Bola de Fogo, ❄️ Lança de Gelo, ⚡ Corrente de Raio (→ variante *Tornado*), 🔮 Estouro Arcano,
+  cada um com 2 modificadores + 1 variante (Meteoro/Nova Gélida/Tornado/Singularidade). ✅
+- Página `/skill-tree` reescrita como **node-graph vertical** (tronco → galhos com linhas,
+  skill→modificadores→variante; nada de cards). ✅
+- Classes são distintas: **Noviço** · **Mago** → evolui p/ **Sábio** ou **Bruxo** → **Arquimago**.
+  Próximas árvores: Mago feito; depois Guerreiro/Espadachim, Gatuno, Ferreiro, Arqueiro, Noviço,
+  e então as evoluções (Sábio/Bruxo/Arquimago, etc.).
+
+### Fase 2 ⏳ (ligar a árvore ao combate)
+- **Skills da árvore → loadout**: nós `skill` desbloqueados/equipáveis no loadout 4/5/6
+  (hoje o loadout vem da classe/nível; passará a vir da árvore).
+- **Passivos no combate**: `processar_turno` lê as alocações e aplica os `effect`
+  (+% dano por elemento/escola, duração de status, +% combos, variantes/AOE).
+- Hoje a árvore é **alocável e visível** (gates/ranks/exclusivos funcionam), mas **ainda não
+  altera o combate** — esse é o próximo passo.
 
 ## Ordem de build sugerida
 1. Sequenciamento de bosses (fundação)
