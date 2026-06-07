@@ -9,7 +9,7 @@ import { LifeonRPGEmblem } from '@/components/branding/LifeonRPGLogo';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users,
   ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Hammer, Zap,
+  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Hammer, Zap, Network,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -36,6 +36,7 @@ const navGroups = [
       { key: 'dashboard', url: '/',         icon: LayoutGrid },
       { key: 'classes',   url: '/classes',  icon: Swords },
       { key: 'talents',   url: '/feats',    icon: Sparkles },
+      { key: 'skill_tree', url: '/skill-tree', icon: Network },
     ],
   },
   {

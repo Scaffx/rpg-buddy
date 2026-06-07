@@ -162,6 +162,30 @@ limitadas (estilo skill-tree de classe). Não haverá dois sistemas separados �
 e skills viram a mesma progressão. A detalhar: estrutura da árvore (por área/elemento),
 quantos pontos, e como amarra com os limites de equipe (4/5/6).
 
+## ÁRVORE DE COMBATE estilo D4 (decisão 2026-06-06)
+Decisão do dono: além dos **talentos de vida** (mantidos à parte), uma **árvore de COMBATE**
+nova no estilo Diablo 4 — clusters por área que só abrem com **X pontos gastos** (gate cumulativo).
+
+### Fase 1 ✅ (estrutura + gates + alocação)
+- Tabelas `skill_tree_nodes` (definição, seed: 6 áreas × 3 tiers, nós com **ranks** 1..max) e
+  `player_skill_nodes` (alocações). RLS: leitura própria; escrita só via RPC. ✅
+- **Pontos = nível** (1/nível). Nós com ranks tornam os pontos escassos (escolhas importam). ✅
+- RPCs server-authoritative `allocate_skill_node` (valida pontos + gate + prereq + max_rank) e
+  `reset_skill_tree` (respec grátis na fase 1). Testado com rollback transacional. ✅
+- Página `/skill-tree` (D4: áreas, tiers travados por gate, alocação por rank, respec) + item no
+  menu (5 idiomas) + i18n pt/en/es da UI. ✅
+- Áreas: Físico/Sangramento · Fogo · Gelo · Raio · Arcano · Suporte. Efeitos definidos como
+  metadados (`effect` jsonb): +% dano por escola/elemento, +% dano de status, duração de status,
+  +% em combos, HP/DEF/cura. ✅
+- Bug corrigido: `SELECT COALESCE(rank,0) INTO var` sem linha atribui NULL → prereq não disparava;
+  trocado por subquery escalar + COALESCE. ✅
+
+### Fase 2 ⏳ (aplicar os bônus no combate)
+- `processar_turno` (edge function) lê as alocações do jogador e aplica os modificadores
+  (`effect`) no dano/duração/combos. Hoje os nós são alocáveis e visíveis, mas **ainda não
+  alteram o combate**.
+- Possível: nós do tipo `skill` que desbloqueiam skills ativas pro loadout; respec com custo.
+
 ## Ordem de build sugerida
 1. Sequenciamento de bosses (fundação)
 2. Limpeza combo Fênix+Esfinge + chain de história

@@ -30,6 +30,7 @@ const NpcPage = lazy(() => import("./pages/NpcPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const HealthPage = lazy(() => import("./pages/HealthPage"));
 const FeatsTree = lazy(() => import("./pages/FeatsTree"));
+const SkillTreePage = lazy(() => import("./pages/SkillTreePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const PrioridadePage = lazy(() => import("./pages/PrioridadePage"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -145,6 +146,7 @@ function AppRoutes() {
         <Route path="/portal" element={<ProtectedRoute><PortalEventPage /></ProtectedRoute>} />
         <Route path="/health" element={<ProtectedRoute><HealthPage /></ProtectedRoute>} />
         <Route path="/feats" element={<ProtectedRoute><FeatsTree /></ProtectedRoute>} />
+        <Route path="/skill-tree" element={<ProtectedRoute><SkillTreePage /></ProtectedRoute>} />
         <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
         <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
         <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />

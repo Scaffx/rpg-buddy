@@ -1880,6 +1880,35 @@ export type Database = {
         }
         Relationships: []
       }
+      player_skill_nodes: {
+        Row: {
+          node_id: string
+          rank: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          node_id: string
+          rank?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          node_id?: string
+          rank?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_skill_nodes_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "skill_tree_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_events: {
         Row: {
           created_at: string
@@ -2202,6 +2231,59 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      skill_tree_nodes: {
+        Row: {
+          area: string
+          cost: number
+          description: string
+          effect: Json
+          gate_points: number
+          id: string
+          max_rank: number
+          name: string
+          node_type: string
+          prereq_node_id: string | null
+          sort: number
+          tier: number
+        }
+        Insert: {
+          area: string
+          cost?: number
+          description: string
+          effect?: Json
+          gate_points?: number
+          id: string
+          max_rank?: number
+          name: string
+          node_type?: string
+          prereq_node_id?: string | null
+          sort?: number
+          tier?: number
+        }
+        Update: {
+          area?: string
+          cost?: number
+          description?: string
+          effect?: Json
+          gate_points?: number
+          id?: string
+          max_rank?: number
+          name?: string
+          node_type?: string
+          prereq_node_id?: string | null
+          sort?: number
+          tier?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_tree_nodes_prereq_node_id_fkey"
+            columns: ["prereq_node_id"]
+            isOneToOne: false
+            referencedRelation: "skill_tree_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_access_keys: {
         Row: {
@@ -2768,6 +2850,7 @@ export type Database = {
         Args: { p_user_id: string; p_xp: number }
         Returns: undefined
       }
+      allocate_skill_node: { Args: { p_node_id: string }; Returns: Json }
       apply_xp_penalty: { Args: { p_amount: number }; Returns: undefined }
       buy_pet: { Args: { p_pet_type: string }; Returns: Json }
       buy_shop_item: {
@@ -3079,6 +3162,7 @@ export type Database = {
         Returns: undefined
       }
       redeem_access_key: { Args: { p_code: string }; Returns: Json }
+      reset_skill_tree: { Args: never; Returns: Json }
       reset_weekly_portal_fragments: { Args: never; Returns: undefined }
       resolve_boss_battle: {
         Args: { p_boss_id: string; p_damage?: number; p_won: boolean }
