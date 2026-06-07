@@ -998,11 +998,17 @@ export default function BossPage() {
                         onImmortalTrueDefeat={handleImmortalTrueDefeat}
                         phoenixCanDie={phoenixCanDie}
                         onPhoenixEscaped={handlePhoenixEscaped}
-                        companionData={skeletonCompanion ? {
-                          name: skeletonCompanion.name,
-                          level: skeletonCompanion.level,
-                          mood: computeLiveMood(skeletonCompanion),
-                        } : undefined}
+                        companionData={
+                          // Odin 3v1: se Fenrir foi libertado, ele luta ao seu lado (roadmap #5).
+                          ODIN_BOSS_PATTERN.test(activeCombat.bossName ?? '') && storyChoices?.fenrir_allied
+                            ? { name: 'Fenrir', level: 38, mood: 100, emoji: '🐺' }
+                            : skeletonCompanion ? {
+                                name: skeletonCompanion.name,
+                                level: skeletonCompanion.level,
+                                mood: computeLiveMood(skeletonCompanion),
+                                emoji: '💀',
+                              } : undefined
+                        }
                       />
                     ) : (
                       <div className="rpg-card flex items-center justify-between gap-4 py-4">

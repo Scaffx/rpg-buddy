@@ -139,7 +139,7 @@ type CombatArenaProps = {
   /** Chamado quando a Fênix escapa (sem os itens especiais) — deve incrementar o escape count no DB */
   onPhoenixEscaped?: () => void;
   /** Companheiro de boss (ex: Ossinho) que duela ao lado do herói */
-  companionData?: { name: string; level: number; mood: number };
+  companionData?: { name: string; level: number; mood: number; emoji?: string };
 };
 
 type CombatSkill = {
@@ -975,7 +975,7 @@ export default function CombatArena({
         pushDamage('boss', cDmg, cRoll);
         appendBattleLog({ actor: 'companion', skill: cSkill, damage: cDmg, roll: cRoll, effects: [] });
         toast({
-          title: `💀 ${companionData.name} ataca!`,
+          title: `${companionData.emoji ?? '💀'} ${companionData.name} ataca!`,
           description: `${cSkill} • D20: ${cRoll} • Dano: ${cDmg}`,
           duration: 2000,
         });
@@ -1626,7 +1626,7 @@ export default function CombatArena({
             transition={companionIsRolling ? { repeat: Infinity, duration: 0.35 } : {}}
             className="text-4xl select-none shrink-0"
           >
-            💀
+            {companionData.emoji ?? '💀'}
           </motion.div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-violet-300">
