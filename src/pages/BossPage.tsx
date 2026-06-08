@@ -192,6 +192,10 @@ export default function BossPage() {
       (inv.game_items as any)?.effect === 'captura_fenix_pet',
     ),
   );
+  // Afinidade da arma equipada (Cinzas de Guerra) — usada no ataque básico.
+  const equippedWeaponElement = (
+    inventory?.find((inv) => inv.equipped && (inv.game_items as any)?.weapon_element)?.game_items as any
+  )?.weapon_element || undefined;
   const playerStats = {
     ...playerStatsBase,
     atk:  playerStatsBase.atk  + equipBonuses.atk,
@@ -1044,6 +1048,7 @@ export default function BossPage() {
                         onImmortalTrueDefeat={handleImmortalTrueDefeat}
                         phoenixCanDie={phoenixCanDie}
                         onPhoenixEscaped={handlePhoenixEscaped}
+                        weaponElement={equippedWeaponElement}
                         companionData={
                           // Odin 3v1: se Fenrir foi libertado, ele luta ao seu lado (roadmap #5).
                           ODIN_BOSS_PATTERN.test(activeCombat.bossName ?? '') && storyChoices?.fenrir_allied

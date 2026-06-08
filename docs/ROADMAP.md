@@ -289,8 +289,11 @@ Feedback do dono: (1) "habilidades" está espalhada (Perfil/loadout, Árvore, Ta
     "Arma") e o combate usa o elemento dela. Aditivo (não removeu nada).
   - Cada arma pode ter **passiva(s)** (ex.: sangramento/afinidade) **+ habilidade própria**; algumas
     dão **poder rúnico menor** (fogo/raio) — herói físico ganha toque mágico leve via a arma.
-  - **B-2 ⏳:** re-tematizar as árvores (mover skills marciais p/ armas; caster trees = magia;
-    sangramento do mago vira magia) + a afinidade da arma aplicar a ataques básicos.
+  - **B-2 (parcial ✅):** a **afinidade da arma equipada aplica no ATAQUE BÁSICO** (cliente envia
+    `skill_element` = elemento da arma quando não há skill) — cajado sagrado dá +dano vs mortos-vivos,
+    arma de fogo aplica Queimadura a cada golpe, etc. Sem novo deploy (usa o `skill_element` do edge v29).
+    Identidade já correta: o **mago é 100% magia** (sem skill física). ⏳ Opcional: migrar as skills
+    marciais das árvores físicas 100% para armas (hoje coexistem: árvore + arma).
   **Re-tematizar as árvores:** mover as skills marciais (golpe furtivo, corte sangrento, martelada…)
   para skills de ARMA; árvores de classe ficam com identidade certa (mago=magia; sangramento do
   mago vira magia). As árvores atuais NÃO se perdem — são refatoradas.

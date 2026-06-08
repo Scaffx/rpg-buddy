@@ -143,6 +143,8 @@ type CombatArenaProps = {
   onPhoenixEscaped?: () => void;
   /** Companheiro de boss (ex: Ossinho) que duela ao lado do herói */
   companionData?: { name: string; level: number; mood: number; emoji?: string };
+  /** Afinidade/elemento da arma equipada (Cinzas de Guerra) — usado no ataque básico. */
+  weaponElement?: string;
 };
 
 type CombatSkill = {
@@ -340,6 +342,7 @@ export default function CombatArena({
   phoenixCanDie = false,
   onPhoenixEscaped,
   companionData,
+  weaponElement,
 }: CombatArenaProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -826,7 +829,8 @@ export default function CombatArena({
           skillPower: chosenSkill?.power,
           skillEffectType: chosenSkill?.effectType,
           skillMpCost: chosenSkill?.mpCost,
-          skillElement: chosenSkill?.element,
+          // Skill carrega seu elemento; ataque básico (sem skill) usa a afinidade da ARMA equipada.
+          skillElement: chosenSkill?.element || weaponElement,
         });
       } catch (err: unknown) {
         if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
