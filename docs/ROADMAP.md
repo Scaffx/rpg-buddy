@@ -282,11 +282,15 @@ Feedback do dono: (1) "habilidades" está espalhada (Perfil/loadout, Árvore, Ta
   `<CombatLoadout/>` (loadout enxuto, fonte única) + hook `useHeroClass`. Rotas `/feats` e
   `/skill-tree` seguem válidas (back-compat). ⏳ Pendência menor: remover a cópia do loadout do Perfil
   (hoje duplicada lá) — o hub já é o lugar oficial.
-- **B) Armas → skills (Cinzas de Guerra):** `game_items` ganham `weapon_skill` + `element`/afinidade;
-  o loadout passa a incluir a skill da arma equipada; combate lê o elemento da arma.
-  - Cada arma pode ter **passiva(s)** (ex.: sangramento/afinidade) **+ uma habilidade própria**
-    (ex.: golpe carregado/"porrada"). Algumas armas dão um **poder rúnico menor** (fogo/raio) —
-    assim um herói **físico** (não-mago) ganha um toque mágico leve via a arma (não OP, só sabor/utilidade).
+- **B) Armas → skills (Cinzas de Guerra):**
+  - **B-1 ✅:** `game_items` ganharam `weapon_skill` (jsonb) + `weapon_element` + `weapon_passive`;
+    7 armas iniciais semeadas (Espada Curta→Corte Brutal/bleed, Grimório→Dardo Arcano, Cajado de
+    Luz→Raio Sereno/sagrado, etc.). O **loadout inclui a skill da ARMA equipada** (aba Loadout, fonte
+    "Arma") e o combate usa o elemento dela. Aditivo (não removeu nada).
+  - Cada arma pode ter **passiva(s)** (ex.: sangramento/afinidade) **+ habilidade própria**; algumas
+    dão **poder rúnico menor** (fogo/raio) — herói físico ganha toque mágico leve via a arma.
+  - **B-2 ⏳:** re-tematizar as árvores (mover skills marciais p/ armas; caster trees = magia;
+    sangramento do mago vira magia) + a afinidade da arma aplicar a ataques básicos.
   **Re-tematizar as árvores:** mover as skills marciais (golpe furtivo, corte sangrento, martelada…)
   para skills de ARMA; árvores de classe ficam com identidade certa (mago=magia; sangramento do
   mago vira magia). As árvores atuais NÃO se perdem — são refatoradas.

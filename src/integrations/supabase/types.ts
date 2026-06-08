@@ -1228,6 +1228,9 @@ export type Database = {
           stackable: boolean
           starter_class: string | null
           stat_label: string | null
+          weapon_element: string | null
+          weapon_passive: string | null
+          weapon_skill: Json | null
         }
         Insert: {
           agi_bonus?: number
@@ -1256,6 +1259,9 @@ export type Database = {
           stackable?: boolean
           starter_class?: string | null
           stat_label?: string | null
+          weapon_element?: string | null
+          weapon_passive?: string | null
+          weapon_skill?: Json | null
         }
         Update: {
           agi_bonus?: number
@@ -1284,6 +1290,9 @@ export type Database = {
           stackable?: boolean
           starter_class?: string | null
           stat_label?: string | null
+          weapon_element?: string | null
+          weapon_passive?: string | null
+          weapon_skill?: Json | null
         }
         Relationships: []
       }

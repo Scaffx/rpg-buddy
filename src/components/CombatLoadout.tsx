@@ -6,6 +6,7 @@ import { Swords, Save, Plus, X as XIcon, Lock, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useInventory } from '@/hooks/useInventory';
 import { useHeroClass } from '@/hooks/useHeroClass';
 import { useSkillTreeNodes, usePlayerSkillNodes } from '@/hooks/useSkillTree';
 import { getSkillLoadout } from '@/lib/combat';
@@ -14,7 +15,7 @@ import { MODE_SKILL_LIMITS } from '@/lib/constants';
 const MAX = MODE_SKILL_LIMITS.event; // o loadout guarda até o teto (evento); cada modo usa os primeiros N
 
 const EFFECT_ICON: Record<string, string> = { dano: '⚔️', heal: '💚', buff: '🛡️', debuff: '🔻', cc: '⚡', utility: '✨' };
-const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe', tree: 'Árvore' };
+const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe', tree: 'Árvore', weapon: 'Arma' };
 
 /** Editor de loadout de combate — fonte única usada no hub de Habilidades. */
 export default function CombatLoadout() {
@@ -26,6 +27,32 @@ export default function CombatLoadout() {
 
   const { data: treeNodes = [] } = useSkillTreeNodes(starterClass);
   const { data: treeRanks = {} } = usePlayerSkillNodes();
+  const { data: inventory = [] } = useInventory();
+
+  // Cinzas de Guerra: a skill da ARMA equipada vira disponível no loadout (Fase B).
+  const weaponSkills = useMemo(() => {
+    return (inventory || [])
+      .filter((inv: any) => inv.equipped && (inv.game_items as any)?.weapon_skill)
+      .map((inv: any) => {
+        const gi: any = inv.game_items;
+        const ws: any = gi.weapon_skill || {};
+        return {
+          id: `weapon_${inv.item_id || gi.id}`,
+          name: String(ws.name || `Golpe de ${gi.name}`),
+          power: Number(ws.power ?? 40),
+          cooldown: Number(ws.cooldown ?? 2),
+          category: 'fisica',
+          tier: 'arma',
+          mpCost: Number(ws.mpCost ?? 0),
+          effectType: String(ws.effectType || 'dano'),
+          effectLabel: String(ws.desc || `Habilidade de ${gi.name}`),
+          element: String(ws.element || gi.weapon_element || 'neutro'),
+          archetype: gi.name,
+          unlocked: true,
+          _src: 'weapon',
+        } as any;
+      });
+  }, [inventory]);
 
   const loadoutData = useMemo(
     () => getSkillLoadout(level, attributeLevels, starterClass as any, starterItem, currentClassName),
@@ -53,11 +80,12 @@ export default function CombatLoadout() {
   const allSkills = useMemo(() => {
     const tag = (arr: any[], src: string) => arr.map((s) => ({ ...s, _src: src }));
     return [
+      ...weaponSkills,
       ...tag(loadoutData.noviceSkills, 'novice'),
       ...tag([...loadoutData.classSkills, ...(loadoutData.specialtySkills ?? [])], 'class'),
       ...treeSkills,
     ];
-  }, [loadoutData, treeSkills]);
+  }, [weaponSkills, loadoutData, treeSkills]);
 
   const unlockedById = useMemo(() => new Map(allSkills.filter((s) => s.unlocked).map((s) => [s.id, s])), [allSkills]);
 
