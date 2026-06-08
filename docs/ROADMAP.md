@@ -261,6 +261,33 @@ Base existente: crafting por receitas para classes `Alquimista/Mecânico/Mestre-
   escala com Agilidade; ótimo vs bosses tanky. (Substitui o DoT por stacks atual.)
 - **Variantes** (Meteoro/Nova Gélida/Tornado/Singularidade): transformar a skill (AOE/burst).
 
+## REDESENHO: Hub único + Armas dão skill (Elden Ring) — decisão 2026-06-06
+Feedback do dono: (1) "habilidades" está espalhada (Perfil/loadout, Árvore, Talentos, combate)
+— quer **tudo num lugar só**; (2) skills devem ter **identidade de classe** + virem das **ARMAS**
+(modelo Cinzas de Guerra do Elden Ring), com **liberdade total de armas** e **elementos combinando**.
+
+### Decisões travadas
+- **Hub único de Habilidades** (uma página, 3 abas): **Árvore** (desbloquear) · **Loadout**
+  (equipar 4/5/6 ativas — sai do Perfil) · **Talentos de Vida** (sai do Feats).
+- **Fonte das skills (full ER):** skills marciais/físicas vêm das **ARMAS** (cada arma = 1
+  habilidade própria + afinidade/elemento). A **árvore da classe = identidade intrínseca**
+  (mago = só magia; o "sangramento do mago" é magia, ex. "Espinhos de Sangue", nunca "Retaliar").
+  **Liberdade total** de armas; **scaling favorece o arquétipo** (mago casta poucas seguidas →
+  sangramento rende pouco pra ele; ótimo pro espadachim rápido). Mago rende melhor com cajado.
+- **2 itens combinam elementos** (ex.: arma de gelo + foco de raio → molhado+raio=Choque).
+
+### Plano faseado
+- **A) Hub único** (abas Árvore/Loadout/Talentos): extrair o loadout do Perfil e os talentos do
+  Feats para componentes reutilizáveis e compor numa página `/habilidades`. (Sem reescrever combate.)
+- **B) Armas → skills (Cinzas de Guerra):** `game_items` ganham `weapon_skill` + `element`/afinidade;
+  o loadout passa a incluir a skill da arma equipada; combate lê o elemento da arma.
+  **Re-tematizar as árvores:** mover as skills marciais (golpe furtivo, corte sangrento, martelada…)
+  para skills de ARMA; árvores de classe ficam com identidade certa (mago=magia; sangramento do
+  mago vira magia). As árvores atuais NÃO se perdem — são refatoradas.
+- **C) Combinar elementos por 2 itens:** combate lê elementos dos itens equipados e combina.
+- **D) Scaling por arquétipo (ER, amarra com Fase 2b):** atributos definem o quão bem cada classe
+  usa cada arma/skill.
+
 ## Ordem de build sugerida
 1. Sequenciamento de bosses (fundação)
 2. Limpeza combo Fênix+Esfinge + chain de história
