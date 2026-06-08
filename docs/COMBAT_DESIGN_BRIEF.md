@@ -5,6 +5,20 @@
 > balanceamento** de todas as habilidades. O resto do jogo já está funcional e revisado — este é
 > o foco principal agora, pensando inclusive em **PvP futuro**.
 
+## 0. CRITÉRIO DE DECISÃO (lê isto primeiro)
+Combo design e balanceamento **puxam em direções opostas**: combo quer assimetria e momentos de
+"quebra" (opções exageradas de propósito); balanceamento quer comprimir variância. Quando brigarem:
+
+- **O jogo é PvE-first.** RPG-tracker de hábitos; combate = camada de recompensa (bosses, dungeons,
+  co-op). **PvP é futuro/incerto.** Logo, **balanceia-se contra ENCONTROS, não contra players.**
+- **Em conflito, o COMBO manda.** Preferimos um **combo memorável e levemente injusto** a um meta
+  achatado. A variância é comprimida via **design de encontro** (HP/mecânica/imunidades do boss),
+  **não** nerfando o que é divertido.
+- **PvP, quando vier, é um RULESET SEPARADO** (caps de status anti-stun-lock, DoT/cura reduzidos vs
+  players, escala própria). Não deixar o medo de PvP achatar o PvE hoje.
+- Regra prática: se uma proposta é "divertida mas forte demais", a resposta padrão é **deixar forte
+  e dar ao boss uma contra-mecânica**, não cortar o combo.
+
 ## 1. Filosofia (o norte)
 - **Meio-termo robusto:** nem MMORPG gigante e intimidador, nem simples demais (que enjoa).
   Profundidade suficiente pra reter quem gosta de RPG, acessível pra quem não quer complexidade.
