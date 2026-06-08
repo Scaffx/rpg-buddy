@@ -219,7 +219,10 @@ Base existente: crafting por receitas para classes `Alquimista/Mecânico/Mestre-
 - **Ferreiro player supera o NPC via:** (1) **qualidade rola com atributos** do Ferreiro
   (Força/Disciplina — estilo ER); (2) **receitas exclusivas** (NPC não tem as top); (3) **bônus
   aleatórios** (afixos extras nas armas de player); (4) **custo menor** de material/ouro;
-  (5) **+ "algo a mais"** — *a definir pelo dono* (pendente).
+  (5) **assinatura na arma** (marca o nome do Ferreiro que forjou — prestígio/identidade) e
+  **encantar com elemento** (infundir fogo/gelo/raio/etc. na arma forjada). ✅ (definido)
+- **Galho Forja da árvore (já criado):** `Olho de Mestre` (+qualidade), `Mão Firme` (+chance de
+  afixo), `Economia de Material` (-custo) — `effect.kind='craft'`, ligados na economia. ✅
 - **Poder:** armas forjadas por Ferreiro player = **melhores do jogo** (acima de drops/aprimorados).
 - **Ferreiro NPC padrão:** aberto a todos, porém limitado (só receitas básicas, qualidade ≤ drop,
   custo alto) — rede de segurança que NÃO compete com o Ferreiro player.
@@ -228,10 +231,12 @@ Base existente: crafting por receitas para classes `Alquimista/Mecânico/Mestre-
   torna melhor ferreiro.
 
 **Build sugerido (faseado — é grande):**
-1. Schema: receitas de ARMA (flag) + qualidade/afixos + Ferreiro NPC como serviço aberto.
-2. Forja com qualidade escalando por atributos + galho Forja na árvore do Ferreiro.
-3. Encomendas (pedido → Ferreiro aceita → entrega). 
+1. Schema: receitas de ARMA (flag) + qualidade/afixos + **assinatura** (forjado_por) +
+   **encantamento** (elemento) + Ferreiro NPC como serviço aberto.
+2. Forja com qualidade escalando por atributos + galho Forja (já existe) aplicado no resultado.
+3. Encomendas (pedido → Ferreiro aceita → entrega).
 4. Mercado/Bazar (listar/comprar armas forjadas).
+- ✅ Árvore do Ferreiro (com galho Forja) já criada.
 - ⚠️ Multiplayer/trading: maior parte da complexidade está em 3 e 4 (P2P, RLS, anti-abuso).
 
 ### Fase 2a ✅ (deploy feito — processar_turno v28 ACTIVE)
