@@ -309,8 +309,9 @@ Feedback do dono: (1) "habilidades" está espalhada (Perfil/loadout, Árvore, Ta
 - ⏳ **Combos entre galhos (foco em 2 > ter tudo):** capstones que exigem 2 elementos investidos
   geram skill combinada (ex.: Gelo+Raio → "Tornado Gélido"; Fogo+Arcano → meteoro + chuva de estrelas).
   Pontos limitados já fazem "focar 2 maxados" > "espalhar em 4 fracos". Reforçar com esses nós.
-- ❓ **Limite do loadout:** dono inclinado a **deixar livre** (equipar quantas upou; balanceio vem da
-  PROFUNDIDADE da árvore — 4 maxadas > 7 fracas), mas em dúvida vs manter 4/5/6. (a confirmar)
+- ✅ **Loadout LIVRE (decidido):** sem teto — o jogador leva todas as skills que desbloqueou
+  (chips, sem slots fixos). O balanceio vem da PROFUNDIDADE da árvore (focar/maxar 2 > espalhar).
+  `MODE_SKILL_LIMITS` 4/5/6 aposentado como teto do loadout.
 - ⏳ **Armas com especialização incisiva + skill/modificador fixo + evolução:** ex.: cajado de fogo
   faz Bola de Fogo queimar +tempo; staff fogo+arcano spawna estrelas junto do Meteoro; arma evolui
   (caçar/forjar). Amarra com a economia do Ferreiro.

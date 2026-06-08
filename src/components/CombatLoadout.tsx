@@ -2,17 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Swords, Save, Plus, X as XIcon, Lock, Sparkles } from 'lucide-react';
+import { Swords, Save, X as XIcon, Lock, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useInventory } from '@/hooks/useInventory';
 import { useHeroClass } from '@/hooks/useHeroClass';
 import { useSkillTreeNodes, usePlayerSkillNodes } from '@/hooks/useSkillTree';
-import { MODE_SKILL_LIMITS } from '@/lib/constants';
 
-const MAX = MODE_SKILL_LIMITS.event; // o loadout guarda até o teto (evento); cada modo usa os primeiros N
-
+// Loadout LIVRE: sem teto rígido. O jogador leva todas as skills que desbloqueou;
+// o balanceio vem da PROFUNDIDADE da árvore (focar/maxar 2 elementos > espalhar).
 const EFFECT_ICON: Record<string, string> = { dano: '⚔️', heal: '💚', buff: '🛡️', debuff: '🔻', cc: '⚡', utility: '✨' };
 const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe', tree: 'Árvore', weapon: 'Arma' };
 
@@ -79,7 +78,7 @@ export default function CombatLoadout() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   useEffect(() => {
     const raw = Array.isArray((profile as any)?.combat_skill_loadout) ? (profile as any).combat_skill_loadout : [];
-    setSelectedIds(raw.map((e: any) => String(e?.id || '')).filter((id: string) => id && unlockedById.has(id)).slice(0, MAX));
+    setSelectedIds(raw.map((e: any) => String(e?.id || '')).filter((id: string) => id && unlockedById.has(id)));
   }, [profile, unlockedById]);
 
   const selected = selectedIds.map((id) => unlockedById.get(id)).filter(Boolean) as any[];
@@ -87,7 +86,7 @@ export default function CombatLoadout() {
   const save = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Não autenticado');
-      const payload = selectedIds.map((id) => unlockedById.get(id)).filter(Boolean).slice(0, MAX).map((s: any) => ({
+      const payload = selectedIds.map((id) => unlockedById.get(id)).filter(Boolean).map((s: any) => ({
         id: s.id, name: s.name, power: s.power, cooldown: s.cooldown, category: s.category,
         tier: s.tier, mpCost: s.mpCost, effectType: s.effectType, effectLabel: s.effectLabel, element: s.element,
       }));
@@ -100,11 +99,7 @@ export default function CombatLoadout() {
 
   const toggle = (id: string) => {
     if (!unlockedById.has(id)) return;
-    setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= MAX) { toast.error(t('app.habhub.loadout_full', { max: MAX })); return prev; }
-      return [...prev, id];
-    });
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   return (
@@ -113,27 +108,22 @@ export default function CombatLoadout() {
       <div className="rpg-card space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2"><Swords className="w-4 h-4 text-primary" /><h3 className="text-sm font-bold text-foreground">{t('app.habhub.loadout_title')}</h3></div>
-          <span className="text-xs font-bold text-muted-foreground">{selected.length}/{MAX}</span>
+          <span className="text-xs font-bold text-muted-foreground">{t('app.habhub.equipped_count', { n: selected.length })}</span>
         </div>
-        <p className="text-xs text-muted-foreground">{t('app.habhub.mode_limits', { solo: MODE_SKILL_LIMITS.solo, dungeon: MODE_SKILL_LIMITS.dungeon, event: MODE_SKILL_LIMITS.event })}</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {Array.from({ length: MAX }).map((_, i) => {
-            const s = selected[i];
-            const tier = i < MODE_SKILL_LIMITS.solo ? 'solo' : i < MODE_SKILL_LIMITS.dungeon ? 'dungeon' : 'event';
-            return s ? (
-              <button key={s.id} onClick={() => toggle(s.id)} title="Remover" className="relative rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-center hover:border-rose-500/50 transition-colors">
-                <div className="text-xl">{EFFECT_ICON[s.effectType] || '⚔️'}</div>
-                <p className="text-[10px] font-bold text-emerald-200 leading-tight line-clamp-2">{s.name}</p>
-                <XIcon className="absolute top-1 right-1 w-3 h-3 text-emerald-400/50" />
+        <p className="text-xs text-muted-foreground">{t('app.habhub.loadout_free_hint')}</p>
+        {selected.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {selected.map((s) => (
+              <button key={s.id} onClick={() => toggle(s.id)} title={t('app.habhub.remove')} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-200 hover:border-rose-500/50 transition-colors">
+                <span>{EFFECT_ICON[s.effectType] || '⚔️'}</span>
+                <span>{s.name}</span>
+                <XIcon className="w-3 h-3 text-emerald-400/60" />
               </button>
-            ) : (
-              <div key={`e${i}`} className="rounded-xl border-2 border-dashed border-border/40 bg-muted/10 p-2.5 flex flex-col items-center justify-center min-h-[64px] gap-0.5">
-                <Plus className="w-4 h-4 text-border/60" />
-                <span className="text-[9px] text-muted-foreground/50 uppercase">{tier}</span>
-              </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground/60 italic">{t('app.habhub.loadout_empty')}</p>
+        )}
         <button onClick={() => save.mutate()} disabled={save.isPending} className="w-full rounded-xl bg-primary/90 hover:bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition disabled:opacity-60 flex items-center justify-center gap-2">
           {save.isPending ? <><Sparkles className="w-4 h-4 animate-spin" /> {t('app.habhub.saving')}</> : <><Save className="w-4 h-4" /> {t('app.habhub.save')}</>}
         </button>
@@ -143,7 +133,6 @@ export default function CombatLoadout() {
       <div className="grid gap-2 sm:grid-cols-2">
         {allSkills.map((s, idx) => {
           const inDeck = selectedIds.includes(s.id);
-          const full = selected.length >= MAX;
           return (
             <div key={`${s.id}-${idx}`} className={`rounded-xl border p-3 space-y-2 ${s.unlocked ? 'bg-card border-border' : 'bg-muted/15 border-border/50 opacity-70'}`}>
               <div className="flex items-start justify-between gap-2">
@@ -160,9 +149,9 @@ export default function CombatLoadout() {
                 <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-300">⏱ {s.cooldown}t</span>
               </div>
               {s.unlocked && (
-                <button onClick={() => toggle(s.id)} disabled={!inDeck && full}
-                  className={`w-full rounded-lg px-3 py-1.5 text-xs font-semibold transition ${inDeck ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-rose-500/10 hover:text-rose-300' : full ? 'bg-muted/20 border border-border/50 text-muted-foreground/50 cursor-not-allowed' : 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20'}`}>
-                  {inDeck ? `✕ ${t('app.habhub.remove')}` : full ? t('app.habhub.deck_full') : `+ ${t('app.habhub.add')}`}
+                <button onClick={() => toggle(s.id)}
+                  className={`w-full rounded-lg px-3 py-1.5 text-xs font-semibold transition ${inDeck ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-rose-500/10 hover:text-rose-300' : 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20'}`}>
+                  {inDeck ? `✕ ${t('app.habhub.remove')}` : `+ ${t('app.habhub.add')}`}
                 </button>
               )}
             </div>
