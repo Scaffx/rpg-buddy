@@ -1,0 +1,30 @@
+-- Árvore do Arqueiro: Precisão (marca/Vulnerável) + Flecha de Fogo + Flecha de Gelo.
+INSERT INTO public.skill_tree_nodes
+  (id, tree, branch, area, tier, cost, max_rank, node_type, name, description, effect, gate_points, prereq_node_id, exclusive_group, sort) VALUES
+  ('a_tiro','arqueiro','tronco','fisico',0,1,5,'skill','Tiro Certeiro','Disparo físico rápido, sem custo. Sobe de rank para mais dano.',
+     '{"kind":"skill","element":"neutro","power":32,"mpCost":0,"effectType":"dano","cooldown":1,"pct_per_rank":10}', 0, NULL, NULL, 0),
+  ('a_vetor','arqueiro','precisao','fisico',1,1,5,'skill','Disparo Perfurante','Flecha precisa que expõe a fraqueza do alvo (Vulnerável).',
+     '{"kind":"skill","element":"neutro","power":46,"mpCost":5,"effectType":"debuff","cooldown":2}', 1, 'a_tiro', NULL, 1),
+  ('a_pre_mod1','arqueiro','precisao','fisico',2,1,3,'passive','Olho de Águia','+10% de dano contra alvos Vulneráveis por rank.',
+     '{"kind":"mod","mod":"vs_status_dmg","status":"vulnerable","pct_per_rank":10}', 3, 'a_vetor', 'a_pre', 2),
+  ('a_pre_mod2','arqueiro','precisao','fisico',2,1,3,'passive','Mira Letal','+7% de dano físico por rank.',
+     '{"kind":"mod","mod":"school_dmg","school":"fisico","pct_per_rank":7}', 3, 'a_vetor', 'a_pre', 3),
+  ('a_pre_var','arqueiro','precisao','fisico',3,2,1,'variant','Tiro do Vazio','Transforma Disparo Perfurante num tiro penetrante de dano massivo.',
+     '{"kind":"variant","transform":"tiro_vazio","bonus_pct":50}', 8, 'a_vetor', NULL, 4),
+  ('a_fogo','arqueiro','fogo','fogo',1,1,5,'skill','Flecha Flamejante','Flecha em chamas: dano de fogo que aplica Queimadura.',
+     '{"kind":"skill","element":"fogo","power":50,"mpCost":6,"effectType":"dano","cooldown":2}', 1, 'a_tiro', NULL, 1),
+  ('a_fogo_mod1','arqueiro','fogo','fogo',2,1,3,'passive','Pontas Incandescentes','+8% de dano de Fogo por rank.',
+     '{"kind":"mod","mod":"element_dmg","element":"fogo","pct_per_rank":8}', 3, 'a_fogo', 'a_fg', 2),
+  ('a_fogo_mod2','arqueiro','fogo','fogo',2,1,2,'passive','Incêndio Persistente','Queimadura dura +1 turno por rank.',
+     '{"kind":"mod","mod":"status_dur","status":"burning","turns_per_rank":1}', 3, 'a_fogo', 'a_fg', 3),
+  ('a_fogo_var','arqueiro','fogo','fogo',3,2,1,'variant','Chuva de Fogo','Transforma Flecha Flamejante numa saraivada de fogo em área.',
+     '{"kind":"variant","transform":"chuva_fogo","aoe":true,"bonus_pct":45}', 8, 'a_fogo', NULL, 4),
+  ('a_gelo','arqueiro','gelo','gelo',1,1,5,'skill','Flecha de Gelo','Flecha gélida: dano de gelo que pode Congelar o alvo.',
+     '{"kind":"skill","element":"gelo","power":50,"mpCost":6,"effectType":"dano","cooldown":2}', 1, 'a_tiro', NULL, 1),
+  ('a_gelo_mod1','arqueiro','gelo','gelo',2,1,3,'passive','Pontas Glaciais','+8% de dano de Gelo por rank.',
+     '{"kind":"mod","mod":"element_dmg","element":"gelo","pct_per_rank":8}', 3, 'a_gelo', 'a_gl', 2),
+  ('a_gelo_mod2','arqueiro','gelo','gelo',2,1,2,'passive','Frio Profundo','Congelado dura +1 turno por rank.',
+     '{"kind":"mod","mod":"status_dur","status":"frozen","turns_per_rank":1}', 3, 'a_gelo', 'a_gl', 3),
+  ('a_gelo_var','arqueiro','gelo','gelo',3,2,1,'variant','Tempestade de Gelo','Transforma Flecha de Gelo numa nevasca em área.',
+     '{"kind":"variant","transform":"tempestade_gelo","aoe":true,"bonus_pct":45}', 8, 'a_gelo', NULL, 4)
+ON CONFLICT (id) DO NOTHING;

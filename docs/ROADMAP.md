@@ -203,9 +203,11 @@ nova no estilo Diablo 4 — clusters por área que só abrem com **X pontos gast
   Sangramento=corte rápido, Veneno=DoT por natureza).
 - **Status Veneno** adicionado ao motor (`processar_turno` v29): DoT ~2%/turno, aplicado por
   elemento `natureza`; passivos `vs_status_dmg`/`status_dur` de poison funcionam. ✅
-- ⏳ Próximas (nesta ordem): **Ferreiro** (força/forja — ver economia abaixo), **Arqueiro**
-  (precisão/flechas elementais), **Noviço** (suporte/cura + sagrado vs mortos-vivos).
-  Depois: evoluções (Sábio/Bruxo/Arquimago, etc.).
+- **Ferreiro** ✅ (Força + Infusão de fogo + galho Forja/crafting) · **Arqueiro** ✅ (Precisão/
+  marca + Flecha de Fogo + Flecha de Gelo) · **Noviço** ✅ (Sagrado vs trevas/mortos-vivos + Suporte cura/escudo).
+- ✅ **Todas as 6 classes-base têm árvore** (mago/guerreiro/gatuno/ferreiro/arqueiro/novato).
+- ⏳ Depois: evoluções (Sábio/Bruxo/Arquimago, Cavaleiro, Algoz, etc.) + extensões de motor
+  (mods de cura/defesa/HP para o Noviço/Suporte, crit para Precisão/Furtividade).
 
 ### Ferreiro — fabricação exclusiva de armas (spec co-desenvolvido 2026-06-06) ⏳
 Base existente: crafting por receitas para classes `Alquimista/Mecânico/Mestre-Ferreiro/Criador`
