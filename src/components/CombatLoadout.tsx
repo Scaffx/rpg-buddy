@@ -9,7 +9,6 @@ import { useProfile } from '@/hooks/useProfile';
 import { useInventory } from '@/hooks/useInventory';
 import { useHeroClass } from '@/hooks/useHeroClass';
 import { useSkillTreeNodes, usePlayerSkillNodes } from '@/hooks/useSkillTree';
-import { getSkillLoadout } from '@/lib/combat';
 import { MODE_SKILL_LIMITS } from '@/lib/constants';
 
 const MAX = MODE_SKILL_LIMITS.event; // o loadout guarda até o teto (evento); cada modo usa os primeiros N
@@ -23,7 +22,7 @@ export default function CombatLoadout() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
-  const { starterClass, starterItem, currentClassName, level, attributeLevels } = useHeroClass();
+  const { starterClass } = useHeroClass();
 
   const { data: treeNodes = [] } = useSkillTreeNodes(starterClass);
   const { data: treeRanks = {} } = usePlayerSkillNodes();
@@ -54,11 +53,6 @@ export default function CombatLoadout() {
       });
   }, [inventory]);
 
-  const loadoutData = useMemo(
-    () => getSkillLoadout(level, attributeLevels, starterClass as any, starterItem, currentClassName),
-    [level, attributeLevels, starterClass, starterItem, currentClassName],
-  );
-
   const treeSkills = useMemo(() => {
     return (treeNodes || [])
       .filter((n) => n.node_type === 'skill' && (treeRanks[n.id] || 0) >= 1)
@@ -77,15 +71,8 @@ export default function CombatLoadout() {
       });
   }, [treeNodes, treeRanks]);
 
-  const allSkills = useMemo(() => {
-    const tag = (arr: any[], src: string) => arr.map((s) => ({ ...s, _src: src }));
-    return [
-      ...weaponSkills,
-      ...tag(loadoutData.noviceSkills, 'novice'),
-      ...tag([...loadoutData.classSkills, ...(loadoutData.specialtySkills ?? [])], 'class'),
-      ...treeSkills,
-    ];
-  }, [weaponSkills, loadoutData, treeSkills]);
+  // Apenas skills da ÁRVORE + da ARMA equipada (sem skills legadas fora da árvore).
+  const allSkills = useMemo(() => [...weaponSkills, ...treeSkills], [weaponSkills, treeSkills]);
 
   const unlockedById = useMemo(() => new Map(allSkills.filter((s) => s.unlocked).map((s) => [s.id, s])), [allSkills]);
 

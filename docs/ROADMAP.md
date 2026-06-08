@@ -301,6 +301,23 @@ Feedback do dono: (1) "habilidades" está espalhada (Perfil/loadout, Árvore, Ta
 - **D) Scaling por arquétipo (ER, amarra com Fase 2b):** atributos definem o quão bem cada classe
   usa cada arma/skill.
 
+## Ajustes + ideias (feedback 2026-06-06, sessão skills)
+- ✅ **Loadout só com skills da ÁRVORE + ARMAS** (removida a fonte legada `getSkillLoadout`:
+  Escudo Etéreo/Selo Mental/Zona Vetorial/etc. não aparecem mais soltos). As que o dono gostou
+  podem virar **nós da árvore** num passe de conteúdo (Arcano/Utilidade do mago).
+- ✅ **Respec pago após o nível 15** (`reset_skill_tree`: grátis ≤15, depois 150🪙; checa/desconta ouro).
+- ⏳ **Combos entre galhos (foco em 2 > ter tudo):** capstones que exigem 2 elementos investidos
+  geram skill combinada (ex.: Gelo+Raio → "Tornado Gélido"; Fogo+Arcano → meteoro + chuva de estrelas).
+  Pontos limitados já fazem "focar 2 maxados" > "espalhar em 4 fracos". Reforçar com esses nós.
+- ❓ **Limite do loadout:** dono inclinado a **deixar livre** (equipar quantas upou; balanceio vem da
+  PROFUNDIDADE da árvore — 4 maxadas > 7 fracas), mas em dúvida vs manter 4/5/6. (a confirmar)
+- ⏳ **Armas com especialização incisiva + skill/modificador fixo + evolução:** ex.: cajado de fogo
+  faz Bola de Fogo queimar +tempo; staff fogo+arcano spawna estrelas junto do Meteoro; arma evolui
+  (caçar/forjar). Amarra com a economia do Ferreiro.
+- ⏳ **Identidade por classe (futuro):** Espadachim (chance de 2 armas pesadas), Gatuno (2 armas leves,
+  stealth/backstab crítico), Arqueiro (fabricar flechas, armadilhas, crit%), Noviço (cura + tank +
+  taunt), Ferreiro (vira mecha/robô OU faz poções). Físicas dependem mais das ARMAS.
+
 ## Ordem de build sugerida
 1. Sequenciamento de bosses (fundação)
 2. Limpeza combo Fênix+Esfinge + chain de história
