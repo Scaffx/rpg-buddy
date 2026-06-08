@@ -12,14 +12,16 @@ type Turn = 'idle' | 'player' | 'boss' | 'finished' | 'rancor_challenge';
 type BossCombatStatus = {
   burning: number;    // turnos de queimadura (DoT)
   bleeding: number;   // stacks de sangramento (DoT)
+  poison: number;     // turnos de veneno (DoT)
   wet: number;        // turnos molhado (habilita combo de raio)
   frozen: number;     // turnos congelado (boss perde o turno; físico estilhaça)
   vulnerable: number; // turnos vulnerável (+20% de dano recebido)
 };
-const EMPTY_BOSS_STATUS: BossCombatStatus = { burning: 0, bleeding: 0, wet: 0, frozen: 0, vulnerable: 0 };
+const EMPTY_BOSS_STATUS: BossCombatStatus = { burning: 0, bleeding: 0, poison: 0, wet: 0, frozen: 0, vulnerable: 0 };
 const normalizeBossStatus = (raw?: Partial<BossCombatStatus> | null): BossCombatStatus => ({
   burning: Math.max(0, Math.floor(Number(raw?.burning ?? 0)) || 0),
   bleeding: Math.max(0, Math.floor(Number(raw?.bleeding ?? 0)) || 0),
+  poison: Math.max(0, Math.floor(Number(raw?.poison ?? 0)) || 0),
   wet: Math.max(0, Math.floor(Number(raw?.wet ?? 0)) || 0),
   frozen: Math.max(0, Math.floor(Number(raw?.frozen ?? 0)) || 0),
   vulnerable: Math.max(0, Math.floor(Number(raw?.vulnerable ?? 0)) || 0),
@@ -1355,7 +1357,7 @@ export default function CombatArena({
       )}
 
       {/* Status de combate do boss (combos — roadmap #4) */}
-      {(bossStatus.burning || bossStatus.bleeding || bossStatus.wet || bossStatus.frozen || bossStatus.vulnerable) > 0 && (
+      {(bossStatus.burning || bossStatus.bleeding || bossStatus.poison || bossStatus.wet || bossStatus.frozen || bossStatus.vulnerable) > 0 && (
         <div className="mb-3 flex gap-2 flex-wrap">
           {bossStatus.frozen > 0 && (
             <span className="rounded-md border border-cyan-400/40 bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200">❄️ Congelado <span className="font-mono">{bossStatus.frozen}</span></span>
@@ -1368,6 +1370,9 @@ export default function CombatArena({
           )}
           {bossStatus.bleeding > 0 && (
             <span className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200">🩸 Sangrando <span className="font-mono">x{bossStatus.bleeding}</span></span>
+          )}
+          {bossStatus.poison > 0 && (
+            <span className="rounded-md border border-lime-500/40 bg-lime-500/10 px-2 py-1 text-xs text-lime-200">🧪 Envenenado <span className="font-mono">{bossStatus.poison}</span></span>
           )}
           {bossStatus.vulnerable > 0 && (
             <span className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">🎯 Vulnerável <span className="font-mono">{bossStatus.vulnerable}</span></span>

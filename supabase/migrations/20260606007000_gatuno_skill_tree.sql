@@ -1,0 +1,30 @@
+-- Árvore do Gatuno: Furtividade (marca/Vulnerável) + Sangramento (corte rápido) + Veneno (DoT).
+INSERT INTO public.skill_tree_nodes
+  (id, tree, branch, area, tier, cost, max_rank, node_type, name, description, effect, gate_points, prereq_node_id, exclusive_group, sort) VALUES
+  ('gt_punhal','gatuno','tronco','fisico',0,1,5,'skill','Punhalada','Ataque físico rápido, sem custo. Sobe de rank para mais dano.',
+     '{"kind":"skill","element":"neutro","power":32,"mpCost":0,"effectType":"dano","cooldown":1,"pct_per_rank":10}', 0, NULL, NULL, 0),
+  ('gt_furtivo','gatuno','furtividade','fisico',1,1,5,'skill','Golpe Furtivo','Ataque pelas costas que MARCA o alvo (Vulnerável: +dano recebido).',
+     '{"kind":"skill","element":"neutro","power":46,"mpCost":5,"effectType":"debuff","cooldown":2}', 1, 'gt_punhal', NULL, 1),
+  ('gt_fur_mod1','gatuno','furtividade','fisico',2,1,3,'passive','Caçador de Brechas','+10% de dano contra alvos Vulneráveis por rank.',
+     '{"kind":"mod","mod":"vs_status_dmg","status":"vulnerable","pct_per_rank":10}', 3, 'gt_furtivo', 'gt_fur', 2),
+  ('gt_fur_mod2','gatuno','furtividade','fisico',2,1,3,'passive','Letalidade','+7% de dano físico por rank.',
+     '{"kind":"mod","mod":"school_dmg","school":"fisico","pct_per_rank":7}', 3, 'gt_furtivo', 'gt_fur', 3),
+  ('gt_fur_var','gatuno','furtividade','fisico',3,2,1,'variant','Assassinato','Transforma Golpe Furtivo num golpe de execução com dano massivo.',
+     '{"kind":"variant","transform":"assassinato","bonus_pct":55}', 8, 'gt_furtivo', NULL, 4),
+  ('gt_retalhar','gatuno','sangramento','fisico',1,1,5,'skill','Retalhar','Cortes rápidos que provocam Sangramento (DoT crescente).',
+     '{"kind":"skill","element":"neutro","power":46,"mpCost":5,"effectType":"dano","cooldown":2}', 1, 'gt_punhal', NULL, 1),
+  ('gt_sang_mod1','gatuno','sangramento','fisico',2,1,3,'passive','Hemorragia','+10% de dano contra alvos Sangrando por rank.',
+     '{"kind":"mod","mod":"vs_status_dmg","status":"bleeding","pct_per_rank":10}', 3, 'gt_retalhar', 'gt_sang', 2),
+  ('gt_sang_mod2','gatuno','sangramento','fisico',2,1,3,'passive','Faca Afiada','+7% de dano físico por rank.',
+     '{"kind":"mod","mod":"school_dmg","school":"fisico","pct_per_rank":7}', 3, 'gt_retalhar', 'gt_sang', 3),
+  ('gt_sang_var','gatuno','sangramento','fisico',3,2,1,'variant','Estripar','Transforma Retalhar numa rajada de cortes profundos.',
+     '{"kind":"variant","transform":"estripar","bonus_pct":45}', 8, 'gt_retalhar', NULL, 4),
+  ('gt_veneno','gatuno','veneno','natureza',1,1,5,'skill','Lâmina Envenenada','Golpe peçonhento que aplica Veneno (dano por turno).',
+     '{"kind":"skill","element":"natureza","power":46,"mpCost":6,"effectType":"dano","cooldown":2}', 1, 'gt_punhal', NULL, 1),
+  ('gt_ven_mod1','gatuno','veneno','natureza',2,1,3,'passive','Toxina Potente','+10% de dano contra alvos Envenenados por rank.',
+     '{"kind":"mod","mod":"vs_status_dmg","status":"poison","pct_per_rank":10}', 3, 'gt_veneno', 'gt_ven', 2),
+  ('gt_ven_mod2','gatuno','veneno','natureza',2,1,2,'passive','Peçonha Persistente','Veneno dura +1 turno por rank.',
+     '{"kind":"mod","mod":"status_dur","status":"poison","turns_per_rank":1}', 3, 'gt_veneno', 'gt_ven', 3),
+  ('gt_ven_var','gatuno','veneno','natureza',3,2,1,'variant','Névoa Tóxica','Transforma Lâmina Envenenada numa nuvem de veneno em área.',
+     '{"kind":"variant","transform":"nevoa_toxica","aoe":true,"bonus_pct":40}', 8, 'gt_veneno', NULL, 4)
+ON CONFLICT (id) DO NOTHING;

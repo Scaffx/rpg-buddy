@@ -199,11 +199,13 @@ nova no estilo Diablo 4 — clusters por área que só abrem com **X pontos gast
 ### Árvores por classe (ordem do dono)
 - Página `/skill-tree` agora é **agnóstica de classe**: mostra a árvore da classe base do jogador
   (`profile.starter_class`); galhos renderizados dinamicamente; "em breve" se a classe não tem árvore. ✅
-- **Mago** ✅ · **Espadachim (guerreiro)** ✅ — Força (pesado), Sangramento (rápido, estilo ER),
-  Infusão de Fogo (embainhar a espada → golpe físico que aplica Queimadura).
-- ⏳ Próximas (nesta ordem): **Gatuno** (furtividade/veneno/sangramento), **Ferreiro**
-  (força/forja — ver economia abaixo), **Arqueiro** (precisão/flechas elementais), **Noviço**
-  (suporte/cura + sagrado vs mortos-vivos). Depois: evoluções (Sábio/Bruxo/Arquimago, etc.).
+- **Mago** ✅ · **Espadachim (guerreiro)** ✅ · **Gatuno** ✅ (Furtividade=marca/Vulnerável,
+  Sangramento=corte rápido, Veneno=DoT por natureza).
+- **Status Veneno** adicionado ao motor (`processar_turno` v29): DoT ~2%/turno, aplicado por
+  elemento `natureza`; passivos `vs_status_dmg`/`status_dur` de poison funcionam. ✅
+- ⏳ Próximas (nesta ordem): **Ferreiro** (força/forja — ver economia abaixo), **Arqueiro**
+  (precisão/flechas elementais), **Noviço** (suporte/cura + sagrado vs mortos-vivos).
+  Depois: evoluções (Sábio/Bruxo/Arquimago, etc.).
 
 ### Ferreiro — fabricação exclusiva de armas (spec co-desenvolvido 2026-06-06) ⏳
 Base existente: crafting por receitas para classes `Alquimista/Mecânico/Mestre-Ferreiro/Criador`

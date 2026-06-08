@@ -105,6 +105,7 @@ type SkillElement = 'fogo' | 'gelo' | 'sagrado' | 'trevas' | 'natureza' | 'agua'
 type CombatStatus = {
   burning: number;    // turnos restantes de queimadura (DoT)
   bleeding: number;   // stacks de sangramento (DoT que decai 1/turno)
+  poison: number;     // turnos de veneno (DoT — Gatuno/natureza)
   wet: number;        // turnos de molhado (habilita combo de raio)
   frozen: number;     // turnos congelado (boss perde o turno; físico estilhaça)
   vulnerable: number; // turnos vulnerável (boss recebe +20% de dano)
@@ -116,6 +117,7 @@ const parseCombatStatus = (raw: unknown): CombatStatus => {
   return {
     burning: n(obj.burning),
     bleeding: Math.min(5, n(obj.bleeding)),
+    poison: n(obj.poison),
     wet: n(obj.wet),
     frozen: n(obj.frozen),
     vulnerable: n(obj.vulnerable),
@@ -178,7 +180,7 @@ const detectSkillElement = (text: string): SkillElement => {
   // Raio/eletricidade: depois de "sagrado" para não capturar "raio sereno" (clérigo).
   if (/rel[âa]mpago|trov[aã]o|eletr|choque|descarga|volt|fulmin|tesla/.test(t)) return 'raio';
   if (/trevas|sombra|escurid|abismo|necro|amaldi/.test(t)) return 'trevas';
-  if (/natur|raiz|seiva|verde|floresta|veneno|toxic/.test(t)) return 'natureza';
+  if (/natur|raiz|seiva|verde|floresta|veneno|toxic|peçonh/.test(t)) return 'natureza';
   if (/agua|onda|mare|tsun|aqu/.test(t)) return 'agua';
   if (/arcan|lucid|vetor|runa|magic|mistic/.test(t)) return 'arcano';
   return 'neutro';
@@ -670,6 +672,12 @@ Deno.serve(async (req) => {
       comboLog.push(`bleeding:${d}`);
       nextStatus.bleeding = incomingStatus.bleeding - 1;
     }
+    if (incomingStatus.poison > 0) {
+      const d = Math.max(1, Math.ceil(maxBossHp * 0.02));
+      dotDamage += d;
+      comboLog.push(`poison:${d}`);
+      nextStatus.poison = incomingStatus.poison - 1;
+    }
 
     // (b) Combos no golpe deste turno (apenas em golpes de dano)
     let comboStun = false;
@@ -699,7 +707,7 @@ Deno.serve(async (req) => {
 
     // Passivos da árvore: +% dano contra alvos COM status (ex.: Penetração vs Vulnerável).
     if (danoPlayer > 0) {
-      for (const st of ['bleeding', 'burning', 'wet', 'frozen', 'vulnerable'] as const) {
+      for (const st of ['bleeding', 'burning', 'poison', 'wet', 'frozen', 'vulnerable'] as const) {
         const p = treeMods.vsStatusDmg[st] || 0;
         if (p > 0 && (incomingStatus as any)[st] > 0) danoPlayer = Math.floor(danoPlayer * (1 + p / 100));
       }
@@ -722,6 +730,10 @@ Deno.serve(async (req) => {
         if (incomingStatus.wet > 0 || nextStatus.wet > 0) { nextStatus.wet = 0; comboLog.push('steam'); } // evapora
         nextStatus.burning = Math.max(nextStatus.burning, 3 + (treeMods.statusDur.burning || 0));
         comboLog.push('apply:burning');
+      }
+      if (playerElement === 'natureza') {
+        nextStatus.poison = Math.max(nextStatus.poison, 3 + (treeMods.statusDur.poison || 0));
+        comboLog.push('apply:poison');
       }
       // Sangramento: golpe físico cortante empilha (DoT crescente)
       if (isPhysicalSkill && /corte|l[âa]mina|garra|retalh|lacer|sangr|talho|navalha|estocada|fenda/.test(skillText)) {
