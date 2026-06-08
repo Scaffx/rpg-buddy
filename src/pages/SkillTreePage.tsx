@@ -37,7 +37,7 @@ const BRANCH_META: Record<string, { emoji: string; color: string; ring: string }
 // Ordem de preferência dos galhos (os demais entram depois, na ordem do banco).
 const BRANCH_ORDER = ['forca', 'fisico', 'sangramento', 'fogo', 'gelo', 'raio', 'arcano', 'veneno', 'furtividade', 'precisao', 'infusao', 'defesa', 'sagrado', 'suporte', 'forja'];
 
-export default function SkillTreePage() {
+export default function SkillTreePage({ embedded }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const { data: profile } = useProfile();
   // Árvore da CLASSE base do jogador (mago/guerreiro/gatuno/ferreiro/arqueiro/novato).
@@ -155,8 +155,7 @@ export default function SkillTreePage() {
 
   const Connector = () => <div className="w-px h-4 bg-border mx-auto" />;
 
-  return (
-    <AppLayout>
+  const content = (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
           <Network className="w-6 h-6 text-primary" />
@@ -234,6 +233,6 @@ export default function SkillTreePage() {
           <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-primary" /> {t('app.skilltree.legend_phase2')}</span>
         </div>
       </div>
-    </AppLayout>
   );
+  return embedded ? content : <AppLayout>{content}</AppLayout>;
 }

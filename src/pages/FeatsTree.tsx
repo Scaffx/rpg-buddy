@@ -152,7 +152,7 @@ const FALLBACK_TALENTS: Talent[] = [
   { id: 'mock-fotossintese', nome: 'Fotossintese', descricao: 'Recuperacao leve passiva de energia ao longo do dia.', efeito: 'fotossintese' },
 ];
 
-export default function FeatsTree() {
+export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const { data: profile } = useProfile();
   const { data: available = [] } = useAvailableTalents();
@@ -271,8 +271,7 @@ export default function FeatsTree() {
     );
   };
 
-  return (
-    <AppLayout>
+  const content = (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
           <Sparkles className="w-6 h-6 text-primary" />
@@ -346,6 +345,6 @@ export default function FeatsTree() {
           </div>
         ))}
       </div>
-    </AppLayout>
   );
+  return embedded ? content : <AppLayout>{content}</AppLayout>;
 }

@@ -125,6 +125,7 @@
       "classes": "Classes",
       "talents": "Talents",
       "skill_tree": "Combat Tree",
+      "habilidades": "Skills",
       "shop": "Shop",
       "npc_missions": "NPC Quests",
       "health": "Health",
@@ -774,6 +775,22 @@
       "err_prereq": "Invest in the previous node first.",
       "err_max": "This node is already at max rank.",
       "err_generic": "Couldn't invest right now."
+    },
+    "habhub": {
+      "title": "Skills",
+      "tab_tree": "Tree",
+      "tab_loadout": "Loadout",
+      "tab_talents": "Life Talents",
+      "loadout_title": "Combat Loadout",
+      "mode_limits": "Equipped per mode — Solo: {{solo}} · Dungeon: {{dungeon}} · Event: {{event}}",
+      "loadout_saved": "Loadout saved!",
+      "loadout_error": "Error saving loadout",
+      "loadout_full": "Loadout full (max {{max}})",
+      "saving": "Saving…",
+      "save": "Save loadout",
+      "remove": "Remove",
+      "add": "Add",
+      "deck_full": "Deck full"
     },
     "feats": {
       "page_title": "Talents",

@@ -35,8 +35,7 @@ const navGroups = [
       { key: 'profile',   url: '/profile', icon: User },
       { key: 'dashboard', url: '/',         icon: LayoutGrid },
       { key: 'classes',   url: '/classes',  icon: Swords },
-      { key: 'talents',   url: '/feats',    icon: Sparkles },
-      { key: 'skill_tree', url: '/skill-tree', icon: Network },
+      { key: 'habilidades', url: '/habilidades', icon: Network },
     ],
   },
   {

@@ -277,10 +277,16 @@ Feedback do dono: (1) "habilidades" está espalhada (Perfil/loadout, Árvore, Ta
 - **2 itens combinam elementos** (ex.: arma de gelo + foco de raio → molhado+raio=Choque).
 
 ### Plano faseado
-- **A) Hub único** (abas Árvore/Loadout/Talentos): extrair o loadout do Perfil e os talentos do
-  Feats para componentes reutilizáveis e compor numa página `/habilidades`. (Sem reescrever combate.)
+- **A) Hub único** ✅: página `/habilidades` com 3 abas (Árvore · Loadout · Talentos). Menu unificado
+  numa entrada "Habilidades". `SkillTreePage`/`FeatsTree` ganharam modo `embedded`; novo
+  `<CombatLoadout/>` (loadout enxuto, fonte única) + hook `useHeroClass`. Rotas `/feats` e
+  `/skill-tree` seguem válidas (back-compat). ⏳ Pendência menor: remover a cópia do loadout do Perfil
+  (hoje duplicada lá) — o hub já é o lugar oficial.
 - **B) Armas → skills (Cinzas de Guerra):** `game_items` ganham `weapon_skill` + `element`/afinidade;
   o loadout passa a incluir a skill da arma equipada; combate lê o elemento da arma.
+  - Cada arma pode ter **passiva(s)** (ex.: sangramento/afinidade) **+ uma habilidade própria**
+    (ex.: golpe carregado/"porrada"). Algumas armas dão um **poder rúnico menor** (fogo/raio) —
+    assim um herói **físico** (não-mago) ganha um toque mágico leve via a arma (não OP, só sabor/utilidade).
   **Re-tematizar as árvores:** mover as skills marciais (golpe furtivo, corte sangrento, martelada…)
   para skills de ARMA; árvores de classe ficam com identidade certa (mago=magia; sangramento do
   mago vira magia). As árvores atuais NÃO se perdem — são refatoradas.

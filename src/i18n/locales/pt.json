@@ -125,6 +125,7 @@
       "classes": "Classes",
       "talents": "Talentos",
       "skill_tree": "Árvore de Combate",
+      "habilidades": "Habilidades",
       "shop": "Loja",
       "npc_missions": "Missões de NPC",
       "health": "Saúde",
@@ -774,6 +775,22 @@
       "err_prereq": "Invista no nó anterior primeiro.",
       "err_max": "Este nó já está no rank máximo.",
       "err_generic": "Não foi possível investir agora."
+    },
+    "habhub": {
+      "title": "Habilidades",
+      "tab_tree": "Árvore",
+      "tab_loadout": "Loadout",
+      "tab_talents": "Talentos de Vida",
+      "loadout_title": "Loadout de Combate",
+      "mode_limits": "Equipadas por modo — Solo: {{solo}} · Masmorra: {{dungeon}} · Evento: {{event}}",
+      "loadout_saved": "Loadout salvo!",
+      "loadout_error": "Erro ao salvar o loadout",
+      "loadout_full": "Loadout cheio (máx {{max}})",
+      "saving": "Salvando…",
+      "save": "Salvar loadout",
+      "remove": "Remover",
+      "add": "Adicionar",
+      "deck_full": "Deck cheio"
     },
     "feats": {
       "page_title": "Talentos",
