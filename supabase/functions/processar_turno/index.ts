@@ -410,7 +410,10 @@ Deno.serve(async (req) => {
 
     // Server-side validation: bloquear habilidades pagas com custo de MP maior que o MP atual.
     // O cliente envia current_mp; se ausente, assumimos custo 0 (Ataque Básico).
-    const requestedSkillPower = Math.max(0, toNumber(body.skill_power, 0));
+    // Clamp interino (Bloco 1 #2): maior power legítimo hoje ≈ 90 (rank 5); 120 dá folga.
+    // O fix definitivo (servidor resolve a skill por posse real) vem no Bloco 3.
+    // ANTES: const requestedSkillPower = Math.max(0, toNumber(body.skill_power, 0));
+    const requestedSkillPower = clamp(toNumber(body.skill_power, 0), 0, 120);
     const requestedSkillCost = body.skill_mp_cost !== undefined
       ? Math.max(0, toNumber(body.skill_mp_cost, 0))
       : getSkillMpCost(requestedSkillPower);
@@ -444,7 +447,7 @@ Deno.serve(async (req) => {
           boss_id,
           boss_status,
           personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel),
-          bosses!combates_ativos_boss_id_fkey(id, name, ataque_base, defesa_base, level, hp, element, skills, signature_item_name)
+          bosses!combates_ativos_boss_id_fkey(id, name, ataque_base, defesa_base, level, hp, element, skills, signature_item_name, xp_reward, gold_reward)
         `,
       )
       .eq('id', combateId)
@@ -567,8 +570,9 @@ Deno.serve(async (req) => {
         .update({ inspired_available: false, inspired_earned_at: null })
         .eq('user_id', user.id);
     }
+    // ANTES: ataque_base + floor(max(0, toNumber(body.skill_power, 0)) * 0.22)  ← power cru do body, sem clamp
     const playerAttackBase =
-      combat.personagens.ataque_base + Math.floor(Math.max(0, toNumber(body.skill_power, 0)) * 0.22);
+      combat.personagens.ataque_base + Math.floor(requestedSkillPower * 0.22);
     const effectiveBossDefense =
       combat.bosses.defesa_base + (bossItemEnabled ? Math.floor(toNumber(bossItem?.def_bonus, 0) * 0.5) : 0);
 
@@ -587,6 +591,8 @@ Deno.serve(async (req) => {
       actualBossDefense,
       2 * playerSkill.damageMultiplier,
     );
+    // Referência pré-bônus para o teto da cadeia multiplicativa (Bloco 1 #4).
+    const baseDanoPosDefesa = danoPlayer;
 
     // ── Boss MECHANICS APPLIED TO PLAYER DAMAGE ──────────────────────────
     const bossEffectLog: string[] = [...bossSkill.effects];
@@ -711,6 +717,16 @@ Deno.serve(async (req) => {
         const p = treeMods.vsStatusDmg[st] || 0;
         if (p > 0 && (incomingStatus as any)[st] > 0) danoPlayer = Math.floor(danoPlayer * (1 + p / 100));
       }
+    }
+
+    // Teto de segurança da cadeia de bônus multiplicativos (Bloco 1 #4).
+    // Máximo legítimo com a árvore atual ≈ ×7.3 — o cap NÃO nerfa combos,
+    // só corta o caso degenerado/exploit (mesma família do bug antigo de
+    // multiplicação sem teto). ANTES: sem teto.
+    const DAMAGE_CHAIN_CAP = 8;
+    if (danoPlayer > baseDanoPosDefesa * DAMAGE_CHAIN_CAP) {
+      danoPlayer = Math.floor(baseDanoPosDefesa * DAMAGE_CHAIN_CAP);
+      bossEffectLog.push(`chain_cap:${DAMAGE_CHAIN_CAP}x`);
     }
 
     // (c) Decaimento natural dos status NÃO consumidos por combo
@@ -1005,9 +1021,11 @@ Deno.serve(async (req) => {
           won: true,
         });
 
-        // Grant XP and gold rewards on first victory
-        const xpReward = Math.max(50, bossLevel * 30);
-        const goldReward = Math.max(10, bossLevel * 5);
+        // Grant XP and gold rewards on first victory — fonte única: linha do boss
+        // no banco (é o que a UI anuncia). Bloco 1 #3.
+        // ANTES: xpReward = Math.max(50, bossLevel * 30); goldReward = Math.max(10, bossLevel * 5);
+        const xpReward = Math.max(50, toNumber((combat.bosses as any)?.xp_reward, bossLevel * 30));
+        const goldReward = Math.max(10, toNumber((combat.bosses as any)?.gold_reward, bossLevel * 5));
 
         const { data: profileRewards } = await supabase
           .from('profiles')
@@ -1017,7 +1035,11 @@ Deno.serve(async (req) => {
 
         if (profileRewards) {
           const newXp = toNumber(profileRewards.total_xp, 0) + xpReward;
-          const newLevel = Math.max(toNumber(profileRewards.level, 1), Math.floor(newXp / 200) + 1);
+          // Curva canônica (quadrática) via get_level_from_xp; Math.max garante
+          // que nunca rebaixa nível já alcançado. Bloco 1 #1.
+          // ANTES: const newLevel = Math.max(toNumber(profileRewards.level, 1), Math.floor(newXp / 200) + 1);
+          const { data: canonicalLevel } = await supabase.rpc('get_level_from_xp', { p_xp: newXp });
+          const newLevel = Math.max(toNumber(profileRewards.level, 1), toNumber(canonicalLevel, 1));
           await supabase
             .from('profiles')
             .update({ total_xp: newXp, level: newLevel })
