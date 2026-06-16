@@ -13,7 +13,7 @@ import { useSkillTreeNodes, usePlayerSkillNodes } from '@/hooks/useSkillTree';
 // Loadout LIVRE: sem teto rígido. O jogador leva todas as skills que desbloqueou;
 // o balanceio vem da PROFUNDIDADE da árvore (focar/maxar 2 elementos > espalhar).
 const EFFECT_ICON: Record<string, string> = { dano: '⚔️', heal: '💚', buff: '🛡️', debuff: '🔻', cc: '⚡', utility: '✨' };
-const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe', tree: 'Árvore', weapon: 'Arma' };
+const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe', tree: 'Árvore', weapon: 'Arma', cinza: 'Cinza' };
 
 /** Editor de loadout de combate — fonte única usada no hub de Habilidades. */
 export default function CombatLoadout() {
@@ -24,6 +24,7 @@ export default function CombatLoadout() {
   const { starterClass } = useHeroClass();
 
   const { data: treeNodes = [] } = useSkillTreeNodes(starterClass);
+  const { data: cinzaNodes = [] } = useSkillTreeNodes('cinzas');
   const { data: treeRanks = {} } = usePlayerSkillNodes();
   const { data: inventory = [] } = useInventory();
 
@@ -70,8 +71,42 @@ export default function CombatLoadout() {
       });
   }, [treeNodes, treeRanks]);
 
-  // Apenas skills da ÁRVORE + da ARMA equipada (sem skills legadas fora da árvore).
-  const allSkills = useMemo(() => [...weaponSkills, ...treeSkills], [weaponSkills, treeSkills]);
+  // Elemento/tipo da ARMA equipada — usado para liberar Cinzas compatíveis.
+  const equippedWeapon = useMemo(() => {
+    const inv = (inventory || []).find((i: any) => i.equipped && (i.game_items as any)?.category === 'weapon');
+    const gi: any = inv?.game_items || null;
+    return gi ? { element: String(gi.weapon_element || 'neutro'), type: String(gi.weapon_type || '') } : null;
+  }, [inventory]);
+
+  // Cinzas de Guerra: artes aprendidas (player_skill_nodes, tree='cinzas') que SÓ aparecem
+  // quando a arma compatível (elemento e/ou tipo) está equipada — o servidor reforça o gate.
+  const cinzaSkills = useMemo(() => {
+    return (cinzaNodes || [])
+      .filter((n: any) => n.node_type === 'skill' && (treeRanks[n.id] || 0) >= 1)
+      .filter((n: any) => {
+        const reqType = (n as any).requires_weapon_type;
+        const reqEl = (n as any).requires_weapon_element;
+        if (reqType && (!equippedWeapon || equippedWeapon.type !== reqType)) return false;
+        if (reqEl && (!equippedWeapon || equippedWeapon.element !== reqEl)) return false;
+        return true;
+      })
+      .map((n: any) => {
+        const eff: any = n.effect || {};
+        const rank = treeRanks[n.id] || 1;
+        const pct = Number(eff.pct_per_rank ?? 0);
+        const power = Math.round(Number(eff.power ?? 30) * (1 + (rank - 1) * pct / 100));
+        const element = String(eff.element || 'neutro');
+        return {
+          id: n.id, name: n.name, power, cooldown: Number(eff.cooldown ?? 2),
+          category: element === 'fisico' ? 'fisica' : 'magica', tier: 'cinza',
+          mpCost: Number(eff.mpCost ?? 0), effectType: String(eff.effectType || 'dano'),
+          effectLabel: n.description, element, archetype: 'Cinza de Guerra', unlocked: true, _src: 'cinza',
+        } as any;
+      });
+  }, [cinzaNodes, treeRanks, equippedWeapon]);
+
+  // Skills da ÁRVORE + ARMA equipada + CINZAS compatíveis (sem skills legadas fora da árvore).
+  const allSkills = useMemo(() => [...weaponSkills, ...treeSkills, ...cinzaSkills], [weaponSkills, treeSkills, cinzaSkills]);
 
   const unlockedById = useMemo(() => new Map(allSkills.filter((s) => s.unlocked).map((s) => [s.id, s])), [allSkills]);
 

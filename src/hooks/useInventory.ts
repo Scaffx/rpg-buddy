@@ -82,6 +82,24 @@ export function useInventory() {
   });
 }
 
+/** Usa um Pergaminho (server-authoritative): aprende a Cinza de Guerra e consome o item. */
+export function useUseScroll() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (scrollItemId: string) => {
+      if (!user) throw new Error('Não autenticado');
+      const { data, error } = await db.rpc('use_scroll', { p_scroll_item_id: scrollItemId });
+      if (error) throw error;
+      return data as { ok: boolean; learned_node: string };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['player_skill_nodes', user?.id] });
+    },
+  });
+}
+
 /** Calculate total bonuses from equipped items */
 export function getEquipmentBonuses(inventory: InventoryItem[]): EquipmentBonuses {
   const equipped = inventory.filter((inv) => {

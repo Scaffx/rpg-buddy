@@ -12,7 +12,7 @@ import {
   useClaimAchievement,
 } from "@/hooks/useAchievements";
 import { useGoldBalance } from "@/hooks/useGold";
-import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
+import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useUseScroll, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { useSkillTreeNodes, usePlayerSkillNodes } from "@/hooks/useSkillTree";
 import { supabase } from "@/integrations/supabase/client";
 import { setVolume } from "@/lib/sfx";
@@ -815,6 +815,7 @@ export default function ProfilePage() {
   const toggleEquip = useToggleEquip();
   const toggleAttunement = useToggleAttunement();
   const consumeItem = useConsumeItem();
+  const useScroll = useUseScroll();
   const claimStarterKit = useClaimStarterKit();
   const equipBonuses = getEquipmentBonuses(inventory as InventoryItem[]);
   const awardHealthXP = useAwardHealthXP();
@@ -2436,6 +2437,48 @@ export default function ProfilePage() {
                                   className="w-full px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded hover:bg-emerald-500/30 transition-colors font-medium"
                                 >
                                   {t('app.profile.useItemButton')}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Pergaminhos (Cinzas de Guerra) — aprende a arte via use_scroll (server-authoritative) */}
+                  {(() => {
+                    const scrolls = (inventory as InventoryItem[]).filter(inv => inv.game_items?.category === 'scroll');
+                    if (scrolls.length === 0) return null;
+                    return (
+                      <div className="space-y-3 border-t border-border pt-4">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <span>📜</span> Pergaminhos
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {scrolls.map((inv) => {
+                            const item = inv.game_items;
+                            return (
+                              <div key={inv.id} className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-2xl">{item.icon}</span>
+                                    <div>
+                                      <p className="font-bold text-foreground text-sm">{item.name}</p>
+                                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-lg font-bold text-primary">x{inv.quantity}</span>
+                                </div>
+                                <button
+                                  onClick={() => useScroll.mutate(inv.item_id, {
+                                    onSuccess: () => toast.success('Cinza de Guerra aprendida!'),
+                                    onError: (e: any) => toast.error(e?.message || 'Falha ao usar pergaminho'),
+                                  })}
+                                  disabled={useScroll.isPending}
+                                  className="w-full px-2 py-1 bg-amber-500/20 text-amber-300 text-xs rounded hover:bg-amber-500/30 transition-colors font-medium disabled:opacity-60"
+                                >
+                                  Aprender Cinza
                                 </button>
                               </div>
                             );
