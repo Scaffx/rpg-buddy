@@ -354,6 +354,83 @@ const canBossUseItem = (boss: CombatRow['bosses'], item: BossItem | null): boole
   return toNumber(boss.level, 1) >= requiredLevel;
 };
 
+// ── Resolução server-authoritative da skill (Bloco 3 — Cinzas/Pergaminhos) ───────
+// Lê power/element/cost do BANCO (nunca do body). Verifica posse (player_skill_nodes)
+// e, p/ Cinzas de Guerra, a arma exigida (elemento e/ou tipo) equipada. Lança erro
+// p/ skill não autorizada. Mantém paridade de escala-por-rank com o cliente.
+const resolvePlayerSkill = async (
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  body: ProcessarTurnoBody,
+): Promise<{ power: number; mpCost: number; element: string; effectType: string; name: string }> => {
+  const skillId = String(body.skill_id || '');
+  const power0 = Math.max(0, toNumber(body.skill_power, 0));
+
+  // Arma equipada: afinidade do básico, gate de Cinza e arte inata
+  const { data: invRows } = await supabase
+    .from('user_inventory')
+    .select('item_id, equipped, game_items(name, category, weapon_type, weapon_element, weapon_skill)')
+    .eq('user_id', userId)
+    .eq('equipped', true);
+  const weapon = (invRows || [])
+    .map((r: any) => r.game_items)
+    .find((g: any) => g && g.category === 'weapon') || null;
+  const weaponElement = String(weapon?.weapon_element || 'neutro');
+
+  // Ataque básico (sem skill paga): livre, elemento = afinidade da arma equipada
+  if (!skillId || power0 <= 0) {
+    return { power: 0, mpCost: 0, element: weaponElement, effectType: 'dano', name: 'Ataque Basico' };
+  }
+
+  // (1) Skill da árvore / Cinza de Guerra (skill_id === skill_tree_nodes.id)
+  const { data: node } = await supabase
+    .from('skill_tree_nodes')
+    .select('effect, requires_weapon_element, requires_weapon_type')
+    .eq('id', skillId)
+    .maybeSingle();
+  if (node) {
+    const { data: owned } = await supabase
+      .from('player_skill_nodes')
+      .select('rank')
+      .eq('user_id', userId)
+      .eq('node_id', skillId)
+      .maybeSingle();
+    if (!owned) throw new Error('SKILL_NOT_OWNED');
+    if ((node as any).requires_weapon_type && (!weapon || weapon.weapon_type !== (node as any).requires_weapon_type))
+      throw new Error('WEAPON_TYPE_REQUIRED');
+    if ((node as any).requires_weapon_element && (!weapon || weapon.weapon_element !== (node as any).requires_weapon_element))
+      throw new Error('WEAPON_ELEMENT_REQUIRED');
+    const e: any = (node as any).effect || {};
+    const rank = Math.max(1, toNumber((owned as any).rank, 1));
+    const pct = toNumber(e.pct_per_rank, 10);
+    const basePower = Math.max(0, toNumber(e.power, 0));
+    const power = Math.round(basePower * (1 + (rank - 1) * pct / 100)); // paridade c/ cliente
+    return {
+      power,
+      mpCost: Math.max(0, toNumber(e.mpCost, getSkillMpCost(power))),
+      element: String(e.element || 'neutro'),
+      effectType: String(e.effectType || 'dano'),
+      name: String(body.skill_name || 'Habilidade'),
+    };
+  }
+
+  // (2) Arte INATA da arma equipada (skill_id 'weapon_…'; casa pelo nome do weapon_skill)
+  const ws: any = weapon?.weapon_skill || null;
+  if (ws && String(ws.name || '') === String(body.skill_name || '')) {
+    const power = Math.max(0, toNumber(ws.power, 0));
+    return {
+      power,
+      mpCost: Math.max(0, toNumber(ws.mpCost, getSkillMpCost(power))),
+      element: String(ws.element || weaponElement),
+      effectType: String(ws.effectType || 'dano'),
+      name: String(ws.name),
+    };
+  }
+
+  // Skill paga sem posse comprovada → rejeita (sem fallback silencioso)
+  throw new Error('SKILL_NOT_AUTHORIZED');
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -407,6 +484,26 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // ── Bloco 3: resolução server-authoritative da skill ──────────────────────────
+    // Lê power/element/cost do banco e VERIFICA posse + arma exigida. Sobrescreve o
+    // body com os valores reais; tudo downstream passa a usar valores confiáveis.
+    // (Saldo de MP ainda vem do body — débito/regen server-side é o fix #1, separado,
+    //  pois deduzir sem regen no servidor causaria death-spiral de mana.)
+    let resolvedSkill;
+    try {
+      resolvedSkill = await resolvePlayerSkill(supabase, user.id, body);
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'skill_not_authorized', message: (e as Error).message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    body.skill_power = resolvedSkill.power;
+    body.skill_mp_cost = resolvedSkill.mpCost;
+    body.skill_element = resolvedSkill.element;
+    body.skill_effect_type = resolvedSkill.effectType as ProcessarTurnoBody['skill_effect_type'];
+    body.skill_name = resolvedSkill.name;
 
     // Server-side validation: bloquear habilidades pagas com custo de MP maior que o MP atual.
     // O cliente envia current_mp; se ausente, assumimos custo 0 (Ataque Básico).
