@@ -317,6 +317,24 @@ export function useAdoptSkeletonPup() {
   });
 }
 
+/** Equipa arma/armadura no companheiro de combate (slots separados). Consumido pela RPC companion_act. */
+export function useEquipCompanionGear() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ companionId, weaponId, armorId }: { companionId: string; weaponId: string | null; armorId: string | null }) => {
+      if (!user) throw new Error('Não autenticado');
+      const { error } = await (supabase as any)
+        .from('companions')
+        .update({ equipped_weapon_id: weaponId, equipped_armor_id: armorId })
+        .eq('id', companionId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
+  });
+}
+
 export type ShopPet = {
   pet_type: string; name: string; emoji: string; role: string;
   atk: number; def: number; hp: number; mp: number; price: number; sort: number;

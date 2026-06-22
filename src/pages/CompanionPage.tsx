@@ -12,6 +12,7 @@ import AppLayout from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useAllCompanions,
@@ -30,12 +31,54 @@ import {
   isCombatCompanion,
   COMBAT_COMPANION_META,
   getCompanionEffectiveAtk,
+  useEquipCompanionGear,
   type CompanionRow,
 } from '@/hooks/useCompanion';
 import { useHeroStoryChoices } from '@/hooks/useHeroStoryChoices';
 
 const FEED_COOLDOWN_MIN = 180;
 const PLAY_COOLDOWN_MIN = 60;
+
+/** Equipar arma (arte/Cinza) + armadura (guarda) no companheiro de combate. */
+function CompanionGear({ companion }: { companion: CompanionRow }) {
+  const { data: inventory = [] } = useInventory();
+  const equip = useEquipCompanionGear();
+  const weapons = (inventory as InventoryItem[]).filter((i) => i.game_items?.category === 'weapon');
+  const armors = (inventory as InventoryItem[]).filter((i) => i.game_items?.category === 'armor');
+  const wId = String((companion as any).equipped_weapon_id ?? '');
+  const aId = String((companion as any).equipped_armor_id ?? '');
+  const save = (weaponId: string | null, armorId: string | null) =>
+    equip.mutate(
+      { companionId: companion.id, weaponId, armorId },
+      { onSuccess: () => toast.success('Equipamento do companheiro atualizado'), onError: (e: any) => toast.error(e?.message || 'Falha ao equipar') },
+    );
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2">
+      <label className="block text-[10px] text-muted-foreground space-y-1">
+        🗡️ Arma (arte/Cinza)
+        <select
+          className="mt-0.5 w-full rounded bg-muted/40 border border-border/40 text-xs p-1 text-foreground"
+          value={wId}
+          onChange={(e) => save(e.target.value || null, aId || null)}
+        >
+          <option value="">— nenhuma —</option>
+          {weapons.map((i) => <option key={i.id} value={i.item_id}>{i.game_items?.name}</option>)}
+        </select>
+      </label>
+      <label className="block text-[10px] text-muted-foreground space-y-1">
+        🛡️ Armadura (guarda)
+        <select
+          className="mt-0.5 w-full rounded bg-muted/40 border border-border/40 text-xs p-1 text-foreground"
+          value={aId}
+          onChange={(e) => save(wId || null, e.target.value || null)}
+        >
+          <option value="">— nenhuma —</option>
+          {armors.map((i) => <option key={i.id} value={i.item_id}>{i.game_items?.name}</option>)}
+        </select>
+      </label>
+    </div>
+  );
+}
 
 // ─── Level gate ────────────────────────────────────────────────────────────────────────────
 
@@ -312,6 +355,7 @@ function CompanionCard({
               </div>
             </div>
           )}
+          <CompanionGear companion={companion} />
         </div>
       )}
 
