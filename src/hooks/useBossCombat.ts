@@ -219,11 +219,30 @@ export function useStartActiveCombat() {
       const level = Math.max(1, profile?.level || 1);
       const totalXp = Math.max(0, profile?.total_xp || 0);
 
+      // Stats de combate por ATRIBUTO, CALIBRADOS (1.0). Antes: level-only (120+8L / 14+2L / 8+1.4L),
+      // que tornava o combate on-level injogável após ~lvl13 (DPS do boss escalava ~3x o EHP do player).
+      // Blend = base de nível (on-target p/ 4-10 turnos) + fração do bônus de atributo
+      // (ATK 0.45 / DEF 0.35 / HP 0.80, calibrado no modelo determinístico). NÃO usa o stat cru de
+      // getPlayerCombatStats (que estoura: boss morre em ~3 turnos e toma 1 de dano pelo penhasco da DEF).
+      const { data: attrs, error: attrsError } = await supabase
+        .from('attributes')
+        .select('name, level')
+        .eq('user_id', user.id);
+      if (attrsError) throw attrsError;
+      const cs = getPlayerCombatStats(level, getAttributeLevels((attrs || []) as any[]));
+      const attrOff = Math.max(cs.atk - level * 4, cs.matk - level * 3); // bônus ofensivo de atributo
+      const attrDef = cs.def - level * 3;                                // bônus defensivo de atributo
+      const attrHp  = cs.hp - (100 + level * 12);                        // bônus de HP de atributo
+      const ataqueBaseCalc = Math.round((14 + level * 2) + 0.45 * attrOff);
+      const defesaBaseCalc = Math.round((8 + level * 1.4) + 0.35 * attrDef);
+      const hpMaxCalc      = Math.round((100 + level * 12) + 0.80 * attrHp);
+      const mpMaxCalc      = Math.max(10, Math.round(Number((cs as any).mp) || 40)); // mana p/ refill por combate
+
       const personagemPayload = {
         id: user.id,
-        hp_max: 120 + level * 8,
-        ataque_base: 14 + level * 2,
-        defesa_base: 8 + Math.floor(level * 1.4),
+        hp_max: hpMaxCalc,
+        ataque_base: ataqueBaseCalc,
+        defesa_base: defesaBaseCalc,
         nivel: level,
         xp_atual: totalXp,
       };
@@ -339,12 +358,16 @@ export function useStartActiveCombat() {
       const hpAtualPersistido = Number(healthStats?.current_hp ?? hpMaxPersonagem);
       const hpInicialPersonagem = Math.max(1, Math.min(hpMaxPersonagem, hpAtualPersistido));
 
+      // Mana é recurso POR COMBATE: reabastece ao máximo (por atributo) no início de cada luta.
+      // Isso evita death-spiral (sem regen server-side) e skills incastáveis (custo > pool).
       if (healthStats) {
         const { error: updateHealthError } = await supabase
           .from('user_health_stats')
           .update({
             max_hp: hpMaxPersonagem,
             current_hp: hpInicialPersonagem,
+            max_mp: mpMaxCalc,
+            current_mp: mpMaxCalc,
           })
           .eq('user_id', user.id);
 
@@ -356,6 +379,8 @@ export function useStartActiveCombat() {
             user_id: user.id,
             max_hp: hpMaxPersonagem,
             current_hp: hpInicialPersonagem,
+            max_mp: mpMaxCalc,
+            current_mp: mpMaxCalc,
             fatigue: 0,
           });
 

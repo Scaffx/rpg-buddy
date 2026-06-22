@@ -44,6 +44,7 @@ type CombatRow = {
     ataque_base: number;
     defesa_base: number;
     nivel: number;
+    hp_max: number;
   } | null;
   bosses: {
     id: string;
@@ -511,7 +512,11 @@ Deno.serve(async (req) => {
     const requestedSkillCost = body.skill_mp_cost !== undefined
       ? Math.max(0, toNumber(body.skill_mp_cost, 0))
       : getSkillMpCost(requestedSkillPower);
-    const currentMp = Math.max(0, toNumber(body.current_mp, 0));
+    // MP server-authoritative (1.0): saldo REAL do banco, não do body. Mana é recurso POR COMBATE
+    // (reabastecida ao máximo no início da luta pelo cliente), então o gate aqui é confiável.
+    const { data: mpRow } = await supabase
+      .from('user_health_stats').select('current_mp').eq('user_id', user.id).maybeSingle();
+    const currentMp = Math.max(0, toNumber(mpRow?.current_mp, 0));
 
     if (requestedSkillCost > 0 && requestedSkillCost > currentMp) {
       return new Response(
@@ -540,7 +545,7 @@ Deno.serve(async (req) => {
           status,
           boss_id,
           boss_status,
-          personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel),
+          personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel, hp_max),
           bosses!combates_ativos_boss_id_fkey(id, name, ataque_base, defesa_base, level, hp, element, skills, signature_item_name)
         `,
       )
@@ -684,6 +689,8 @@ Deno.serve(async (req) => {
       actualBossDefense,
       2 * playerSkill.damageMultiplier,
     );
+    // #2-lite (1.0): guarda o dano-base p/ aplicar um TETO no empilhamento de multiplicadores adiante.
+    const danoBase = danoPlayer;
 
     // ── Boss MECHANICS APPLIED TO PLAYER DAMAGE ──────────────────────────
     const bossEffectLog: string[] = [...bossSkill.effects];
@@ -705,7 +712,11 @@ Deno.serve(async (req) => {
     }
 
     // 3) Elemento: matchup de afinidade (boss.element vs playerSkill.element)
-    const bossElement = String(combat.bosses?.element || '').toLowerCase();
+    // #4 (1.0): normaliza acento + mapeia p/ canônico. O triângulo estava MORTO porque o banco
+    // guarda 'Água'/'Escuridão'/'Demônio' e a comparação usava ASCII ('agua'/'trevas'/'demonio').
+    const _normEl = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const _bossElRaw = _normEl(String(combat.bosses?.element || ''));
+    const bossElement = ({ escuridao: 'trevas', 'morto-vivo': 'morto', mortovivo: 'morto' } as Record<string, string>)[_bossElRaw] || _bossElRaw;
     const playerElement = playerSkill.element;
 
     // Aura/Imunidade ao Fogo: nega dano se ataque é fogo + cura o boss
@@ -808,6 +819,15 @@ Deno.serve(async (req) => {
         const p = treeMods.vsStatusDmg[st] || 0;
         if (p > 0 && (incomingStatus as any)[st] > 0) danoPlayer = Math.floor(danoPlayer * (1 + p / 100));
       }
+    }
+
+    // #2-lite (1.0): TETO no empilhamento multiplicativo (matchup × árvore × combo × vulnerável × vs_status).
+    // Antes, a cadeia sem teto chegava a ~3.7x e nenhuma rotação de encontro segurava. Resistências do
+    // boss (stone_skin/redução) já reduziram ANTES e ficam de fora deste teto. TETO conservador p/ 1.0.
+    if (danoPlayer > 0 && danoBase > 0) {
+      const DMG_STACK_CAP = 2.8;
+      const teto = Math.ceil(danoBase * DMG_STACK_CAP);
+      if (danoPlayer > teto) { danoPlayer = teto; bossEffectLog.push(`dmg_cap:${DMG_STACK_CAP}x`); }
     }
 
     // (c) Decaimento natural dos status NÃO consumidos por combo
@@ -930,6 +950,14 @@ Deno.serve(async (req) => {
         if (buffShieldAmount > 0) bossEffectLog.push(`buff_shield:${buffShieldAmount}`);
       }
 
+      // Cap anti-spike (1.0): nenhum golpe do boss remove mais que 35% do HP máximo do jogador.
+      // Rede contra burst (d20 alto + skill forte) agora que o HP vem de atributo. Raramente atua.
+      const playerMaxHpForCap = toNumber(combat.personagens?.hp_max, combat.hp_atual_personagem);
+      if (playerMaxHpForCap > 0 && danoBoss > 0) {
+        const hitCap = Math.ceil(playerMaxHpForCap * 0.35);
+        if (danoBoss > hitCap) { bossEffectLog.push(`hit_cap:${danoBoss - hitCap}`); danoBoss = hitCap; }
+      }
+
       hpPlayerRestante = Math.max(combat.hp_atual_personagem - danoBoss, 0);
 
       if (hpPlayerRestante <= 0) {
@@ -1019,6 +1047,8 @@ Deno.serve(async (req) => {
         : hpPlayerRestante;
       const updatePayload: Record<string, unknown> = {
         current_hp: Math.max(0, Math.min(maxHp, hpAfterHeal)),
+        // MP server-authoritative: debita o custo real da skill deste turno (básico custa 0).
+        current_mp: Math.max(0, currentMp - requestedSkillCost),
       };
 
       // Apply fatigue only when combat ends (vitoria or derrota)
@@ -1236,6 +1266,7 @@ Deno.serve(async (req) => {
         heal_amount: playerHealAmount,
         dado_boss: dadoBoss,
         dano_boss: danoBoss,
+        current_mp_restante: Math.max(0, currentMp - requestedSkillCost),
         boss_stunned: bossStunned,
         buff_shield_amount: buffShieldAmount,
         debuff_defense_shred: debuffDefenseShred,
