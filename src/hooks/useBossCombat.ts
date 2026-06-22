@@ -229,14 +229,25 @@ export function useStartActiveCombat() {
         .select('name, level')
         .eq('user_id', user.id);
       if (attrsError) throw attrsError;
+
+      // Bônus de EQUIPAMENTO equipado (#3): agora ENTRAM no combate por turnos. Antes eram inertes —
+      // o motor lê personagens.ataque_base/defesa_base/hp_max + user_health_stats.max_mp, que setamos
+      // aqui no cliente; então somar os bônus aqui os torna efetivos sem mudar a edge.
+      const { data: invForCombat } = await supabase
+        .from('user_inventory')
+        .select('equipped, sintonizado, game_items(rarity, requer_sintonizacao, atk_bonus, matk_bonus, def_bonus, hp_bonus, mp_bonus, agi_bonus, crit_bonus)')
+        .eq('user_id', user.id);
+      const equip = getEquipmentBonuses((invForCombat || []) as InventoryItem[]);
+
       const cs = getPlayerCombatStats(level, getAttributeLevels((attrs || []) as any[]));
       const attrOff = Math.max(cs.atk - level * 4, cs.matk - level * 3); // bônus ofensivo de atributo
       const attrDef = cs.def - level * 3;                                // bônus defensivo de atributo
       const attrHp  = cs.hp - (100 + level * 12);                        // bônus de HP de atributo
-      const ataqueBaseCalc = Math.round((14 + level * 2) + 0.45 * attrOff);
-      const defesaBaseCalc = Math.round((8 + level * 1.4) + 0.35 * attrDef);
-      const hpMaxCalc      = Math.round((100 + level * 12) + 0.80 * attrHp);
-      const mpMaxCalc      = Math.max(10, Math.round(Number((cs as any).mp) || 40)); // mana p/ refill por combate
+      const ataqueBaseCalc = Math.round((14 + level * 2) + 0.45 * attrOff) + Math.max(0, equip.atk) + Math.floor(Math.max(0, equip.matk) * 0.5);
+      const defesaBaseCalc = Math.round((8 + level * 1.4) + 0.35 * attrDef) + Math.max(0, equip.def);
+      const hpMaxCalc      = Math.round((100 + level * 12) + 0.80 * attrHp) + Math.max(0, equip.hp);
+      const mpMaxCalc      = Math.max(10, Math.round(Number((cs as any).mp) || 40) + Math.max(0, equip.mp)); // mana p/ refill por combate
+      // (crit/agi de item seguem cosméticos no combate solo: o motor não tem esquiva/crit.)
 
       const personagemPayload = {
         id: user.id,
