@@ -116,6 +116,20 @@ export default function CombatLoadout() {
     setSelectedIds(raw.map((e: any) => String(e?.id || '')).filter((id: string) => id && unlockedById.has(id)));
   }, [profile, unlockedById]);
 
+  // Frascos (estilo Elden Ring): aloca até 4 entre Vida e Mana. Persistido em profiles.
+  const [flaskHp, setFlaskHp] = useState(2);
+  const [flaskMp, setFlaskMp] = useState(2);
+  useEffect(() => {
+    setFlaskHp(Math.max(0, Number((profile as any)?.flask_hp_count ?? 2)));
+    setFlaskMp(Math.max(0, Number((profile as any)?.flask_mp_count ?? 2)));
+  }, [profile]);
+  const saveFlasks = async (hp: number, mp: number) => {
+    if (!user || hp < 0 || mp < 0 || hp + mp > 4) return;
+    setFlaskHp(hp); setFlaskMp(mp);
+    await supabase.from('profiles').update({ flask_hp_count: hp, flask_mp_count: mp } as any).eq('user_id', user.id);
+    qc.invalidateQueries({ queryKey: ['profile'] });
+  };
+
   const selected = selectedIds.map((id) => unlockedById.get(id)).filter(Boolean) as any[];
 
   const save = useMutation({
@@ -139,6 +153,29 @@ export default function CombatLoadout() {
 
   return (
     <div className="space-y-5">
+      {/* Frascos de combate (Elden Ring): aloca 4 entre Vida e Mana */}
+      <div className="rpg-card space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-foreground">🧪 Frascos de combate</h3>
+          <span className="text-xs font-bold text-muted-foreground">{flaskHp + flaskMp}/4</span>
+        </div>
+        <p className="text-xs text-muted-foreground">Aloque até 4 frascos entre Vida (cura 40% do HP) e Mana (restaura 50% do MP). Resetam a cada luta.</p>
+        <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-emerald-300">🧪 Vida</span>
+            <button onClick={() => saveFlasks(Math.max(0, flaskHp - 1), flaskMp)} className="w-6 h-6 rounded bg-muted/40 text-foreground font-bold">−</button>
+            <span className="w-4 text-center text-sm font-bold text-foreground">{flaskHp}</span>
+            <button onClick={() => saveFlasks(flaskHp + 1, flaskMp)} disabled={flaskHp + flaskMp >= 4} className="w-6 h-6 rounded bg-muted/40 text-foreground font-bold disabled:opacity-40">+</button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-sky-300">💧 Mana</span>
+            <button onClick={() => saveFlasks(flaskHp, Math.max(0, flaskMp - 1))} className="w-6 h-6 rounded bg-muted/40 text-foreground font-bold">−</button>
+            <span className="w-4 text-center text-sm font-bold text-foreground">{flaskMp}</span>
+            <button onClick={() => saveFlasks(flaskHp, flaskMp + 1)} disabled={flaskHp + flaskMp >= 4} className="w-6 h-6 rounded bg-muted/40 text-foreground font-bold disabled:opacity-40">+</button>
+          </div>
+        </div>
+      </div>
+
       {/* Slots */}
       <div className="rpg-card space-y-3">
         <div className="flex items-center justify-between">

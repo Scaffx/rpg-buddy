@@ -380,6 +380,9 @@ export default function CombatArena({
   const [playerHp, setPlayerHp] = useState(initialPlayerHp);
   const [playerMp, setPlayerMp] = useState(initialPlayerMp);
   const [playerFatigue, setPlayerFatigue] = useState(initialPlayerFatigue);
+  // Frascos (estilo Elden Ring): pool por luta alocado HP/MP (default 2/2; sobrescrito no load).
+  const [flaskHpLeft, setFlaskHpLeft] = useState(2);
+  const [flaskMpLeft, setFlaskMpLeft] = useState(2);
   const [bossResource, setBossResource] = useState(bossResourceMax);
   const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
   const [hitEffects, setHitEffects] = useState<HitEffect[]>([]);
@@ -491,9 +494,13 @@ export default function CombatArena({
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('combat_skill_loadout')
+          .select('combat_skill_loadout, flask_hp_count, flask_mp_count')
           .eq('user_id', user.id)
           .maybeSingle();
+
+        // Frascos alocados pelo jogador (pré-combate). Resetam por luta (uso vive em combates_ativos).
+        setFlaskHpLeft(Math.max(0, Number((data as any)?.flask_hp_count ?? 2)));
+        setFlaskMpLeft(Math.max(0, Number((data as any)?.flask_mp_count ?? 2)));
 
         const row = data as ProfileLoadoutRow | null;
         const raw = Array.isArray(row?.combat_skill_loadout) ? row.combat_skill_loadout : [];
@@ -530,6 +537,27 @@ export default function CombatArena({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [combateId]);
+
+  // Usa um frasco (HP/MP) no combate — RPC isolada use_flask (server-authoritative).
+  const useFlaskInCombat = async (kind: 'hp' | 'mp') => {
+    if (!combateId || turn !== 'player' || isRolling) return;
+    if ((kind === 'hp' ? flaskHpLeft : flaskMpLeft) <= 0) return;
+    try {
+      const { data } = await (supabase as any).rpc('use_flask', { p_combate_id: combateId, p_kind: kind });
+      const r = data as { ok?: boolean; amount?: number } | null;
+      if (r?.ok && r.amount) {
+        if (kind === 'hp') {
+          setPlayerHp((p) => Math.min(initialPlayerHp, p + r.amount!));
+          setFlaskHpLeft((n) => Math.max(0, n - 1));
+        } else {
+          setPlayerMp((p) => Math.min(initialPlayerMaxMp, p + r.amount!));
+          setFlaskMpLeft((n) => Math.max(0, n - 1));
+        }
+        sfx.hit();
+        toast({ title: kind === 'hp' ? `🧪 +${r.amount} HP` : `💧 +${r.amount} MP`, duration: 1500 });
+      }
+    } catch { /* frasco nunca quebra o combate */ }
+  };
 
   // Rancor Sombrio: jogador confirma sua resposta
   const handleRancorAnswerSubmit = () => {
@@ -1318,6 +1346,23 @@ export default function CombatArena({
 
       <div className="mb-4 rounded-xl border border-zinc-700/60 bg-zinc-800/60 p-3">
         <p className="text-xs uppercase tracking-wide text-zinc-400">Loadout (livre)</p>
+        <div className="mt-2 mb-1 flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wide text-zinc-500">Frascos:</span>
+          <button
+            onClick={() => useFlaskInCombat('hp')}
+            disabled={flaskHpLeft <= 0 || turn !== 'player' || isRolling}
+            className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-40"
+          >
+            🧪 Vida ({flaskHpLeft})
+          </button>
+          <button
+            onClick={() => useFlaskInCombat('mp')}
+            disabled={flaskMpLeft <= 0 || turn !== 'player' || isRolling}
+            className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/20 disabled:opacity-40"
+          >
+            💧 Mana ({flaskMpLeft})
+          </button>
+        </div>
         {selectedSkills.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {selectedSkills.map((skill) => {
