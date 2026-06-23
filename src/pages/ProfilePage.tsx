@@ -1495,7 +1495,8 @@ export default function ProfilePage() {
         <div data-tour="profile-tabs" className="flex gap-0 border-b border-border overflow-x-auto scrollbar-none">
           {[
             { id: "perfil",      label: t("app.profile.tabPerfil"),      icon: Heart },
-            { id: "habilidades", label: t("app.profile.tabHabilidades"), icon: Swords },
+            // Aba "Habilidades" removida: skills vivem só no hub /habilidades (menu lateral),
+            // evitando a duplicação (a versão do profile era o loadout legado com cap, conflitante).
             { id: "inventario",  label: t("app.profile.tabInventario"),  icon: Shield },
             { id: "conquistas",  label: t("app.profile.tabConquistas"),  icon: Trophy, badge: userAchievements.filter((ua: any) => !ua.claimed_at).length || undefined },
           ].map((tab) => (
