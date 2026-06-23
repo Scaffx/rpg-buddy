@@ -330,7 +330,7 @@ export function useSelectClass() {
       if (starterClass) updates.starter_class = starterClass;
       const { error } = await supabase
         .from("profiles")
-        .updateupdates
+        .update(updates)
         .eq("user_id", user!.id);
       if (error) throw error;
     },

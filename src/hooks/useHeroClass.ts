@@ -55,10 +55,19 @@ export function useHeroClass() {
     return undefined;
   }, [profile, classes]);
 
+  // Houve escolha REAL de classe? (starterClass cai em 'novato' por padrão; isto distingue
+  // "ainda não escolheu" — pra liberar só skills de arma até o jogador escolher uma classe.)
+  const hasClass = useMemo(() => Boolean(
+    (profile as any)?.current_class_id ||
+    (typeof (profile as any)?.starter_class === 'string' && (profile as any).starter_class.trim().length > 0) ||
+    (user && localStorage.getItem(`starter_class_v1_${user.id}`)),
+  ), [profile, user]);
+
   return {
     starterClass: starterClass as string,
     starterItem: starterItem as string,
     currentClassName,
+    hasClass,
     level: (profile as any)?.level || 1,
     attributeLevels,
   };
