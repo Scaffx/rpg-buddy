@@ -21,7 +21,7 @@ export default function CombatLoadout() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
-  const { starterClass } = useHeroClass();
+  const { starterClass, hasClass } = useHeroClass();
 
   const { data: treeNodes = [] } = useSkillTreeNodes(starterClass);
   const { data: cinzaNodes = [] } = useSkillTreeNodes('cinzas');
@@ -105,8 +105,12 @@ export default function CombatLoadout() {
       });
   }, [cinzaNodes, treeRanks, equippedWeapon]);
 
-  // Skills da ÁRVORE + ARMA equipada + CINZAS compatíveis (sem skills legadas fora da árvore).
-  const allSkills = useMemo(() => [...weaponSkills, ...treeSkills, ...cinzaSkills], [weaponSkills, treeSkills, cinzaSkills]);
+  // Sem classe escolhida → só ARMA + CINZAS. As skills de CLASSE (árvore) só liberam após
+  // o jogador escolher uma classe (antes, starterClass caía em 'novato' e mostrava skills indevidas).
+  const allSkills = useMemo(
+    () => [...weaponSkills, ...(hasClass ? treeSkills : []), ...cinzaSkills],
+    [weaponSkills, treeSkills, cinzaSkills, hasClass],
+  );
 
   const unlockedById = useMemo(() => new Map(allSkills.filter((s) => s.unlocked).map((s) => [s.id, s])), [allSkills]);
 
