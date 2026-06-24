@@ -14,6 +14,7 @@ import { ShortRestStatusProvider } from "@/hooks/useShortRestStatus";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
 import LifeonRPGSplash from "@/components/branding/LifeonRPGSplash";
+import EntrySplashGate from "@/components/branding/EntrySplashGate";
 
 // Páginas carregadas sob demanda (code-split por rota) — reduz drasticamente o
 // bundle inicial: cada página vira um chunk separado, baixado só quando acessada.
@@ -144,7 +145,7 @@ function AppRoutes() {
         <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         <Route path="/boss" element={<ProtectedRoute><BossPage /></ProtectedRoute>} />
-        <Route path="/portal" element={<ProtectedRoute><PortalEventPage /></ProtectedRoute>} />
+        <Route path="/portal" element={<ProtectedRoute><EntrySplashGate label="abrindo o portal"><PortalEventPage /></EntrySplashGate></ProtectedRoute>} />
         <Route path="/health" element={<ProtectedRoute><HealthPage /></ProtectedRoute>} />
         <Route path="/habilidades" element={<ProtectedRoute><HabilidadesHub /></ProtectedRoute>} />
         <Route path="/feats" element={<ProtectedRoute><FeatsTree /></ProtectedRoute>} />

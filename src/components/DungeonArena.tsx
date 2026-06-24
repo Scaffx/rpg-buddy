@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import LifeonRPGSplash from '@/components/branding/LifeonRPGSplash';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Zap, ChevronRight, Trophy, Skull, LogOut, Users, Package, FlaskConical, Bot, ShieldCheck, Swords, Copy, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -621,6 +622,9 @@ export default function DungeonArena({
 
   // ── State ──────────────────────────────────────────────────────────────
   const [phase, setPhase]             = useState<DungeonPhase>('prep');
+  // Splash "entrando na masmorra" ao montar a arena (cobre boss/fragment/portal).
+  const [entering, setEntering]       = useState(true);
+  useEffect(() => { const t = setTimeout(() => setEntering(false), 1700); return () => clearTimeout(t); }, []);
   const [roomIdx, setRoomIdx]         = useState(0);
   const [playerHp, setPlayerHp]       = useState(initialPlayerHp);
   const [playerMp, setPlayerMp]       = useState(initialPlayerMp);
@@ -1207,6 +1211,7 @@ export default function DungeonArena({
     : (syncedModifierKind ? ROOM_MODIFIER_POOL.find(m => m.kind === syncedModifierKind) ?? null : null);
 
   // ── RENDER ─────────────────────────────────────────────────────────────
+  if (entering) return <LifeonRPGSplash fullscreen label="entrando na masmorra" />;
   return (
     <div className="fixed inset-0 z-50 bg-background/98 overflow-y-auto">
       <div className="max-w-xl mx-auto p-4 pb-24 space-y-4">
