@@ -16,7 +16,6 @@ import {
   Sword,
   BookOpen,
   Moon,
-  Hammer,
   Cross,
   Target,
   ChevronRight,
@@ -103,25 +102,8 @@ const CLASSES: ClassDef[] = [
       { title: 'Descanso intencional', description: '20 minutos de descompressão sem telas', attribute: 'Resiliência', days: ['Ter', 'Qui', 'Sáb'], priority: 'baixa' },
     ],
   },
-  {
-    id: 'ferreiro',
-    name: 'Ferreiro',
-    starterItem: 'Martelo de Aco',
-    modernTitle: 'Profissional Técnico / Artesão',
-    icon: <Hammer className="w-8 h-8" />,
-    color: 'border-amber-500/60 bg-amber-950/30',
-    glow: 'shadow-amber-500/20',
-    description: 'Forja armas e armaduras com trabalho pesado.',
-    modernDescription:
-      'Eletricistas, encanadores, mecânicos, marceneiros — você acorda cedo e constrói com as próprias mãos.',
-    missions: [
-      { title: 'Acordar até às 5h30', description: 'Levantar cedo para começar o dia com vantagem', attribute: 'Disciplina', days: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'], priority: 'alta' },
-      { title: 'Treino funcional 30min', description: 'Exercícios para manter o corpo em forma para o trabalho', attribute: 'Força', days: ['Seg', 'Qua', 'Sex'], priority: 'media' },
-      { title: 'Manutenção/organização de ferramentas', description: 'Checar e organizar ferramentas e materiais', attribute: 'Disciplina', days: ['Sex'], priority: 'media' },
-      { title: 'Hidratação no trabalho (2L)', description: 'Beber água regularmente durante trabalho físico', attribute: 'Vitalidade', days: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'], priority: 'alta' },
-      { title: 'Alongamento pós-trabalho', description: 'Ao fim do dia, alongar para evitar lesões', attribute: 'Agilidade', days: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'], priority: 'media' },
-    ],
-  },
+  // Ferreiro removido da seleção inicial (spec "Rotina é a Torneira" §3): sem
+  // o sistema de crafting a classe fica oca. Volta no futuro (ramo mecha).
   {
     id: 'clerico',
     name: 'Clérigo',
