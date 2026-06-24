@@ -44,7 +44,6 @@ const MobilePage = lazy(() => import("./pages/MobilePage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const SocialPage = lazy(() => import("./pages/SocialPage"));
 const CompanionPage = lazy(() => import("./pages/CompanionPage"));
-const CraftingPage = lazy(() => import("./pages/CraftingPage"));
 const ReleasesAdminPage = lazy(() => import("./pages/admin/ReleasesAdminPage"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const TermsPage = lazy(() => import("./pages/legal/TermsPage"));
@@ -163,7 +162,6 @@ function AppRoutes() {
         <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
         <Route path="/companheiro" element={<ProtectedRoute><CompanionPage /></ProtectedRoute>} />
         <Route path="/social" element={<ProtectedRoute><SocialPage /></ProtectedRoute>} />
-        <Route path="/crafting" element={<ProtectedRoute><CraftingPage /></ProtectedRoute>} />
         <Route
           path="/admin/releases"
           element={

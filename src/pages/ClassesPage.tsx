@@ -223,6 +223,12 @@ export default function ClassesPage() {
     }
     const baseNode = resolveBaseClass(classId);
     const baseName = baseNode?.name || className;
+    // Ferreiro removido temporariamente da seleção (spec "Rotina é a Torneira" §3):
+    // sem o sistema de crafting a classe fica oca. Volta no futuro (ramo mecha).
+    if (baseNode && CLASS_NAME_TO_STARTER[baseNode.name] === 'ferreiro') {
+      toast({ title: '🔨 Ferreiro chega em breve', description: 'Esta classe está em desenvolvimento e ainda não pode ser escolhida.' });
+      return;
+    }
     const moderno = baseName ? getClassProfileByTreeName(baseName) : null;
     setPendingConfirm({ classId, className, profile: moderno, baseName });
   };

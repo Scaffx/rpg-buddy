@@ -10,7 +10,7 @@ import { LifeonRPGEmblem } from '@/components/branding/LifeonRPGLogo';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users,
   ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Hammer, Zap, Network,
+  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Zap, Network,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -102,9 +102,6 @@ export function AppSidebar() {
     const found = (classes as any[]).find((c) => c.id === id);
     return found?.name ?? fallback;
   }, [profile, classes]);
-
-  const CRAFTING_CLASSES = ['Alquimista', 'Mecânico', 'Mestre-Ferreiro', 'Criador'];
-  const hasCrafting = CRAFTING_CLASSES.includes(currentClass);
 
   const xpProgress = getLevelProgress(profile?.total_xp || 0);
   const heroName = profile?.display_name || user?.email?.split('@')[0] || 'Aventureiro';
@@ -237,20 +234,6 @@ export function AppSidebar() {
           {collapsed && <div className="mx-auto my-1 h-px w-6 bg-sidebar-border/60" />}
           <SidebarGroupContent>
             <SidebarMenu>
-              {hasCrafting && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/crafting"
-                      className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sidebar-foreground/60 transition-all hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                      activeClassName="bg-primary/10 text-primary font-semibold border-l-2 border-primary"
-                    >
-                      <Hammer className="h-4 w-4 shrink-0 text-amber-400 transition-transform group-hover:scale-105" />
-                      {!collapsed && <span className="text-[13px] truncate">Craft</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <button

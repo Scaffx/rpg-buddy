@@ -969,33 +969,9 @@ export default function CombatArena({
         effects: turnResult.efeitos_player || [],
       });
 
-      // ── Companheiro de combate (esqueletinho): age após o golpe do jogador ─────
-      // RPC isolada companion_act (server-authoritative; arma→dano/Cinza, armadura→guarda).
-      // try/catch: uma falha aqui NUNCA quebra o turno do jogador.
-      if (turnResult.status === 'em_andamento' && combateId) {
-        try {
-          const { data: compRes } = await (supabase as any).rpc('companion_act', { p_combate_id: combateId });
-          const cr = compRes as { ok?: boolean; name?: string; dano?: number; heal?: number; hp_boss?: number } | null;
-          if (cr?.ok && cr.dano && cr.dano > 0) {
-            await wait(450);
-            if (typeof cr.hp_boss === 'number') { setBossHp(cr.hp_boss); bossHpRef.current = cr.hp_boss; }
-            pushDamage('boss', cr.dano, 0);
-            appendBattleLog({
-              actor: 'player',
-              skill: `💀 ${cr.name || 'Companheiro'}`,
-              damage: cr.dano,
-              roll: 0,
-              effects: cr.heal && cr.heal > 0 ? [`guarda:+${cr.heal}`] : [],
-            });
-            if (cr.heal && cr.heal > 0) {
-              const hid = Date.now() + Math.floor(Math.random() * 1000);
-              setHealPopups((prev) => [...prev, { id: hid, value: cr.heal! }]);
-              window.setTimeout(() => setHealPopups((prev) => prev.filter((p) => p.id !== hid)), 1300);
-            }
-            sfx.hit();
-          }
-        } catch { /* companheiro nunca quebra o turno do jogador */ }
-      }
+      // Companheiros de combate removidos (spec "Rotina é a Torneira" §4): pets/
+      // animal são apenas cosméticos e não agem mais em combate. O aliado de
+      // história (Fenrir, via companionData) continua mais abaixo.
 
       // Dano em área (splash) nas unidades invocadas
       if (summonedUnitsRef.current.length > 0) {

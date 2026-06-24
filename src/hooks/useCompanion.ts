@@ -28,9 +28,9 @@ export interface CompanionRow {
   companion_role: CompanionRole;
 }
 
-/** Companheiros com stats de combate (não são animais de estimação) */
+/** Tipos de pet/companheiro de loja (metadados de exibição — sem combate, §4). */
 export const COMBAT_COMPANION_TYPES = [
-  'skeleton_pup', 'spirit_fox', 'golem_guardian',
+  'spirit_fox', 'golem_guardian',
   // Pets da loja (minis de boss)
   'mini_relampago', 'mini_leviata', 'mini_kraken', 'mini_dragao_sombrio', 'mini_demonio_fome',
   'mini_necromante', 'mini_wyrm_gelo',
@@ -47,15 +47,6 @@ export const COMBAT_COMPANION_META: Record<string, {
   skills: string[];
   description: string;
 }> = {
-  skeleton_pup: {
-    emoji: '💀',
-    name: 'Filhote de Esqueleto',
-    role: 'physical',
-    roleLabel: 'Físico',
-    roleColor: 'text-orange-400',
-    skills: ['Mordida Óssea', 'Golpe com Osso', 'Uivo das Trevas'],
-    description: 'Guerreiro das sombras. Pode equipar armas e armaduras.',
-  },
   spirit_fox: {
     emoji: '🦊',
     name: 'Raposa Espiritual',
@@ -144,15 +135,6 @@ export const COMPANION_TYPES = [
 
 export type AnimalCompanionId = (typeof COMPANION_TYPES)[number]['id'];
 
-// ── Skeleton companion (boss story reward) ────────────────────────────────────
-
-export const SKELETON_PUP = {
-  id: 'skeleton_pup',
-  name: 'Filhote de Esqueleto',
-  emoji: '💀',
-  description: 'Filho do Esqueletão Campeão. Pequeno, mas de osso duro. Cresce com cada batalha do herói.',
-} as const;
-
 // ── Mood system ───────────────────────────────────────────────────────────────
 
 export const MOOD_TIERS = [
@@ -235,48 +217,6 @@ export function useCompanion() {
   });
 }
 
-/** Returns the skeleton pup companion (origin = 'boss_story'), or null */
-export function useSkeletonCompanion() {
-  const { user } = useAuth();
-  return useQuery<CompanionRow[], Error, CompanionRow | null>({
-    queryKey: ['companions_all', user?.id],
-    queryFn: () => fetchAllCompanions(user!.id),
-    select: (rows) => rows.find((c) => c.origin === 'boss_story') ?? null,
-    enabled: !!user,
-    staleTime: 5 * 60_000,
-    gcTime: 10 * 60_000,
-  });
-}
-
-/**
- * True quando o jogador venceu pelo menos um boss de esqueleto.
- * Usado para destravar a adoção do Ossinho na página de companheiros.
- */
-export function useSkeletonBossDefeated() {
-  const { user } = useAuth();
-  return useQuery<boolean>({
-    queryKey: ['skeleton_boss_defeated', user?.id],
-    enabled: !!user,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data: skeletonBosses, error: bossErr } = await supabase
-        .from('bosses')
-        .select('id')
-        .ilike('name', '%esquelet%');
-      if (bossErr) throw bossErr;
-      const ids = (skeletonBosses ?? []).map((b: any) => b.id);
-      if (ids.length === 0) return false;
-      const { count, error } = await supabase
-        .from('boss_battles')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user!.id)
-        .eq('won', true)
-        .in('boss_id', ids);
-      if (error) throw error;
-      return (count ?? 0) > 0;
-    },
-  });
-}
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useCreateCompanion() {
@@ -292,44 +232,6 @@ export function useCreateCompanion() {
         .single();
       if (error) throw error;
       return data as CompanionRow;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
-  });
-}
-
-export function useAdoptSkeletonPup() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (name: string) => {
-      if (!user) throw new Error('Não autenticado');
-      const { error } = await supabase
-        .from('companions')
-        .insert({
-          user_id: user.id,
-          companion_type: 'skeleton_pup',
-          origin: 'boss_story',
-          name,
-        });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
-  });
-}
-
-/** Equipa arma/armadura no companheiro de combate (slots separados). Consumido pela RPC companion_act. */
-export function useEquipCompanionGear() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ companionId, weaponId, armorId }: { companionId: string; weaponId: string | null; armorId: string | null }) => {
-      if (!user) throw new Error('Não autenticado');
-      const { error } = await (supabase as any)
-        .from('companions')
-        .update({ equipped_weapon_id: weaponId, equipped_armor_id: armorId })
-        .eq('id', companionId)
-        .eq('user_id', user.id);
-      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
   });
