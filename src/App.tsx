@@ -15,6 +15,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
 import LifeonRPGSplash from "@/components/branding/LifeonRPGSplash";
 import EntrySplashGate from "@/components/branding/EntrySplashGate";
+import BedtimeGate from "@/components/BedtimeGate";
 
 // Páginas carregadas sob demanda (code-split por rota) — reduz drasticamente o
 // bundle inicial: cada página vira um chunk separado, baixado só quando acessada.
@@ -173,6 +174,7 @@ function AppRoutes() {
         />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <BedtimeGate />
     </Suspense>
   );
 }
