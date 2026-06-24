@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { starterClassDisplayName } from "@/hooks/useHeroClass";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { evaluateTodayStreakRisk, DAYS_MAP } from "@/lib/streakUtils";
@@ -372,7 +373,7 @@ export default function Dashboard() {
       key: "class",
       label: t('app.dashboard.stat_class'),
       icon: Swords,
-      value: currentClass ? `${currentClass.icon} ${currentClass.name}` : "📖 Aprendiz",
+      value: currentClass ? `${currentClass.icon} ${currentClass.name}` : `📖 ${starterClassDisplayName((profile as any)?.starter_class)}`,
     },
     { key: "total_xp", label: t('app.dashboard.stat_xp_total'), icon: Zap, value: profile?.total_xp || 0 },
     {
