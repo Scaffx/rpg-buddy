@@ -18,8 +18,7 @@ import CombatArena from '@/components/CombatArena';
 import SphinxQuizModal from '@/components/SphinxQuizModal';
 import DungeonArena, { type PotionItem, type SessionPlayer } from '@/components/DungeonArena';
 import HeroStatusBar from '@/components/HeroStatusBar';
-import { useHeroStoryChoices, useSaveSkeletonChoice } from '@/hooks/useHeroStoryChoices';
-import { useAdoptSkeletonPup, useSkeletonCompanion, computeLiveMood } from '@/hooks/useCompanion';
+import { useHeroStoryChoices } from '@/hooks/useHeroStoryChoices';
 import { useAuth } from '@/hooks/useAuth';
 import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
 
@@ -140,12 +139,7 @@ export default function BossPage() {
 
   // ── Story hooks ─────────────────────────────────────────────────────────
   const { data: storyChoices }    = useHeroStoryChoices();
-  const saveSkeletonChoice        = useSaveSkeletonChoice();
-  const adoptSkeletonPup          = useAdoptSkeletonPup();
-  const { data: skeletonCompanion } = useSkeletonCompanion();
-
-  const [skeletonStoryOpen,    setSkeletonStoryOpen]    = useState(false);
-  const [skeletonPupName,      setSkeletonPupName]      = useState('Ossinho');
+  // Esqueleto/Ossinho removido (spec §4: companheiros viraram cosméticos).
   const [phoenixFusionOpen,    setPhoenixFusionOpen]    = useState(false);
   const [phoenixFusing,        setPhoenixFusing]        = useState(false);
   // ── Cadeia nórdica (roadmap #5) ──
@@ -213,11 +207,9 @@ export default function BossPage() {
     queryClient.invalidateQueries({ queryKey: ['health_stats'] });
     queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
 
-    // Skeleton story: fires once after defeating an "Esquelet…" boss
     const bossName = activeCombat?.bossName ?? '';
-    if (SKELETON_BOSS_PATTERN.test(bossName) && !storyChoices?.skeleton_champion) {
-      setTimeout(() => setSkeletonStoryOpen(true), 1500);
-    }
+    // (História do esqueleto/Ossinho removida — §4. O boss de esqueleto agora
+    // é um boss comum, sem escolha de adoção.)
 
     // Fusão Fênix -> Esfinge (roadmap #2): ao vencer a Sphinx do Deserto, se o
     // herói já enfrentou a Fênix Renascente (que escapou ao menos 1×) e ainda
@@ -1051,14 +1043,10 @@ export default function BossPage() {
                         weaponElement={equippedWeaponElement}
                         companionData={
                           // Odin 3v1: se Fenrir foi libertado, ele luta ao seu lado (roadmap #5).
+                          // (O esqueleto não luta mais — companheiros viraram cosméticos, §4.)
                           ODIN_BOSS_PATTERN.test(activeCombat.bossName ?? '') && storyChoices?.fenrir_allied
                             ? { name: 'Fenrir', level: 38, mood: 100, emoji: '🐺' }
-                            : skeletonCompanion ? {
-                                name: skeletonCompanion.name,
-                                level: skeletonCompanion.level,
-                                mood: computeLiveMood(skeletonCompanion),
-                                emoji: '💀',
-                              } : undefined
+                            : undefined
                         }
                       />
                     ) : (
@@ -1591,68 +1579,6 @@ export default function BossPage() {
         )}
       </div>
 
-      {/* ── Skeleton Story Dialog ──────────────────────────────────────────── */}
-      <Dialog open={skeletonStoryOpen} onOpenChange={setSkeletonStoryOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              {t('app.boss.skeleton_title')}
-            </DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
-                <p>{t('app.boss.skeleton_p1')}</p>
-                <p>{t('app.boss.skeleton_p2')}</p>
-                <p>{t('app.boss.skeleton_p3')}</p>
-                <p className="font-semibold text-foreground">
-                  {t('app.boss.skeleton_question')}
-                </p>
-                <div className="pt-1">
-                  <p className="text-xs">{t('app.boss.skeleton_name_prompt')}</p>
-                  <Input
-                    value={skeletonPupName}
-                    onChange={(e) => setSkeletonPupName(e.target.value)}
-                    placeholder={t('app.boss.skeleton_name_placeholder')}
-                    className="mt-1.5"
-                    maxLength={32}
-                  />
-                </div>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => {
-                saveSkeletonChoice.mutate('reject', {
-                  onSuccess: () => toast({ title: t('app.boss.toast_skeleton_left') }),
-                });
-                setSkeletonStoryOpen(false);
-              }}
-            >
-              {t('app.boss.skeleton_let_go')}
-            </Button>
-            <Button
-              className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700"
-              disabled={adoptSkeletonPup.isPending || saveSkeletonChoice.isPending}
-              onClick={() => {
-                const name = skeletonPupName.trim() || 'Ossinho';
-                saveSkeletonChoice.mutate('adopt', {
-                  onSuccess: () => {
-                    adoptSkeletonPup.mutate(name, {
-                      onSuccess: () => toast({ title: t('app.boss.toast_skeleton_adopted', { name }) }),
-                      onError: () => toast({ title: t('app.boss.toast_skeleton_adopt_error'), variant: 'destructive' }),
-                    });
-                  },
-                });
-                setSkeletonStoryOpen(false);
-              }}
-            >
-              💀 {t('app.boss.skeleton_adopt', { name: skeletonPupName || 'Ossinho' })}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── Fusão Fênix + Esfinge (roadmap #2) ─────────────────────────────── */}
       <Dialog open={phoenixFusionOpen} onOpenChange={(open) => { if (!open && !phoenixFusing) setPhoenixFusionOpen(false); }}>
