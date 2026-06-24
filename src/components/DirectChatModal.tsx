@@ -10,6 +10,7 @@ import {
   useMarkConversationRead,
 } from '@/hooks/useDirectMessages';
 import { isOnline } from '@/hooks/usePresence';
+import { starterClassDisplayName } from '@/hooks/useHeroClass';
 
 type Friend = {
   user_id: string;
@@ -62,7 +63,7 @@ export default function DirectChatModal({
   };
 
   const online = isOnline(friend.last_seen_at);
-  const displayClass = friend.current_class_name ?? friend.starter_class ?? 'Aprendiz';
+  const displayClass = friend.current_class_name ?? starterClassDisplayName(friend.starter_class);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 px-2 sm:px-4">

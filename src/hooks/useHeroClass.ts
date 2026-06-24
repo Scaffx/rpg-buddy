@@ -13,6 +13,25 @@ const CLASS_NAME_TO_STARTER: Record<string, string> = {
   Ferreiro: 'ferreiro',
 };
 
+// classe-base (starter_class) -> nome de exibição da classe (col. 2).
+// 'novato' e 'clerico' mapeiam para o "Noviço". Usado como fallback de rótulo
+// no lugar do antigo "Aprendiz".
+export const STARTER_TO_CLASS_NAME: Record<string, string> = {
+  guerreiro: 'Espadachim',
+  mago: 'Mago',
+  gatuno: 'Gatuno',
+  novato: 'Noviço',
+  clerico: 'Noviço',
+  arqueiro: 'Arqueiro',
+  ferreiro: 'Ferreiro',
+};
+
+/** Nome de exibição da classe a partir do starter_class (sem mais "Aprendiz"). */
+export function starterClassDisplayName(starter?: string | null): string {
+  if (!starter) return 'Iniciante';
+  return STARTER_TO_CLASS_NAME[starter] || 'Iniciante';
+}
+
 /**
  * Deriva a classe-base do herói (mago/guerreiro/gatuno/ferreiro/arqueiro/novato),
  * a arma inicial, o nome da classe atual e os níveis de atributo.

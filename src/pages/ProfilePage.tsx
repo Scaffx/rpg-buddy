@@ -14,6 +14,7 @@ import {
 import { useGoldBalance } from "@/hooks/useGold";
 import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useUseScroll, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { useSkillTreeNodes, usePlayerSkillNodes } from "@/hooks/useSkillTree";
+import { starterClassDisplayName } from "@/hooks/useHeroClass";
 import { supabase } from "@/integrations/supabase/client";
 import { setVolume } from "@/lib/sfx";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1472,7 +1473,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/15 border border-accent/25 text-[11px] font-semibold text-accent-foreground/80">
                     <Swords className="w-3 h-3" />
-                    {(classes as any[])?.find((c: any) => c.id === profile?.current_class_id)?.name || 'Aprendiz'}
+                    {(classes as any[])?.find((c: any) => c.id === profile?.current_class_id)?.name || starterClassDisplayName((profile as any)?.starter_class)}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
                     {xpProgress.currentLevelXp.toLocaleString()} / {xpProgress.xpForNextLevel.toLocaleString()} XP

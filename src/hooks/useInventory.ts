@@ -626,6 +626,71 @@ export function useClaimClassKit() {
   });
 }
 
+/**
+ * Kit inicial completo da classe escolhida no onboarding (LV1):
+ * - arma + armadura + acessório da classe (is_starter), com arma e armadura já equipadas
+ * - 2 frascos de mana + 1 frasco de vida (poções menores) no inventário
+ * Idempotente: se starter_kit_claimed já estiver marcado, não faz nada.
+ */
+export function useGrantOnboardingKit() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (starterClass: string) => {
+      if (!user) throw new Error('Não autenticado');
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('starter_kit_claimed')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if ((profile as any)?.starter_kit_claimed) return;
+
+      // Equipamento da classe (arma + armadura + acessório)
+      const { data: classItems } = await db
+        .from('game_items')
+        .select('id, category')
+        .eq('is_starter', true)
+        .eq('starter_class', starterClass)
+        .eq('is_consumable', false);
+
+      for (const item of (classItems || [])) {
+        const cat = String(item.category || '').toLowerCase();
+        // Arma e armadura já entram equipadas; acessório fica no inventário.
+        const equipped = cat === 'weapon' || cat === 'armor';
+        await db.from('user_inventory').upsert(
+          { user_id: user.id, item_id: item.id, quantity: 1, equipped },
+          { onConflict: 'user_id,item_id' },
+        );
+      }
+
+      // Frascos: 2 de mana + 1 de vida (poções menores, lv1)
+      const { data: potions } = await db
+        .from('game_items')
+        .select('id, name, effect')
+        .in('name', ['Poção de MP Menor', 'Poção de HP Menor']);
+
+      for (const potion of (potions || [])) {
+        const isMana = String(potion.effect || '').startsWith('mana_');
+        await db.from('user_inventory').upsert(
+          { user_id: user.id, item_id: potion.id, quantity: isMana ? 2 : 1, equipped: false },
+          { onConflict: 'user_id,item_id' },
+        );
+      }
+
+      await supabase
+        .from('profiles')
+        .update({ starter_kit_claimed: true, class_kit_claimed: true } as any)
+        .eq('user_id', user.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
 export function useGrantBossLoot() {
   const { user } = useAuth();
   const queryClient = useQueryClient();

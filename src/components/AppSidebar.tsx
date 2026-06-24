@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile, useClasses } from '@/hooks/useProfile';
+import { starterClassDisplayName } from '@/hooks/useHeroClass';
 import { NavLink } from '@/components/NavLink';
 import ActiveTalentsBadge from '@/components/ActiveTalentsBadge';
 import HelpTutorialModal from '@/components/HelpTutorialModal';
@@ -96,9 +97,10 @@ export function AppSidebar() {
 
   const currentClass = useMemo(() => {
     const id = profile?.current_class_id;
-    if (!id || !classes) return 'Aprendiz';
+    const fallback = starterClassDisplayName((profile as any)?.starter_class);
+    if (!id || !classes) return fallback;
     const found = (classes as any[]).find((c) => c.id === id);
-    return found?.name ?? 'Aprendiz';
+    return found?.name ?? fallback;
   }, [profile, classes]);
 
   const CRAFTING_CLASSES = ['Alquimista', 'Mecânico', 'Mestre-Ferreiro', 'Criador'];

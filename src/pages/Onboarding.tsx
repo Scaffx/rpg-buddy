@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttributes, useProfile } from '@/hooks/useProfile';
-import { useClaimStarterKit } from '@/hooks/useInventory';
+import { useGrantOnboardingKit } from '@/hooks/useInventory';
+import { useSkillTreeNodes } from '@/hooks/useSkillTree';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -161,6 +162,17 @@ const CLASSES: ClassDef[] = [
   },
 ];
 
+// classe escolhida → árvore de habilidades + nó-tronco (1ª habilidade do LV1).
+// (clérigo usa a árvore "novato"/sagrado). Os tier-1 vêm depois, ao subir de nível.
+const CLASS_TREE: Record<string, string> = {
+  guerreiro: 'guerreiro',
+  mago: 'mago',
+  gatuno: 'gatuno',
+  ferreiro: 'ferreiro',
+  clerico: 'novato',
+  arqueiro: 'arqueiro',
+};
+
 // ─── Componente principal ───────────────────────────────────────────────────────
 
 const REGIONS = [
@@ -171,7 +183,7 @@ const REGIONS = [
   { id: 'asia', name: 'Ásia', icon: '🌏' },
 ];
 
-const TOTAL_STEPS = 5; // tutorial, região, classe, missões, conclusão
+const TOTAL_STEPS = 6; // tutorial, região, classe, habilidades, missões, conclusão
 
 export default function Onboarding() {
   const { t } = useTranslation();
@@ -187,7 +199,13 @@ export default function Onboarding() {
   const [selectedMissions, setSelectedMissions] = useState<Set<number>>(new Set([0, 1, 2]));
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const claimStarterKit = useClaimStarterKit();
+  const grantOnboardingKit = useGrantOnboardingKit();
+
+  // Árvore de habilidades da classe selecionada (para a etapa da trilha).
+  const selectedTree = selectedClass ? (CLASS_TREE[selectedClass.id] || 'novato') : 'novato';
+  const { data: treeNodes } = useSkillTreeNodes(selectedTree);
+  const troncoNode = (treeNodes || []).find((n) => n.tier === 0) || null;
+  const tier1Nodes = (treeNodes || []).filter((n) => n.tier === 1);
 
   // Redireciona usuários não autenticados
   useEffect(() => {
@@ -256,11 +274,22 @@ export default function Onboarding() {
         console.error('[onboarding] falha ao atualizar perfil:', updateProfileError);
       }
 
-      // Concede kit de novato (equipamentos simples de lv1-4)
+      // Concede o kit inicial DA CLASSE escolhida (arma + armadura equipadas +
+      // acessório + 2 frascos de mana + 1 de vida).
       try {
-        await claimStarterKit.mutateAsync('novato');
+        await grantOnboardingKit.mutateAsync(selectedClass.id);
       } catch {
         // Kit pode já ter sido concedido — ignora erro
+      }
+
+      // Aprende a 1ª habilidade da trilha da classe (nó-tronco), gastando o
+      // ponto de habilidade do LV1. Server-authoritative via allocate_skill_node.
+      if (troncoNode) {
+        try {
+          await supabase.rpc('allocate_skill_node', { p_node_id: troncoNode.id } as any);
+        } catch {
+          // Já alocado / sem ponto — ignora; jogador pode pegar no hub depois.
+        }
       }
 
       // Salva no localStorage como fallback confiável.
@@ -485,10 +514,91 @@ export default function Onboarding() {
           </motion.div>
         )}
 
-        {/* ── STEP 3: Selecionar Missões ── */}
+        {/* ── STEP 3: Trilha de Habilidades da Classe ── */}
         {step === 3 && selectedClass && (
           <motion.div
-            key="step2"
+            key="step-skills"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -24 }}
+            transition={{ duration: 0.4 }}
+            className="w-full max-w-2xl"
+          >
+            <div className="rpg-card-glow p-6">
+              <div className="text-center mb-6">
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 mb-4 ${selectedClass.color}`}>
+                  {selectedClass.icon}
+                  <span className="font-bold text-lg">{t(`app.onboarding.class_${selectedClass.id}_name`)}</span>
+                </div>
+                <h2 className="text-2xl font-display font-bold text-primary text-glow">
+                  Sua trilha de habilidades
+                </h2>
+                <p className="text-muted-foreground mt-2">
+                  Desde o nível 1 você já começa a trilha da sua classe. A primeira
+                  habilidade é aprendida agora — o resto desbloqueia conforme você sobe de nível.
+                </p>
+              </div>
+
+              {/* Primeira habilidade (nó-tronco) — aprendida no LV1 */}
+              {troncoNode && (
+                <div className="rounded-xl border-2 border-primary/50 bg-primary/10 p-4 mb-4">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <Star className="w-5 h-5 text-yellow-400 shrink-0" />
+                      <span className="font-bold text-foreground">{troncoNode.name}</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/30 shrink-0">
+                      Você aprende no LV 1
+                    </span>
+                  </div>
+                  {troncoNode.description && (
+                    <p className="text-sm text-muted-foreground">{troncoNode.description}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Caminhos seguintes da trilha (tier 1) — bloqueados por nível */}
+              {tier1Nodes.length > 0 && (
+                <>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">
+                    A trilha continua ({tier1Nodes.length} caminhos a desbloquear):
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                    {tier1Nodes.map((n) => (
+                      <div key={n.id} className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/20 opacity-70">
+                        <Zap className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground">{n.name}</div>
+                          {n.description && (
+                            <div className="text-[11px] text-muted-foreground line-clamp-2">{n.description}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <p className="text-[11px] text-muted-foreground text-center mb-4">
+                Você poderá gastar novos pontos de habilidade na aba <strong>Habilidades</strong> a cada nível.
+              </p>
+
+              <div className="flex gap-3">
+                <Button variant="ghost" onClick={() => setStep(2)}>
+                  <ChevronLeft className="w-4 h-4 mr-1" /> {t('app.onboarding.back_button')}
+                </Button>
+                <Button className="flex-1 gap-2" onClick={() => setStep(4)}>
+                  {t('app.onboarding.continue_button')} <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── STEP 4: Selecionar Missões ── */}
+        {step === 4 && selectedClass && (
+          <motion.div
+            key="step-missions"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -24 }}
@@ -562,12 +672,12 @@ export default function Onboarding() {
               </p>
 
               <div className="flex gap-3">
-                <Button variant="ghost" onClick={() => setStep(2)}>
+                <Button variant="ghost" onClick={() => setStep(3)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> {t('app.onboarding.back_button')}
                 </Button>
                 <Button
                   className="flex-1 gap-2"
-                  onClick={() => setStep(4)}
+                  onClick={() => setStep(5)}
                 >
                   {t('app.onboarding.continue_button')} <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -576,8 +686,8 @@ export default function Onboarding() {
           </motion.div>
         )}
 
-        {/* ── STEP 4: Confirmação / Conclusão ── */}
-        {step === 4 && selectedClass && (
+        {/* ── STEP 5: Confirmação / Conclusão ── */}
+        {step === 5 && selectedClass && (
           <motion.div
             key="step3"
             initial={{ opacity: 0, scale: 0.95 }}
