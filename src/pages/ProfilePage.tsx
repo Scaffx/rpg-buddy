@@ -1104,6 +1104,14 @@ export default function ProfilePage() {
 
   const saveSettings = useMutation({
     mutationFn: async () => {
+      // Exige no mínimo 6h de descanso entre dormir e acordar (janela noturna,
+      // com wrap pós-meia-noite). Bloqueia salvar abaixo disso.
+      const sMin = timeStringToMinutes(sleepTime, 23 * 60);
+      const wMin = timeStringToMinutes(wakeTime, 7 * 60);
+      const restMinutes = ((wMin - sMin) % 1440 + 1440) % 1440;
+      if (restMinutes < 360) {
+        throw new Error('REST_TOO_SHORT');
+      }
       const wTarget = Math.round(weight * 35);
       const basePayload = {
         weight_kg: weight,
@@ -1127,6 +1135,15 @@ export default function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["health_stats"] });
       toast.success(t('app.profile.settingsSavedToast'));
       setShowSettings(false);
+    },
+    onError: (err: any) => {
+      if (err?.message === 'REST_TOO_SHORT') {
+        toast.error('Mínimo de 6 horas de descanso', {
+          description: 'O intervalo entre dormir e acordar precisa ser de pelo menos 6 horas. Ajuste os horários.',
+        });
+      } else {
+        toast.error(t('app.profile.settingsSaveError', 'Erro ao salvar configurações.'));
+      }
     },
   });
 
@@ -1575,7 +1592,25 @@ export default function ProfilePage() {
                 <p className="text-[10px] text-muted-foreground mt-1">{t('app.profile.wakeTimeHint')}</p>
               </div>
             </div>
-            
+
+            {/* Aviso de descanso mínimo (6h) */}
+            {(() => {
+              const sMin = timeStringToMinutes(sleepTime, 23 * 60);
+              const wMin = timeStringToMinutes(wakeTime, 7 * 60);
+              const rest = ((wMin - sMin) % 1440 + 1440) % 1440;
+              const h = Math.floor(rest / 60);
+              const m = rest % 60;
+              const ok = rest >= 360;
+              return (
+                <div className="px-4 pb-2">
+                  <p className={`text-[11px] ${ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {ok ? '😴' : '⚠️'} Descanso planejado: {h}h{m > 0 ? `${String(m).padStart(2, '0')}` : ''}
+                    {ok ? '' : ' — mínimo de 6 horas exigido para salvar.'}
+                  </p>
+                </div>
+              );
+            })()}
+
             <div className="p-4 pt-0 space-y-4">
             {/* Volume Control */}
             <div>
