@@ -33,6 +33,16 @@ devolvem expressão (variedade, cosmético, status, narrativa), não progressão
 - CERTO: "sua rotina é o que te deixa forte pra lutar" (gera vontade).
 Mesma mecânica, enquadramento oposto. Toda copy do app segue o enquadramento CERTO.
 
+### 1.1 Regra de ouro refinada (resolve as zonas cinzentas)
+
+> **Só gera XP/ouro aquilo que EXIGE a ação da rotina ser cumprida.**
+
+- **Login NÃO exige** rotina → bônus diário **não pode** dar XP/ouro. "XP só por logar" é o vazamento mais puro: recompensa *presença*, não *hábito*. (Correção de uma versão anterior deste doc que dizia "bônus diário celebra a rotina" — está errado: ele celebra o login, que é outra coisa.)
+- **Conquista de "completou 7 dias" EXIGE** rotina → essa **pode** dar XP/ouro (é a rotina cumprida, só agregada).
+- **Quiz da Esfinge / desafio de NPC**: se **não exigem** rotina cumprida, são **ralos** — dão item/cosmético/acesso, não XP/ouro.
+
+**Bônus diário (correção certa, não só zerar):** o login diário tem valor psicológico real ("que bom que voltei") e **deve continuar existindo como gancho de retorno** — mas a recompensa troca de **XP+ouro** para **item-ralo** (fragmento / chave / cosmético). Coerente com §10.3 (recompensa variável = itens-ralo) e com o enquadramento de fonte: **o login te dá acesso a conteúdo; a rotina te dá poder.**
+
 ---
 
 ## 2. Atributos (decisão: MANTER os 11)

@@ -366,16 +366,8 @@ export default function BossPage() {
         won: true,
       });
 
-      // 3. Recompensas de XP — usa xp_reward do DB (mesmo valor exibido no card)
-      const bossData = (bosses as any[])?.find((b: any) => b.id === activeCombat.bossId);
-      if (bossData) {
-        const xpReward   = Math.max(50, bossData.xp_reward   || (bossData.level || 10) * 80 + 20);
-        const goldReward = Math.max(10, bossData.gold_reward  || (bossData.level || 10) * 15 + 10);
-        // 🔒 Server-side: crédito de XP/ouro do combate via RPCs (valores lidos
-        // do boss no banco acima). add_xp_to_user usa a XP_TABLE oficial.
-        await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: xpReward });
-        await supabase.rpc('add_gold_to_user', { p_user_id: user.id, p_gold: goldReward });
-      }
+      // 3. §9.2 (Rotina é a Torneira): combate é RALO — sem XP/ouro.
+      //    A vitória dá loot/fragmento de história (abaixo), não progressão.
 
       // 4. Drop Fragmento I do Pergaminho Ancestral
       const { data: fragmentItem } = await supabase
@@ -1117,8 +1109,7 @@ export default function BossPage() {
                     <div className="flex gap-3 text-xs flex-wrap justify-center">
                       <span className="text-health font-bold">❤️ {boss.hp} HP</span>
                       <span className="text-primary font-bold">⭐ {t('app.boss.level_abbr', { level: boss.level })}</span>
-                      <span className="text-xp font-bold">🏆 {boss.xp_reward} XP</span>
-                      <span className="font-bold text-accent">🪙 {boss.gold_reward || 10}</span>
+                      <span className="font-bold text-accent">🎒 Loot</span>
                       <span className="font-bold text-primary">🔑 {boss.keys_cost || 1}</span>
                     </div>
 
@@ -1307,7 +1298,7 @@ export default function BossPage() {
                       </div>
                       <div className="rpg-card bg-secondary/50 space-y-0.5">
                         <p className="text-muted-foreground font-semibold">{t('app.boss.rewards')}</p>
-                        <p className="font-bold text-xp">✨ {dungeon.xpReward} XP</p>
+                        <p className="font-bold text-accent">🎒 Loot</p>
                         <p className="text-muted-foreground">🪙 {dungeon.specialCoin}</p>
                         <p className="text-muted-foreground">🎁 {dungeon.uniqueItem}</p>
                         <p className="text-muted-foreground">🏅 {dungeon.titleReward}</p>
