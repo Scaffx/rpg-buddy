@@ -274,7 +274,6 @@ export default function BossPage() {
     }
   };
 
-  const FERREIRO_RESCUE_XP = 300;
   /** Resgate do Ferreiro (evento de história): liberta o Ferreiro com a Picareta. */
   const handleConfirmFerreiroRescue = async () => {
     if (!user) { setFerreiroRescueOpen(false); return; }
@@ -283,13 +282,16 @@ export default function BossPage() {
       await supabase.from('hero_story_choices').upsert({
         user_id: user.id, ferreiro_rescued: true,
       }, { onConflict: 'user_id' });
-      await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: FERREIRO_RESCUE_XP });
+      // §1.1: marco narrativo não gera XP — concede item-ralo de marco (lembrança única).
+      const { data: keepsake } = await supabase.from('game_items').select('id').eq('name', 'Marreta do Resgate').maybeSingle();
+      if ((keepsake as any)?.id) {
+        await supabase.from('user_inventory').insert({ user_id: user.id, item_id: (keepsake as any).id, quantity: 1, equipped: false });
+      }
       queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
       toast({
         title: t('app.boss.toast_ferreiro_title'),
-        description: t('app.boss.toast_ferreiro_desc', { xp: FERREIRO_RESCUE_XP }),
+        description: 'Você recebeu a Marreta do Resgate 🔨 — uma lembrança de marco.',
         duration: 6000,
       });
     } catch (err: any) {
@@ -446,9 +448,8 @@ export default function BossPage() {
     }
   };
 
-  /** Fusão Fênix -> Esfinge (roadmap #2): marca phoenix_fused e concede o XP
-   *  "devido" pela Fênix (que nunca premiou ao escapar). Servidor credita via RPC. */
-  const PHOENIX_FUSION_XP = 250;
+  /** Fusão Fênix -> Esfinge (roadmap #2): marca phoenix_fused e dá item-ralo de
+   *  marco (a Fênix nunca premiou ao escapar; agora o momento vira lembrança). */
   const handleConfirmPhoenixFusion = async () => {
     if (!user) { setPhoenixFusionOpen(false); return; }
     setPhoenixFusing(true);
@@ -457,14 +458,16 @@ export default function BossPage() {
         user_id: user.id,
         phoenix_fused: true,
       }, { onConflict: 'user_id' });
-      // 🔒 XP creditado server-side (XP_TABLE oficial), como nos outros marcos.
-      await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: PHOENIX_FUSION_XP });
+      // §1.1: marco narrativo não gera XP — concede item-ralo de marco (lembrança única).
+      const { data: keepsake } = await supabase.from('game_items').select('id').eq('name', 'Plumas da Fênix-Esfinge').maybeSingle();
+      if ((keepsake as any)?.id) {
+        await supabase.from('user_inventory').insert({ user_id: user.id, item_id: (keepsake as any).id, quantity: 1, equipped: false });
+      }
       queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['xp_history'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
       toast({
         title: t('app.boss.toast_phoenix_fused_title'),
-        description: t('app.boss.toast_phoenix_fused_desc', { xp: PHOENIX_FUSION_XP }),
+        description: 'Você recebeu as Plumas da Fênix-Esfinge 🪶 — uma lembrança de marco.',
         duration: 6000,
       });
     } catch (err: any) {
