@@ -32,7 +32,7 @@ const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
     target: 'dash-bonus',
     title: 'Bônus Diário 🎁',
-    description: 'Colete seu bônus diário de ouro e XP uma vez por dia. O cooldown reseta à meia-noite — nunca esqueça de coletar!',
+    description: 'Volte todo dia para coletar um fragmento de portal — seu gancho de retorno. O poder (XP/ouro) vem da rotina; o login te dá acesso a conteúdo.',
   },
   {
     target: 'dash-missions',
@@ -485,10 +485,12 @@ export default function Dashboard() {
                 <Button
                   onClick={() => {
                     dailyBonus.mutate(undefined, {
-                      onSuccess: () => {
-                        // Toast will be shown by mutation
+                      onSuccess: (data: { fragments?: number }) => {
+                        toast.success('Bônus diário coletado!', {
+                          description: `+${data?.fragments ?? 1} fragmento de portal 🔮 — bom te ver de volta, herói!`,
+                        });
                       },
-                      onError: (err: Error) => {
+                      onError: () => {
                         // Error messages handled
                       },
                     });

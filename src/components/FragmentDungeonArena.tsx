@@ -93,16 +93,10 @@ function InterFloorScreen({
       </div>
 
       <div className="rpg-card bg-green-500/10 border-green-500/30 space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recompensas acumuladas</p>
-        <div className="flex justify-around">
-          <div className="text-center">
-            <p className="text-lg font-bold text-yellow-400">+{xpSoFar} XP</p>
-            <p className="text-xs text-muted-foreground">Experiência</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-amber-400">+{goldSoFar} 🪙</p>
-            <p className="text-xs text-muted-foreground">Ouro</p>
-          </div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Espólio</p>
+        <div className="text-center">
+          <p className="text-base font-bold text-amber-400">🎒 Loot e materiais</p>
+          <p className="text-[11px] text-muted-foreground">O poder vem da rotina — a masmorra te dá itens.</p>
         </div>
       </div>
 
@@ -283,22 +277,13 @@ export default function FragmentDungeonArena({
           </p>
         </div>
         <div className="rpg-card bg-yellow-500/10 border-yellow-500/30 space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recompensas Totais</p>
-          <div className="flex justify-around">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-400">+{accXp}</p>
-              <p className="text-xs text-muted-foreground">XP Total</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-amber-400">+{accGold}</p>
-              <p className="text-xs text-muted-foreground">Ouro Total</p>
-            </div>
-          </div>
-          {classDiversityBonus > 0 && (
-            <p className="text-center text-xs text-yellow-300">
-              ✨ Bônus de Diversidade de Classes aplicado (+25% XP)
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Espólio</p>
+          <div className="text-center">
+            <p className="text-xl font-bold text-amber-400">🎒 Loot e materiais recolhidos</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Sem XP/ouro — o poder vem da rotina. A masmorra te dá itens e história.
             </p>
-          )}
+          </div>
         </div>
         <button
           onClick={() => onVictory({ totalXp: accXp, totalGold: accGold, floorsCompleted: floorDungeons.length, classDiversityBonus: classDiversityBonus > 0 })}

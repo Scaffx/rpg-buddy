@@ -191,8 +191,8 @@ function DailyPortalCard({
           {colorRevealed && meta && (
             <motion.div key="rewards" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="grid grid-cols-3 gap-2">
               {[
-                { label: t('app.portal.reward_xp'), value: `+${meta.xp}`, color: 'text-sky-300', bg: 'bg-sky-500/10 border-sky-500/20' },
-                { label: t('app.portal.reward_gold'), value: `${meta.gold}🪙`, color: 'text-yellow-300', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+                { label: 'Espólio', value: '🎒 Loot', color: 'text-sky-300', bg: 'bg-sky-500/10 border-sky-500/20' },
+                { label: 'Acesso', value: '🔮 Dungeon', color: 'text-yellow-300', bg: 'bg-yellow-500/10 border-yellow-500/20' },
                 { label: t('app.portal.reward_frag'), value: `${meta.fragmentChance}%`, color: meta.colorClass, bg: 'bg-purple-500/10 border-purple-500/20' },
               ].map(r => (
                 <div key={r.label} className={`${r.bg} border rounded-xl py-2 text-center`}>
@@ -580,10 +580,10 @@ export default function PortalEventPage() {
   async function handlePortalVictory(result: { xpGained: number; goldGained: number }) {
     if (!portalEvent) return;
     try {
-      const data = await completeRun.mutateAsync({ eventId: portalEvent.event_id, xpEarned: result.xpGained, goldEarned: result.goldGained });
-      const fragsMsg   = (data.frags_dropped ?? 0) > 0 ? ` · +${data.frags_dropped} ⬡` : '';
+      const data = await completeRun.mutateAsync({ eventId: portalEvent.event_id, xpEarned: 0, goldEarned: 0 });
+      const fragsMsg   = (data.frags_dropped ?? 0) > 0 ? `+${data.frags_dropped} ⬡ fragmento(s)` : 'Sem fragmentos desta vez';
       const dungeonMsg = data.dungeon_tier ? ` · ${t(`app.portal.tier_${data.dungeon_tier}_label`)}` : '';
-      toast({ title: t('app.portal.toast_portal_done'), description: `+${result.xpGained} XP · +${result.goldGained} 🪙${fragsMsg}${dungeonMsg}` });
+      toast({ title: t('app.portal.toast_portal_done'), description: `${fragsMsg}${dungeonMsg}` });
     } catch { /* ignore */ }
     setIsEnteringPortal(false);
   }

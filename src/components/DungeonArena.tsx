@@ -638,6 +638,7 @@ export default function DungeonArena({
   const [autoPotion, setAutoPotion]   = useState(true);
   const [potions, setPotions]         = useState<PotionItem[]>(initialPotions);
   const [isGranting, setIsGranting]   = useState(false);
+  const grantedRef                    = useRef(false);
   const [xpEarned, setXpEarned]       = useState(0);
   const [goldEarned, setGoldEarned]   = useState(0);
   const [showLootPanel, setShowLootPanel] = useState(false);
@@ -1102,28 +1103,18 @@ export default function DungeonArena({
   }, [enterRoom]);
 
   // ── Grant rewards ──────────────────────────────────────────────────────
+  // §9.2 (Rotina é a Torneira): dungeon é RALO — NÃO concede mais XP/ouro.
+  // Só devolve loot/materiais (expressão) + registra a parceria co-op.
   const grantRewards = useCallback(async () => {
-    if (!user || isGranting) return;
+    if (!user || isGranting || grantedRef.current) return;
+    grantedRef.current = true;
     setIsGranting(true);
 
-    const rescuedBonus = rescued * 50;
-    const totalXp   = getDungeonXp(dungeonId)   + rescuedBonus;
-    const copperQty = allLoot.find(l => l.id === 'moeda_cobre')?.qty || 0;
-    const totalGold = getDungeonGold(dungeonId) + Math.floor(copperQty * 0.5);
-
-    setXpEarned(totalXp);
-    setGoldEarned(totalGold);
+    setXpEarned(0);
+    setGoldEarned(0);
 
     try {
-      // XP — server-side (add_xp_to_user usa auth.uid() e clampa o valor)
-      const { error: xpErr } = await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: totalXp });
-      if (xpErr) console.error('add_xp_to_user falhou:', xpErr.message);
-
-      // Gold — server-side (corrigido: o parâmetro é p_gold, não p_amount)
-      const { error: goldErr } = await supabase.rpc('add_gold_to_user', { p_user_id: user.id, p_gold: totalGold });
-      if (goldErr) console.error('add_gold_to_user falhou:', goldErr.message);
-
-      // Crafting materials → game_items by effect
+      // Loot/materiais (expressão) → game_items by effect
       for (const loot of allLoot.filter(l => l.id !== 'moeda_cobre')) {
         try {
           const { data: gi } = await supabase.from('game_items').select('id').eq('effect', loot.id).maybeSingle();
@@ -1143,7 +1134,7 @@ export default function DungeonArena({
         user_id: user.id,
         action: 'dungeon_completed',
         description: `Dungeon "${dungeonName}" concluída! Resgatou ${rescued} NPC(s). Materiais: ${allLoot.map(l => `${l.qty}x ${l.name}`).join(', ')}`,
-        xp_gained: totalXp,
+        xp_gained: 0,
       });
 
       // Party bond — registra parceria para todos os membros co-op
@@ -1152,21 +1143,19 @@ export default function DungeonArena({
         recordPartnership.mutate({ playerIds: allIds, victory: true });
       }
 
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     } catch (err: any) {
       toast({ title: 'Erro ao salvar recompensas', description: err?.message, variant: 'destructive' });
     } finally {
       setIsGranting(false);
     }
-  }, [user, isGranting, rescued, allLoot, dungeonId, dungeonName, queryClient, toast]);
+  }, [user, isGranting, rescued, allLoot, dungeonName, queryClient, toast, recordPartnership, sessionPlayers]);
 
   useEffect(() => {
-    if (phase === 'victory' && !isGranting && xpEarned === 0) {
+    if (phase === 'victory') {
       grantRewards();
     }
-  }, [phase, isGranting, xpEarned, grantRewards]);
+  }, [phase, grantRewards]);
 
   // ── Derived values ─────────────────────────────────────────────────────
   const currentRoom    = allRooms[roomIdx];
@@ -1297,9 +1286,9 @@ export default function DungeonArena({
                   )}
                 </div>
                 <div className="rpg-card bg-secondary/50">
-                  <p className="text-muted-foreground">Recompensa Base</p>
-                  <p className="font-bold text-xp mt-1">✨ {getDungeonXp(dungeonId)} XP</p>
-                  <p className="font-bold text-accent">🪙 {getDungeonGold(dungeonId)} ouro</p>
+                  <p className="text-muted-foreground">Recompensa</p>
+                  <p className="font-bold text-accent mt-1">🎒 Loot e materiais</p>
+                  <p className="text-[11px] text-muted-foreground">sem XP/ouro</p>
                 </div>
                 <div className="rpg-card bg-secondary/50">
                   <p className="text-muted-foreground">Grupo</p>
@@ -1721,16 +1710,12 @@ export default function DungeonArena({
               <p className="text-sm text-muted-foreground">{scaledPrimary.name} foi derrotado. A masmorra é sua.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rpg-card bg-xp/10 border-xp/30 text-center">
-                <p className="text-xs text-muted-foreground">XP Ganho</p>
-                <p className="text-2xl font-bold text-xp">+{xpEarned || getDungeonXp(dungeonId)}</p>
-                {rescued > 0 && <p className="text-xs text-emerald-400">+{rescued * 50} bônus de resgate</p>}
-              </div>
-              <div className="rpg-card bg-accent/10 border-accent/30 text-center">
-                <p className="text-xs text-muted-foreground">Ouro Ganho</p>
-                <p className="text-2xl font-bold text-accent">+{goldEarned || getDungeonGold(dungeonId)}</p>
-              </div>
+            <div className="rpg-card bg-accent/10 border-accent/30 text-center">
+              <p className="text-xs text-muted-foreground">Espólio</p>
+              <p className="text-lg font-bold text-accent">🎒 Loot e materiais recolhidos</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                O poder vem da rotina — a masmorra te dá itens e história.
+              </p>
             </div>
 
             {rescued > 0 && (

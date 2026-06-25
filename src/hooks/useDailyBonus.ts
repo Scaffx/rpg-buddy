@@ -52,8 +52,9 @@ export function useDailyBonus() {
       const today = new Date().toLocaleDateString('en-CA');
       const { data, error } = await supabase.rpc('claim_daily_bonus', { p_today: today });
       if (error) throw error;
-      const result = (data || {}) as { xp?: number; gold?: number };
-      return { xp: result.xp ?? 0, gold: result.gold ?? 0 };
+      // §1.1: login não gera progressão — o bônus diário agora dá fragmento de portal.
+      const result = (data || {}) as { xp?: number; gold?: number; fragments?: number };
+      return { xp: result.xp ?? 0, gold: result.gold ?? 0, fragments: result.fragments ?? 0 };
     },
     onMutate: async () => {
       // Cancela queries em andamento e marca como resgatado imediatamente
@@ -62,8 +63,7 @@ export function useDailyBonus() {
       queryClient.setQueryData(['daily-bonus-claimed', user?.id], { isClaimed: true, nextClaimAt: nextClaimTime });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['portal-fragments'] });
       queryClient.invalidateQueries({ queryKey: ['daily-bonus-claimed'] });
     },
     onError: () => {
