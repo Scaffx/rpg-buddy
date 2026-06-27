@@ -186,6 +186,11 @@ export const sfx = {
     console.log('[SFX] click() called');
     playTone({ freqStart: 800, freqEnd: 600, duration: 0.08, type: 'sine', envelope: { peak: 0.25, attack: 0.001, release: 0.04 } });
   },
+  complete() {
+    // Chime curto, ascendente e gostoso — o "ritual" de marcar a missão concluída (§5.1).
+    playTone({ freqStart: 660, freqEnd: 990, duration: 0.12, type: 'sine', envelope: { peak: 0.3, attack: 0.004, release: 0.1 } });
+    setTimeout(() => playTone({ freqStart: 990, freqEnd: 1320, duration: 0.16, type: 'sine', envelope: { peak: 0.28, attack: 0.004, release: 0.13 } }), 95);
+  },
   campfire(durationSeconds?: number) {
     // Crackling fire sound for meditation/rest - uses real audio file
     console.log(`[SFX] campfire() called with duration: ${durationSeconds} seconds`);
