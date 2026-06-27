@@ -733,14 +733,27 @@ Deno.serve(async (req) => {
       elementalReaction = 'immune';
       bossEffectLog.push(`element_resist:${playerElement}:${before - danoPlayer}`);
     }
-    // Fraqueza elemental: trevas/morto-vivo -> sagrado, fogo -> gelo, gelo -> fogo, água -> raio
+    // Resistência específica (#2): terra aterra o raio; veneno absorve natureza (−50%).
+    else if (
+      (bossElement.includes('terra')  && playerElement === 'raio') ||
+      (bossElement.includes('veneno') && playerElement === 'natureza')
+    ) {
+      const before = danoPlayer;
+      danoPlayer = Math.max(0, Math.floor(danoPlayer * 0.5));
+      elementalReaction = 'immune';
+      bossEffectLog.push(`element_resist:${playerElement}:${before - danoPlayer}`);
+    }
+    // Fraqueza elemental: trevas/morto-vivo/demônio -> sagrado, fogo<->gelo, natureza/água -> ...,
+    // terra -> natureza/água (raízes/erosão), veneno -> fogo/sagrado (queima/purifica). (+50%)
     else if (
       (bossElement.includes('trevas') || bossElement.includes('morto') || bossElement.includes('demonio')) && playerElement === 'sagrado' ||
       bossElement.includes('fogo')  && playerElement === 'gelo' ||
       bossElement.includes('gelo')  && playerElement === 'fogo' ||
       bossElement.includes('natur') && playerElement === 'fogo' ||
       bossElement.includes('agua')  && playerElement === 'natureza' ||
-      bossElement.includes('agua')  && playerElement === 'raio'
+      bossElement.includes('agua')  && playerElement === 'raio' ||
+      bossElement.includes('terra')  && (playerElement === 'natureza' || playerElement === 'agua') ||
+      bossElement.includes('veneno') && (playerElement === 'fogo' || playerElement === 'sagrado')
     ) {
       const before = danoPlayer;
       danoPlayer = Math.floor(danoPlayer * 1.5);
