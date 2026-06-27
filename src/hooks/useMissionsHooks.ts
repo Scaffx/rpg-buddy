@@ -198,6 +198,7 @@ export function useCreateMission() {
       description,
       notes,
       secondaryAttributeIds,
+      anchor,
     }: {
       title: string;
       attributeId: string;
@@ -208,6 +209,7 @@ export function useCreateMission() {
       description?: string;
       notes?: string;
       secondaryAttributeIds?: string[];
+      anchor?: string;
     }) => {
       const { data: primaryAttrMeta } = await supabase
         .from('attributes')
@@ -232,6 +234,7 @@ export function useCreateMission() {
         description: description || null,
         notes: notes || null,
         secondary_attribute_ids: secondaryAttributeIds || [],
+        anchor: anchor || null,
       } as any;
 
       const { error } = await supabase.from("missions").insert(missionPayload);

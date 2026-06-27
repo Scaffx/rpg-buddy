@@ -17,6 +17,7 @@ export function useUpdateMission() {
         horario_provavel?: string;
         status?: string;
         secondary_attribute_ids?: string[];
+        anchor?: string | null;
       };
     }) => {
       const { error } = await supabase
