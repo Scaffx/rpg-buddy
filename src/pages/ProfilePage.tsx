@@ -1327,6 +1327,8 @@ export default function ProfilePage() {
       if (error) throw error;
 
       const starterItem = (data as any)?.starter_item || getStarterItemForClass(selectedRespecClass as any);
+      // O servidor decide se o respec foi gratuito (was_free = primeiro respec).
+      const isFirstRespec = Boolean((data as any)?.was_free);
       localStorage.setItem(`starter_class_v1_${user.id}`, selectedRespecClass);
       localStorage.setItem(`starter_item_v1_${user.id}`, starterItem);
       localStorage.setItem(`respec_used_${user.id}`, 'true');
