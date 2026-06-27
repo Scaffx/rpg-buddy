@@ -21,7 +21,7 @@ import {
   useArchiveMission,
   useDeleteChecklistItem,
 } from "@/hooks/useMissionActions";
-import { useCheckFailedMissions, useFailedMissions, usePayPenalty, useAcceptPenalty, useWelcomeBackCheck, useMarkFailedAsDone, useTodayRecoveryCount } from "@/hooks/useFailedMissions";
+import { useCheckFailedMissions, useFailedMissions, useAcceptPenalty, useWelcomeBackCheck, useMarkFailedAsDone, useTodayRecoveryCount } from "@/hooks/useFailedMissions";
 import { formatRelativeDay } from "@/lib/dateUtils";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -203,7 +203,6 @@ export default function Missions() {
 
   useCheckFailedMissions();
   const { data: failedMissions = [] } = useFailedMissions();
-  const payPenalty = usePayPenalty();
   const acceptPenalty = useAcceptPenalty();
   const { showWelcomeBack, setShowWelcomeBack, daysAway } = useWelcomeBackCheck();
   const markFailedAsDone = useMarkFailedAsDone();
@@ -667,15 +666,15 @@ const handleSave = async () => {
                 <button
                   onClick={() => {
                     acceptPenalty.mutate(failedMissions, {
-                      onSuccess: () => toast({ title: "✅ Todas as penalidades aceitas." }),
+                      onSuccess: () => toast({ title: "Dispensadas." }),
                       onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
                     });
                   }}
                   disabled={acceptPenalty.isPending}
-                  className="text-[11px] px-2.5 py-1 rounded-lg bg-destructive/20 text-destructive font-bold hover:bg-destructive/30 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  className="text-[11px] px-2.5 py-1 rounded-lg bg-secondary text-muted-foreground font-bold hover:bg-secondary/70 transition-colors disabled:opacity-50 flex items-center gap-1"
                 >
                   {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                  {t('app.missions.accept_all_penalty', { xp: failedMissions.reduce((sum: number, m: any) => sum + (m.xp_penalized || m.xp_reward), 0) })}
+                  Dispensar todas
                 </button>
               )}
             </div>
@@ -700,14 +699,14 @@ const handleSave = async () => {
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
-                      <p className="text-xs text-destructive">XP {t('app.missions.xp_lost')}: -{m.xp_penalized || m.xp_reward}</p>
+                      <p className="text-xs text-muted-foreground">Não concluída · sequência reiniciada</p>
                       <p className="text-xs text-muted-foreground">📅 {failedDate}</p>
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <button
                         onClick={() => {
                           markFailedAsDone.mutate(m, {
-                            onSuccess: () => toast({ title: "✅ Missão recuperada! XP restaurado." }),
+                            onSuccess: () => toast({ title: "✅ Missão recuperada — sequência de volta." }),
                             onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
                           });
                         }}
@@ -720,29 +719,16 @@ const handleSave = async () => {
                       </button>
                       <button
                         onClick={() => {
-                          payPenalty.mutate(m, {
-                            onSuccess: () => toast({ title: "✅ Penalidade paga! XP restaurado." }),
-                            onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
-                          });
-                        }}
-                        disabled={payPenalty.isPending || acceptPenalty.isPending}
-                        className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-yellow-400/20 text-yellow-400 font-bold hover:bg-yellow-400/30 transition-colors disabled:opacity-50"
-                      >
-                        {payPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "💰"}
-                        Pagar 10
-                      </button>
-                      <button
-                        onClick={() => {
                           acceptPenalty.mutate(m, {
-                            onSuccess: () => toast({ title: "✅ Penalidade aceita." }),
+                            onSuccess: () => toast({ title: "Dispensada." }),
                             onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
                           });
                         }}
-                        disabled={payPenalty.isPending || acceptPenalty.isPending}
-                        className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-red-500/20 text-red-400 font-bold hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                        disabled={acceptPenalty.isPending}
+                        className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-secondary text-muted-foreground font-bold hover:bg-secondary/70 transition-colors disabled:opacity-50"
                       >
-                        {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "✓"}
-                        Aceitar
+                        {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "✕"}
+                        Dispensar
                       </button>
                     </div>
                   </div>
