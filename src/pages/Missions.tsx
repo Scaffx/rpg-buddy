@@ -190,6 +190,7 @@ export default function Missions() {
   const [formHorario, setFormHorario] = useState<string | string[]>('flex');
   const [formMissionType, setFormMissionType] = useState<"recorrente" | "unica">("recorrente");
   const [formDueDate, setFormDueDate] = useState("");
+  const [formAnchor, setFormAnchor] = useState("");
 
   const { data: allMissions, isLoading, isError } = useMissions();
   const { data: attrs } = useAttributes();
@@ -360,6 +361,7 @@ export default function Missions() {
     setFormHorario("flex");
     setFormMissionType("recorrente");
     setFormDueDate("");
+    setFormAnchor("");
     setShowCreateEdit(true);
   };
 
@@ -388,7 +390,8 @@ const openEditModal = (m: any) => {
   const isMissionType = days.length === 0 && m.due_date ? "unica" : "recorrente";
   setFormMissionType(isMissionType);
   setFormDueDate(m.due_date || '');
-  
+  setFormAnchor((m as any).anchor || '');
+
   setShowCreateEdit(true);
 };
 
@@ -423,6 +426,7 @@ const handleSave = async () => {
           due_date: formMissionType === "unica" ? formDueDate : null,
           horario_provavel: Array.isArray(horarioParaSalvar) ? horarioParaSalvar.join(',') : horarioParaSalvar,
           secondary_attribute_ids: formSecondaryAttrIds,
+          anchor: formAnchor.trim() || null,
         },
       });
       toast({ title: '✏️ Missão atualizada!' });
@@ -437,6 +441,7 @@ const handleSave = async () => {
         description: formDescription.trim() || undefined,
         notes: formNotes.trim() || undefined,
         secondaryAttributeIds: formSecondaryAttrIds,
+        anchor: formAnchor.trim() || undefined,
       });
       toast({ title: t('app.missions.mission_created'), description: t('app.missions.mission_created_desc') });
     }
@@ -986,6 +991,8 @@ const handleSave = async () => {
   setFormMissionType={setFormMissionType}
   formDueDate={formDueDate}
   setFormDueDate={setFormDueDate}
+  formAnchor={formAnchor}
+  setFormAnchor={setFormAnchor}
   onSave={handleSave}
   saving={createMission.isPending || updateMission.isPending}
   missionId={editingMission?.id}
@@ -1327,7 +1334,7 @@ function MissionFormModal({
   formSecondaryAttrIds, setFormSecondaryAttrIds,
   formPriority, setFormPriority, formDays, setFormDays,
   formHorario, setFormHorario, formMissionType, setFormMissionType,
-  formDueDate, setFormDueDate, onSave, saving, missionId,
+  formDueDate, setFormDueDate, formAnchor, setFormAnchor, onSave, saving, missionId,
 }: {
   open: boolean; onOpenChange: (v: boolean) => void; isEditing: boolean; attrs: any[];
   formTitle: string; setFormTitle: (v: string) => void;
@@ -1340,6 +1347,7 @@ function MissionFormModal({
   formHorario: string | string[]; setFormHorario: (v: string | string[]) => void;
   formMissionType: "recorrente" | "unica"; setFormMissionType: (v: "recorrente" | "unica") => void;
   formDueDate: string; setFormDueDate: (v: string) => void;
+  formAnchor: string; setFormAnchor: (v: string) => void;
   onSave: () => void; saving: boolean; missionId?: string;
 }) {
   const { t } = useTranslation();
@@ -1495,6 +1503,37 @@ function MissionFormModal({
                 );
               })}
             </div>
+          </div>
+
+          {/* Âncora (implementation intention) — gancho do hábito a um evento que já acontece */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">
+              ⚓ Âncora <span className="text-muted-foreground/60">(quando? amarre a um momento do seu dia)</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {['Ao acordar', 'Depois do café da manhã', 'Ao chegar no trabalho', 'Ao chegar em casa', 'Depois do jantar', 'Antes de dormir'].map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setFormAnchor(formAnchor === a ? '' : a)}
+                  className={`px-2.5 py-1 rounded-full border text-[11px] transition-all ${
+                    formAnchor === a
+                      ? 'bg-primary/20 border-primary/50 text-primary ring-1 ring-primary'
+                      : 'bg-secondary border-border text-muted-foreground hover:border-primary/30'
+                  }`}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={formAnchor}
+              onChange={(e) => setFormAnchor(e.target.value)}
+              placeholder="Outro (escreva a sua âncora)…"
+              maxLength={60}
+              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-primary/50 outline-none"
+            />
           </div>
 
           {/* ✅ NOVO: Tipo de Missão */}
