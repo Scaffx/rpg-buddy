@@ -850,6 +850,7 @@ export default function ProfilePage() {
   const [mealsTarget, setMealsTarget] = useState(3);
   const [sleepTime, setSleepTime] = useState('23:00');
   const [wakeTime, setWakeTime] = useState('07:00');
+  const [restModeEnabled, setRestModeEnabled] = useState(false);
   const [volume, setVolume] = useState(100);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [xpAwarded, setXpAwarded] = useState(false);
@@ -873,6 +874,7 @@ export default function ProfilePage() {
       const rawWake = String(healthStats.wake_time || '07:00');
       setSleepTime(rawSleep.slice(0, 5));
       setWakeTime(rawWake.slice(0, 5));
+      setRestModeEnabled(Boolean((healthStats as any).rest_mode_enabled));
     }
   }, [healthStats]);
 
@@ -1120,6 +1122,7 @@ export default function ProfilePage() {
         water_target_ml: wTarget,
         sleep_time: sleepTime,
         wake_time: wakeTime,
+        rest_mode_enabled: restModeEnabled,
       };
       if (healthStats) {
         await supabase
@@ -1613,6 +1616,26 @@ export default function ProfilePage() {
                 </div>
               );
             })()}
+
+            {/* Modo descanso (opt-in) — nunca bloqueia o app, só silencia a gamificação */}
+            <div className="px-4 pb-2">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={restModeEnabled}
+                  onChange={(e) => setRestModeEnabled(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-indigo-500"
+                />
+                <span className="text-xs text-muted-foreground">
+                  <span className="text-foreground font-medium flex items-center gap-1">
+                    <Moon className="w-3.5 h-3.5 text-indigo-400" /> Modo descanso
+                  </span>
+                  No seu horário de dormir, mostra um lembrete calmo pra desacelerar.
+                  <strong className="text-foreground"> Não bloqueia nada</strong> — você continua
+                  registrando missões e refeições normalmente.
+                </span>
+              </label>
+            </div>
 
             <div className="p-4 pt-0 space-y-4">
             {/* Volume Control */}
