@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { starterClassDisplayName } from "@/hooks/useHeroClass";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { sfx } from "@/lib/sfx";
 import { evaluateTodayStreakRisk, DAYS_MAP } from "@/lib/streakUtils";
 import { currentWeekToken } from "@/lib/dateUtils";
 import RemindersCard from "@/components/RemindersCard";
@@ -388,11 +389,17 @@ export default function Dashboard() {
   ];
 
   const handleComplete = async (mission: any) => {
-    await completeMission.mutateAsync({
+    const res: any = await completeMission.mutateAsync({
       missionId: mission.id,
       attributeId: mission.attribute_id,
       xpReward: mission.xp_reward,
       secondaryAttributeIds: mission.secondary_attribute_ids || [],
+    });
+    // §5.1: o ritual de marcar concluído tem que ser gostoso (som + "+atributo").
+    try { sfx.complete(); } catch { /* áudio pode estar bloqueado */ }
+    const attrName = mission.attributes?.name;
+    toast.success('Missão concluída! ✅', {
+      description: `+${res?.xpGained ?? mission.xp_reward} XP${attrName ? ` · +${attrName}` : ''}`,
     });
   };
 
