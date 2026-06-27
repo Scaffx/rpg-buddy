@@ -398,7 +398,9 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      {/* §9.5: rotina dominante — flex+order coloca as missões logo após a saudação;
+          stats/bônus de RPG ficam abaixo (secundários). */}
+      <div className="flex flex-col gap-6">
         <motion.div data-tour="dash-greeting" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
             {t('app.dashboard.greeting', { name: profile?.display_name || t('app.dashboard.default_hero_name') })}
@@ -435,8 +437,8 @@ export default function Dashboard() {
           )}
         </motion.div>
 
-        {/* Stat cards */}
-        <div data-tour="dash-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {/* Stat cards (RPG secundário) */}
+        <div data-tour="dash-stats" className="order-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {statCards.map((stat, i) => (
             <motion.div
               key={stat.key}
@@ -455,7 +457,7 @@ export default function Dashboard() {
         {/* Diário do Herói — atalho de 1 toque (espelho da aderência à rotina) */}
         <Link
           to="/virtues"
-          className="flex items-center gap-3 rpg-card bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30 hover:border-indigo-400/50 transition-colors"
+          className="order-2 flex items-center gap-3 rpg-card bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30 hover:border-indigo-400/50 transition-colors"
         >
           <div className="w-10 h-10 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center shrink-0">
             <BookOpen className="w-5 h-5 text-indigo-300" />
@@ -474,7 +476,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
-            className={`rpg-card bg-gradient-to-r ${dailyBonus.isClaimed ? 'from-gray-500/10 to-gray-500/10 border-gray-500/30' : 'from-purple-500/10 to-pink-500/10 border-purple-500/30'}`}
+            className={`order-5 rpg-card bg-gradient-to-r ${dailyBonus.isClaimed ? 'from-gray-500/10 to-gray-500/10 border-gray-500/30' : 'from-purple-500/10 to-pink-500/10 border-purple-500/30'}`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -528,10 +530,10 @@ export default function Dashboard() {
         )}
 
         {/* Reminders — não-missões, sem XP */}
-        <RemindersCard />
+        <div className="order-3"><RemindersCard /></div>
 
-        {/* Today's Daily Missions */}
-        <div data-tour="dash-missions">
+        {/* Today's Daily Missions — ROTINA DOMINANTE (logo após a saudação) */}
+        <div data-tour="dash-missions" className="order-1">
           <h2 className="text-lg font-display font-semibold text-foreground mb-1">{t('app.dashboard.missions_today_header')}</h2>
           <p className="text-xs text-muted-foreground mb-3">{todayDayLabel}</p>
 
