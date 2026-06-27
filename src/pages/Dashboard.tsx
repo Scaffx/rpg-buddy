@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount, useRankPosition } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
 import { useDailyBonus } from "@/hooks/useDailyBonus";
-import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock, Flame, AlertTriangle } from "lucide-react";
+import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock, Flame, AlertTriangle, BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import AppLayout from "@/components/AppLayout";
@@ -450,6 +451,21 @@ export default function Dashboard() {
             </motion.div>
           ))}
         </div>
+
+        {/* Diário do Herói — atalho de 1 toque (espelho da aderência à rotina) */}
+        <Link
+          to="/virtues"
+          className="flex items-center gap-3 rpg-card bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30 hover:border-indigo-400/50 transition-colors"
+        >
+          <div className="w-10 h-10 rounded-full bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center shrink-0">
+            <BookOpen className="w-5 h-5 text-indigo-300" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-foreground">Diário do Herói</h3>
+            <p className="text-xs text-muted-foreground">Veja o que você cumpriu nesta semana — sua rotina, registrada.</p>
+          </div>
+          <span className="text-indigo-300 text-lg shrink-0">›</span>
+        </Link>
 
         {/* Daily Bonus */}
         {!dailyBonus.isCheckingClaim && (
