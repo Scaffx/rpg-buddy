@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 type HealthStatsRow = {
   sleep_time?: string | null;
   wake_time?: string | null;
+  rest_mode_enabled?: boolean | null;
 };
 
 const WARN_KEY = 'bedtime_prewarn_last_shown';
@@ -28,13 +29,14 @@ function inSleepWindow(sleepMin: number, wakeMin: number, nowMin: number): boole
 }
 
 /**
- * Modo descanso: 15 min antes do horário de dormir avisa; a partir do horário
- * (até acordar) marca `locked = true` para bloquear o app. Só missões e perfil
- * ficam liberados (decisão tratada no BedtimeGate).
+ * Modo descanso (§7) — OPT-IN, default OFF. Quando o usuário ativou e está no
+ * horário de dormir, retorna `restMode = true`. Isso NÃO bloqueia nenhuma página
+ * (o BedtimeGate só mostra um banner calmo). 15 min antes, um aviso gentil — só
+ * se o modo estiver ativado.
  */
-export function useBedtimeLock(): { locked: boolean } {
+export function useBedtimeLock(): { restMode: boolean } {
   const { user } = useAuth();
-  const [locked, setLocked] = useState(false);
+  const [restMode, setRestMode] = useState(false);
 
   const { data: healthStats } = useQuery<HealthStatsRow | null>({
     queryKey: ['bedtime-lock', user?.id],
@@ -42,7 +44,7 @@ export function useBedtimeLock(): { locked: boolean } {
     queryFn: async () => {
       const { data } = await supabase
         .from('user_health_stats')
-        .select('sleep_time, wake_time')
+        .select('sleep_time, wake_time, rest_mode_enabled')
         .eq('user_id', user!.id)
         .maybeSingle();
       return (data as HealthStatsRow | null) ?? null;
@@ -51,14 +53,14 @@ export function useBedtimeLock(): { locked: boolean } {
   });
 
   useEffect(() => {
-    if (!user?.id) {
-      setLocked(false);
+    if (!user?.id || !healthStats?.rest_mode_enabled) {
+      setRestMode(false);
       return;
     }
     const sleepMin = timeToMinutes(healthStats?.sleep_time);
     const wakeMin = timeToMinutes(healthStats?.wake_time);
     if (sleepMin == null || wakeMin == null) {
-      setLocked(false);
+      setRestMode(false);
       return;
     }
 
@@ -67,7 +69,7 @@ export function useBedtimeLock(): { locked: boolean } {
       const nowMin = now.getHours() * 60 + now.getMinutes();
       const today = now.toLocaleDateString('en-CA');
 
-      // Aviso 15 min antes (uma vez por dia)
+      // Aviso 15 min antes (uma vez por dia) — gentil, sem ameaça de bloqueio.
       const minutesToBed = ((sleepMin - nowMin) % 1440 + 1440) % 1440;
       if (minutesToBed > 0 && minutesToBed <= WARN_BEFORE_MIN) {
         let stored: Record<string, string> = {};
@@ -78,7 +80,7 @@ export function useBedtimeLock(): { locked: boolean } {
         }
         if (stored[user.id] !== today) {
           toast('Quase hora de dormir', {
-            description: `Em ${minutesToBed} min o modo descanso ativa e o app será bloqueado. Finalize o que precisar.`,
+            description: `Em ${minutesToBed} min entra o modo descanso. O app continua liberado — é só pra desacelerar.`,
             duration: 10000,
             icon: '🌙',
           });
@@ -90,13 +92,13 @@ export function useBedtimeLock(): { locked: boolean } {
         }
       }
 
-      setLocked(inSleepWindow(sleepMin, wakeMin, nowMin));
+      setRestMode(inSleepWindow(sleepMin, wakeMin, nowMin));
     };
 
     check();
     const interval = window.setInterval(check, 30_000);
     return () => window.clearInterval(interval);
-  }, [user?.id, healthStats?.sleep_time, healthStats?.wake_time]);
+  }, [user?.id, healthStats?.rest_mode_enabled, healthStats?.sleep_time, healthStats?.wake_time]);
 
-  return { locked };
+  return { restMode };
 }
