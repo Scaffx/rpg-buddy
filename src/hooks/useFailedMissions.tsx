@@ -3,8 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
-import { getLevelFromXp } from '@/lib/progression';
-import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
 
 const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -86,10 +84,9 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
 
   if (!missions || missions.length === 0) return;
 
-  let totalPenalty = 0;
-  let totalSilentPenalty = 0; // D+2+: auto-penalizado sem diálogo
-  let totalHpPenalty = 0;
-  let totalMpPenalty = 0;
+  // §4/§5 + torneira única (#22): a FALHA não toca XP/ouro/HP/MP. Consequência =
+  // só sequência reiniciada + missão marcada não-concluída (visível e recuperável).
+  let totalFailed = 0; // falhas reais (sem penalidade de recurso)
   let totalGrace = 0; // 1ª falha perdoada (nunca falhe 2x) — só alerta gentil
   const startOfToday = getStartOfLocalDay();
   const currentWeek = getWeekToken();
@@ -213,36 +210,9 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
         continue;
       }
 
-      // Esta missão falhou nesta data - calcular penalidade dinâmica
-      const xpPenalty = m.xp_reward;
-      let hpPenalty = 0;
-      let mpPenalty = 0;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('level')
-        .eq('user_id', userId)
-        .single();
-      let maxHp = 100;
-      let maxMp = 40;
-      if (profile && profile.level > 15) {
-        const { data: attrs } = await supabase
-          .from('attributes')
-          .select('name, level')
-          .eq('user_id', userId);
-        if (attrs) {
-          const attrLevels = getAttributeLevels(attrs);
-          const stats = getPlayerCombatStats(profile.level, attrLevels);
-          maxHp = stats.hp;
-          maxMp = stats.mp;
-        }
-        hpPenalty = Math.round(0.05 * maxHp);
-        mpPenalty = Math.round(0.10 * maxMp);
-        totalHpPenalty += hpPenalty;
-        totalMpPenalty += mpPenalty;
-      }
-      totalPenalty += xpPenalty;
-
-      // Marcar data como aceita no cache in-memory
+      // Falha real (graça + protetor esgotados): SEM penalidade de XP/HP/MP.
+      // Só reinicia a sequência e marca a missão como não-concluída (recuperável).
+      totalFailed += 1;
       effectiveStatus[pastDateStr] = 'failed_accepted';
 
       await supabase
@@ -250,31 +220,19 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
         .update({ streak_current_days: 0 } as any)
         .eq('user_id', userId);
 
-      await supabase.from('xp_transactions' as any).insert({
-        user_id: userId,
-        mission_id: m.id,
-        reason: 'mission_failed',
-        xp_delta: -xpPenalty,
-        gold_delta: 0,
-        local_date: pastDateStr,
-        description: `Missão fracassada (D+${daysBack} expirou): ${m.title}`,
-      });
-
       if (daysBack === 1) {
-        // D+1 (ontem): mostrar no diálogo para o jogador decidir
+        // D+1 (ontem): aparece no diálogo, pra a falta ficar visível e recuperável.
         setFailedThisRun.add(m.id);
         await supabase
           .from('missions')
           .update({
             is_failed: true,
-            xp_penalized: xpPenalty,
             failed_date: pastDateStr,
             daily_status: effectiveStatus,
           } as any)
           .eq('id', m.id);
       } else {
-        // D+2+ (2 ou mais dias atrás): penalizar silenciosamente, sem diálogo
-        totalSilentPenalty += xpPenalty;
+        // D+2+: marca silenciosamente como não-concluída (sai de pendente).
         await supabase
           .from('missions')
           .update({ daily_status: effectiveStatus } as any)
@@ -292,10 +250,6 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     const dueDate = (m as any).due_date as string | null | undefined;
     if (!dueDate) continue;
     if (dueDate >= todayStr) continue; // ainda no prazo
-
-    // Quantos dias atrasada (1 = ontem)
-    const dueAtMs = new Date(dueDate + 'T00:00:00').getTime();
-    const daysLate = Math.max(1, Math.round((startOfToday.getTime() - dueAtMs) / 86400000));
 
     // Tenta usar protetor de streak (mesma lógica das recorrentes)
     if (availableProtectors > 0) {
@@ -318,102 +272,38 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       continue;
     }
 
-    // Calcular penalidade dinâmica (mesma fórmula)
-    const xpPenalty = m.xp_reward;
-    let hpPenalty = 0;
-    let mpPenalty = 0;
-    const { data: profileLv } = await supabase
-      .from('profiles')
-      .select('level')
-      .eq('user_id', userId)
-      .single();
-    let maxHp = 100;
-    let maxMp = 40;
-    if (profileLv && profileLv.level > 15) {
-      const { data: attrs } = await supabase
-        .from('attributes')
-        .select('name, level')
-        .eq('user_id', userId);
-      if (attrs) {
-        const attrLevels = getAttributeLevels(attrs);
-        const stats = getPlayerCombatStats(profileLv.level, attrLevels);
-        maxHp = stats.hp;
-        maxMp = stats.mp;
-      }
-      hpPenalty = Math.round(0.05 * maxHp);
-      mpPenalty = Math.round(0.10 * maxMp);
-      totalHpPenalty += hpPenalty;
-      totalMpPenalty += mpPenalty;
-    }
-    totalPenalty += xpPenalty;
+    // Falha de missão única (prazo vencido): SEM penalidade de XP/HP/MP.
+    totalFailed += 1;
 
     await supabase
       .from('profiles')
       .update({ streak_current_days: 0 } as any)
       .eq('user_id', userId);
 
-    await supabase.from('xp_transactions' as any).insert({
-      user_id: userId,
-      mission_id: m.id,
-      reason: 'mission_failed',
-      xp_delta: -xpPenalty,
-      gold_delta: 0,
-      local_date: dueDate,
-      description: `Missão única fracassada (D+${daysLate}): ${m.title}`,
-    });
-
-    if (daysLate === 1) {
-      // Ontem: mostrar no diálogo
-      await supabase
-        .from('missions')
-        .update({
-          is_failed: true,
-          xp_penalized: xpPenalty,
-          failed_date: dueDate,
-        } as any)
-        .eq('id', m.id);
-    } else {
-      // Mais antiga: marcar como fracassada silenciosamente (sai de pendente)
-      totalSilentPenalty += xpPenalty;
-      await supabase
-        .from('missions')
-        .update({
-          is_failed: true,
-          xp_penalized: xpPenalty,
-          failed_date: dueDate,
-        } as any)
-        .eq('id', m.id);
-    }
+    await supabase
+      .from('missions')
+      .update({ is_failed: true, failed_date: dueDate } as any)
+      .eq('id', m.id);
   }
 
-  if (totalPenalty > 0) {
-    // 🔒 Server-side: dedução de XP da penalidade via RPC (nível nunca cai).
-    await supabase.rpc('apply_xp_penalty', { p_amount: totalPenalty });
-
-    let desc = `Missões fracassadas! -${totalPenalty} XP`;
-    if (totalHpPenalty > 0) desc += `, -${totalHpPenalty} HP`;
-    if (totalMpPenalty > 0) desc += `, -${totalMpPenalty} MP`;
+  if (totalFailed > 0) {
+    // Sem penalidade de recurso (§4/§5): só registra de forma neutra. A sequência
+    // já foi reiniciada acima; nada de XP/HP/MP. Copy gentil, focada em retomar.
     await supabase.from('activity_log').insert({
       user_id: userId,
       action: 'mission_failed',
-      description: desc,
-      xp_gained: -totalPenalty,
+      description: `${totalFailed} missão(ões) não concluída(s) — sequência reiniciada.`,
+      xp_gained: 0,
     });
 
-    // Toast separado para D+2+ (auto-penalizados) e D+1 (mostrar no diálogo)
-    if (totalSilentPenalty > 0) {
-      toast.warning(`⚠️ Missões atrasadas (D+2+) auto-penalizadas: -${totalSilentPenalty} XP`);
-    }
-    const d1Penalty = totalPenalty - totalSilentPenalty;
-    if (d1Penalty > 0) {
-      let toastMsg = `Missões fracassadas! Você perdeu ${d1Penalty} XP.`;
-      if (totalHpPenalty > 0) toastMsg += ` -${totalHpPenalty} HP`;
-      if (totalMpPenalty > 0) toastMsg += ` -${totalMpPenalty} MP`;
-      toast.error(toastMsg);
-    }
+    toast(
+      totalFailed === 1
+        ? '🌙 Missão não concluída — sequência reiniciada. Recomeçar faz parte. Bora retomar. 💪'
+        : `🌙 ${totalFailed} missões não concluídas — sequência reiniciada. Bora retomar. 💪`,
+      { duration: 6000 },
+    );
 
     queryClient.invalidateQueries({ queryKey: ['missions'] });
-    queryClient.invalidateQueries({ queryKey: ['profile'] });
     queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
   }
 
@@ -447,26 +337,9 @@ export function useFailedMissions() {
   });
 }
 
-export function usePayPenalty() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (mission: any) => {
-      if (!user) throw new Error('Não autenticado');
-      // 🔒 Server-side: o RPC pay_mission_penalty deduz o ouro, restaura o XP
-      // (lido do banco) e marca a missão atomicamente. Cliente não mexe em
-      // ouro/XP direto.
-      const { error } = await supabase.rpc('pay_mission_penalty', { p_mission_id: mission.id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
-      queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['missions'] });
-    },
-  });
-}
+// usePayPenalty REMOVIDO (§4/§5 + torneira única): chamava pay_mission_penalty,
+// que restaura XP (gold→XP) — um escritor de XP fora do complete_mission. A RPC
+// segue definida no banco (sem migration), mas não é mais chamada em lugar nenhum.
 
 export function useAcceptPenalty() {
   const { user } = useAuth();
@@ -496,9 +369,9 @@ export function useAcceptPenalty() {
 
         await supabase.from('activity_log').insert({
           user_id: user.id,
-          action: 'mission_penalty_accepted',
-          description: `Aceitou penalidade de ${mission.xp_penalized || mission.xp_reward} XP: ${mission.title} (${mission.failed_date || 'hoje'})`,
-          xp_gained: -(mission.xp_penalized || mission.xp_reward),
+          action: 'mission_dismissed',
+          description: `Dispensou a missão não concluída: ${mission.title} (${mission.failed_date || 'hoje'})`,
+          xp_gained: 0,
         });
       }
     },
@@ -543,33 +416,21 @@ export function useMarkFailedAsDone() {
         dailyStatus[mission.failed_date] = 'completed';
       }
 
-      // Limpar estado de falha
+      // Limpar estado de falha + marcar o dia como feito (volta a contar pra sequência).
       await supabase
         .from('missions')
-        .update({ is_failed: false, failed_date: null, xp_penalized: 0, daily_status: dailyStatus } as any)
+        .update({ is_failed: false, failed_date: null, daily_status: dailyStatus } as any)
         .eq('id', mission.id);
 
-      // Restaurar XP perdido com a penalidade (server-side via add_xp_to_user)
-      const xpToRestore = mission.xp_penalized || mission.xp_reward;
-      await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: xpToRestore });
-
-      // Registrar recuperação no log
+      // SUB-DECISÃO (flag no PR p/ Murillo): recuperar NÃO concede XP. A torneira
+      // única é só o complete_mission — aqui não há restore bespoke. Apenas reabilita
+      // a contagem da sequência. (Se a decisão for que recuperar concede XP, tem que
+      // ser via complete_mission, mas o clamp de data dele quebra recuperação antiga.)
       await supabase.from('activity_log').insert({
         user_id: user.id,
         action: 'mission_failed_recovered',
-        description: `Recuperou missão fracassada: ${mission.title} (+${xpToRestore} XP)`,
-        xp_gained: xpToRestore,
-      });
-
-      // Log estruturado: recuperação manual de missão fracassada
-      await supabase.from('xp_transactions' as any).insert({
-        user_id: user.id,
-        mission_id: mission.id,
-        reason: 'mission_recovered',
-        xp_delta: xpToRestore,
-        gold_delta: 0,
-        local_date: mission.failed_date || new Date().toLocaleDateString('en-CA'),
-        description: `Recuperou missão fracassada: ${mission.title} (+${xpToRestore} XP)`,
+        description: `Recuperou missão: ${mission.title}`,
+        xp_gained: 0,
       });
     },
     onSuccess: () => {
