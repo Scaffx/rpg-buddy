@@ -179,6 +179,40 @@ export function getPlayerCombatStats(profileLevel: number, levels: AttrLevels): 
   };
 }
 
+export type SoloEquipBonus = { atk: number; matk: number; def: number; hp: number; mp: number };
+
+/**
+ * §1 — stats do combate SOLO (useStartActiveCombat). Blend CALIBRADO (1.0): base de
+ * nível on-target p/ 4-10 turnos + fração do bônus de atributo (ATK 0.45 / DEF 0.35 /
+ * HP 0.80). NÃO usa o stat cru (estoura: boss morre ~3 turnos + penhasco de DEF).
+ * Mudança aditiva: o ofensivo é MAPEADO POR CLASSE (atk/matk/agi) em vez de max(atk,matk),
+ * pra Gatuno/Arqueiro (agi) entrarem. Baselines de nível: atk=4L, matk=3L, agi=2L.
+ */
+export function computeSoloCombatStats(
+  level: number,
+  levels: AttrLevels,
+  starterClass: string | null | undefined,
+  equip: SoloEquipBonus = { atk: 0, matk: 0, def: 0, hp: 0, mp: 0 },
+): { ataqueBase: number; defesaBase: number; hpMax: number; mpMax: number; offenseAttr: 'atk' | 'matk' | 'agi' } {
+  const cs = getPlayerCombatStats(level, levels);
+  const sc = String(starterClass || 'guerreiro').toLowerCase();
+  const offenseAttr: 'atk' | 'matk' | 'agi' =
+    (sc === 'gatuno' || sc === 'arqueiro') ? 'agi'
+    : (sc === 'mago' || sc === 'clerico' || sc === 'novato') ? 'matk'
+    : 'atk'; // guerreiro / espadachim / ferreiro / default
+  const attrOff =
+    offenseAttr === 'agi' ? cs.agi - level * 2
+    : offenseAttr === 'matk' ? cs.matk - level * 3
+    : cs.atk - level * 4;
+  const attrDef = cs.def - level * 3;
+  const attrHp = cs.hp - (100 + level * 12);
+  const ataqueBase = Math.round((14 + level * 2) + 0.45 * attrOff) + Math.max(0, equip.atk) + Math.floor(Math.max(0, equip.matk) * 0.5);
+  const defesaBase = Math.round((8 + level * 1.4) + 0.35 * attrDef) + Math.max(0, equip.def);
+  const hpMax = Math.round((100 + level * 12) + 0.80 * attrHp) + Math.max(0, equip.hp);
+  const mpMax = Math.max(10, Math.round(Number(cs.mp) || 40) + Math.max(0, equip.mp));
+  return { ataqueBase, defesaBase, hpMax, mpMax, offenseAttr };
+}
+
 export function getRoutineXpBuffBonus(effects: Set<string>): number {
   if (effects.has('xp_boost') || effects.has('foco_profundo')) {
     return 0.5;
