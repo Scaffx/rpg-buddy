@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
+import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, getPlayerCombatStats, computeSoloCombatStats } from '@/lib/combat';
 import { getEquipmentBonuses, type InventoryItem } from './useInventory';
 
 // Conjunto de efeitos de buff ativos (não expirados) do usuário.
@@ -210,7 +210,7 @@ export function useStartActiveCombat() {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('level, total_xp')
+        .select('level, total_xp, starter_class')
         .eq('user_id', user.id)
         .single();
 
@@ -239,14 +239,10 @@ export function useStartActiveCombat() {
         .eq('user_id', user.id);
       const equip = getEquipmentBonuses((invForCombat || []) as InventoryItem[]);
 
-      const cs = getPlayerCombatStats(level, getAttributeLevels((attrs || []) as any[]));
-      const attrOff = Math.max(cs.atk - level * 4, cs.matk - level * 3); // bônus ofensivo de atributo
-      const attrDef = cs.def - level * 3;                                // bônus defensivo de atributo
-      const attrHp  = cs.hp - (100 + level * 12);                        // bônus de HP de atributo
-      const ataqueBaseCalc = Math.round((14 + level * 2) + 0.45 * attrOff) + Math.max(0, equip.atk) + Math.floor(Math.max(0, equip.matk) * 0.5);
-      const defesaBaseCalc = Math.round((8 + level * 1.4) + 0.35 * attrDef) + Math.max(0, equip.def);
-      const hpMaxCalc      = Math.round((100 + level * 12) + 0.80 * attrHp) + Math.max(0, equip.hp);
-      const mpMaxCalc      = Math.max(10, Math.round(Number((cs as any).mp) || 40) + Math.max(0, equip.mp)); // mana p/ refill por combate
+      // §1: stats por atributo, blend calibrado (1.0) + ofensivo mapeado por classe.
+      // Lógica pura/testável em computeSoloCombatStats (src/lib/combat.ts). Boss intocado.
+      const { ataqueBase: ataqueBaseCalc, defesaBase: defesaBaseCalc, hpMax: hpMaxCalc, mpMax: mpMaxCalc } =
+        computeSoloCombatStats(level, getAttributeLevels((attrs || []) as any[]), (profile as any)?.starter_class, equip);
       // (crit/agi de item seguem cosméticos no combate solo: o motor não tem esquiva/crit.)
 
       const personagemPayload = {
