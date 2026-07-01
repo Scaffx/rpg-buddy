@@ -1,29 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
+import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
 import { getEquipmentBonuses, type InventoryItem } from './useInventory';
-
-// Conjunto de efeitos de buff ativos (não expirados) do usuário.
-async function getActiveBuffEffects(userId: string): Promise<Set<string>> {
-  const { data: buffs } = await supabase
-    .from('user_buffs')
-    .select('id, expires_at, active, shop_items(effect)')
-    .eq('user_id', userId)
-    .eq('active', true);
-
-  const now = Date.now();
-  const effects = new Set<string>();
-
-  for (const b of buffs || []) {
-    const expiresAt = b.expires_at ? new Date(b.expires_at).getTime() : null;
-    if (expiresAt && expiresAt < now) continue;
-    const effect = b.shop_items?.effect as string | undefined;
-    if (effect) effects.add(effect);
-  }
-
-  return effects;
-}
 
 export function useBosses() {
   return useQuery({
@@ -72,118 +51,6 @@ export function useBossBattles() {
       return data;
     },
     enabled: !!user,
-  });
-}
-
-export function useFightBoss() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ bossId, bossHp, xpReward, keysCost }: { bossId: string; bossHp: number; xpReward: number; keysCost: number }) => {
-      // Check if boss was already defeated
-      const { data: previousWin } = await supabase
-        .from("boss_battles")
-        .select("id")
-        .eq("user_id", user!.id)
-        .eq("boss_id", bossId)
-        .eq("won", true)
-        .limit(1);
-
-      if (previousWin && previousWin.length > 0) {
-        throw new Error("BOSS_ALREADY_DEFEATED");
-      }
-
-      // 🔑 Verificar chaves
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("level, total_xp, boss_keys")
-        .eq("user_id", user!.id)
-        .single();
-
-      const currentKeys = profile?.boss_keys || 0;
-      if (currentKeys < keysCost) {
-        throw new Error("INSUFFICIENT_KEYS");
-      }
-      // As chaves são consumidas pelo RPC resolve_boss_battle (server-side).
-
-      const { data: attrs } = await supabase
-        .from('attributes')
-        .select('name, level')
-        .eq('user_id', user!.id);
-
-      const { data: boss } = await supabase
-        .from('bosses')
-        .select('id, level, hp, gold_reward')
-        .eq('id', bossId)
-        .single();
-
-      const attrLevels = getAttributeLevels((attrs || []) as any[]);
-      const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
-
-      const { data: inventoryData } = await supabase
-        .from('user_inventory')
-        .select('equipped, sintonizado, game_items(rarity, requer_sintonizacao, atk_bonus, matk_bonus, def_bonus, hp_bonus, mp_bonus, agi_bonus, crit_bonus)')
-        .eq('user_id', user!.id);
-
-      const equipBonuses = getEquipmentBonuses((inventoryData || []) as InventoryItem[]);
-      const playerStats = {
-        ...playerStatsBase,
-        atk: playerStatsBase.atk + equipBonuses.atk,
-        matk: playerStatsBase.matk + equipBonuses.matk,
-        def: playerStatsBase.def + equipBonuses.def,
-        agi: playerStatsBase.agi + equipBonuses.agi,
-        crit: playerStatsBase.crit + equipBonuses.crit,
-      };
-
-      const activeBuffs = await getActiveBuffEffects(user!.id);
-      const combatBuffs = getBossCombatBuffModifiers(activeBuffs);
-      const bossStats = getBossCombatStats({ level: boss?.level || 1, hp: boss?.hp || bossHp });
-
-      // Sistema de dano com base em atributos (balanceado no estilo d20)
-      const firstRoll = Math.floor(Math.random() * 20) + 1;
-      const secondRoll = Math.floor(Math.random() * 20) + 1;
-      const hasInspiration = !!profile?.inspired_available;
-      const attackRoll = (combatBuffs.hasAdrenaline || hasInspiration) ? Math.max(firstRoll, secondRoll) : firstRoll;
-      const attackRollMultiplier = 3 + combatBuffs.attackRollMultiplierBonus;
-      const critMultiplier = attackRoll === 20 ? 1.5 : 1;
-      const physicalDamage = Math.max(0, playerStats.atk - Math.floor(bossStats.def * 0.65));
-      const magicalDamage = Math.max(0, playerStats.matk - Math.floor(bossStats.matk * 0.35));
-      const tacticalBonus = Math.floor((playerStats.agi + playerStats.crit) * 0.18);
-      const playerPower = Math.floor((physicalDamage + magicalDamage + tacticalBonus + attackRoll * attackRollMultiplier) * critMultiplier);
-
-      let bossPower = Math.floor(
-        bossStats.atk * 0.75 +
-        bossStats.matk * 0.45 +
-        bossStats.agi * 0.2 +
-        (Math.random() * 30),
-      );
-
-      bossPower = Math.floor(bossPower * combatBuffs.bossPowerMultiplier);
-
-      const damage = Math.min(Math.max(1, playerPower), bossHp);
-      const won = playerPower + Math.floor(playerStats.def * 0.4) >= bossPower;
-
-      // 🔒 Recompensa server-side: o RPC valida chaves + "já derrotado",
-      // consome chaves/buffs (adrenalina, boss_debuff, inspiração) e credita
-      // XP/ouro lendo os valores do boss no banco — não confia em
-      // xpReward/keysCost do client. O combate (won/damage) ainda é resolvido
-      // aqui; o combate 100% autoritativo virá com a reformulação de combate.
-      const { error: rpcError } = await supabase.rpc('resolve_boss_battle', {
-        p_boss_id: bossId,
-        p_won: won,
-        p_damage: damage,
-      });
-      if (rpcError) throw rpcError;
-
-      return { won, damage, playerPower };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["boss_battles"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
-      queryClient.invalidateQueries({ queryKey: ["xp_history"] });
-    },
   });
 }
 
