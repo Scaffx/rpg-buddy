@@ -25,7 +25,7 @@ import {
   type CompanionRow,
 } from '@/hooks/useCompanion';
 import { useActivePet } from '@/hooks/useActivePet';
-import { getPetBonus, petBonusLabel } from '@/lib/pets';
+import { getPetBonus, petBonusLabel, getSustainEffect, sustainLabel } from '@/lib/pets';
 
 // Companheiros são puramente COSMÉTICOS / de companhia (spec "Rotina é a
 // Torneira" §4): não têm stats de combate, não equipam itens e não lutam.
@@ -170,6 +170,7 @@ function CompanionCard({
 
   const bonus     = getPetBonus(companion.companion_type);
   const isActive  = activeType === companion.companion_type;
+  const sustain   = getSustainEffect(companion.companion_type);
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput,   setNameInput]   = useState(companion.name);
@@ -277,6 +278,13 @@ function CompanionCard({
               ? t('app.companion.bonus_active', { defaultValue: 'Ativo' })
               : t('app.companion.bonus_activate', { defaultValue: 'Ativar' })}
           </Button>
+        </div>
+      )}
+
+      {/* Sustain em combate (Fase 2): efeito por turno quando este pet está ativo */}
+      {sustain && (
+        <div className="flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-3 py-1.5 text-xs font-medium text-cyan-300">
+          ⚔️ {t('app.companion.sustain_prefix', { defaultValue: 'Em combate' })}: {sustainLabel(sustain)}
         </div>
       )}
 

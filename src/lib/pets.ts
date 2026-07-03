@@ -87,3 +87,51 @@ export function setActivePetType(userId: string, companionType: string | null): 
     else localStorage.removeItem(activeKey(userId));
   } catch { /* localStorage indisponível — pet ativo apenas na sessão */ }
 }
+
+// ── Sustain em combate (Fase 2) ───────────────────────────────────────────────
+// Efeitos POR TURNO aplicados na EDGE processar_turno (regen/-custo de MP). O
+// cliente manda o companion_type ativo no corpo; a edge VERIFICA posse e aplica.
+// A edge inline os MESMOS valores (Deno não importa este módulo) — estas funções
+// puras existem pra teste e pra rotular a UI. Números = chute (Murillo calibra).
+
+export type SustainEffect =
+  | { kind: 'regen_hp'; pct: number } // % do HP máx curado ao fim de cada turno sobrevivido
+  | { kind: 'regen_mp'; pct: number } // % do MP máx devolvido ao fim de cada turno
+  | { kind: 'mp_cost';  pct: number }; // fração de REDUÇÃO do custo de MP das skills
+
+export const PET_SUSTAIN: Record<string, SustainEffect> = {
+  mini_kraken:     { kind: 'regen_hp', pct: 0.05 }, // tinta curativa
+  mini_necromante: { kind: 'regen_mp', pct: 0.08 }, // dreno dos mortos
+  mini_leviata:    { kind: 'mp_cost',  pct: 0.20 }, // marés aliviam o esforço arcano
+};
+
+export function getSustainEffect(companionType: string | null | undefined): SustainEffect | null {
+  if (!companionType) return null;
+  return PET_SUSTAIN[companionType] ?? null;
+}
+
+/** Custo de MP após a redução do pet (nunca negativo, arredondado). */
+export function applyMpCostReduction(cost: number, eff: SustainEffect | null): number {
+  if (!eff || eff.kind !== 'mp_cost') return Math.max(0, Math.round(cost));
+  return Math.max(0, Math.round(cost * (1 - eff.pct)));
+}
+
+/** Recurso (HP ou MP) após o regen do pet no fim do turno, capado no máximo. */
+export function applyRegen(
+  current: number,
+  max: number,
+  eff: SustainEffect | null,
+  kind: 'regen_hp' | 'regen_mp',
+): number {
+  if (!eff || eff.kind !== kind) return current;
+  return Math.min(max, current + Math.round(max * eff.pct));
+}
+
+/** Rótulo legível e neutro de idioma. Ex.: "-20% custo de MP", "+5% HP/turno". */
+export function sustainLabel(eff: SustainEffect | null): string | null {
+  if (!eff) return null;
+  const p = Math.round(eff.pct * 100);
+  if (eff.kind === 'mp_cost')  return `-${p}% custo de MP`;
+  if (eff.kind === 'regen_hp') return `+${p}% HP/turno`;
+  return `+${p}% MP/turno`;
+}

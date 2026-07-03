@@ -1434,6 +1434,7 @@
       "play": "🎮 Play",
       "bonus_activate": "Activate",
       "bonus_active": "✓ Active",
+      "sustain_prefix": "In combat",
       "card_tip": "Completing daily missions gives +5 mood and +15 XP automatically!",
       "skeleton_awaiting": "Awaiting adoption",
       "skeleton_orphan_desc": "You chose to adopt the pup, but something went wrong saving it. Give it a name and confirm the adoption.",
