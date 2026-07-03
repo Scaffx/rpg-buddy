@@ -1457,6 +1457,8 @@
       "level": "Nível {{level}}",
       "feed": "🍖 Alimentar",
       "play": "🎮 Brincar",
+      "bonus_activate": "Ativar",
+      "bonus_active": "✓ Ativo",
       "card_tip": "Completar missões diárias dá +5 humor e +15 XP automaticamente!",
       "skeleton_awaiting": "Aguardando adoção",
       "skeleton_orphan_desc": "Você escolheu adotar o filhote, mas algo deu errado ao salvá-lo. Dê um nome a ele e confirme a adoção.",

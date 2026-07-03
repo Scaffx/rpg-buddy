@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, getPlayerCombatStats, computeSoloCombatStats } from '@/lib/combat';
 import { getEquipmentBonuses, type InventoryItem } from './useInventory';
+import { getActivePetType, getPetBonus, applyPetBonus } from '@/lib/pets';
 
 // Conjunto de efeitos de buff ativos (não expirados) do usuário.
 async function getActiveBuffEffects(userId: string): Promise<Set<string>> {
@@ -241,8 +242,13 @@ export function useStartActiveCombat() {
 
       // §1: stats por atributo, blend calibrado (1.0) + ofensivo mapeado por classe.
       // Lógica pura/testável em computeSoloCombatStats (src/lib/combat.ts). Boss intocado.
-      const { ataqueBase: ataqueBaseCalc, defesaBase: defesaBaseCalc, hpMax: hpMaxCalc, mpMax: mpMaxCalc } =
+      const baseStats =
         computeSoloCombatStats(level, getAttributeLevels((attrs || []) as any[]), (profile as any)?.starter_class, equip);
+      // Pet ATIVO (Fase 1): bônus passivo de stat (atk/def/hp/mp), aplicado no cliente
+      // ANTES de persistir. Zero XP/ouro; não toca na edge (só ajusta os stats iniciais
+      // do combate). 1 pet por vez (getActivePetType). Números calibráveis em lib/pets.
+      const { ataqueBase: ataqueBaseCalc, defesaBase: defesaBaseCalc, hpMax: hpMaxCalc, mpMax: mpMaxCalc } =
+        applyPetBonus(baseStats, getPetBonus(getActivePetType(user.id)));
       // (crit/agi de item seguem cosméticos no combate solo: o motor não tem esquiva/crit.)
 
       const personagemPayload = {
