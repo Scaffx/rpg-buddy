@@ -24,6 +24,8 @@ import {
   xpForNextLevel,
   type CompanionRow,
 } from '@/hooks/useCompanion';
+import { useActivePet } from '@/hooks/useActivePet';
+import { getPetBonus, petBonusLabel } from '@/lib/pets';
 
 // Companheiros são puramente COSMÉTICOS / de companhia (spec "Rotina é a
 // Torneira" §4): não têm stats de combate, não equipam itens e não lutam.
@@ -152,11 +154,22 @@ function SelectionScreen() {
 
 // ─── Companion Card (cosmético) ────────────────────────────────────────────────
 
-function CompanionCard({ companion }: { companion: CompanionRow }) {
+function CompanionCard({
+  companion,
+  activeType,
+  onToggleActive,
+}: {
+  companion: CompanionRow;
+  activeType: string | null;
+  onToggleActive: (companionType: string) => void;
+}) {
   const { t }     = useTranslation();
   const { user }  = useAuth();
   const qc        = useQueryClient();
   const interact  = useInteractCompanion();
+
+  const bonus     = getPetBonus(companion.companion_type);
+  const isActive  = activeType === companion.companion_type;
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput,   setNameInput]   = useState(companion.name);
@@ -248,6 +261,25 @@ function CompanionCard({ companion }: { companion: CompanionRow }) {
         <Badge variant="outline" className="text-xs">{label}</Badge>
       </div>
 
+      {/* Bônus passivo + ativar (Fase 1: 1 pet ativo por vez) */}
+      {bonus && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+            <Sparkles className="w-3.5 h-3.5" /> {petBonusLabel(bonus)}
+          </span>
+          <Button
+            size="sm"
+            variant={isActive ? 'default' : 'outline'}
+            className="h-7 text-xs"
+            onClick={() => onToggleActive(companion.companion_type)}
+          >
+            {isActive
+              ? t('app.companion.bonus_active', { defaultValue: 'Ativo' })
+              : t('app.companion.bonus_activate', { defaultValue: 'Ativar' })}
+          </Button>
+        </div>
+      )}
+
       {/* Mood bar */}
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs font-medium">
@@ -312,6 +344,7 @@ export default function CompanionPage() {
   const { t } = useTranslation();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { isLoading: loadingCompanions, data: allCompanions } = useAllCompanions();
+  const { activeType, setActive } = useActivePet();
 
   const companions = (allCompanions ?? []) as CompanionRow[];
   // Animal de nível 3 (escolha única) — controla a tela de seleção.
@@ -357,7 +390,7 @@ export default function CompanionPage() {
         {companions.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {companions.map((c) => (
-              <CompanionCard key={c.id} companion={c} />
+              <CompanionCard key={c.id} companion={c} activeType={activeType} onToggleActive={setActive} />
             ))}
           </div>
         )}
