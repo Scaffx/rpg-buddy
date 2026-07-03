@@ -18,6 +18,7 @@ export function useUpdateMission() {
         status?: string;
         secondary_attribute_ids?: string[];
         anchor?: string | null;
+        is_anchor?: boolean;
       };
     }) => {
       const { error } = await supabase

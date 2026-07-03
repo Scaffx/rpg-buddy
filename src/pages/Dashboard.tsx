@@ -15,6 +15,7 @@ import { starterClassDisplayName } from "@/hooks/useHeroClass";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sfx } from "@/lib/sfx";
+import { computeAnchorStatusToday } from "@/lib/anchors";
 import { evaluateTodayStreakRisk, DAYS_MAP } from "@/lib/streakUtils";
 import { currentWeekToken } from "@/lib/dateUtils";
 import RemindersCard from "@/components/RemindersCard";
@@ -155,6 +156,13 @@ export default function Dashboard() {
   }, [allMissions, todayDay]);
 
   const todayDate = getLocalDateString();
+
+  // Âncoras do Dia: gate SUAVE do bônus diário (incentivo — nunca punição).
+  const anchorStatus = useMemo(
+    () => computeAnchorStatusToday((allMissions as any[]) || [], todayDate, todayDay),
+    [allMissions, todayDate, todayDay],
+  );
+  const bonusLockedByAnchors = anchorStatus.hasAnchors && !anchorStatus.allComplete;
 
   const todayMissionMetrics = useMemo(() => {
     const required = (allMissions || []).filter((m: any) => {
@@ -506,7 +514,13 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
-              {!dailyBonus.isClaimed && (
+              {!dailyBonus.isClaimed && bonusLockedByAnchors && (
+                /* Gate suave (incentivo): copy neutra, sem linguagem de perda. */
+                <span className="text-[11px] text-muted-foreground text-right max-w-[160px]">
+                  ⚓ Complete suas âncoras de hoje para liberar o bônus
+                </span>
+              )}
+              {!dailyBonus.isClaimed && !bonusLockedByAnchors && (
                 <Button
                   onClick={() => {
                     dailyBonus.mutate(undefined, {
