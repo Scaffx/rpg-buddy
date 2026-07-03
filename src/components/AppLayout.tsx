@@ -16,6 +16,7 @@ import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
+import { useForrageio } from '@/hooks/useForrageio';
 import { useSleepWakeAlerts } from '@/hooks/useSleepWakeAlerts';
 import { useAutoCheckAchievements } from '@/hooks/useAchievements';
 import { usePresenceHeartbeat } from '@/hooks/usePresence';
@@ -47,6 +48,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { t } = useTranslation();
   useMidnightReset();
+  useForrageio();
   useSleepWakeAlerts();
   useAutoCheckAchievements();
   usePresenceHeartbeat();
