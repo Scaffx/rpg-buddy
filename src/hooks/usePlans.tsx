@@ -41,7 +41,10 @@ type UpdatePlanPayload = {
 export function usePlans() {
   const { user } = useAuth();
   return useQuery({
-    initialData: [] as PlanView[],
+    // NÃO usar initialData:[] aqui. Com staleTime global (60s) o initialData é
+    // persistido no cache como "fresco", suprimindo o fetch no mount — a tela
+    // ficava vazia ao voltar/recarregar mesmo com planos no banco. Sem ele, o
+    // React Query busca normalmente; a UI já trata data undefined via `?.`.
     queryKey: ["plans", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
