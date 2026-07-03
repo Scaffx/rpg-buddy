@@ -25,7 +25,8 @@ import {
   type CompanionRow,
 } from '@/hooks/useCompanion';
 import { useActivePet } from '@/hooks/useActivePet';
-import { getPetBonus, petBonusLabel } from '@/lib/pets';
+import { getPetBonus, petBonusLabel, isForagePet, forageRarityCap, hasForagedToday } from '@/lib/pets';
+import { getLocalDateString } from '@/lib/streakUtils';
 
 // Companheiros são puramente COSMÉTICOS / de companhia (spec "Rotina é a
 // Torneira" §4): não têm stats de combate, não equipam itens e não lutam.
@@ -168,8 +169,11 @@ function CompanionCard({
   const qc        = useQueryClient();
   const interact  = useInteractCompanion();
 
-  const bonus     = getPetBonus(companion.companion_type);
-  const isActive  = activeType === companion.companion_type;
+  const bonus       = getPetBonus(companion.companion_type);
+  const isActive    = activeType === companion.companion_type;
+  const forages     = isForagePet(companion.companion_type);
+  const affinity    = Number(companion.affinity ?? 0);
+  const foragedToday = hasForagedToday(companion.last_forage_at, getLocalDateString());
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput,   setNameInput]   = useState(companion.name);
@@ -277,6 +281,28 @@ function CompanionCard({
               ? t('app.companion.bonus_active', { defaultValue: 'Ativo' })
               : t('app.companion.bonus_activate', { defaultValue: 'Ativar' })}
           </Button>
+        </div>
+      )}
+
+      {/* Forrageio (Fase 1.5): afinidade + teto de raridade + status do dia */}
+      {forages && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-amber-400">
+              🎒 {t('app.companion.forage_title', { defaultValue: 'Forrageio' })}
+            </span>
+            <span className={foragedToday ? 'text-emerald-400' : 'text-muted-foreground'}>
+              {foragedToday
+                ? t('app.companion.forage_done', { defaultValue: '✓ hoje' })
+                : isActive
+                  ? t('app.companion.forage_ready', { defaultValue: 'pronto hoje' })
+                  : t('app.companion.forage_inactive', { defaultValue: 'ative p/ caçar' })}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>{t('app.companion.affinity', { defaultValue: 'Afinidade' })}: {affinity}</span>
+            <span>{t('app.companion.forage_cap', { defaultValue: 'até' })} {forageRarityCap(affinity)}</span>
+          </div>
         </div>
       )}
 

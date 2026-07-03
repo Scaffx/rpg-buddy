@@ -87,3 +87,72 @@ export function setActivePetType(userId: string, companionType: string | null): 
     else localStorage.removeItem(activeKey(userId));
   } catch { /* localStorage indisponível — pet ativo apenas na sessão */ }
 }
+
+// ── Forrageio (Fase 1.5) ──────────────────────────────────────────────────────
+// Pets caçadores trazem 1 item equipável por dia. A raridade escala com AFINIDADE,
+// que sobe +1 a cada "dia perfeito" (todas as âncoras completas). Client-only:
+// grant via insert em user_inventory (mesmo padrão de useGrantBossLoot). Zero
+// XP/ouro. Números (thresholds/pesos) são chute — Murillo calibra.
+
+/** Pets com forrageio. (Ambos também têm bônus de stat em PET_BONUS quando ativos.) */
+export const FORAGE_PETS = ['cat', 'mini_demonio_fome'] as const;
+export function isForagePet(companionType: string | null | undefined): boolean {
+  return !!companionType && (FORAGE_PETS as readonly string[]).includes(companionType);
+}
+
+export type ForageRarity = 'comum' | 'incomum' | 'raro' | 'epico';
+const FORAGE_RANK: Record<ForageRarity, number> = { comum: 0, incomum: 1, raro: 2, epico: 3 };
+/** Ordem decrescente p/ fallback quando não há item da raridade sorteada. */
+export const FORAGE_RARITY_DESC: ForageRarity[] = ['epico', 'raro', 'incomum', 'comum'];
+
+/**
+ * Teto de raridade por afinidade (thresholds = chute; calibrar). Guardrail:
+ * épico só com afinidade ALTA; forrageio NUNCA dropa lendário. Tiers comum→raro→épico.
+ */
+export function forageRarityCap(affinity: number): ForageRarity {
+  const a = affinity || 0;
+  if (a >= 15) return 'epico';
+  if (a >= 5) return 'raro';
+  return 'comum';
+}
+
+/** Pesos base de drop (antes do teto por afinidade). Ajustáveis. */
+const FORAGE_WEIGHTS: Array<{ rarity: ForageRarity; weight: number }> = [
+  { rarity: 'comum', weight: 58 },
+  { rarity: 'incomum', weight: 28 },
+  { rarity: 'raro', weight: 11 },
+  { rarity: 'epico', weight: 3 },
+];
+
+/** Sorteia a raridade do forrageio respeitando o teto por afinidade. rng() ∈ [0,1). */
+export function rollForageRarity(affinity: number, rng: () => number = Math.random): ForageRarity {
+  const cap = FORAGE_RANK[forageRarityCap(affinity)];
+  const table = FORAGE_WEIGHTS.filter((t) => FORAGE_RANK[t.rarity] <= cap);
+  const total = table.reduce((s, t) => s + t.weight, 0);
+  let r = rng() * total;
+  for (const t of table) {
+    if (r < t.weight) return t.rarity;
+    r -= t.weight;
+  }
+  return table[table.length - 1].rarity;
+}
+
+/** Já forrageou hoje? (compara a data YYYY-MM-DD). */
+export function hasForagedToday(lastForageAt: string | null | undefined, todayStr: string): boolean {
+  return !!lastForageAt && String(lastForageAt).slice(0, 10) === todayStr;
+}
+
+/**
+ * Afinidade após um "dia perfeito" (todas as âncoras completas). +1/dia, UMA vez.
+ * Retorna null se não deve mudar (dia não-perfeito ou já ganhou hoje).
+ */
+export function accrueAffinity(
+  current: number,
+  lastAffinityDate: string | null | undefined,
+  perfectDayToday: boolean,
+  todayStr: string,
+): { affinity: number; lastAffinityDate: string } | null {
+  if (!perfectDayToday) return null;
+  if (lastAffinityDate && String(lastAffinityDate).slice(0, 10) === todayStr) return null;
+  return { affinity: (current || 0) + 1, lastAffinityDate: todayStr };
+}
