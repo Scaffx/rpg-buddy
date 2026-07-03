@@ -191,6 +191,7 @@ export default function Missions() {
   const [formMissionType, setFormMissionType] = useState<"recorrente" | "unica">("recorrente");
   const [formDueDate, setFormDueDate] = useState("");
   const [formAnchor, setFormAnchor] = useState("");
+  const [formIsAnchor, setFormIsAnchor] = useState(false);
 
   const { data: allMissions, isLoading, isError } = useMissions();
   const { data: attrs } = useAttributes();
@@ -361,6 +362,7 @@ export default function Missions() {
     setFormMissionType("recorrente");
     setFormDueDate("");
     setFormAnchor("");
+    setFormIsAnchor(false);
     setShowCreateEdit(true);
   };
 
@@ -390,6 +392,7 @@ const openEditModal = (m: any) => {
   setFormMissionType(isMissionType);
   setFormDueDate(m.due_date || '');
   setFormAnchor((m as any).anchor || '');
+  setFormIsAnchor(Boolean((m as any).is_anchor));
 
   setShowCreateEdit(true);
 };
@@ -426,6 +429,7 @@ const handleSave = async () => {
           horario_provavel: Array.isArray(horarioParaSalvar) ? horarioParaSalvar.join(',') : horarioParaSalvar,
           secondary_attribute_ids: formSecondaryAttrIds,
           anchor: formAnchor.trim() || null,
+          is_anchor: formIsAnchor,
         },
       });
       toast({ title: '✏️ Missão atualizada!' });
@@ -441,6 +445,7 @@ const handleSave = async () => {
         notes: formNotes.trim() || undefined,
         secondaryAttributeIds: formSecondaryAttrIds,
         anchor: formAnchor.trim() || undefined,
+        isAnchor: formIsAnchor,
       });
       toast({ title: t('app.missions.mission_created'), description: t('app.missions.mission_created_desc') });
     }
@@ -653,6 +658,39 @@ const handleSave = async () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* ── Âncoras do Dia: sugestão (só cria com o clique — consentimento) ── */}
+        {!isLoading && !(((allMissions as any[]) || []).some((m: any) => m.is_anchor)) && (
+          <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-foreground">⚓ Âncoras do Dia</p>
+              <p className="text-xs text-muted-foreground">
+                Âncoras são hábitos vitais — beber água, se alimentar. Completar todas as
+                âncoras do dia destrava seu <strong className="text-foreground">Dia Perfeito</strong> (Inspiração ⚡) e o bônus diário.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              disabled={createMission.isPending}
+              onClick={async () => {
+                const vit = ((attrs as any[]) || []).find((a: any) => String(a.name || '').toLowerCase().startsWith('vital')) || ((attrs as any[]) || [])[0];
+                if (!vit) { toast({ title: 'Crie um atributo primeiro.', variant: 'destructive' }); return; }
+                const allDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                try {
+                  await createMission.mutateAsync({ title: 'Beber água', attributeId: vit.id, daysOfWeek: allDays, priority: 'media', description: 'Meta de hidratação do dia', isAnchor: true });
+                  await createMission.mutateAsync({ title: 'Refeições do dia', attributeId: vit.id, daysOfWeek: allDays, priority: 'media', description: 'Fazer as refeições principais', isAnchor: true });
+                  toast({ title: '⚓ Âncoras criadas!', description: 'Beber água + Refeições do dia — todos os dias.' });
+                } catch (e: any) {
+                  toast({ title: 'Erro ao criar âncoras', description: e?.message, variant: 'destructive' });
+                }
+              }}
+              className="shrink-0 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40"
+            >
+              {createMission.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : '⚓ '}
+              Criar âncoras sugeridas
+            </Button>
+          </div>
+        )}
 
         {/* ── Missões Fracassadas ────────────────────────────── */}
         {failedMissions.length > 0 && (
@@ -979,6 +1017,8 @@ const handleSave = async () => {
   setFormDueDate={setFormDueDate}
   formAnchor={formAnchor}
   setFormAnchor={setFormAnchor}
+  formIsAnchor={formIsAnchor}
+  setFormIsAnchor={setFormIsAnchor}
   onSave={handleSave}
   saving={createMission.isPending || updateMission.isPending}
   missionId={editingMission?.id}
@@ -1320,7 +1360,8 @@ function MissionFormModal({
   formSecondaryAttrIds, setFormSecondaryAttrIds,
   formPriority, setFormPriority, formDays, setFormDays,
   formHorario, setFormHorario, formMissionType, setFormMissionType,
-  formDueDate, setFormDueDate, formAnchor, setFormAnchor, onSave, saving, missionId,
+  formDueDate, setFormDueDate, formAnchor, setFormAnchor,
+  formIsAnchor, setFormIsAnchor, onSave, saving, missionId,
 }: {
   open: boolean; onOpenChange: (v: boolean) => void; isEditing: boolean; attrs: any[];
   formTitle: string; setFormTitle: (v: string) => void;
@@ -1334,6 +1375,7 @@ function MissionFormModal({
   formMissionType: "recorrente" | "unica"; setFormMissionType: (v: "recorrente" | "unica") => void;
   formDueDate: string; setFormDueDate: (v: string) => void;
   formAnchor: string; setFormAnchor: (v: string) => void;
+  formIsAnchor: boolean; setFormIsAnchor: (v: boolean) => void;
   onSave: () => void; saving: boolean; missionId?: string;
 }) {
   const { t } = useTranslation();
@@ -1520,6 +1562,24 @@ function MissionFormModal({
               maxLength={60}
               className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:border-primary/50 outline-none"
             />
+          </div>
+
+          {/* Missão-âncora (hábito vital) — incentivo, nunca punição */}
+          <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/5 p-3">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={formIsAnchor}
+                onChange={(e) => setFormIsAnchor(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-cyan-500"
+              />
+              <span className="text-xs text-muted-foreground">
+                <span className="text-foreground font-medium block">⚓ Missão-âncora</span>
+                Âncoras são hábitos vitais — beber água, se alimentar. Completar todas
+                as âncoras do dia destrava seu <strong className="text-foreground">Dia Perfeito</strong> e
+                o bônus diário.
+              </span>
+            </label>
           </div>
 
           {/* ✅ NOVO: Tipo de Missão */}

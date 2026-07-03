@@ -199,6 +199,7 @@ export function useCreateMission() {
       notes,
       secondaryAttributeIds,
       anchor,
+      isAnchor,
     }: {
       title: string;
       attributeId: string;
@@ -210,6 +211,8 @@ export function useCreateMission() {
       notes?: string;
       secondaryAttributeIds?: string[];
       anchor?: string;
+      /** Missão-âncora (hábito vital): destrava Dia Perfeito + bônus diário. */
+      isAnchor?: boolean;
     }) => {
       const { data: primaryAttrMeta } = await supabase
         .from('attributes')
@@ -235,6 +238,7 @@ export function useCreateMission() {
         notes: notes || null,
         secondary_attribute_ids: secondaryAttributeIds || [],
         anchor: anchor || null,
+        is_anchor: Boolean(isAnchor),
       } as any;
 
       const { error } = await supabase.from("missions").insert(missionPayload);
