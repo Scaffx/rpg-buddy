@@ -6,6 +6,7 @@ import { Network, Lock, RotateCcw, Check } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { useProfile } from '@/hooks/useProfile';
+import { useHeroClass } from '@/hooks/useHeroClass';
 import {
   useSkillTreeNodes,
   usePlayerSkillNodes,
@@ -40,8 +41,10 @@ const BRANCH_ORDER = ['forca', 'fisico', 'sangramento', 'fogo', 'gelo', 'raio', 
 export default function SkillTreePage({ embedded }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const { data: profile } = useProfile();
-  // Árvore da CLASSE base do jogador (mago/guerreiro/gatuno/ferreiro/arqueiro/novato).
-  const tree = (profile?.starter_class as string) || 'mago';
+  // Árvore a exibir: Aprendiz (tier 0, lv 1-4) mostra a mini-árvore tutorial; ao virar
+  // tier-1, mostra a árvore da classe-base (mago/guerreiro/gatuno/ferreiro/arqueiro/novato).
+  const { treeKey } = useHeroClass();
+  const tree = treeKey || 'mago';
   const { data: nodes = [], isLoading } = useSkillTreeNodes(tree);
   const { data: ranks = {} } = usePlayerSkillNodes();
   const allocate = useAllocateSkillNode();

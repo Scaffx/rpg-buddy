@@ -15,16 +15,38 @@ import { useSkillTreeNodes, usePlayerSkillNodes } from '@/hooks/useSkillTree';
 const EFFECT_ICON: Record<string, string> = { dano: '⚔️', heal: '💚', buff: '🛡️', debuff: '🔻', cc: '⚡', utility: '✨' };
 const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe', tree: 'Árvore', weapon: 'Arma', cinza: 'Cinza' };
 
+/** Mapeia nós-skill alocados (rank>=1) de uma árvore para entradas de loadout. */
+function buildTreeSkills(nodes: any[], ranks: Record<string, number>, archetype = 'Árvore'): any[] {
+  return (nodes || [])
+    .filter((n) => n.node_type === 'skill' && (ranks[n.id] || 0) >= 1)
+    .map((n) => {
+      const eff: any = n.effect || {};
+      const rank = ranks[n.id] || 1;
+      const pct = Number(eff.pct_per_rank ?? 10);
+      const power = Math.round(Number(eff.power ?? 30) * (1 + (rank - 1) * pct / 100));
+      const element = String(eff.element || 'arcano');
+      return {
+        id: n.id, name: n.name, power, cooldown: Number(eff.cooldown ?? 2),
+        category: element === 'fisico' ? 'fisica' : 'magica', tier: 'classe',
+        mpCost: Number(eff.mpCost ?? 0), effectType: String(eff.effectType || 'dano'),
+        effectLabel: n.description, element, archetype, unlocked: true, _src: 'tree',
+      } as any;
+    });
+}
+
 /** Editor de loadout de combate — fonte única usada no hub de Habilidades. */
 export default function CombatLoadout() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
-  const { starterClass, hasClass } = useHeroClass();
+  const { treeKey, hasClass } = useHeroClass();
 
-  const { data: treeNodes = [] } = useSkillTreeNodes(starterClass);
+  const { data: treeNodes = [] } = useSkillTreeNodes(treeKey);
   const { data: cinzaNodes = [] } = useSkillTreeNodes('cinzas');
+  // Skills do Aprendiz (tier 0) SEMPRE carregadas: ao virar tier-1 (treeKey vira a
+  // classe), o Golpe Improvisado já alocado continua disponível no loadout LIVRE.
+  const { data: aprendizNodes = [] } = useSkillTreeNodes('aprendiz');
   const { data: treeRanks = {} } = usePlayerSkillNodes();
   const { data: inventory = [] } = useInventory();
 
@@ -53,23 +75,9 @@ export default function CombatLoadout() {
       });
   }, [inventory]);
 
-  const treeSkills = useMemo(() => {
-    return (treeNodes || [])
-      .filter((n) => n.node_type === 'skill' && (treeRanks[n.id] || 0) >= 1)
-      .map((n) => {
-        const eff: any = n.effect || {};
-        const rank = treeRanks[n.id] || 1;
-        const pct = Number(eff.pct_per_rank ?? 10);
-        const power = Math.round(Number(eff.power ?? 30) * (1 + (rank - 1) * pct / 100));
-        const element = String(eff.element || 'arcano');
-        return {
-          id: n.id, name: n.name, power, cooldown: Number(eff.cooldown ?? 2),
-          category: element === 'fisico' ? 'fisica' : 'magica', tier: 'classe',
-          mpCost: Number(eff.mpCost ?? 0), effectType: String(eff.effectType || 'dano'),
-          effectLabel: n.description, element, archetype: 'Árvore', unlocked: true, _src: 'tree',
-        } as any;
-      });
-  }, [treeNodes, treeRanks]);
+  const treeSkills = useMemo(() => buildTreeSkills(treeNodes, treeRanks), [treeNodes, treeRanks]);
+  // Skills do Aprendiz alocadas seguem no loadout mesmo após escolher classe tier-1.
+  const aprendizSkills = useMemo(() => buildTreeSkills(aprendizNodes, treeRanks, 'Aprendiz'), [aprendizNodes, treeRanks]);
 
   // Elemento/tipo da ARMA equipada — usado para liberar Cinzas compatíveis.
   const equippedWeapon = useMemo(() => {
@@ -107,10 +115,12 @@ export default function CombatLoadout() {
 
   // Sem classe escolhida → só ARMA + CINZAS. As skills de CLASSE (árvore) só liberam após
   // o jogador escolher uma classe (antes, starterClass caía em 'novato' e mostrava skills indevidas).
-  const allSkills = useMemo(
-    () => [...weaponSkills, ...(hasClass ? treeSkills : []), ...cinzaSkills],
-    [weaponSkills, treeSkills, cinzaSkills, hasClass],
-  );
+  const allSkills = useMemo(() => {
+    const merged = [...weaponSkills, ...(hasClass ? treeSkills : []), ...cinzaSkills, ...aprendizSkills];
+    // dedup por id (aprendiz coincide com treeSkills quando o próprio treeKey é 'aprendiz')
+    const seen = new Set<string>();
+    return merged.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));
+  }, [weaponSkills, treeSkills, cinzaSkills, aprendizSkills, hasClass]);
 
   const unlockedById = useMemo(() => new Map(allSkills.filter((s) => s.unlocked).map((s) => [s.id, s])), [allSkills]);
 
