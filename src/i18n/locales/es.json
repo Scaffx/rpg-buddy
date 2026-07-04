@@ -758,6 +758,7 @@
       "class_ferreiro": "Herrero",
       "class_arqueiro": "Arquero",
       "class_novato": "Novato",
+      "class_aprendiz": "Aprendiz",
       "coming_soon": "El árbol de esta clase llegará pronto.",
       "gate_short": "🔒 {{n}} pts",
       "excl_short": "🔒 elige 1",

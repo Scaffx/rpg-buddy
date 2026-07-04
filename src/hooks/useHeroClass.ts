@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useProfile, useClasses, useAttributes } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { getAttributeLevels } from '@/lib/combat';
+import { resolveTreeKey, isAprendizClass } from '@/lib/aprendizTree';
 
 // Nome da classe (col. 2 da progressão) -> classe-base usada nas árvores/loadout.
 const CLASS_NAME_TO_STARTER: Record<string, string> = {
@@ -82,8 +83,20 @@ export function useHeroClass() {
     (user && localStorage.getItem(`starter_class_v1_${user.id}`)),
   ), [profile, user]);
 
+  // Árvore de habilidades a exibir: Aprendiz (tier 0) mostra a mini-árvore tutorial.
+  const isAprendiz = useMemo(
+    () => isAprendizClass((profile as any)?.current_class_id, classes as any[]),
+    [profile, classes],
+  );
+  const treeKey = useMemo(
+    () => resolveTreeKey((profile as any)?.current_class_id, classes as any[], starterClass),
+    [profile, classes, starterClass],
+  );
+
   return {
     starterClass: starterClass as string,
+    treeKey,
+    isAprendiz,
     starterItem: starterItem as string,
     currentClassName,
     hasClass,

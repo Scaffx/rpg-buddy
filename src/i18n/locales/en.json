@@ -745,6 +745,7 @@
       "class_ferreiro": "Blacksmith",
       "class_arqueiro": "Archer",
       "class_novato": "Novice",
+      "class_aprendiz": "Apprentice",
       "coming_soon": "This class's tree is coming soon.",
       "gate_short": "🔒 {{n}} pts",
       "excl_short": "🔒 pick 1",
