@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useAllCompanions } from './useCompanion';
 import { useMissions, useProfile } from './useProfile';
-import { computeAnchorStatusToday } from '@/lib/anchors';
+import { computeAnchorStatusToday, computeHealthAnchors, combinePerfectDay } from '@/lib/anchors';
 import { DAYS_MAP, getLocalDateString } from '@/lib/streakUtils';
 import {
   getActivePetType,
@@ -81,8 +81,21 @@ export function useForrageio() {
     void (async () => {
       try {
         const todayDay = DAYS_MAP[new Date().getDay()];
-        const anchor = computeAnchorStatusToday(missions as any[], todayStr, todayDay);
-        const perfectDay = anchor.hasAnchors && anchor.allComplete;
+        const missionAnchor = computeAnchorStatusToday(missions as any[], todayStr, todayDay);
+        // Âncoras de saúde (opt-in): refeição/água registradas no Perfil contam pro dia perfeito.
+        const healthEnabled = Boolean((profile as any)?.health_anchors_enabled);
+        let healthAnchors = { meal: true, water: true };
+        if (healthEnabled) {
+          const [meals, water] = await Promise.all([
+            db.from('meal_log').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('meal_date', todayStr),
+            db.from('water_log').select('amount_ml').eq('user_id', user.id).eq('log_date', todayStr),
+          ]);
+          const mealCount = meals.count ?? 0;
+          const waterMl = (water.data || []).reduce((s: number, r: any) => s + Number(r.amount_ml || 0), 0);
+          healthAnchors = computeHealthAnchors(mealCount, waterMl);
+        }
+        const perfect = combinePerfectDay(missionAnchor, healthEnabled, healthAnchors);
+        const perfectDay = perfect.hasAnchors && perfect.allComplete;
 
         // 1) Afinidade: +1 uma vez por dia perfeito.
         let affinity = Number(pet.affinity ?? 0);
