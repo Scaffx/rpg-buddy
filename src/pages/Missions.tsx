@@ -14,6 +14,7 @@ import {
   computeStreakFromDailyStatus,
   getStreakXpMultiplier,
   getStreakXpBonusLabel,
+  useProfile,
 } from "@/hooks/useProfile";
 import {
   useUpdateMission,
@@ -22,6 +23,9 @@ import {
   useDeleteChecklistItem,
 } from "@/hooks/useMissionActions";
 import { useCheckFailedMissions, useFailedMissions, useAcceptPenalty, useWelcomeBackCheck, useMarkFailedAsDone, useTodayRecoveryCount } from "@/hooks/useFailedMissions";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatRelativeDay } from "@/lib/dateUtils";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -199,6 +203,10 @@ export default function Missions() {
   const completeMission = useCompleteMission();
   const updateMission = useUpdateMission();
   const deleteMission = useDeleteMission();
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
+  const queryClient = useQueryClient();
+  const [enablingHealthAnchors, setEnablingHealthAnchors] = useState(false);
   const archiveMission = useArchiveMission();
   const { toast } = useToast();
 
@@ -659,35 +667,49 @@ const handleSave = async () => {
           </DialogContent>
         </Dialog>
 
-        {/* ── Âncoras do Dia: sugestão (só cria com o clique — consentimento) ── */}
-        {!isLoading && !(((allMissions as any[]) || []).some((m: any) => m.is_anchor)) && (
+        {/* ── Âncoras de Saúde: refeição + água contam pelo Perfil (não viram missão) ── */}
+        {!isLoading && !Boolean((profile as any)?.health_anchors_enabled) && (
           <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground">⚓ Âncoras do Dia</p>
+              <p className="text-sm font-bold text-foreground">⚓ Âncoras de Saúde</p>
               <p className="text-xs text-muted-foreground">
-                Âncoras são hábitos vitais — beber água, se alimentar. Completar todas as
-                âncoras do dia destrava seu <strong className="text-foreground">Dia Perfeito</strong> (Inspiração ⚡) e o bônus diário.
+                Registrar <strong className="text-foreground">refeição</strong> e <strong className="text-foreground">água</strong> no seu Perfil/Saúde
+                destrava o <strong className="text-foreground">Dia Perfeito</strong> (Inspiração ⚡) e o bônus diário —
+                sem precisar marcar missão. Ativar remove as missões "Beber água"/"Refeições do dia" se existirem.
               </p>
             </div>
             <Button
               size="sm"
-              disabled={createMission.isPending}
+              disabled={enablingHealthAnchors}
               onClick={async () => {
-                const vit = ((attrs as any[]) || []).find((a: any) => String(a.name || '').toLowerCase().startsWith('vital')) || ((attrs as any[]) || [])[0];
-                if (!vit) { toast({ title: 'Crie um atributo primeiro.', variant: 'destructive' }); return; }
-                const allDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                if (!user) return;
+                setEnablingHealthAnchors(true);
                 try {
-                  await createMission.mutateAsync({ title: 'Beber água', attributeId: vit.id, daysOfWeek: allDays, priority: 'media', description: 'Meta de hidratação do dia', isAnchor: true });
-                  await createMission.mutateAsync({ title: 'Refeições do dia', attributeId: vit.id, daysOfWeek: allDays, priority: 'media', description: 'Fazer as refeições principais', isAnchor: true });
-                  toast({ title: '⚓ Âncoras criadas!', description: 'Beber água + Refeições do dia — todos os dias.' });
+                  // 1) Liga o opt-in das âncoras de saúde.
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ health_anchors_enabled: true } as any)
+                    .eq('user_id', user.id);
+                  if (error) throw error;
+                  // 2) Remove as antigas missões-âncora de refeição/água (viram condição de saúde).
+                  const redundant = ((allMissions as any[]) || []).filter(
+                    (m: any) => m.is_anchor && ['Beber água', 'Refeições do dia'].includes(String(m.title || '')),
+                  );
+                  for (const m of redundant) {
+                    await deleteMission.mutateAsync(m.id);
+                  }
+                  await queryClient.invalidateQueries({ queryKey: ['profile'] });
+                  toast({ title: '⚓ Âncoras de Saúde ativadas!', description: 'Refeição + água agora contam pelo Perfil.' });
                 } catch (e: any) {
-                  toast({ title: 'Erro ao criar âncoras', description: e?.message, variant: 'destructive' });
+                  toast({ title: 'Erro ao ativar', description: e?.message, variant: 'destructive' });
+                } finally {
+                  setEnablingHealthAnchors(false);
                 }
               }}
               className="shrink-0 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40"
             >
-              {createMission.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : '⚓ '}
-              Criar âncoras sugeridas
+              {enablingHealthAnchors ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : '⚓ '}
+              Ativar âncoras de saúde
             </Button>
           </div>
         )}

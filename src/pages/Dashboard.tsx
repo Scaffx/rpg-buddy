@@ -15,7 +15,8 @@ import { starterClassDisplayName } from "@/hooks/useHeroClass";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sfx } from "@/lib/sfx";
-import { computeAnchorStatusToday } from "@/lib/anchors";
+import { computeAnchorStatusToday, computeHealthAnchors, combinePerfectDay } from "@/lib/anchors";
+import { useQuery } from "@tanstack/react-query";
 import { evaluateTodayStreakRisk, DAYS_MAP } from "@/lib/streakUtils";
 import { currentWeekToken } from "@/lib/dateUtils";
 import RemindersCard from "@/components/RemindersCard";
@@ -158,9 +159,34 @@ export default function Dashboard() {
   const todayDate = getLocalDateString();
 
   // Âncoras do Dia: gate SUAVE do bônus diário (incentivo — nunca punição).
-  const anchorStatus = useMemo(
+  const missionAnchorStatus = useMemo(
     () => computeAnchorStatusToday((allMissions as any[]) || [], todayDate, todayDay),
     [allMissions, todayDate, todayDay],
+  );
+
+  // Âncoras de SAÚDE (refeição/água): registradas no Perfil/Saúde, não em missões.
+  const healthAnchorsEnabled = Boolean((profile as any)?.health_anchors_enabled);
+  const { data: todayHealth } = useQuery({
+    queryKey: ['today-health-anchors', user?.id, todayDate],
+    enabled: !!user && healthAnchorsEnabled,
+    queryFn: async () => {
+      const [meals, water] = await Promise.all([
+        supabase.from('meal_log').select('id', { count: 'exact', head: true }).eq('user_id', user!.id).eq('meal_date', todayDate),
+        supabase.from('water_log').select('amount_ml').eq('user_id', user!.id).eq('log_date', todayDate),
+      ]);
+      const mealCount = meals.count ?? 0;
+      const waterMl = (water.data || []).reduce((s: number, r: any) => s + Number(r.amount_ml || 0), 0);
+      return { mealCount, waterMl };
+    },
+  });
+
+  const anchorStatus = useMemo(
+    () => combinePerfectDay(
+      missionAnchorStatus,
+      healthAnchorsEnabled,
+      computeHealthAnchors(todayHealth?.mealCount ?? 0, todayHealth?.waterMl ?? 0),
+    ),
+    [missionAnchorStatus, healthAnchorsEnabled, todayHealth],
   );
   const bonusLockedByAnchors = anchorStatus.hasAnchors && !anchorStatus.allComplete;
 
@@ -516,8 +542,8 @@ export default function Dashboard() {
               </div>
               {!dailyBonus.isClaimed && bonusLockedByAnchors && (
                 /* Gate suave (incentivo): copy neutra, sem linguagem de perda. */
-                <span className="text-[11px] text-muted-foreground text-right max-w-[160px]">
-                  ⚓ Complete suas âncoras de hoje para liberar o bônus
+                <span className="text-[11px] text-muted-foreground text-right max-w-[180px]">
+                  ⚓ Falta pro dia perfeito: {anchorStatus.pendingTitles.join(', ')}
                 </span>
               )}
               {!dailyBonus.isClaimed && !bonusLockedByAnchors && (

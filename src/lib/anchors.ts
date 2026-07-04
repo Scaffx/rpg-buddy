@@ -60,3 +60,36 @@ export function computeAnchorStatusToday(
     pendingTitles: pending.map((m) => String(m.title || 'Âncora')),
   };
 }
+
+// ── Âncoras de SAÚDE (refeição/água) ──────────────────────────────────────────
+// Refeição e água NÃO são missões: são condições do "dia perfeito" cumpridas ao
+// registrar no Perfil/Saúde (meal_log/water_log). Opt-in por usuário
+// (profiles.health_anchors_enabled). Critério: "qualquer registro" no dia.
+
+export type HealthAnchors = { meal: boolean; water: boolean };
+
+/** "Qualquer registro" hoje: ≥1 refeição logada e água > 0 ml. */
+export function computeHealthAnchors(mealCountToday: number, waterMlToday: number): HealthAnchors {
+  return { meal: (mealCountToday || 0) >= 1, water: (waterMlToday || 0) > 0 };
+}
+
+/**
+ * "Dia perfeito" = âncoras-missão + âncoras de saúde (se habilitadas). Devolve o
+ * mesmo shape de AnchorStatusToday, então os consumidores (Dashboard, forrageio)
+ * não mudam. Saúde habilitada acrescenta 'Refeição'/'Água' às pendências e ao gate.
+ */
+export function combinePerfectDay(
+  mission: AnchorStatusToday,
+  healthEnabled: boolean,
+  health: HealthAnchors,
+): AnchorStatusToday {
+  const pendingTitles = [...mission.pendingTitles];
+  if (healthEnabled && !health.meal)  pendingTitles.push('Refeição');
+  if (healthEnabled && !health.water) pendingTitles.push('Água');
+
+  const hasAnchors = mission.hasAnchors || healthEnabled;
+  const missionsOk = !mission.hasAnchors || mission.allComplete;
+  const healthOk   = !healthEnabled || (health.meal && health.water);
+
+  return { hasAnchors, allComplete: hasAnchors && missionsOk && healthOk, pendingTitles };
+}
