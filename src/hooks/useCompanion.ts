@@ -26,6 +26,10 @@ export interface CompanionRow {
   max_mp: number;
   current_mp: number;
   companion_role: CompanionRole;
+  // ── Forrageio (Fase 1.5) — opcionais até a migração aplicar em prod ──
+  affinity?: number | null;
+  last_forage_at?: string | null;
+  last_affinity_date?: string | null;
 }
 
 /** Tipos de pet/companheiro de loja (metadados de exibição — sem combate, §4). */
