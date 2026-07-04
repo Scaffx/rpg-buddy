@@ -1445,6 +1445,7 @@
       "play": "🎮 Jugar",
       "bonus_activate": "Activar",
       "bonus_active": "✓ Activo",
+      "sustain_prefix": "En combate",
       "forage_title": "Forrajeo",
       "forage_done": "✓ hoy",
       "forage_ready": "listo hoy",

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { getActivePetType } from '@/lib/pets';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
 import { useToast } from '@/hooks/use-toast';
 
@@ -73,6 +74,7 @@ type CombatDataProvider = {
     skillEffectType?: string;
     skillMpCost?: number;
     skillElement?: string;
+    activePetType?: string | null;
   }) => Promise<TurnSummary>;
 };
 
@@ -238,7 +240,7 @@ const isSummonSkill = (skillName?: string): boolean =>
 
 // Default provider with Supabase integration and local mock fallback.
 const mockProvider: CombatDataProvider = {
-  async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower, skillEffectType, skillMpCost, skillElement }) {
+  async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower, skillEffectType, skillMpCost, skillElement, activePetType }) {
     if (combateId) {
       const { data, error } = await supabase.functions.invoke('processar_turno', {
         body: {
@@ -251,6 +253,7 @@ const mockProvider: CombatDataProvider = {
           ...(skillEffectType ? { skill_effect_type: skillEffectType } : {}),
           ...(skillMpCost !== undefined ? { skill_mp_cost: skillMpCost } : {}),
           ...(skillElement ? { skill_element: skillElement } : {}),
+          ...(activePetType ? { active_pet_type: activePetType } : {}),
         },
       });
 
@@ -860,6 +863,8 @@ export default function CombatArena({
           skillMpCost: chosenSkill?.mpCost,
           // Skill carrega seu elemento; ataque básico (sem skill) usa a afinidade da ARMA equipada.
           skillElement: chosenSkill?.element || weaponElement,
+          // Pet Fase 2: manda o tipo do pet ativo; a edge verifica posse e aplica o sustain.
+          activePetType: getActivePetType(user?.id),
         });
       } catch (err: unknown) {
         if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;

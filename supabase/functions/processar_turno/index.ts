@@ -21,6 +21,8 @@ type ProcessarTurnoBody = {
   skill_effect_type?: 'dano' | 'heal' | 'buff' | 'debuff' | 'cc' | 'utility';
   /** Elemento explícito da skill (vindo da árvore). Se ausente, é inferido pelo nome. */
   skill_element?: string;
+  /** Pets Fase 2: companion_type do pet ATIVO. A edge VERIFICA posse antes de aplicar. */
+  active_pet_type?: string;
 };
 
 // Custo de MP de uma habilidade do jogador, derivado do "power".
@@ -30,6 +32,45 @@ const getSkillMpCost = (power: number): number => {
   if (!power || power <= 0) return 0;
   return Math.max(2, Math.min(16, Math.ceil(power / 15)));
 };
+
+// ── Pets Fase 2: sustain por turno ────────────────────────────────────────────
+// Espelho FIEL de src/lib/pets.ts (PET_SUSTAIN + applyMpCostReduction + applyRegen).
+// Mantidos idênticos: os testes vitest cobrem a versão de src; a edge usa esta cópia.
+type SustainEffect =
+  | { kind: 'regen_hp'; pct: number }
+  | { kind: 'regen_mp'; pct: number }
+  | { kind: 'mp_cost';  pct: number };
+
+const PET_SUSTAIN: Record<string, SustainEffect> = {
+  mini_kraken:     { kind: 'regen_hp', pct: 0.05 },
+  mini_necromante: { kind: 'regen_mp', pct: 0.08 },
+  mini_leviata:    { kind: 'mp_cost',  pct: 0.20 },
+};
+
+const applyMpCostReduction = (cost: number, eff: SustainEffect | null): number =>
+  (!eff || eff.kind !== 'mp_cost') ? Math.max(0, Math.round(cost)) : Math.max(0, Math.round(cost * (1 - eff.pct)));
+
+const applyRegen = (current: number, max: number, eff: SustainEffect | null, kind: 'regen_hp' | 'regen_mp'): number =>
+  (!eff || eff.kind !== kind) ? current : Math.min(max, current + Math.round(max * eff.pct));
+
+/** Resolve o efeito de sustain do pet ativo — SÓ se o usuário realmente possui aquele pet. */
+async function resolveActivePetSustain(
+  supabase: SupabaseClient,
+  userId: string,
+  petType: string | undefined,
+): Promise<SustainEffect | null> {
+  if (!petType) return null;
+  const eff = PET_SUSTAIN[petType];
+  if (!eff) return null;
+  const { data } = await supabase
+    .from('companions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('companion_type', petType)
+    .limit(1)
+    .maybeSingle();
+  return data ? eff : null;
+}
 
 type CombatRow = {
   id: string;
@@ -486,6 +527,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Pet Fase 2: efeito de sustain do pet ATIVO (verifica posse). null se nenhum.
+    const petSustain = await resolveActivePetSustain(supabase, user.id, body.active_pet_type);
+
     // ── Bloco 3: resolução server-authoritative da skill ──────────────────────────
     // Lê power/element/cost do banco e VERIFICA posse + arma exigida. Sobrescreve o
     // body com os valores reais; tudo downstream passa a usar valores confiáveis.
@@ -515,15 +559,20 @@ Deno.serve(async (req) => {
     // MP server-authoritative (1.0): saldo REAL do banco, não do body. Mana é recurso POR COMBATE
     // (reabastecida ao máximo no início da luta pelo cliente), então o gate aqui é confiável.
     const { data: mpRow } = await supabase
-      .from('user_health_stats').select('current_mp').eq('user_id', user.id).maybeSingle();
+      .from('user_health_stats').select('current_mp, max_mp').eq('user_id', user.id).maybeSingle();
     const currentMp = Math.max(0, toNumber(mpRow?.current_mp, 0));
+    const maxMp = Math.max(1, toNumber(mpRow?.max_mp, currentMp));
+    // Pet Leviatã (-custo de MP): reduz o custo real ANTES do gate e da dedução.
+    const effectiveSkillCost = applyMpCostReduction(requestedSkillCost, petSustain);
+    // MP final do turno = saldo após o custo + regen do pet (Necromante). Capado no máx.
+    const finalPlayerMp = applyRegen(Math.max(0, currentMp - effectiveSkillCost), maxMp, petSustain, 'regen_mp');
 
-    if (requestedSkillCost > 0 && requestedSkillCost > currentMp) {
+    if (effectiveSkillCost > 0 && effectiveSkillCost > currentMp) {
       return new Response(
         JSON.stringify({
           error: 'insufficient_mp',
-          message: `MP insuficiente para "${body.skill_name || 'habilidade'}": custa ${requestedSkillCost} MP, jogador tem ${currentMp}.`,
-          required_mp: requestedSkillCost,
+          message: `MP insuficiente para "${body.skill_name || 'habilidade'}": custa ${effectiveSkillCost} MP, jogador tem ${currentMp}.`,
+          required_mp: effectiveSkillCost,
           current_mp: currentMp,
         }),
         {
@@ -982,6 +1031,13 @@ Deno.serve(async (req) => {
       turnoAtual = 'player';
     }
 
+    // Pet Kraken (regen de HP): cura no fim de cada turno SOBREVIVIDO (não revive).
+    // Aplica em hpPlayerRestante antes de persistir → consistente em todo o downstream.
+    if (status === 'em_andamento' && petSustain && petSustain.kind === 'regen_hp') {
+      const pmax = toNumber(combat.personagens?.hp_max, hpPlayerRestante);
+      hpPlayerRestante = Math.min(pmax, hpPlayerRestante + Math.round(pmax * petSustain.pct));
+    }
+
     const playerEffects = [...playerSkill.effects, ...comboLog];
     const bossEffects = bossEffectLog;
     if (elementalReaction) bossEffects.push(`reaction:${elementalReaction}`);
@@ -1060,8 +1116,8 @@ Deno.serve(async (req) => {
         : hpPlayerRestante;
       const updatePayload: Record<string, unknown> = {
         current_hp: Math.max(0, Math.min(maxHp, hpAfterHeal)),
-        // MP server-authoritative: debita o custo real da skill deste turno (básico custa 0).
-        current_mp: Math.max(0, currentMp - requestedSkillCost),
+        // MP server-authoritative: custo (com -custo do Leviatã) + regen do Necromante.
+        current_mp: finalPlayerMp,
       };
 
       // Apply fatigue only when combat ends (vitoria or derrota)
@@ -1279,7 +1335,7 @@ Deno.serve(async (req) => {
         heal_amount: playerHealAmount,
         dado_boss: dadoBoss,
         dano_boss: danoBoss,
-        current_mp_restante: Math.max(0, currentMp - requestedSkillCost),
+        current_mp_restante: finalPlayerMp,
         boss_stunned: bossStunned,
         buff_shield_amount: buffShieldAmount,
         debuff_defense_shred: debuffDefenseShred,
