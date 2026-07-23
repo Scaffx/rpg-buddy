@@ -253,18 +253,32 @@ async function runTool(name: string, args: any, supa: any, userId: string, npcId
       return { created: data };
     }
     if (name === "complete_mission") {
-      const { data: m, error: mErr } = await supa.from("missions").select("id,title,xp_reward,attribute_id,completed,npc_id").eq("id", args.mission_id).eq("user_id", userId).maybeSingle();
+      const { data: m, error: mErr } = await supa
+        .from("missions")
+        .select("id,title")
+        .eq("id", args.mission_id)
+        .eq("user_id", userId)
+        .maybeSingle();
       if (mErr) throw mErr;
       if (!m) return { error: "Missão não encontrada" };
-      if (m.completed) return { error: "Missão já estava conclufda" };
-      await supa.from("missions").update({ completed: true, completed_at: new Date().toISOString(), status: "concluida" }).eq("id", m.id);
-      // Missões NPC não concedem XP — apenas ouro
-      if (!m.npc_id) {
-        await supa.rpc("add_xp_to_user", { p_user_id: userId, p_xp: m.xp_reward ?? 25 });
-        await supa.from("xp_history").insert({ user_id: userId, xp_gained: m.xp_reward ?? 25, type: "mission" });
-      }
-      await supa.rpc("add_gold_to_user", { p_user_id: userId, p_gold: 2 });
-      return { completed: m.title, xp: m.npc_id ? 0 : (m.xp_reward ?? 25), gold: 2, note: m.npc_id ? "Missão NPC: sem bônus de XP." : undefined };
+
+      // Torneira única: a IA também envia somente mission_id. Data, frequência,
+      // multiplicadores, XP, ouro e idempotência são resolvidos no mesmo RPC.
+      const { data: completion, error: completionError } = await supa.rpc(
+        "complete_mission",
+        { p_mission_id: m.id },
+      );
+      if (completionError) throw completionError;
+
+      return {
+        completed: m.title,
+        xp: Number(completion?.xp_gained ?? 0),
+        gold: Number(completion?.gold_gained ?? 0),
+        weekly_count: completion?.weekly_count,
+        weekly_target: completion?.weekly_target,
+        is_overflow: Boolean(completion?.is_overflow),
+        milestone_reached: Boolean(completion?.milestone_reached),
+      };
     }
     if (name === "delete_mission") {
       const { error } = await supa.from("missions").delete().eq("id", args.mission_id).eq("user_id", userId);

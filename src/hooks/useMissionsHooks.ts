@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { deriveMissionCategory } from '@/lib/missionTalentRules';
-
-function toDateString(d: Date): string {
-  return d.toLocaleDateString('en-CA');
-}
+import {
+  getSaoPauloDateString,
+  getSaoPauloWeekStart,
+  isWeeklyMission,
+} from '@/lib/weeklyMissions';
 
 export const useMissions = () => {
   const { user } = useAuth();
@@ -13,14 +14,36 @@ export const useMissions = () => {
   return useQuery({
     queryKey: ['missions', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('missions')
-        .select('*')
-        .eq('user_id', user!.id);
+      const weekStart = getSaoPauloWeekStart();
+      const [missionsResult, progressResult] = await Promise.all([
+        supabase
+          .from('missions')
+          .select('*')
+          .eq('user_id', user!.id),
+        supabase
+          .from('mission_weekly_progress')
+          .select('mission_id,current_count,last_completed_date,milestone_paid,week_start')
+          .eq('user_id', user!.id)
+          .eq('week_start', weekStart),
+      ]);
 
-      if (error) throw error;
+      if (missionsResult.error) throw missionsResult.error;
+      if (progressResult.error) throw progressResult.error;
 
-      return (data || []) as any[];
+      const progressByMission = new Map(
+        (progressResult.data || []).map((progress) => [progress.mission_id, progress]),
+      );
+
+      return (missionsResult.data || []).map((mission) => {
+        const progress = progressByMission.get(mission.id);
+        return {
+          ...mission,
+          weekly_current_count: progress?.current_count ?? 0,
+          weekly_last_completed_date: progress?.last_completed_date ?? null,
+          weekly_milestone_paid: progress?.milestone_paid ?? false,
+          weekly_week_start: progress?.week_start ?? weekStart,
+        };
+      }) as any[];
     },
     enabled: !!user,
   });
@@ -43,18 +66,14 @@ export const useCompleteMission = () => {
       xpReward: number; 
       secondaryAttributeIds?: string[];
     }) => {
-      const today = toDateString(new Date());
-      const hour = new Date().getHours();
-
       // 🔒 Economia server-side: toda a lógica de recompensa (XP escalado,
       // ouro por streak/checklist/talento, level, chaves de boss, efeitos de
       // talento, inspiração) roda no RPC transacional `complete_mission`.
-      // O client não envia mais valores — o servidor lê tudo do banco, então
+      // O RPC recebe somente mission_id — o servidor resolve data, hora,
+      // contadores e multiplicadores, então
       // não é possível forjar XP/ouro/level pelo navegador.
       const { data, error } = await supabase.rpc('complete_mission', {
         p_mission_id: missionId,
-        p_today: today,
-        p_hour: hour,
       });
       if (error) throw error;
 
@@ -65,6 +84,14 @@ export const useCompleteMission = () => {
         xp_gained?: number;
         gold_gained?: number;
         gained_keys?: number;
+        frequency_type?: 'daily' | 'weekly';
+        weekly_count?: number;
+        weekly_target?: number;
+        weekly_max?: number;
+        is_overflow?: boolean;
+        milestone_reached?: boolean;
+        execution_xp?: number;
+        milestone_xp?: number;
       };
       return {
         success: true,
@@ -74,12 +101,20 @@ export const useCompleteMission = () => {
         xpGained: result.xp_gained ?? 0,
         goldGained: result.gold_gained ?? 0,
         gainedKeys: result.gained_keys ?? 0,
+        frequencyType: result.frequency_type ?? 'daily',
+        weeklyCount: result.weekly_count ?? 0,
+        weeklyTarget: result.weekly_target ?? 0,
+        weeklyMax: result.weekly_max ?? 0,
+        isOverflow: !!result.is_overflow,
+        milestoneReached: !!result.milestone_reached,
+        executionXp: result.execution_xp ?? result.xp_gained ?? 0,
+        milestoneXp: result.milestone_xp ?? 0,
       };
     },
 
     // ⚡ OPTIMISTIC UPDATE: marca a missão como concluída na UI antes do servidor responder.
     onMutate: async ({ missionId, attributeId, xpReward, secondaryAttributeIds = [] }) => {
-      const today = toDateString(new Date());
+      const today = getSaoPauloDateString();
       await queryClient.cancelQueries({ queryKey: ['missions'] });
 
       const previousMissions = queryClient.getQueriesData({ queryKey: ['missions'] });
@@ -92,6 +127,13 @@ export const useCompleteMission = () => {
         if (!Array.isArray(old)) return old;
         return old.map((m: any) => {
           if (m.id !== missionId) return m;
+          if (isWeeklyMission(m)) {
+            return {
+              ...m,
+              weekly_current_count: Number(m.weekly_current_count || 0) + 1,
+              weekly_last_completed_date: today,
+            };
+          }
           const days: string[] = m.days_of_week || [];
           if (days.length > 0) {
             return { ...m, daily_status: { ...(m.daily_status || {}), [today]: 'completed' } };
@@ -154,6 +196,23 @@ export const useCompleteMission = () => {
       // O card "XP hoje" usa a query própria useTodayXp (['xp_today']).
       queryClient.setQueryData(['xp_today', user?.id], (old: any) =>
         Number(old || 0) + (data?.xpGained || 0));
+
+      if (data?.frequencyType === 'weekly') {
+        queryClient.setQueriesData({ queryKey: ['missions'] }, (old: any) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((mission: any) =>
+            mission.id === _vars.missionId
+              ? {
+                  ...mission,
+                  weekly_current_count: data.weeklyCount,
+                  weekly_last_completed_date: getSaoPauloDateString(),
+                  weekly_milestone_paid:
+                    mission.weekly_milestone_paid || data.milestoneReached,
+                }
+              : mission,
+          );
+        });
+      }
     },
 
     onError: (_err, _vars, context: any) => {
@@ -200,6 +259,9 @@ export function useCreateMission() {
       secondaryAttributeIds,
       anchor,
       isAnchor,
+      frequencyType,
+      targetCount,
+      maxCount,
     }: {
       title: string;
       attributeId: string;
@@ -213,6 +275,9 @@ export function useCreateMission() {
       anchor?: string;
       /** Missão-âncora (hábito vital): destrava Dia Perfeito + bônus diário. */
       isAnchor?: boolean;
+      frequencyType?: 'daily' | 'weekly';
+      targetCount?: number;
+      maxCount?: number;
     }) => {
       const { data: primaryAttrMeta } = await supabase
         .from('attributes')
@@ -239,6 +304,9 @@ export function useCreateMission() {
         secondary_attribute_ids: secondaryAttributeIds || [],
         anchor: anchor || null,
         is_anchor: Boolean(isAnchor),
+        frequency_type: frequencyType || 'daily',
+        target_count: frequencyType === 'weekly' ? targetCount : null,
+        max_count: frequencyType === 'weekly' ? (maxCount || 7) : null,
       } as any;
 
       const { error } = await supabase.from("missions").insert(missionPayload);

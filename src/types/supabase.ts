@@ -1,5 +1,5 @@
 // src/types/supabase.ts
-import type { MissionCategory, MissionDailyStatus, MissionPriority, MissionStatus, Weekday } from './missions'
+import type { MissionCategory, MissionDailyStatus, MissionFrequencyType, MissionPriority, MissionStatus, Weekday } from './missions'
 
 export type Json =
   | string
@@ -34,6 +34,11 @@ export interface Database {
           updated_at: string
           failed_date: string | null
           due_date: string | null
+          anchor: string | null
+          is_anchor: boolean
+          frequency_type: MissionFrequencyType
+          target_count: number | null
+          max_count: number | null
         }
         Insert: {
           id?: string
@@ -56,6 +61,11 @@ export interface Database {
           updated_at?: string
           failed_date?: string | null
           due_date?: string | null
+          anchor?: string | null
+          is_anchor?: boolean
+          frequency_type?: MissionFrequencyType
+          target_count?: number | null
+          max_count?: number | null
         }
         Update: {
           id?: string
@@ -78,6 +88,11 @@ export interface Database {
           updated_at?: string
           failed_date?: string | null
           due_date?: string | null
+          anchor?: string | null
+          is_anchor?: boolean
+          frequency_type?: MissionFrequencyType
+          target_count?: number | null
+          max_count?: number | null
         }
       }
       mission_daily_completions: { // ✅ NOVA TABELA
@@ -104,6 +119,36 @@ export interface Database {
           xp_earned?: number
           gold_earned?: number
           created_at?: string
+        }
+      }
+      mission_weekly_progress: {
+        Row: {
+          id: string
+          mission_id: string
+          user_id: string
+          week_start: string
+          current_count: number
+          milestone_paid: boolean
+          last_completed_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          mission_id: string
+          user_id: string
+          week_start: string
+          current_count?: number
+          milestone_paid?: boolean
+          last_completed_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          current_count?: number
+          milestone_paid?: boolean
+          last_completed_date?: string | null
+          updated_at?: string
         }
       }
       // ... outras tabelas existentes

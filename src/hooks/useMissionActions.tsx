@@ -19,6 +19,9 @@ export function useUpdateMission() {
         secondary_attribute_ids?: string[];
         anchor?: string | null;
         is_anchor?: boolean;
+        frequency_type?: 'daily' | 'weekly';
+        target_count?: number | null;
+        max_count?: number | null;
       };
     }) => {
       const { error } = await supabase
