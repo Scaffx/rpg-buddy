@@ -10,6 +10,10 @@ export type AnchorMissionLike = {
   due_date?: string | null;
   days_of_week?: string[] | null;
   daily_status?: Record<string, string> | null;
+  frequency_type?: 'daily' | 'weekly' | null;
+  target_count?: number | null;
+  weekly_current_count?: number | null;
+  weekly_last_completed_date?: string | null;
 };
 
 export type AnchorStatusToday = {
@@ -36,6 +40,14 @@ export function computeAnchorStatusToday(
 ): AnchorStatusToday {
   const anchorsToday = (missions || []).filter((m) => {
     if (!m?.is_anchor || m?.is_failed) return false;
+    if (m.frequency_type === 'weekly') {
+      const current = Number(m.weekly_current_count || 0);
+      return (
+        m.weekly_last_completed_date === todayStr
+        && current > 0
+        && current <= Number(m.target_count || 0)
+      );
+    }
     const days = (m.days_of_week as string[]) || [];
     if (days.length > 0) return dayMatches(days, todayDayName);
     return m.due_date === todayStr; // âncora one-shot com prazo hoje
@@ -46,6 +58,7 @@ export function computeAnchorStatusToday(
   }
 
   const isDone = (m: AnchorMissionLike) => {
+    if (m.frequency_type === 'weekly') return true;
     const days = (m.days_of_week as string[]) || [];
     if (days.length > 0) {
       return ((m.daily_status || {}) as Record<string, string>)[todayStr] === 'completed';

@@ -27,6 +27,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatRelativeDay } from "@/lib/dateUtils";
+import {
+  getWeeklyMissionErrorCode,
+  getWeeklyMissionErrorMessage,
+  getWeeklyMissionState,
+} from "@/lib/weeklyMissions";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +139,9 @@ function getLocalDateString(date: Date = new Date()): string {
 
 // ✅ FUNÇÃO AUXILIAR: Verificar se missão foi concluída hoje
 function foiConcluidaHoje(mission: any): boolean {
+  const weeklyState = getWeeklyMissionState(mission);
+  if (weeklyState) return weeklyState.completedToday;
+
   const today = getLocalDateString();
   const dailyStatus = mission.daily_status || {};
   return dailyStatus[today] === "completed";
@@ -193,6 +201,8 @@ export default function Missions() {
   const [formDays, setFormDays] = useState<string[]>([]);
   const [formHorario, setFormHorario] = useState<string | string[]>('flex');
   const [formMissionType, setFormMissionType] = useState<"recorrente" | "unica">("recorrente");
+  const [formFrequencyType, setFormFrequencyType] = useState<"daily" | "weekly">("daily");
+  const [formTargetCount, setFormTargetCount] = useState(4);
   const [formDueDate, setFormDueDate] = useState("");
   const [formAnchor, setFormAnchor] = useState("");
   const [formIsAnchor, setFormIsAnchor] = useState(false);
@@ -368,6 +378,8 @@ export default function Missions() {
     setFormDays([]);
     setFormHorario("flex");
     setFormMissionType("recorrente");
+    setFormFrequencyType("daily");
+    setFormTargetCount(4);
     setFormDueDate("");
     setFormAnchor("");
     setFormIsAnchor(false);
@@ -398,6 +410,8 @@ const openEditModal = (m: any) => {
   const days = (m.days_of_week as string[]) || [];
   const isMissionType = days.length === 0 && m.due_date ? "unica" : "recorrente";
   setFormMissionType(isMissionType);
+  setFormFrequencyType(m.frequency_type === 'weekly' ? 'weekly' : 'daily');
+  setFormTargetCount(Number(m.target_count || 4));
   setFormDueDate(m.due_date || '');
   setFormAnchor((m as any).anchor || '');
   setFormIsAnchor(Boolean((m as any).is_anchor));
@@ -413,6 +427,18 @@ const handleSave = async () => {
     toast({ title: 'Erro', description: 'Selecione uma data para missões únicas', variant: 'destructive' });
     return;
   }
+  if (
+    formMissionType === 'recorrente'
+    && formFrequencyType === 'weekly'
+    && (formTargetCount < 1 || formTargetCount > 6)
+  ) {
+    toast({
+      title: 'Erro',
+      description: 'A meta semanal deve ficar entre 1 e 6.',
+      variant: 'destructive',
+    });
+    return;
+  }
 
   try {
     // ✅ Converter formHorario para o formato correto
@@ -421,7 +447,9 @@ const handleSave = async () => {
       : [formHorario].filter(Boolean);
 
     // Preparar dias de semana (vazio para missões únicas)
-    const daysToSave = formMissionType === "unica" ? [] : formDays;
+    const isWeekly = formMissionType === 'recorrente' && formFrequencyType === 'weekly';
+    const daysToSave = formMissionType === "unica" || isWeekly ? [] : formDays;
+    const frequencyType = isWeekly ? 'weekly' : 'daily';
 
     if (editingMission) {
       await updateMission.mutateAsync({
@@ -438,6 +466,9 @@ const handleSave = async () => {
           secondary_attribute_ids: formSecondaryAttrIds,
           anchor: formAnchor.trim() || null,
           is_anchor: formIsAnchor,
+          frequency_type: frequencyType,
+          target_count: isWeekly ? formTargetCount : null,
+          max_count: isWeekly ? 7 : null,
         },
       });
       toast({ title: '✏️ Missão atualizada!' });
@@ -454,6 +485,9 @@ const handleSave = async () => {
         secondaryAttributeIds: formSecondaryAttrIds,
         anchor: formAnchor.trim() || undefined,
         isAnchor: formIsAnchor,
+        frequencyType,
+        targetCount: isWeekly ? formTargetCount : undefined,
+        maxCount: isWeekly ? 7 : undefined,
       });
       toast({ title: t('app.missions.mission_created'), description: t('app.missions.mission_created_desc') });
     }
@@ -473,7 +507,27 @@ const handleSave = async () => {
         secondaryAttributeIds: mission.secondary_attribute_ids || [],
       });
 
-      const streak = (result as any)?.streakDays ?? 0;
+      if (result.frequencyType === 'weekly') {
+        if (result.milestoneReached) {
+          toast({
+            title: '🎉 Meta semanal concluída!',
+            description: `+${result.xpGained} XP e +${result.goldGained} ouro, incluindo o bônus da meta.`,
+          });
+        } else if (result.isOverflow) {
+          toast({
+            title: '✨ Extra concluído',
+            description: `+${result.executionXp} XP extra e +${result.goldGained} ouro.`,
+          });
+        } else {
+          toast({
+            title: 'Missão semanal concluída',
+            description: `Progresso: ${result.weeklyCount}/${result.weeklyTarget} · +${result.xpGained} XP`,
+          });
+        }
+        return;
+      }
+
+      const streak = result.streakDays ?? 0;
       const bonusLabel = getStreakXpBonusLabel(streak);
 
       if (streak >= 3 && bonusLabel) {
@@ -487,8 +541,15 @@ const handleSave = async () => {
           description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
         });
       }
-    } catch {
-      toast({ title: "Erro", variant: "destructive" });
+    } catch (error) {
+      const weeklyMessage = getWeeklyMissionErrorMessage(
+        getWeeklyMissionErrorCode(error),
+      );
+      toast({
+        title: weeklyMessage ? 'Missão indisponível' : 'Erro',
+        description: weeklyMessage || undefined,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -1035,6 +1096,10 @@ const handleSave = async () => {
   setFormHorario={setFormHorario}
   formMissionType={formMissionType}
   setFormMissionType={setFormMissionType}
+  formFrequencyType={formFrequencyType}
+  setFormFrequencyType={setFormFrequencyType}
+  formTargetCount={formTargetCount}
+  setFormTargetCount={setFormTargetCount}
   formDueDate={formDueDate}
   setFormDueDate={setFormDueDate}
   formAnchor={formAnchor}
@@ -1108,6 +1173,7 @@ function MissionCard({
 
   const status = mission.status || 'pendente';
   const isCompleted = mission.completed;
+  const weeklyState = getWeeklyMissionState(mission);
 
   // Get all attributes for this mission
   // Busca o atributo primário pelo ID na lista de atributos (a query de missions não faz join)
@@ -1205,22 +1271,51 @@ function MissionCard({
                 <Check className="w-3 h-3" />
                 Concluída hoje
               </p>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleUndo}
-                disabled={undoMission.isPending}
-                className="h-6 w-6 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
-                title="Desfazer conclusão"
-              >
-                <RotateCcw className="w-3 h-3" />
-              </Button>
+              {!weeklyState && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleUndo}
+                  disabled={undoMission.isPending}
+                  className="h-6 w-6 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
+                  title="Desfazer conclusão"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </Button>
+              )}
             </div>
             {proximoDia && (
               <p className="text-xs text-yellow-400/70">
                 {t('app.missions.next_label')}: {proximoDia}
               </p>
             )}
+          </div>
+        )}
+
+        {weeklyState && (
+          <div className="mt-2 rounded-md border border-violet-400/20 bg-violet-400/5 p-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-violet-300">
+                Meta semanal
+              </span>
+              <span className="text-muted-foreground">
+                {weeklyState.current}/{weeklyState.target}
+              </span>
+            </div>
+            <Progress value={weeklyState.progressPercent} className="h-1.5 mt-1.5" />
+            {weeklyState.capReached ? (
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                Limite semanal atingido ({weeklyState.max}/{weeklyState.max})
+              </p>
+            ) : weeklyState.overflowAvailable ? (
+              <p className="text-[11px] text-violet-300/80 mt-1.5">
+                Extra disponível hoje · XP reduzido
+              </p>
+            ) : weeklyState.targetReached ? (
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                Meta concluída · volte amanhã para um extra
+              </p>
+            ) : null}
           </div>
         )}
 
@@ -1237,10 +1332,14 @@ function MissionCard({
       <div className="mt-auto pt-2 space-y-2">
         {/* Attribute chips */}
         <div className="flex items-center gap-1 flex-wrap">
-          {days.length > 0 && (
+          {weeklyState ? (
+            <span className="text-xs font-medium bg-violet-400/15 text-violet-300 px-2 py-0.5 rounded">
+              📆 Semanal
+            </span>
+          ) : days.length > 0 && (
             <span className="text-xs font-medium bg-primary/15 text-primary px-2 py-0.5 rounded">📅 Diária</span>
           )}
-          {days.length > 0 && (() => {
+          {!weeklyState && days.length > 0 && (() => {
             const streak = computeStreakFromDailyStatus((mission.daily_status as Record<string,string>) || {});
             if (streak < 2) return null;
             const bonusLabel = getStreakXpBonusLabel(streak + 1); // +1 = se completar hoje
@@ -1285,17 +1384,36 @@ function MissionCard({
           <div className="flex gap-2">
             <Button
               onClick={onComplete}
-              disabled={completing || isCompletedToday || isFutureMission}
+              disabled={
+                completing
+                || isCompletedToday
+                || isFutureMission
+                || Boolean(weeklyState?.capReached)
+              }
               className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-all ${
-                isCompletedToday
+                weeklyState?.capReached
+                  ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
+                  : isCompletedToday
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : isFutureMission
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : 'bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30'
               }`}
-              title={isCompletedToday ? t('app.missions.tooltip_completed') : isFutureMission ? t('app.missions.tooltip_future') : t('app.missions.tooltip_complete')}
+              title={
+                weeklyState?.capReached
+                  ? 'Limite semanal atingido'
+                  : isCompletedToday
+                    ? t('app.missions.tooltip_completed')
+                    : isFutureMission
+                      ? t('app.missions.tooltip_future')
+                      : t('app.missions.tooltip_complete')
+              }
             >
-              {isCompletedToday ? (
+              {weeklyState?.capReached ? (
+                <>
+                  <Lock className="w-4 h-4 mr-1" /> Limite atingido
+                </>
+              ) : isCompletedToday ? (
                 <>
                   <Lock className="w-4 h-4 mr-1" /> Bloqueada
                 </>
@@ -1382,6 +1500,7 @@ function MissionFormModal({
   formSecondaryAttrIds, setFormSecondaryAttrIds,
   formPriority, setFormPriority, formDays, setFormDays,
   formHorario, setFormHorario, formMissionType, setFormMissionType,
+  formFrequencyType, setFormFrequencyType, formTargetCount, setFormTargetCount,
   formDueDate, setFormDueDate, formAnchor, setFormAnchor,
   formIsAnchor, setFormIsAnchor, onSave, saving, missionId,
 }: {
@@ -1395,6 +1514,8 @@ function MissionFormModal({
   formDays: string[]; setFormDays: (v: string[]) => void;
   formHorario: string | string[]; setFormHorario: (v: string | string[]) => void;
   formMissionType: "recorrente" | "unica"; setFormMissionType: (v: "recorrente" | "unica") => void;
+  formFrequencyType: "daily" | "weekly"; setFormFrequencyType: (v: "daily" | "weekly") => void;
+  formTargetCount: number; setFormTargetCount: (v: number) => void;
   formDueDate: string; setFormDueDate: (v: string) => void;
   formAnchor: string; setFormAnchor: (v: string) => void;
   formIsAnchor: boolean; setFormIsAnchor: (v: boolean) => void;
@@ -1621,7 +1742,10 @@ function MissionFormModal({
               </button>
               <button
                 type="button"
-                onClick={() => setFormMissionType("unica")}
+                onClick={() => {
+                  setFormMissionType("unica");
+                  setFormFrequencyType("daily");
+                }}
                 className={`flex-1 px-3 py-2 rounded-md border text-xs font-medium transition-all ${
                   formMissionType === "unica"
                     ? 'bg-orange-400/20 border-orange-400/50 text-orange-400 ring-1 ring-orange-400'
@@ -1633,9 +1757,71 @@ function MissionFormModal({
             </div>
           </div>
 
-          {/* Days (only for recorrente) */}
           {formMissionType === "recorrente" && (
             <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Frequência
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormFrequencyType('daily')}
+                  className={`px-3 py-2 rounded-md border text-xs font-medium transition-all ${
+                    formFrequencyType === 'daily'
+                      ? 'bg-primary/20 border-primary/50 text-primary ring-1 ring-primary'
+                      : 'bg-secondary border-border text-muted-foreground'
+                  }`}
+                >
+                  Diária
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormFrequencyType('weekly');
+                    setFormDays([]);
+                  }}
+                  className={`px-3 py-2 rounded-md border text-xs font-medium transition-all ${
+                    formFrequencyType === 'weekly'
+                      ? 'bg-violet-400/20 border-violet-400/50 text-violet-300 ring-1 ring-violet-400'
+                      : 'bg-secondary border-border text-muted-foreground'
+                  }`}
+                >
+                  Semanal flexível
+                </button>
+              </div>
+            </div>
+          )}
+
+          {formMissionType === 'recorrente' && formFrequencyType === 'weekly' && (
+            <div className="rounded-lg border border-violet-400/25 bg-violet-400/5 p-3">
+              <label className="text-xs text-muted-foreground mb-2 block">
+                Quantas vezes por semana?
+              </label>
+              <Select
+                value={String(formTargetCount)}
+                onValueChange={(value) => setFormTargetCount(Number(value))}
+              >
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6].map((count) => (
+                    <SelectItem key={count} value={String(count)}>
+                      {count}× por semana
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Escolha os dias livremente. Depois da meta, você pode fazer extras
+                até 7× na semana; extras concedem XP reduzido.
+              </p>
+            </div>
+          )}
+
+          {/* Days (only for daily recurring missions) */}
+          {formMissionType === "recorrente" && (
+            formFrequencyType === 'daily' && <div>
               <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_days_label')}</label>
               <div className="flex gap-1.5 flex-wrap">
                 {DAYS.map((d) => (

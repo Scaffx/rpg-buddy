@@ -56,4 +56,43 @@ describe('Âncoras do Dia (gate suave — incentivo, nunca dreno)', () => {
     const s = computeAnchorStatusToday([failed], TODAY, DAY);
     expect(s.hasAnchors).toBe(false);
   });
+
+  it('execução semanal regular conta somente no dia em que ocorreu', () => {
+    const weekly: AnchorMissionLike = {
+      title: 'Estudar',
+      is_anchor: true,
+      frequency_type: 'weekly',
+      target_count: 4,
+      weekly_current_count: 3,
+      weekly_last_completed_date: TODAY,
+    };
+
+    expect(computeAnchorStatusToday([weekly], TODAY, DAY)).toEqual({
+      hasAnchors: true,
+      allComplete: true,
+      pendingTitles: [],
+    });
+    expect(computeAnchorStatusToday([weekly], '2026-06-26', 'Sex')).toEqual({
+      hasAnchors: false,
+      allComplete: false,
+      pendingTitles: [],
+    });
+  });
+
+  it('overflow semanal nunca conta como execução de âncora', () => {
+    const overflow: AnchorMissionLike = {
+      title: 'Estudar extra',
+      is_anchor: true,
+      frequency_type: 'weekly',
+      target_count: 4,
+      weekly_current_count: 5,
+      weekly_last_completed_date: TODAY,
+    };
+
+    expect(computeAnchorStatusToday([overflow], TODAY, DAY)).toEqual({
+      hasAnchors: false,
+      allComplete: false,
+      pendingTitles: [],
+    });
+  });
 });

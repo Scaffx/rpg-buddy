@@ -1458,6 +1458,7 @@ export type Database = {
       }
       missions: {
         Row: {
+          anchor: string | null
           attribute_id: string | null
           completed: boolean
           completed_at: string | null
@@ -1467,15 +1468,19 @@ export type Database = {
           description: string | null
           due_date: string | null
           failed_date: string | null
+          frequency_type: string
           horario_provavel: string | null
           id: string
           is_failed: boolean
+          is_anchor: boolean
+          max_count: number | null
           mission_category: string | null
           notes: string | null
           npc_id: string | null
           priority: string | null
           secondary_attribute_ids: Json | null
           status: string | null
+          target_count: number | null
           title: string
           updated_at: string
           user_id: string
@@ -1483,6 +1488,7 @@ export type Database = {
           xp_reward: number
         }
         Insert: {
+          anchor?: string | null
           attribute_id?: string | null
           completed?: boolean
           completed_at?: string | null
@@ -1492,15 +1498,19 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           failed_date?: string | null
+          frequency_type?: string
           horario_provavel?: string | null
           id?: string
           is_failed?: boolean
+          is_anchor?: boolean
+          max_count?: number | null
           mission_category?: string | null
           notes?: string | null
           npc_id?: string | null
           priority?: string | null
           secondary_attribute_ids?: Json | null
           status?: string | null
+          target_count?: number | null
           title: string
           updated_at?: string
           user_id?: string
@@ -1508,6 +1518,7 @@ export type Database = {
           xp_reward?: number
         }
         Update: {
+          anchor?: string | null
           attribute_id?: string | null
           completed?: boolean
           completed_at?: string | null
@@ -1517,15 +1528,19 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           failed_date?: string | null
+          frequency_type?: string
           horario_provavel?: string | null
           id?: string
           is_failed?: boolean
+          is_anchor?: boolean
+          max_count?: number | null
           mission_category?: string | null
           notes?: string | null
           npc_id?: string | null
           priority?: string | null
           secondary_attribute_ids?: Json | null
           status?: string | null
+          target_count?: number | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -1533,6 +1548,50 @@ export type Database = {
           xp_reward?: number
         }
         Relationships: []
+      }
+      mission_weekly_progress: {
+        Row: {
+          created_at: string
+          current_count: number
+          id: string
+          last_completed_date: string | null
+          milestone_paid: boolean
+          mission_id: string
+          updated_at: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          current_count?: number
+          id?: string
+          last_completed_date?: string | null
+          milestone_paid?: boolean
+          mission_id: string
+          updated_at?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          current_count?: number
+          id?: string
+          last_completed_date?: string | null
+          milestone_paid?: boolean
+          mission_id?: string
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_weekly_progress_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       missoes: {
         Row: {
@@ -2891,7 +2950,7 @@ export type Database = {
         Returns: undefined
       }
       complete_mission: {
-        Args: { p_hour?: number; p_mission_id: string; p_today: string }
+        Args: { p_mission_id: string }
         Returns: Json
       }
       complete_portal_run:

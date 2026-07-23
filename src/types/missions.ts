@@ -8,6 +8,8 @@ export type MissionDailyState = 'pending' | 'completed' | 'failed' | 'skipped';
 
 export type MissionDailyStatus = Record<string, MissionDailyState>;
 
+export type MissionFrequencyType = 'daily' | 'weekly';
+
 export type MissionCategory = 'fisico' | 'casa' | 'criativo' | 'social' | 'ar_livre' | 'estudo' | 'geral';
 
 export type MissionLifestyleArchetype =
