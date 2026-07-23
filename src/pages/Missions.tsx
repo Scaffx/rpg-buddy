@@ -28,9 +28,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatRelativeDay } from "@/lib/dateUtils";
 import {
+  getWeeklyListBucket,
   getWeeklyMissionErrorCode,
   getWeeklyMissionErrorMessage,
   getWeeklyMissionState,
+  isWeeklyFocusCandidate,
+  isWeeklyMission,
 } from "@/lib/weeklyMissions";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -251,6 +254,7 @@ export default function Missions() {
       const days = (m.days_of_week as string[]) || [];
       const isDaily = days.length > 0;
       const isUnique = days.length === 0 && m.due_date; // Missão única tem due_date e não tem dias recorrentes
+      const isWeekly = isWeeklyMission(m);
       const completedToday = foiConcluidaHoje(m);
       const isCompleted = m.completed || m.status === "arquivada";
 
@@ -264,7 +268,13 @@ export default function Missions() {
 
       if (activeTab === "todas") {
         if (!isCompleted) {
-          if (isUnique) {
+          if (isWeekly) {
+            if (getWeeklyListBucket(m) === 'today') {
+              today.push(m);
+            } else {
+              nextDays.push(m);
+            }
+          } else if (isUnique) {
             if (m.due_date === hoje) {
               todayUnique.push(m);
             } else if (m.due_date > hoje) {
@@ -284,7 +294,9 @@ export default function Missions() {
       }
 
       if (activeTab === "foco") {
-        if (isUnique && m.due_date === hoje) {
+        if (isWeeklyFocusCandidate(m)) {
+          today.push(m);
+        } else if (isUnique && m.due_date === hoje) {
           todayUnique.push(m);
         } else if (isDaily && !completedToday && days.includes(todayDay)) {
           today.push(m);
@@ -293,7 +305,13 @@ export default function Missions() {
       }
 
       // Pendentes (padrão)
-      if (isUnique) {
+      if (isWeekly) {
+        if (getWeeklyListBucket(m) === 'today') {
+          today.push(m);
+        } else {
+          nextDays.push(m);
+        }
+      } else if (isUnique) {
         if (m.due_date === hoje) {
           todayUnique.push(m);
         } else if (m.due_date > hoje) {
@@ -425,6 +443,18 @@ const handleSave = async () => {
   // Validação para missões únicas
   if (formMissionType === "unica" && !formDueDate) {
     toast({ title: 'Erro', description: 'Selecione uma data para missões únicas', variant: 'destructive' });
+    return;
+  }
+  if (
+    formMissionType === 'recorrente'
+    && formFrequencyType === 'daily'
+    && formDays.length === 0
+  ) {
+    toast({
+      title: 'Erro',
+      description: 'Selecione pelo menos um dia da semana.',
+      variant: 'destructive',
+    });
     return;
   }
   if (

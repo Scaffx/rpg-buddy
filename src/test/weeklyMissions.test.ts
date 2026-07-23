@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   getSaoPauloDateString,
   getSaoPauloWeekStart,
+  getWeeklyListBucket,
   getWeeklyMissionErrorCode,
   getWeeklyMissionState,
+  isWeeklyFocusCandidate,
 } from '@/lib/weeklyMissions';
 
 describe('weekly missions', () => {
@@ -66,6 +68,59 @@ describe('weekly missions', () => {
         weekly_current_count: 7,
       })?.capReached,
     ).toBe(true);
+  });
+
+  it('keeps a pending weekly mission in Today and Focus', () => {
+    const mission = {
+      frequency_type: 'weekly' as const,
+      target_count: 4,
+      max_count: 7,
+      weekly_current_count: 2,
+      weekly_last_completed_date: '2026-07-22',
+    };
+    const now = new Date('2026-07-23T15:00:00.000Z');
+
+    expect(getWeeklyListBucket(mission, now)).toBe('today');
+    expect(isWeeklyFocusCandidate(mission, now)).toBe(true);
+  });
+
+  it('moves a weekly mission completed today out of Today and Focus', () => {
+    const mission = {
+      frequency_type: 'weekly' as const,
+      target_count: 4,
+      max_count: 7,
+      weekly_current_count: 3,
+      weekly_last_completed_date: '2026-07-23',
+    };
+    const now = new Date('2026-07-23T15:00:00.000Z');
+
+    expect(getWeeklyListBucket(mission, now)).toBe('later');
+    expect(isWeeklyFocusCandidate(mission, now)).toBe(false);
+  });
+
+  it('moves a weekly mission at the hard cap out of Today and Focus', () => {
+    const mission = {
+      frequency_type: 'weekly' as const,
+      target_count: 4,
+      max_count: 7,
+      weekly_current_count: 7,
+    };
+
+    expect(getWeeklyListBucket(mission)).toBe('later');
+    expect(isWeeklyFocusCandidate(mission)).toBe(false);
+  });
+
+  it('keeps an available overflow day in Today', () => {
+    const mission = {
+      frequency_type: 'weekly' as const,
+      target_count: 4,
+      max_count: 7,
+      weekly_current_count: 4,
+      weekly_last_completed_date: '2026-07-22',
+    };
+    const now = new Date('2026-07-23T15:00:00.000Z');
+
+    expect(getWeeklyListBucket(mission, now)).toBe('today');
   });
 
   it('extracts stable server error codes from Supabase errors', () => {

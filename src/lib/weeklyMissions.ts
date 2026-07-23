@@ -19,6 +19,8 @@ export type WeeklyMissionState = {
   progressPercent: number;
 };
 
+export type WeeklyListBucket = 'today' | 'later';
+
 const SAO_PAULO_TIME_ZONE = 'America/Sao_Paulo';
 
 function datePartsInSaoPaulo(date: Date): { year: number; month: number; day: number } {
@@ -92,6 +94,21 @@ export function getWeeklyMissionState(
     overflowAvailable: targetReached && !capReached && !completedToday,
     progressPercent: Math.min(100, (current / target) * 100),
   };
+}
+
+export function getWeeklyListBucket(
+  mission: WeeklyMissionLike,
+  now: Date = new Date(),
+): WeeklyListBucket {
+  const state = getWeeklyMissionState(mission, now);
+  return state?.completedToday || state?.capReached ? 'later' : 'today';
+}
+
+export function isWeeklyFocusCandidate(
+  mission: WeeklyMissionLike,
+  now: Date = new Date(),
+): boolean {
+  return isWeeklyMission(mission) && getWeeklyListBucket(mission, now) === 'today';
 }
 
 export type WeeklyMissionErrorCode =
