@@ -1462,6 +1462,7 @@ export type Database = {
           attribute_id: string | null
           completed: boolean
           completed_at: string | null
+          creation_source: string
           created_at: string
           daily_status: Json | null
           days_of_week: Json | null
@@ -1469,6 +1470,7 @@ export type Database = {
           due_date: string | null
           failed_date: string | null
           frequency_type: string
+          weekly_started_at: string | null
           horario_provavel: string | null
           id: string
           is_failed: boolean
@@ -1492,6 +1494,7 @@ export type Database = {
           attribute_id?: string | null
           completed?: boolean
           completed_at?: string | null
+          creation_source?: string
           created_at?: string
           daily_status?: Json | null
           days_of_week?: Json | null
@@ -1499,6 +1502,7 @@ export type Database = {
           due_date?: string | null
           failed_date?: string | null
           frequency_type?: string
+          weekly_started_at?: string | null
           horario_provavel?: string | null
           id?: string
           is_failed?: boolean
@@ -1522,6 +1526,7 @@ export type Database = {
           attribute_id?: string | null
           completed?: boolean
           completed_at?: string | null
+          creation_source?: string
           created_at?: string
           daily_status?: Json | null
           days_of_week?: Json | null
@@ -1529,6 +1534,7 @@ export type Database = {
           due_date?: string | null
           failed_date?: string | null
           frequency_type?: string
+          weekly_started_at?: string | null
           horario_provavel?: string | null
           id?: string
           is_failed?: boolean
@@ -1553,10 +1559,14 @@ export type Database = {
         Row: {
           created_at: string
           current_count: number
+          evaluated_at: string | null
+          evaluation_status: string
           id: string
           last_completed_date: string | null
           milestone_paid: boolean
           mission_id: string
+          shortfall: number | null
+          target_snapshot: number | null
           updated_at: string
           user_id: string
           week_start: string
@@ -1564,10 +1574,14 @@ export type Database = {
         Insert: {
           created_at?: string
           current_count?: number
+          evaluated_at?: string | null
+          evaluation_status?: string
           id?: string
           last_completed_date?: string | null
           milestone_paid?: boolean
           mission_id: string
+          shortfall?: number | null
+          target_snapshot?: number | null
           updated_at?: string
           user_id: string
           week_start: string
@@ -1575,10 +1589,14 @@ export type Database = {
         Update: {
           created_at?: string
           current_count?: number
+          evaluated_at?: string | null
+          evaluation_status?: string
           id?: string
           last_completed_date?: string | null
           milestone_paid?: boolean
           mission_id?: string
+          shortfall?: number | null
+          target_snapshot?: number | null
           updated_at?: string
           user_id?: string
           week_start?: string
@@ -2935,12 +2953,17 @@ export type Database = {
         Returns: Json
       }
       charge_for_item: { Args: { p_item_id: string }; Returns: number }
+      check_weekly_mission_failures: { Args: never; Returns: Json }
       claim_achievement: {
         Args: { p_user_achievement_id: string }
         Returns: {
           gold_reward: number
           xp_reward: number
         }[]
+      }
+      claim_onboarding_mission: {
+        Args: { p_code: string }
+        Returns: Json
       }
       claim_daily_bonus: { Args: { p_today: string }; Returns: Json }
       claim_health_challenge: { Args: never; Returns: Json }
@@ -2975,6 +2998,18 @@ export type Database = {
       create_co_op_mission: {
         Args: { p_description: string; p_member_ids: string[]; p_title: string }
         Returns: string
+      }
+      get_onboarding_missions: {
+        Args: never
+        Returns: {
+          claimed: boolean
+          claimed_at: string | null
+          code: string
+          reward_kind: string
+          sort_order: number
+          unlocked: boolean
+          xp_reward: number
+        }[]
       }
       create_dungeon_session: {
         Args: {
@@ -3237,6 +3272,10 @@ export type Database = {
       record_dungeon_partnership: {
         Args: { p_player_ids: string[]; p_victory?: boolean }
         Returns: undefined
+      }
+      resolve_weekly_mission_failure: {
+        Args: { p_mission_id: string; p_resolution: string }
+        Returns: Json
       }
       redeem_access_key: { Args: { p_code: string }; Returns: Json }
       reset_skill_tree: { Args: never; Returns: Json }

@@ -6,6 +6,17 @@ import { toast } from 'sonner';
 
 const DAYS_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+type WeeklyClosureResult = {
+  evaluated: number;
+  met: number;
+  exempt: number;
+  grace: number;
+  protected: number;
+  failed: number;
+  protector_charges: number;
+  week_start: string;
+};
+
 function getLocalDateString(date: Date = new Date()): string {
   return date.toLocaleDateString('en-CA');
 }
@@ -62,7 +73,7 @@ export function useCheckFailedMissions() {
   useEffect(() => {
     if (!user) return;
     void runFailedMissionCheck(user.id, queryClient);
-  }, [user]);
+  }, [user, queryClient]);
 }
 
 export async function runFailedMissionCheck(userId: string, queryClient: any) {
@@ -74,6 +85,20 @@ export async function runFailedMissionCheck(userId: string, queryClient: any) {
 }
 
 async function checkAndMarkFailed(userId: string, queryClient: any) {
+  let weeklyClosure: WeeklyClosureResult | null = null;
+
+  // Missões por frequência só são avaliadas depois do domingo. A RPC usa a
+  // data de São Paulo no servidor e persiste graça/protetor/falha de forma
+  // idempotente antes de o fluxo diário consultar as missões falhadas.
+  const { data: weeklyData, error: weeklyError } = await supabase.rpc(
+    'check_weekly_mission_failures',
+  );
+  if (weeklyError) {
+    console.error('[FailedMissions] erro no fechamento semanal:', weeklyError);
+  } else {
+    weeklyClosure = weeklyData as unknown as WeeklyClosureResult;
+  }
+
   // Check up to 30 days back for unchecked failures
   const { data: missions } = await supabase
     .from('missions')
@@ -245,6 +270,7 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   // e ser marcadas como fracassadas, igual ao fluxo recorrente.
   const todayStr = getLocalDateString();
   for (const m of missions) {
+    if (m.frequency_type === 'weekly') continue;
     const days = (m.days_of_week as string[]) || [];
     if (days.length > 0) continue; // recorrentes já tratadas acima
     const dueDate = (m as any).due_date as string | null | undefined;
@@ -317,6 +343,39 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     );
     queryClient.invalidateQueries({ queryKey: ['missions'] });
   }
+
+  if (weeklyClosure && weeklyClosure.evaluated > 0) {
+    if (weeklyClosure.failed > 0) {
+      toast(
+        weeklyClosure.failed === 1
+          ? '🌙 Uma meta semanal ficou abaixo do alvo — sequência reiniciada. Bora retomar nesta semana. 💪'
+          : `🌙 ${weeklyClosure.failed} metas semanais ficaram abaixo do alvo — sequência reiniciada. Bora retomar. 💪`,
+        { duration: 6500 },
+      );
+    }
+
+    if (weeklyClosure.protected > 0) {
+      toast(
+        weeklyClosure.protected === 1
+          ? `🛡️ Um protetor salvou sua meta semanal. Restam ${weeklyClosure.protector_charges} carga(s).`
+          : `🛡️ ${weeklyClosure.protected} protetores salvaram metas semanais. Restam ${weeklyClosure.protector_charges} carga(s).`,
+        { duration: 6000 },
+      );
+    }
+
+    if (weeklyClosure.grace > 0) {
+      toast(
+        weeklyClosure.grace === 1
+          ? '🌱 Primeira semana abaixo da meta: graça aplicada. Uma semana não quebra o hábito — só não deixe virar duas.'
+          : `🌱 Graça aplicada em ${weeklyClosure.grace} metas semanais. Só não deixe virar duas semanas seguidas.`,
+        { duration: 6000 },
+      );
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['missions'] });
+    queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
+    queryClient.invalidateQueries({ queryKey: ['profile'] });
+  }
 }
 
 export function useFailedMissions() {
@@ -351,6 +410,15 @@ export function useAcceptPenalty() {
       const missionList = Array.isArray(missions) ? missions : [missions];
       
       for (const mission of missionList) {
+        if (mission.frequency_type === 'weekly') {
+          const { error } = await supabase.rpc('resolve_weekly_mission_failure', {
+            p_mission_id: mission.id,
+            p_resolution: 'dismissed',
+          });
+          if (error) throw error;
+          continue;
+        }
+
         // Marca o dia do fracasso como aceito para evitar re-avaliação
         const { data: missionData } = await supabase
           .from('missions')
@@ -403,6 +471,15 @@ export function useMarkFailedAsDone() {
       const recoveryCount = todayRecoveries?.length ?? 0;
       if (recoveryCount >= 2) {
         throw new Error('Limite atingido! Você já recuperou 2 missões fracassadas hoje.');
+      }
+
+      if (mission.frequency_type === 'weekly') {
+        const { error } = await supabase.rpc('resolve_weekly_mission_failure', {
+          p_mission_id: mission.id,
+          p_resolution: 'recovered',
+        });
+        if (error) throw error;
+        return;
       }
 
       // Atualizar daily_status para marcar o dia do fracasso como concluído

@@ -22,11 +22,10 @@ import {
   useArchiveMission,
   useDeleteChecklistItem,
 } from "@/hooks/useMissionActions";
-import { useCheckFailedMissions, useFailedMissions, useAcceptPenalty, useWelcomeBackCheck, useMarkFailedAsDone, useTodayRecoveryCount } from "@/hooks/useFailedMissions";
+import { useFailedMissions, useWelcomeBackCheck } from "@/hooks/useFailedMissions";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatRelativeDay } from "@/lib/dateUtils";
 import {
   getWeeklyListBucket,
   getWeeklyMissionErrorCode,
@@ -35,7 +34,9 @@ import {
   isWeeklyFocusCandidate,
   isWeeklyMission,
 } from "@/lib/weeklyMissions";
+import { hasWeekendXpSchedule } from '@/lib/weekendXpBonus';
 import AppLayout from "@/components/AppLayout";
+import { FailedMissionsSection } from "@/components/FailedMissionsSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -223,12 +224,8 @@ export default function Missions() {
   const archiveMission = useArchiveMission();
   const { toast } = useToast();
 
-  useCheckFailedMissions();
   const { data: failedMissions = [] } = useFailedMissions();
-  const acceptPenalty = useAcceptPenalty();
   const { showWelcomeBack, setShowWelcomeBack, daysAway } = useWelcomeBackCheck();
-  const markFailedAsDone = useMarkFailedAsDone();
-  const { data: todayRecoveryCount = 0 } = useTodayRecoveryCount();
 
   const todayDay = (() => {
     const d = new Date().getDay();
@@ -560,7 +557,15 @@ const handleSave = async () => {
       const streak = result.streakDays ?? 0;
       const bonusLabel = getStreakXpBonusLabel(streak);
 
-      if (streak >= 3 && bonusLabel) {
+      if (result.weekendBonus) {
+        toast({
+          title: t('app.missions.weekend_bonus_toast_title'),
+          description: t('app.missions.weekend_bonus_toast_desc', {
+            xp: result.xpGained,
+            next: obterProximoDiaAgendado(mission) || t('app.missions.none'),
+          }),
+        });
+      } else if (streak >= 3 && bonusLabel) {
         toast({
           title: `🔥 Streak ${streak} dias! ${bonusLabel}`,
           description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
@@ -806,88 +811,7 @@ const handleSave = async () => {
         )}
 
         {/* ── Missões Fracassadas ────────────────────────────── */}
-        {failedMissions.length > 0 && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/8 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-destructive/20 bg-destructive/10">
-              <h3 className="text-sm font-bold text-destructive flex items-center gap-2">
-                <Flame className="w-4 h-4" />
-                {t('app.missions.failed_section_title', { n: failedMissions.length })}
-              </h3>
-              {failedMissions.length > 1 && (
-                <button
-                  onClick={() => {
-                    acceptPenalty.mutate(failedMissions, {
-                      onSuccess: () => toast({ title: "Dispensadas." }),
-                      onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
-                    });
-                  }}
-                  disabled={acceptPenalty.isPending}
-                  className="text-[11px] px-2.5 py-1 rounded-lg bg-secondary text-muted-foreground font-bold hover:bg-secondary/70 transition-colors disabled:opacity-50 flex items-center gap-1"
-                >
-                  {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                  Dispensar todas
-                </button>
-              )}
-            </div>
-
-            {/* Alerta: missões principais falhadas */}
-            {failedMissions.some((m: any) => m.priority === 'alta') && (
-              <div className="flex items-center gap-2 rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-orange-400" />
-                <p className="text-xs font-semibold text-orange-400">
-                  ⚠️ Missões falhas em missões principais — resolva com prioridade!
-                </p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {failedMissions.map((m: any) => {
-                const failedDate = m.failed_date ? formatRelativeDay(m.failed_date) : 'Hoje';
-                return (
-                  <div
-                    key={m.id}
-                    className="bg-card border border-destructive/20 rounded-lg p-3 flex flex-col gap-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
-                      <p className="text-xs text-muted-foreground">Não concluída · sequência reiniciada</p>
-                      <p className="text-xs text-muted-foreground">📅 {failedDate}</p>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <button
-                        onClick={() => {
-                          markFailedAsDone.mutate(m, {
-                            onSuccess: () => toast({ title: "✅ Missão recuperada — sequência de volta." }),
-                            onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
-                          });
-                        }}
-                        disabled={markFailedAsDone.isPending || todayRecoveryCount >= 2}
-                        className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-green-500/20 text-green-400 font-bold hover:bg-green-500/30 transition-colors disabled:opacity-50"
-                        title={todayRecoveryCount >= 2 ? 'Limite de 2 recuperações por dia atingido' : `Recuperar (${2 - todayRecoveryCount} restantes hoje)`}
-                      >
-                        {markFailedAsDone.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "✅"}
-                        Fiz ({2 - todayRecoveryCount})
-                      </button>
-                      <button
-                        onClick={() => {
-                          acceptPenalty.mutate(m, {
-                            onSuccess: () => toast({ title: "Dispensada." }),
-                            onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
-                          });
-                        }}
-                        disabled={acceptPenalty.isPending}
-                        className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-secondary text-muted-foreground font-bold hover:bg-secondary/70 transition-colors disabled:opacity-50"
-                      >
-                        {acceptPenalty.isPending ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : "✕"}
-                        Dispensar
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <FailedMissionsSection missions={failedMissions} />
 
         {/* ── Conteúdo principal ─────────────────────────────── */}
         {isLoading ? (
@@ -1204,6 +1128,7 @@ function MissionCard({
   const status = mission.status || 'pendente';
   const isCompleted = mission.completed;
   const weeklyState = getWeeklyMissionState(mission);
+  const hasWeekendBonus = hasWeekendXpSchedule(mission);
 
   // Get all attributes for this mission
   // Busca o atributo primário pelo ID na lista de atributos (a query de missions não faz join)
@@ -1287,6 +1212,12 @@ function MissionCard({
         <p className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>
           {mission.title}
         </p>
+
+        {hasWeekendBonus && (
+          <span className="mt-1.5 inline-flex w-fit items-center rounded-full border border-orange-400/30 bg-orange-400/10 px-2 py-0.5 text-[10px] font-bold text-orange-300">
+            {t('app.missions.weekend_bonus_badge')}
+          </span>
+        )}
 
         {/* Description */}
         {mission.description && (

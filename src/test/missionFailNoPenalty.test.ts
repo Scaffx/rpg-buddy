@@ -75,6 +75,7 @@ describe('falha de missão NÃO drena XP/HP/MP (§4/§5 + torneira única #22)',
 
     // 1) Nenhuma RPC que mexe em XP/ouro é chamada no fluxo de falha.
     const rpcNames = rpcSpy.mock.calls.map((c) => c[0]);
+    expect(rpcNames).toContain('check_weekly_mission_failures');
     expect(rpcNames).not.toContain('apply_xp_penalty');
     expect(rpcNames).not.toContain('add_xp_to_user');
     expect(rpcNames).not.toContain('pay_mission_penalty');

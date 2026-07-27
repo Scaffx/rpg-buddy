@@ -1023,6 +1023,9 @@
       "mission_created_desc": "Sua nova missão foi adicionada.",
       "mission_completed": "Missão concluída!",
       "mission_completed_desc": "+{{xp}} XP! Próxima: {{next}}",
+      "weekend_bonus_badge": "🔥 +25% no fim de semana",
+      "weekend_bonus_toast_title": "🔥 Bônus de fim de semana aplicado!",
+      "weekend_bonus_toast_desc": "+{{xp}} XP com o bônus de 25%! Próxima: {{next}}",
       "none": "—",
       "mission_deleted": "Missão excluída",
       "mission_archived": "Missão arquivada",
@@ -1061,6 +1064,48 @@
       "button_save": "Salvar",
       "button_create": "Criar Missão"
     },
+    "onboardingMissions": {
+      "title": "Primeiros passos do herói",
+      "description": "Resgate recompensas únicas enquanto aprende os pilares do sistema.",
+      "progress": "{{claimed}}/{{total}} concluídas",
+      "loading": "Carregando missões de boas-vindas...",
+      "starterKitReward": "Kit inicial da classe",
+      "xpReward": "+{{xp}} XP",
+      "claim": "Resgatar",
+      "goNow": "Ir agora",
+      "locked": "Bloqueada",
+      "claimed": "Resgatada",
+      "claimedToast": "Recompensa resgatada!",
+      "starterKitClaimed": "Seu kit inicial foi equipado e enviado ao inventário.",
+      "xpClaimed": "+{{xp}} XP de boas-vindas.",
+      "claimError": "Não foi possível resgatar a recompensa",
+      "missions": {
+        "enter_system": {
+          "title": "Entre no seu novo mundo",
+          "description": "Seu primeiro resgate ensina o loop: agir, desbloquear e receber a recompensa."
+        },
+        "create_mission": {
+          "title": "Crie sua primeira missão",
+          "description": "Missões transformam intenção em ação concreta. Comece pequeno e repita."
+        },
+        "create_goal": {
+          "title": "Defina sua primeira meta",
+          "description": "Metas te dão um norte; missões são os passos que fazem você chegar lá."
+        },
+        "log_meal": {
+          "title": "Registre sua primeira refeição",
+          "description": "Registrar o que você come torna padrões visíveis e decisões melhores."
+        },
+        "log_water": {
+          "title": "Registre sua primeira água",
+          "description": "Hidratação sustenta energia e foco; acompanhar ajuda a manter constância."
+        },
+        "record_measurement": {
+          "title": "Registre sua primeira medição",
+          "description": "Medidas mostram tendências que momentos isolados não conseguem mostrar."
+        }
+      }
+    },
     "onboarding": {
       "start_button": "Começar",
       "back_button": "Voltar",
@@ -1090,7 +1135,8 @@
       "missions_selected": "missão(ões) selecionada(s). Você pode criar ou editar missões depois.",
       "step4_title": "Tudo pronto, aventureiro!",
       "step4_subtitle": "Sua jornada como {{class}} está prestes a começar.",
-      "starter_equipment": "Equipamento inicial",
+      "starter_equipment": "Primeira recompensa",
+      "kit_claim_hint": "Kit inicial desbloqueado para resgate no Painel",
       "missions_will_be_created": "missão(ões) serão criadas",
       "tip_label": "Dica",
       "tip_text": "Comece com poucos hábitos e seja consistente. Você pode adicionar mais missões a qualquer momento em Missões.",
@@ -1239,6 +1285,8 @@
       "inventoryTitle": "🎒 INVENTÁRIO",
       "starterKitAvailableTitle": "Kit de Novato disponível!",
       "starterKitDesc": "Receba seus primeiros equipamentos para começar a aventura (lv1–4).",
+      "starterKitOnboardingDesc": "Seu kit inicial agora é a primeira recompensa das missões de boas-vindas.",
+      "goToOnboardingMissions": "Ir para as missões de boas-vindas",
       "claimingKit": "⏳ Resgatando...",
       "claimStarterKitButton": "📦 Resgatar Kit de Novato",
       "defeatBossesForItems": "Derrote bosses para conseguir novos itens!",

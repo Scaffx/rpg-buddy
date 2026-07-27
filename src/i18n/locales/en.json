@@ -1023,6 +1023,9 @@
       "mission_created_desc": "Your new mission has been added.",
       "mission_completed": "Mission completed!",
       "mission_completed_desc": "+{{xp}} XP! Next: {{next}}",
+      "weekend_bonus_badge": "🔥 +25% on weekends",
+      "weekend_bonus_toast_title": "🔥 Weekend bonus applied!",
+      "weekend_bonus_toast_desc": "+{{xp}} XP with the 25% bonus! Next: {{next}}",
       "none": "—",
       "mission_deleted": "Mission deleted",
       "mission_archived": "Mission archived",
@@ -1061,6 +1064,48 @@
       "button_save": "Save",
       "button_create": "Create Mission"
     },
+    "onboardingMissions": {
+      "title": "Your hero's first steps",
+      "description": "Claim one-time rewards while learning the system's core pillars.",
+      "progress": "{{claimed}}/{{total}} completed",
+      "loading": "Loading welcome missions...",
+      "starterKitReward": "Class starter kit",
+      "xpReward": "+{{xp}} XP",
+      "claim": "Claim",
+      "goNow": "Go now",
+      "locked": "Locked",
+      "claimed": "Claimed",
+      "claimedToast": "Reward claimed!",
+      "starterKitClaimed": "Your starter kit was equipped and added to your inventory.",
+      "xpClaimed": "+{{xp}} welcome XP.",
+      "claimError": "Could not claim the reward",
+      "missions": {
+        "enter_system": {
+          "title": "Enter your new world",
+          "description": "Your first claim teaches the loop: act, unlock, and collect the reward."
+        },
+        "create_mission": {
+          "title": "Create your first mission",
+          "description": "Missions turn intention into concrete action. Start small and repeat."
+        },
+        "create_goal": {
+          "title": "Set your first goal",
+          "description": "Goals give you direction; missions are the steps that get you there."
+        },
+        "log_meal": {
+          "title": "Log your first meal",
+          "description": "Logging what you eat makes patterns visible and decisions better."
+        },
+        "log_water": {
+          "title": "Log your first water",
+          "description": "Hydration supports energy and focus; tracking helps build consistency."
+        },
+        "record_measurement": {
+          "title": "Record your first measurement",
+          "description": "Measurements reveal trends that isolated moments cannot show."
+        }
+      }
+    },
     "onboarding": {
       "start_button": "Start",
       "back_button": "Back",
@@ -1090,7 +1135,8 @@
       "missions_selected": "mission(s) selected. You can create or edit missions later.",
       "step4_title": "All set, adventurer!",
       "step4_subtitle": "Your journey as {{class}} is about to begin.",
-      "starter_equipment": "Starting equipment",
+      "starter_equipment": "First reward",
+      "kit_claim_hint": "Starter kit unlocked to claim on the Dashboard",
       "missions_will_be_created": "mission(s) will be created",
       "tip_label": "Tip",
       "tip_text": "Start with a few habits and be consistent. You can add more missions at any time in Missions.",
@@ -1205,6 +1251,8 @@
       "inventoryTitle": "🎒 INVENTORY",
       "starterKitAvailableTitle": "Novice Kit available!",
       "starterKitDesc": "Receive your first equipment to start the adventure (lv1–4).",
+      "starterKitOnboardingDesc": "Your starter kit is now the first reward in the welcome missions.",
+      "goToOnboardingMissions": "Go to welcome missions",
       "claimingKit": "⏳ Claiming...",
       "claimStarterKitButton": "📦 Claim Novice Kit",
       "defeatBossesForItems": "Defeat bosses to get new items!",
