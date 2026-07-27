@@ -12,7 +12,7 @@ import { SubscriptionExpiryNotice } from '@/components/SubscriptionExpiryNotice'
 import FloatingAiChat from '@/components/FloatingAiChat';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
-import { Flame, Shield, ShieldAlert, Trophy } from 'lucide-react';
+import { Flame, Gift, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
@@ -27,6 +27,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { computeSixtyPercentStreak } from '@/lib/streakUtils';
 import { currentWeekToken } from '@/lib/dateUtils';
 import { useCheckFailedMissions } from '@/hooks/useFailedMissions';
+import { GiftKeySection } from '@/components/GiftKeySection';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const DAILY_RESET_EVENT = 'daily-reset-processed';
 
@@ -59,6 +67,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
   const [showDailyResetNotice, setShowDailyResetNotice] = useState(false);
   const [dailyResetMessage, setDailyResetMessage] = useState('');
+  const [showGiftKeys, setShowGiftKeys] = useState(false);
 
   const { data: streakProtector } = useQuery<StreakProtectorStatus>({
     queryKey: ['streak-protector-header', user?.id],
@@ -235,6 +244,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
                 {/* Utilitários */}
                 <div className="flex items-center gap-0.5 px-1 py-1 rounded-lg bg-muted/30 border border-border/50">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setShowGiftKeys(true)}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                        aria-label="Resgatar código de presente"
+                      >
+                        <Gift className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="text-xs"><strong>Presentes e códigos</strong></p>
+                      <p className="text-[10px] text-muted-foreground">Resgate ou compartilhe uma chave Premium.</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <LanguageSwitcher />
                   <SoundToggleButton />
                   <HeroNotificationBell />
@@ -369,6 +394,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         )}
 
         <LevelUpCinematic />
+        <Dialog open={showGiftKeys} onOpenChange={setShowGiftKeys}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-primary" />
+                Presentes e códigos
+              </DialogTitle>
+              <DialogDescription>
+                Resgate um código Premium ou compartilhe sua chave de presente.
+              </DialogDescription>
+            </DialogHeader>
+            <GiftKeySection />
+          </DialogContent>
+        </Dialog>
         </div>
         <AppUpdateModal />
         <FloatingAiChat />

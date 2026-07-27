@@ -35,7 +35,6 @@ import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillL
 import { getLevelProgress } from "@/lib/progression";
 import { useDungeonPartnerships, BOND_TIERS, runsToNextTier } from "@/hooks/useDungeonPartnerships";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
-import { GiftKeySection } from '@/components/GiftKeySection';
 
 const PROFILE_TOUR_STEPS: TourStep[] = [
   {
@@ -2629,11 +2628,6 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-      {/* Gift keys section */}
-      <div className="px-2">
-        <GiftKeySection />
-      </div>
-
       <GuidedTour tourKey="profile" steps={PROFILE_TOUR_STEPS} />
     </AppLayout>
   );
