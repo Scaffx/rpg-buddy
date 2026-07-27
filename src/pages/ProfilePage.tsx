@@ -12,7 +12,7 @@ import {
   useClaimAchievement,
 } from "@/hooks/useAchievements";
 import { useGoldBalance } from "@/hooks/useGold";
-import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useUseScroll, useClaimStarterKit, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
+import { useInventory, useToggleEquip, useToggleAttunement, useConsumeItem, useUseScroll, getEquipmentBonuses, compareItems, type InventoryItem, type GameItem } from "@/hooks/useInventory";
 import { useSkillTreeNodes, usePlayerSkillNodes } from "@/hooks/useSkillTree";
 import { starterClassDisplayName } from "@/hooks/useHeroClass";
 import { supabase } from "@/integrations/supabase/client";
@@ -816,7 +816,6 @@ export default function ProfilePage() {
   const toggleAttunement = useToggleAttunement();
   const consumeItem = useConsumeItem();
   const useScroll = useUseScroll();
-  const claimStarterKit = useClaimStarterKit();
   const equipBonuses = getEquipmentBonuses(inventory as InventoryItem[]);
   const awardHealthXP = useAwardHealthXP();
   const updateDisplayName = useUpdateDisplayName();
@@ -2276,19 +2275,13 @@ export default function ProfilePage() {
                     <p className="text-4xl">🥚</p>
                     <p className="text-sm font-bold text-foreground">{t('app.profile.starterKitAvailableTitle')}</p>
                     <p className="text-xs text-muted-foreground">
-                      {t('app.profile.starterKitDesc')}
+                      {t('app.profile.starterKitOnboardingDesc')}
                     </p>
                     <button
-                      onClick={() => {
-                        claimStarterKit.mutate(undefined, {
-                          onSuccess: () => toast.success(t('app.profile.starterKitClaimedToast')),
-                          onError: (err: any) => toast.error(err.message || t('app.profile.starterKitErrorToast')),
-                        });
-                      }}
-                      disabled={claimStarterKit.isPending}
+                      onClick={() => navigate('/')}
                       className="px-6 py-2 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
-                      {claimStarterKit.isPending ? t('app.profile.claimingKit') : t('app.profile.claimStarterKitButton')}
+                      {t('app.profile.goToOnboardingMissions')}
                     </button>
                   </div>
                 </div>

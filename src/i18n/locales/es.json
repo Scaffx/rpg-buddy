@@ -1074,6 +1074,48 @@
       "button_save": "Guardar",
       "button_create": "Crear Misión"
     },
+    "onboardingMissions": {
+      "title": "Primeros pasos del héroe",
+      "description": "Reclama recompensas únicas mientras aprendes los pilares del sistema.",
+      "progress": "{{claimed}}/{{total}} completadas",
+      "loading": "Cargando misiones de bienvenida...",
+      "starterKitReward": "Kit inicial de clase",
+      "xpReward": "+{{xp}} XP",
+      "claim": "Reclamar",
+      "goNow": "Ir ahora",
+      "locked": "Bloqueada",
+      "claimed": "Reclamada",
+      "claimedToast": "¡Recompensa reclamada!",
+      "starterKitClaimed": "Tu kit inicial fue equipado y añadido al inventario.",
+      "xpClaimed": "+{{xp}} XP de bienvenida.",
+      "claimError": "No se pudo reclamar la recompensa",
+      "missions": {
+        "enter_system": {
+          "title": "Entra en tu nuevo mundo",
+          "description": "Tu primer rescate enseña el ciclo: actuar, desbloquear y recibir la recompensa."
+        },
+        "create_mission": {
+          "title": "Crea tu primera misión",
+          "description": "Las misiones convierten la intención en acción concreta. Empieza pequeño y repite."
+        },
+        "create_goal": {
+          "title": "Define tu primera meta",
+          "description": "Las metas te dan rumbo; las misiones son los pasos para llegar."
+        },
+        "log_meal": {
+          "title": "Registra tu primera comida",
+          "description": "Registrar lo que comes hace visibles los patrones y mejora las decisiones."
+        },
+        "log_water": {
+          "title": "Registra tu primera agua",
+          "description": "La hidratación sostiene energía y foco; registrarla ayuda a ser constante."
+        },
+        "record_measurement": {
+          "title": "Registra tu primera medición",
+          "description": "Las medidas muestran tendencias que los momentos aislados no revelan."
+        }
+      }
+    },
     "onboarding": {
       "start_button": "Comenzar",
       "back_button": "Volver",
@@ -1103,7 +1145,8 @@
       "missions_selected": "misión(es) seleccionada(s). Puedes crear o editar misiones después.",
       "step4_title": "¡Todo listo, aventurero!",
       "step4_subtitle": "Tu viaje como {{class}} está a punto de comenzar.",
-      "starter_equipment": "Equipamiento inicial",
+      "starter_equipment": "Primera recompensa",
+      "kit_claim_hint": "Kit inicial desbloqueado para reclamar en el Panel",
       "missions_will_be_created": "misión(es) serán creadas",
       "tip_label": "Consejo",
       "tip_text": "Comienza con pocos hábitos y sé consistente. Puedes agregar más misiones en cualquier momento en Misiones.",
@@ -1217,6 +1260,8 @@
       "inventoryTitle": "🎒 INVENTARIO",
       "starterKitAvailableTitle": "¡Kit de Novato disponible!",
       "starterKitDesc": "Recibe tu primer equipamiento para comenzar la aventura (nv1–4).",
+      "starterKitOnboardingDesc": "Tu kit inicial ahora es la primera recompensa de las misiones de bienvenida.",
+      "goToOnboardingMissions": "Ir a las misiones de bienvenida",
       "claimingKit": "⏳ Reclamando...",
       "claimStarterKitButton": "📦 Reclamar Kit de Novato",
       "defeatBossesForItems": "¡Derrota jefes para conseguir nuevos objetos!",

@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAttributes, useProfile } from '@/hooks/useProfile';
-import { useGrantOnboardingKit } from '@/hooks/useInventory';
 import { useSkillTreeNodes } from '@/hooks/useSkillTree';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -181,7 +180,6 @@ export default function Onboarding() {
   const [selectedMissions, setSelectedMissions] = useState<Set<number>>(new Set([0, 1, 2]));
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const grantOnboardingKit = useGrantOnboardingKit();
 
   // Árvore de habilidades da classe selecionada (para a etapa da trilha).
   const selectedTree = selectedClass ? (CLASS_TREE[selectedClass.id] || 'novato') : 'novato';
@@ -241,7 +239,8 @@ export default function Onboarding() {
           description: m.description,
           notes: null,
           secondary_attribute_ids: [],
-        } as any);
+          creation_source: 'onboarding_template',
+        });
       }
 
       // Marca onboarding como concluído no banco.
@@ -254,14 +253,6 @@ export default function Onboarding() {
 
       if (updateProfileError) {
         console.error('[onboarding] falha ao atualizar perfil:', updateProfileError);
-      }
-
-      // Concede o kit inicial DA CLASSE escolhida (arma + armadura equipadas +
-      // acessório + 2 frascos de mana + 1 de vida).
-      try {
-        await grantOnboardingKit.mutateAsync(selectedClass.id);
-      } catch {
-        // Kit pode já ter sido concedido — ignora erro
       }
 
       // Aprende a 1ª habilidade da trilha da classe (nó-tronco), gastando o
@@ -695,7 +686,7 @@ export default function Onboarding() {
               </p>
 
               <div className="text-sm text-primary mb-4">
-                {t('app.onboarding.starter_equipment')}: <span className="font-bold">{t(`app.onboarding.class_${selectedClass.id}_item`)}</span>
+                {t('app.onboarding.starter_equipment')}: <span className="font-bold">{t('app.onboarding.kit_claim_hint')}</span>
               </div>
 
               <div className="text-left bg-muted/20 rounded-xl border border-border p-4 mb-6">

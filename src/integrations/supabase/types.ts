@@ -1462,6 +1462,7 @@ export type Database = {
           attribute_id: string | null
           completed: boolean
           completed_at: string | null
+          creation_source: string
           created_at: string
           daily_status: Json | null
           days_of_week: Json | null
@@ -1492,6 +1493,7 @@ export type Database = {
           attribute_id?: string | null
           completed?: boolean
           completed_at?: string | null
+          creation_source?: string
           created_at?: string
           daily_status?: Json | null
           days_of_week?: Json | null
@@ -1522,6 +1524,7 @@ export type Database = {
           attribute_id?: string | null
           completed?: boolean
           completed_at?: string | null
+          creation_source?: string
           created_at?: string
           daily_status?: Json | null
           days_of_week?: Json | null
@@ -2942,6 +2945,10 @@ export type Database = {
           xp_reward: number
         }[]
       }
+      claim_onboarding_mission: {
+        Args: { p_code: string }
+        Returns: Json
+      }
       claim_daily_bonus: { Args: { p_today: string }; Returns: Json }
       claim_health_challenge: { Args: never; Returns: Json }
       claim_pending_dungeon: { Args: never; Returns: Json }
@@ -2975,6 +2982,18 @@ export type Database = {
       create_co_op_mission: {
         Args: { p_description: string; p_member_ids: string[]; p_title: string }
         Returns: string
+      }
+      get_onboarding_missions: {
+        Args: never
+        Returns: {
+          claimed: boolean
+          claimed_at: string | null
+          code: string
+          reward_kind: string
+          sort_order: number
+          unlocked: boolean
+          xp_reward: number
+        }[]
       }
       create_dungeon_session: {
         Args: {

@@ -23,6 +23,7 @@ import RemindersCard from "@/components/RemindersCard";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 import { FailedMissionsSection } from '@/components/FailedMissionsSection';
 import { useFailedMissions } from '@/hooks/useFailedMissions';
+import { OnboardingMissionsCard } from '@/components/OnboardingMissionsCard';
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -481,6 +482,10 @@ export default function Dashboard() {
             </div>
           )}
         </motion.div>
+
+        <div className="order-0">
+          <OnboardingMissionsCard />
+        </div>
 
         {/* Stat cards (RPG secundário) */}
         <div data-tour="dash-stats" className="order-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
