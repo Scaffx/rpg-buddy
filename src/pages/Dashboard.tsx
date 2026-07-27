@@ -2,16 +2,15 @@ import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
 import { motion } from "framer-motion";
-import { useProfile, useAttributes, useMissions, useClasses, useTodayXp, useTodayMissionsCount, useRankPosition } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useMissions } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
 import { useDailyBonus } from "@/hooks/useDailyBonus";
-import { Trophy, Star, Zap, Target, TrendingUp, Loader2, Swords, Calendar, Check, Gift, Coins, Clock, Flame, AlertTriangle, BookOpen } from "lucide-react";
+import { Loader2, Check, Gift, Coins, Clock, Flame, AlertTriangle, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { starterClassDisplayName } from "@/hooks/useHeroClass";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sfx } from "@/lib/sfx";
@@ -29,12 +28,7 @@ const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
     target: 'dash-greeting',
     title: 'Seu Painel de Controle ⚔️',
-    description: 'Aqui você acompanha tudo em tempo real: status do herói, streak, XP e muito mais. Este é o coração do Life on RPG.',
-  },
-  {
-    target: 'dash-stats',
-    title: 'Seus Stats de Herói 📊',
-    description: 'Esses cards mostram Nível, posição no Ranking global, sua Classe atual, XP total, missões do dia e XP ganho hoje.',
+    description: 'Aqui você acompanha sua rotina em tempo real: missões do dia, streak, lembretes e bônus. Este é o coração do Life on RPG.',
   },
   {
     target: 'dash-bonus',
@@ -120,16 +114,10 @@ export default function Dashboard() {
   const { data: attributes, isLoading: attrsLoading } = useAttributes();
   const { data: allMissions, isLoading: missionsLoading } = useMissions();
   const { data: failedMissions = [] } = useFailedMissions();
-  const { data: classes } = useClasses();
-  const { data: todayXp = 0 } = useTodayXp();
-  const { data: todayMissionsCount = 0 } = useTodayMissionsCount();
-  const { data: rankPosition } = useRankPosition();
   const dailyBonus = useDailyBonus();
   const completeMission = useCompleteMission();
   const [showCoachPopup, setShowCoachPopup] = useState(false);
   const [coachQuote, setCoachQuote] = useState("");
-
-  const currentClass = classes?.find((c: any) => c.id === profile?.current_class_id);
 
   const todayDay = (() => {
     const d = new Date().getDay();
@@ -383,16 +371,6 @@ export default function Dashboard() {
             <Skeleton className="h-7 w-52" />
             <Skeleton className="h-4 w-64" />
           </div>
-          {/* stat cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="rpg-card-glow text-center space-y-2 py-3">
-                <Skeleton className="h-5 w-5 mx-auto rounded-full" />
-                <Skeleton className="h-6 w-12 mx-auto" />
-                <Skeleton className="h-3 w-16 mx-auto" />
-              </div>
-            ))}
-          </div>
           {/* bônus diário */}
           <Skeleton className="h-20 w-full rounded-2xl" />
           {/* missões de hoje */}
@@ -406,26 +384,6 @@ export default function Dashboard() {
       </AppLayout>
     );
   }
-
-  const statCards = [
-    { key: "level", label: t('app.dashboard.stat_level'), icon: Star, value: profile?.level || 1 },
-    { key: "rank", label: t('app.dashboard.stat_rank'), icon: Trophy, value: rankPosition ? `#${rankPosition}` : "--" },
-    {
-      key: "class",
-      label: t('app.dashboard.stat_class'),
-      icon: Swords,
-      value: currentClass ? `${currentClass.icon} ${currentClass.name}` : `📖 ${starterClassDisplayName((profile as any)?.starter_class)}`,
-    },
-    { key: "total_xp", label: t('app.dashboard.stat_xp_total'), icon: Zap, value: profile?.total_xp || 0 },
-    {
-      key: "missions_today",
-      label: t('app.dashboard.stat_missions_today'),
-      icon: Calendar,
-      value: todayMissionsCount || 0,
-    },
-    { key: "missions", label: t('app.dashboard.stat_missions_total'), icon: Target, value: profile?.missions_completed || 0 },
-    { key: "xp_today", label: t('app.dashboard.stat_xp_today'), icon: TrendingUp, value: todayXp || 0 },
-  ];
 
   const handleComplete = async (mission: any) => {
     const res: any = await completeMission.mutateAsync({
@@ -445,7 +403,7 @@ export default function Dashboard() {
   return (
     <AppLayout>
       {/* §9.5: rotina dominante — flex+order coloca as missões logo após a saudação;
-          stats/bônus de RPG ficam abaixo (secundários). */}
+          bônus de RPG fica abaixo (secundário). */}
       <div className="flex flex-col gap-6">
         <motion.div data-tour="dash-greeting" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
@@ -485,23 +443,6 @@ export default function Dashboard() {
 
         <div className="order-0">
           <OnboardingMissionsCard />
-        </div>
-
-        {/* Stat cards (RPG secundário) */}
-        <div data-tour="dash-stats" className="order-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {statCards.map((stat, i) => (
-            <motion.div
-              key={stat.key}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.08, 0.4) }}
-              className="rpg-card-glow text-center"
-            >
-              <stat.icon className="w-5 h-5 text-primary mx-auto mb-1" />
-              <div className="text-lg font-bold text-foreground">{stat.value}</div>
-              <div className="text-xs text-muted-foreground">{stat.label}</div>
-            </motion.div>
-          ))}
         </div>
 
         {/* Diário do Herói — atalho de 1 toque (espelho da aderência à rotina) */}
