@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { computeSixtyPercentStreak } from '@/lib/streakUtils';
 import { currentWeekToken } from '@/lib/dateUtils';
+import { useCheckFailedMissions } from '@/hooks/useFailedMissions';
 
 const DAILY_RESET_EVENT = 'daily-reset-processed';
 
@@ -48,6 +49,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { t } = useTranslation();
   useMidnightReset();
+  useCheckFailedMissions();
   useForrageio();
   useSleepWakeAlerts();
   useAutoCheckAchievements();

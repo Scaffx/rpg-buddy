@@ -21,6 +21,8 @@ import { evaluateTodayStreakRisk, DAYS_MAP } from "@/lib/streakUtils";
 import { currentWeekToken } from "@/lib/dateUtils";
 import RemindersCard from "@/components/RemindersCard";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+import { FailedMissionsSection } from '@/components/FailedMissionsSection';
+import { useFailedMissions } from '@/hooks/useFailedMissions';
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -116,6 +118,7 @@ export default function Dashboard() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: attributes, isLoading: attrsLoading } = useAttributes();
   const { data: allMissions, isLoading: missionsLoading } = useMissions();
+  const { data: failedMissions = [] } = useFailedMissions();
   const { data: classes } = useClasses();
   const { data: todayXp = 0 } = useTodayXp();
   const { data: todayMissionsCount = 0 } = useTodayMissionsCount();
@@ -144,6 +147,7 @@ export default function Dashboard() {
     return allMissions
       .filter((m: any) => {
         if (m.completed) return false;
+        if (m.is_failed) return false;
         const days: string[] = m.days_of_week || [];
         if (!(days.length > 0 && days.includes(todayDay))) return false;
         // Verificar se já foi concluída hoje
@@ -583,6 +587,8 @@ export default function Dashboard() {
         <div data-tour="dash-missions" className="order-1">
           <h2 className="text-lg font-display font-semibold text-foreground mb-1">{t('app.dashboard.missions_today_header')}</h2>
           <p className="text-xs text-muted-foreground mb-3">{todayDayLabel}</p>
+
+          <FailedMissionsSection missions={failedMissions} className="mb-3" />
 
           {missionsLoading ? (
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
