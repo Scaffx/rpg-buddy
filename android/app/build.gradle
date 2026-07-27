@@ -19,7 +19,7 @@ android {
     namespace = "app.lovable.rpgbuddy"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.lovable.rpgbuddy"
+        applicationId "com.scaffx.lifeonrpg"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 15
