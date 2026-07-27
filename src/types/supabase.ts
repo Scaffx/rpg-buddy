@@ -37,6 +37,7 @@ export interface Database {
           anchor: string | null
           is_anchor: boolean
           frequency_type: MissionFrequencyType
+          weekly_started_at: string | null
           target_count: number | null
           max_count: number | null
         }
@@ -64,6 +65,7 @@ export interface Database {
           anchor?: string | null
           is_anchor?: boolean
           frequency_type?: MissionFrequencyType
+          weekly_started_at?: string | null
           target_count?: number | null
           max_count?: number | null
         }
@@ -91,6 +93,7 @@ export interface Database {
           anchor?: string | null
           is_anchor?: boolean
           frequency_type?: MissionFrequencyType
+          weekly_started_at?: string | null
           target_count?: number | null
           max_count?: number | null
         }

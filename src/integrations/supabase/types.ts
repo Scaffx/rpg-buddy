@@ -1470,6 +1470,7 @@ export type Database = {
           due_date: string | null
           failed_date: string | null
           frequency_type: string
+          weekly_started_at: string | null
           horario_provavel: string | null
           id: string
           is_failed: boolean
@@ -1501,6 +1502,7 @@ export type Database = {
           due_date?: string | null
           failed_date?: string | null
           frequency_type?: string
+          weekly_started_at?: string | null
           horario_provavel?: string | null
           id?: string
           is_failed?: boolean
@@ -1532,6 +1534,7 @@ export type Database = {
           due_date?: string | null
           failed_date?: string | null
           frequency_type?: string
+          weekly_started_at?: string | null
           horario_provavel?: string | null
           id?: string
           is_failed?: boolean
