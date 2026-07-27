@@ -92,6 +92,7 @@ export const useCompleteMission = () => {
         milestone_reached?: boolean;
         execution_xp?: number;
         milestone_xp?: number;
+        weekend_bonus?: boolean;
       };
       return {
         success: true,
@@ -109,6 +110,7 @@ export const useCompleteMission = () => {
         milestoneReached: !!result.milestone_reached,
         executionXp: result.execution_xp ?? result.xp_gained ?? 0,
         milestoneXp: result.milestone_xp ?? 0,
+        weekendBonus: !!result.weekend_bonus,
       };
     },
 

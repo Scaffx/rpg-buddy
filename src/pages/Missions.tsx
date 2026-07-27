@@ -34,6 +34,7 @@ import {
   isWeeklyFocusCandidate,
   isWeeklyMission,
 } from "@/lib/weeklyMissions";
+import { hasWeekendXpSchedule } from '@/lib/weekendXpBonus';
 import AppLayout from "@/components/AppLayout";
 import { FailedMissionsSection } from "@/components/FailedMissionsSection";
 import { Button } from "@/components/ui/button";
@@ -556,7 +557,15 @@ const handleSave = async () => {
       const streak = result.streakDays ?? 0;
       const bonusLabel = getStreakXpBonusLabel(streak);
 
-      if (streak >= 3 && bonusLabel) {
+      if (result.weekendBonus) {
+        toast({
+          title: t('app.missions.weekend_bonus_toast_title'),
+          description: t('app.missions.weekend_bonus_toast_desc', {
+            xp: result.xpGained,
+            next: obterProximoDiaAgendado(mission) || t('app.missions.none'),
+          }),
+        });
+      } else if (streak >= 3 && bonusLabel) {
         toast({
           title: `🔥 Streak ${streak} dias! ${bonusLabel}`,
           description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
@@ -1119,6 +1128,7 @@ function MissionCard({
   const status = mission.status || 'pendente';
   const isCompleted = mission.completed;
   const weeklyState = getWeeklyMissionState(mission);
+  const hasWeekendBonus = hasWeekendXpSchedule(mission);
 
   // Get all attributes for this mission
   // Busca o atributo primário pelo ID na lista de atributos (a query de missions não faz join)
@@ -1202,6 +1212,12 @@ function MissionCard({
         <p className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>
           {mission.title}
         </p>
+
+        {hasWeekendBonus && (
+          <span className="mt-1.5 inline-flex w-fit items-center rounded-full border border-orange-400/30 bg-orange-400/10 px-2 py-0.5 text-[10px] font-bold text-orange-300">
+            {t('app.missions.weekend_bonus_badge')}
+          </span>
+        )}
 
         {/* Description */}
         {mission.description && (
