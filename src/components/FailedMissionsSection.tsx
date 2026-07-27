@@ -13,6 +13,7 @@ type FailedMission = {
   title?: string | null;
   priority?: string | null;
   failed_date?: string | null;
+  frequency_type?: string | null;
 };
 
 type FailedMissionsSectionProps = {
@@ -70,6 +71,7 @@ export function FailedMissionsSection({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">
         {missions.map((mission) => {
+          const isWeekly = mission.frequency_type === 'weekly';
           const failedDate = mission.failed_date
             ? formatRelativeDay(mission.failed_date)
             : 'Hoje';
@@ -81,14 +83,20 @@ export function FailedMissionsSection({
             >
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{mission.title}</p>
-                <p className="text-xs text-muted-foreground">Não concluída · sequência reiniciada</p>
+                <p className="text-xs text-muted-foreground">
+                  {isWeekly ? 'Meta semanal não atingida' : 'Não concluída'} · sequência reiniciada
+                </p>
                 <p className="text-xs text-muted-foreground">📅 {failedDate}</p>
               </div>
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => {
                     markFailedAsDone.mutate(mission, {
-                      onSuccess: () => toast({ title: '✅ Missão recuperada — sequência de volta.' }),
+                      onSuccess: () => toast({
+                        title: isWeekly
+                          ? '✅ Meta semanal recuperada — sequência de volta.'
+                          : '✅ Missão recuperada — sequência de volta.',
+                      }),
                       onError: (err: Error) => toast({ title: err.message, variant: 'destructive' }),
                     });
                   }}
