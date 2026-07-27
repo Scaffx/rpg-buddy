@@ -5,14 +5,50 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts';
-import { useAttributes, useXpHistory } from '@/hooks/useProfile';
+import {
+  useAttributes,
+  useClasses,
+  useProfile,
+  useRankPosition,
+  useTodayMissionsCount,
+  useTodayXp,
+  useXpHistory,
+} from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
-import { Hexagon, Loader2 } from 'lucide-react';
+import { starterClassDisplayName } from '@/hooks/useHeroClass';
+import { Calendar, Hexagon, Loader2, Star, Swords, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 
 export default function ProgressPage() {
   const { t, i18n } = useTranslation();
+  const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: xpHistory, isLoading: xpLoading } = useXpHistory(7);
   const { data: attributes, isLoading: attrLoading } = useAttributes();
+  const { data: classes } = useClasses();
+  const { data: todayXp = 0 } = useTodayXp();
+  const { data: todayMissionsCount = 0 } = useTodayMissionsCount();
+  const { data: rankPosition } = useRankPosition();
+
+  const currentClass = classes?.find((current) => current.id === profile?.current_class_id);
+
+  const statCards = [
+    { key: 'level', label: t('app.dashboard.stat_level'), icon: Star, value: profile?.level || 1 },
+    { key: 'rank', label: t('app.dashboard.stat_rank'), icon: Trophy, value: rankPosition ? `#${rankPosition}` : '--' },
+    {
+      key: 'class',
+      label: t('app.dashboard.stat_class'),
+      icon: Swords,
+      value: currentClass ? `${currentClass.icon} ${currentClass.name}` : `📖 ${starterClassDisplayName(profile?.starter_class)}`,
+    },
+    { key: 'total_xp', label: t('app.dashboard.stat_xp_total'), icon: Zap, value: profile?.total_xp || 0 },
+    {
+      key: 'missions_today',
+      label: t('app.dashboard.stat_missions_today'),
+      icon: Calendar,
+      value: todayMissionsCount || 0,
+    },
+    { key: 'missions', label: t('app.dashboard.stat_missions_total'), icon: Target, value: profile?.missions_completed || 0 },
+    { key: 'xp_today', label: t('app.dashboard.stat_xp_today'), icon: TrendingUp, value: todayXp || 0 },
+  ];
 
   const lineData = useMemo(() => {
     const last7 = [];
@@ -48,6 +84,29 @@ export default function ProgressPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* Hero stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {statCards.map((stat, index) => (
+            <motion.div
+              key={stat.key}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(index * 0.08, 0.4) }}
+              className="rpg-card-glow text-center"
+            >
+              {profileLoading ? (
+                <Loader2 className="w-5 h-5 text-primary mx-auto my-4 animate-spin" />
+              ) : (
+                <>
+                  <stat.icon className="w-5 h-5 text-primary mx-auto mb-1" />
+                  <div className="text-lg font-bold text-foreground">{stat.value}</div>
+                  <div className="text-xs text-muted-foreground">{stat.label}</div>
+                </>
+              )}
+            </motion.div>
+          ))}
+        </div>
+
         {/* XP Line Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
