@@ -403,6 +403,7 @@
       "pet_role_support": "Suporte",
       "pet_owned": "Adquirido",
       "pet_buy": "Comprar",
+      "pet_forage": "Forrageia 1x/dia",
       "toast_pet_bought": "{{name}} agora é seu companheiro! 🐾",
       "toast_pet_error": "Erro ao comprar o pet."
     },

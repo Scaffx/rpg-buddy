@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGoldBalance, useBuyItem } from '@/hooks/useGold';
 import { useShopItems, useBuyEquipment, useInventory, type GameItem, type InventoryItem } from '@/hooks/useInventory';
 import { useShopPets, useBuyPet, useAllCompanions } from '@/hooks/useCompanion';
+import { getPetBonus, petBonusLabel, getSustainEffect, sustainLabel, isForagePet } from '@/lib/pets';
 import AppLayout from '@/components/AppLayout';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -599,11 +600,25 @@ export default function ShopPage() {
                         </span>
                       </div>
                     </div>
+                    {/* O pet não luta: mostrar atk/def/hp/mp dele era resquício da era
+                        do pet-combatente e só levantava a pergunta "pra que serve isso?".
+                        Aqui vai o que o pet de fato entrega. */}
                     <div className="flex flex-wrap gap-1.5 text-[10px]">
-                      <span className="bg-red-950/40 border border-red-500/30 rounded px-1.5 py-0.5 text-red-300">⚔️ {pet.atk}</span>
-                      <span className="bg-blue-950/40 border border-blue-500/30 rounded px-1.5 py-0.5 text-blue-300">🛡️ {pet.def}</span>
-                      <span className="bg-green-950/40 border border-green-500/30 rounded px-1.5 py-0.5 text-green-300">❤️ {pet.hp}</span>
-                      <span className="bg-purple-950/40 border border-purple-500/30 rounded px-1.5 py-0.5 text-purple-300">💧 {pet.mp}</span>
+                      {petBonusLabel(getPetBonus(pet.pet_type)) && (
+                        <span className="bg-emerald-950/40 border border-emerald-500/30 rounded px-1.5 py-0.5 text-emerald-300">
+                          ✨ {petBonusLabel(getPetBonus(pet.pet_type))}
+                        </span>
+                      )}
+                      {sustainLabel(getSustainEffect(pet.pet_type)) && (
+                        <span className="bg-cyan-950/40 border border-cyan-500/30 rounded px-1.5 py-0.5 text-cyan-300">
+                          ⚔️ {sustainLabel(getSustainEffect(pet.pet_type))}
+                        </span>
+                      )}
+                      {isForagePet(pet.pet_type) && (
+                        <span className="bg-amber-950/40 border border-amber-500/30 rounded px-1.5 py-0.5 text-amber-300">
+                          🎒 {t('app.shop.pet_forage')}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1 text-sm font-bold text-yellow-400">
