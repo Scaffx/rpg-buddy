@@ -140,7 +140,7 @@ type DungeonMeta = {
   gold: number;
 };
 
-const DUNGEON_DATA: Record<string, DungeonMeta> = {
+export const DUNGEON_DATA: Record<string, DungeonMeta> = {
 
   // ── DUNGEON 1: COVIL DOS ORCS SELVAGENS ────────────────────────────────
   '1': {

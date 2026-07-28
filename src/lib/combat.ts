@@ -235,7 +235,7 @@ export function getBossCombatBuffModifiers(effects: Set<string>): {
   };
 }
 
-function getWeaknessByIndex(index: number): string {
+export function getWeaknessByIndex(index: number): string {
   const weaknesses = ['Forca', 'Inteligencia', 'Agilidade', 'Disciplina', 'Sabedoria', 'Resiliencia'];
   return weaknesses[index % weaknesses.length];
 }

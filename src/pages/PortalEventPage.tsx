@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
+import { useGoldBalance } from '@/hooks/useGold';
+import DungeonRevealCard from '@/components/DungeonRevealCard';
 import { getActivePetType, getPetBonus, applyPetBonus, petBonusLabel } from '@/lib/pets';
 import { useProfile, useAttributes, useHealthStats } from '@/hooks/useProfile';
 import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
@@ -509,6 +511,7 @@ export default function PortalEventPage() {
   const { data: inventory }   = useInventory();
   const { data: portalEvent, isLoading: eventLoading } = usePortalEvent();
   const { data: fragments }   = useMyFragments();
+  const { data: goldBalance } = useGoldBalance();
 
   const completeRun  = useCompletePortalRun();
   const scanPortal   = useScanPortal();
@@ -795,6 +798,8 @@ export default function PortalEventPage() {
         {(portalEvent?.runs_this_week?.length ?? 0) > 0 && (
           <WeeklyHistory runs={portalEvent!.runs_this_week} />
         )}
+
+        <DungeonRevealCard currentGold={Number((goldBalance as { gold?: number } | undefined)?.gold ?? 0)} />
 
         {/* fragment dungeons */}
         <div className="space-y-3">

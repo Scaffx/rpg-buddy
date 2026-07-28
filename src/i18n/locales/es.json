@@ -1424,7 +1424,19 @@
       "public_players": "{{count}}/{{max}} jugadores",
       "toast_defeat_title": "🌑 Derrotado y expulsado del portal",
       "toast_defeat_grace": "Escapaste por poco — agotado, pero vivo. Esta vez el portal sigue abierto. La próxima caída lo cierra para siempre.",
-      "toast_defeat_closed": "Los fragmentos se perdieron y el portal se cerró. Descansa, come, bebe agua: la rutina es lo que te trae de vuelta."
+      "toast_defeat_closed": "Los fragmentos se perdieron y el portal se cerró. Descansa, come, bebe agua: la rutina es lo que te trae de vuelta.",
+      "reveal_title": "Lupas de Revelación",
+      "reveal_sub": "Caer cierra el portal para siempre. Conviene saber qué te espera.",
+      "reveal_nothing": "Nada revelado aún — entrarías a ciegas.",
+      "reveal_floors": "{{n}} pisos hasta el jefe",
+      "reveal_enemies": "Enemigos en el camino:",
+      "reveal_weakness": "débil contra {{attr}}",
+      "reveal_tier_basic": "Lupa Básica — pisos",
+      "reveal_tier_medium": "Lupa Media — enemigos",
+      "reveal_tier_superior": "Lupa Superior — jefe y debilidad",
+      "reveal_bought": "🔍 ¡Revelado!",
+      "reveal_no_gold": "Oro insuficiente para esta lupa.",
+      "reveal_error": "No se pudo revelar ahora."
     },
     "crafting": {
       "title": "Taller de Crafteo",

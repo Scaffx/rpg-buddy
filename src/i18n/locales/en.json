@@ -1413,7 +1413,19 @@
       "public_players": "{{count}}/{{max}} players",
       "toast_defeat_title": "🌑 Defeated and cast out of the portal",
       "toast_defeat_grace": "You barely escaped — exhausted, but alive. This time the portal stays open. Next fall closes it for good.",
-      "toast_defeat_closed": "The fragments are gone and the portal has closed. Rest, eat, drink water: routine is what brings you back."
+      "toast_defeat_closed": "The fragments are gone and the portal has closed. Rest, eat, drink water: routine is what brings you back.",
+      "reveal_title": "Revealing Lenses",
+      "reveal_sub": "Falling closes the portal for good. Worth knowing what awaits.",
+      "reveal_nothing": "Nothing revealed yet — you would go in blind.",
+      "reveal_floors": "{{n}} floors to the boss",
+      "reveal_enemies": "Enemies along the way:",
+      "reveal_weakness": "weak against {{attr}}",
+      "reveal_tier_basic": "Basic Lens — floors",
+      "reveal_tier_medium": "Medium Lens — enemies",
+      "reveal_tier_superior": "Superior Lens — boss and weakness",
+      "reveal_bought": "🔍 Revealed!",
+      "reveal_no_gold": "Not enough gold for this lens.",
+      "reveal_error": "Could not reveal right now."
     },
     "crafting": {
       "title": "Crafting Workshop",
