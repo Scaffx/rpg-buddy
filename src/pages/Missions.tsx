@@ -495,7 +495,7 @@ const handleSave = async () => {
           is_anchor: formIsAnchor,
           frequency_type: frequencyType,
           target_count: isWeekly ? formTargetCount : null,
-          max_count: isWeekly ? 7 : null,
+          max_count: isWeekly ? formTargetCount : null,
         },
       });
       toast({ title: '✏️ Missão atualizada!' });
@@ -514,7 +514,6 @@ const handleSave = async () => {
         isAnchor: formIsAnchor,
         frequencyType,
         targetCount: isWeekly ? formTargetCount : undefined,
-        maxCount: isWeekly ? 7 : undefined,
       });
       toast({ title: t('app.missions.mission_created'), description: t('app.missions.mission_created_desc') });
     }
@@ -539,11 +538,6 @@ const handleSave = async () => {
           toast({
             title: '🎉 Meta semanal concluída!',
             description: `+${result.xpGained} XP e +${result.goldGained} ouro, incluindo o bônus da meta.`,
-          });
-        } else if (result.isOverflow) {
-          toast({
-            title: '✨ Extra concluído',
-            description: `+${result.executionXp} XP extra e +${result.goldGained} ouro.`,
           });
         } else {
           toast({
@@ -1264,17 +1258,9 @@ function MissionCard({
               </span>
             </div>
             <Progress value={weeklyState.progressPercent} className="h-1.5 mt-1.5" />
-            {weeklyState.capReached ? (
+            {weeklyState.targetReached ? (
               <p className="text-[11px] text-muted-foreground mt-1.5">
-                Limite semanal atingido ({weeklyState.max}/{weeklyState.max})
-              </p>
-            ) : weeklyState.overflowAvailable ? (
-              <p className="text-[11px] text-violet-300/80 mt-1.5">
-                Extra disponível hoje · XP reduzido
-              </p>
-            ) : weeklyState.targetReached ? (
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                Meta concluída · volte amanhã para um extra
+                Meta semanal atingida ({weeklyState.current}/{weeklyState.target})
               </p>
             ) : null}
           </div>
@@ -1349,10 +1335,10 @@ function MissionCard({
                 completing
                 || isCompletedToday
                 || isFutureMission
-                || Boolean(weeklyState?.capReached)
+                || Boolean(weeklyState?.targetReached)
               }
               className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-all ${
-                weeklyState?.capReached
+                weeklyState?.targetReached
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : isCompletedToday
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
@@ -1361,8 +1347,8 @@ function MissionCard({
                   : 'bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30'
               }`}
               title={
-                weeklyState?.capReached
-                  ? 'Limite semanal atingido'
+                weeklyState?.targetReached
+                  ? 'Meta semanal atingida'
                   : isCompletedToday
                     ? t('app.missions.tooltip_completed')
                     : isFutureMission
@@ -1370,9 +1356,9 @@ function MissionCard({
                       : t('app.missions.tooltip_complete')
               }
             >
-              {weeklyState?.capReached ? (
+              {weeklyState?.targetReached ? (
                 <>
-                  <Lock className="w-4 h-4 mr-1" /> Limite atingido
+                  <Lock className="w-4 h-4 mr-1" /> Meta atingida
                 </>
               ) : isCompletedToday ? (
                 <>
@@ -1774,8 +1760,9 @@ function MissionFormModal({
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground mt-2">
-                Escolha os dias livremente. Depois da meta, você pode fazer extras
-                até 7× na semana; extras concedem XP reduzido.
+                Ela aparece todos os dias até atingir a meta, mas só pode ser
+                concluída uma vez por dia. Para uma atividade extra, aumente a
+                meta ou crie uma missão única.
               </p>
             </div>
           )}

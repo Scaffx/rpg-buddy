@@ -263,7 +263,6 @@ export function useCreateMission() {
       isAnchor,
       frequencyType,
       targetCount,
-      maxCount,
     }: {
       title: string;
       attributeId: string;
@@ -279,7 +278,6 @@ export function useCreateMission() {
       isAnchor?: boolean;
       frequencyType?: 'daily' | 'weekly';
       targetCount?: number;
-      maxCount?: number;
     }) => {
       const { data: primaryAttrMeta } = await supabase
         .from('attributes')
@@ -308,7 +306,7 @@ export function useCreateMission() {
         is_anchor: Boolean(isAnchor),
         frequency_type: frequencyType || 'daily',
         target_count: frequencyType === 'weekly' ? targetCount : null,
-        max_count: frequencyType === 'weekly' ? (maxCount || 7) : null,
+        max_count: frequencyType === 'weekly' ? targetCount : null,
       } as any;
 
       const { error } = await supabase.from("missions").insert(missionPayload);

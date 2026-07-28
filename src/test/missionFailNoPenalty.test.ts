@@ -17,11 +17,15 @@ const failingMission = {
   is_failed: false,
   priority: 'media',
 };
+type MissionRow = typeof failingMission & {
+  frequency_type?: 'daily' | 'weekly';
+};
+let missionRows: MissionRow[] = [failingMission];
 
 function resolveData(table: string) {
   switch (table) {
     case 'missions':
-      return { data: [failingMission], error: null };
+      return { data: missionRows, error: null };
     case 'profiles':
       // protetor: 0 cargas (na maioria dos dias cai no caminho de falha)
       return { data: { streak_protector_charges: 0, streak_protector_max: 3, streak_protector_week: 'x' }, error: null };
@@ -67,6 +71,7 @@ describe('falha de missão NÃO drena XP/HP/MP (§4/§5 + torneira única #22)',
     rpcSpy.mockClear();
     insertedTables.length = 0;
     profileUpdates.length = 0;
+    missionRows = [failingMission];
   });
 
   it('roda o check de falhas sem mover nenhum recurso', async () => {
@@ -92,5 +97,20 @@ describe('falha de missão NÃO drena XP/HP/MP (§4/§5 + torneira única #22)',
       (u) => u && ('total_xp' in u || 'current_hp' in u || 'current_mp' in u || 'xp_penalized' in u),
     );
     expect(touchedResource).toBe(false);
+  });
+
+  it('nunca transforma missão flexível em falha diária, mesmo com dias legados', async () => {
+    missionRows = [{
+      ...failingMission,
+      id: 'weekly-legacy',
+      frequency_type: 'weekly',
+    }];
+
+    const queryClient: any = { invalidateQueries: vi.fn() };
+    await runFailedMissionCheck('user-1', queryClient);
+
+    expect(
+      profileUpdates.some((update) => update?.streak_current_days === 0),
+    ).toBe(false);
   });
 });

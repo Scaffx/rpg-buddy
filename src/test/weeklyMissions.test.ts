@@ -41,7 +41,7 @@ describe('weekly missions', () => {
     expect(state?.progressPercent).toBe(50);
   });
 
-  it('offers overflow only after the target and never twice on the same day', () => {
+  it('uses the target as the weekly hard cap', () => {
     const now = new Date('2026-07-23T15:00:00.000Z');
     const base = {
       frequency_type: 'weekly' as const,
@@ -50,13 +50,13 @@ describe('weekly missions', () => {
       weekly_current_count: 4,
     };
 
-    expect(getWeeklyMissionState(base, now)?.overflowAvailable).toBe(true);
-    expect(
-      getWeeklyMissionState(
-        { ...base, weekly_last_completed_date: '2026-07-23' },
-        now,
-      )?.overflowAvailable,
-    ).toBe(false);
+    expect(getWeeklyMissionState(base, now)).toMatchObject({
+      targetReached: true,
+      capReached: true,
+      overflowAvailable: false,
+      max: 4,
+    });
+    expect(getWeeklyListBucket(base, now)).toBe('later');
   });
 
   it('marks the hard cap as reached', () => {
@@ -110,7 +110,7 @@ describe('weekly missions', () => {
     expect(isWeeklyFocusCandidate(mission)).toBe(false);
   });
 
-  it('keeps an available overflow day in Today', () => {
+  it('returns a reached target to Today only after the player increases it', () => {
     const mission = {
       frequency_type: 'weekly' as const,
       target_count: 4,
@@ -120,7 +120,10 @@ describe('weekly missions', () => {
     };
     const now = new Date('2026-07-23T15:00:00.000Z');
 
-    expect(getWeeklyListBucket(mission, now)).toBe('today');
+    expect(getWeeklyListBucket(mission, now)).toBe('later');
+    expect(
+      getWeeklyListBucket({ ...mission, target_count: 5, max_count: 5 }, now),
+    ).toBe('today');
   });
 
   it('extracts stable server error codes from Supabase errors', () => {

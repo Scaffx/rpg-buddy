@@ -153,6 +153,9 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     const pastDayName = DAYS_NAMES[pastDayIndex];
 
     for (const m of missions) {
+      // Missões flexíveis são avaliadas somente no fechamento semanal. Mesmo
+      // dados legados com days_of_week preenchido nunca viram falha diária.
+      if (m.frequency_type === 'weekly') continue;
       const days = (m.days_of_week as string[]) || [];
       if (days.length === 0) continue;
       if (!days.includes(pastDayName)) continue;

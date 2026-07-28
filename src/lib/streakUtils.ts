@@ -17,6 +17,7 @@ function getDateDaysAgo(daysAgo: number): Date {
 }
 
 type StreakMission = {
+  frequency_type?: 'daily' | 'weekly' | null;
   days_of_week?: string[] | null;
   daily_status?: Record<string, string> | null;
   created_at?: string | null;
@@ -45,6 +46,7 @@ export function computeSixtyPercentStreak(missions: StreakMission[] | null | und
     const dayName = DAYS_MAP[date.getDay()];
 
     const requiredMissions = missions.filter((mission) => {
+      if (mission.frequency_type === 'weekly') return false;
       const daysOfWeek: string[] = mission.days_of_week || [];
       if (!(daysOfWeek.length > 0 && daysOfWeek.includes(dayName))) return false;
       const createdAt = String(mission.created_at || '').slice(0, 10);
@@ -99,6 +101,7 @@ export function evaluateTodayStreakRisk(missions: StreakMission[] | null | undef
   const dayName = DAYS_MAP[today.getDay()];
 
   const requiredMissions = (missions || []).filter((mission) => {
+    if (mission.frequency_type === 'weekly') return false;
     const daysOfWeek: string[] = mission.days_of_week || [];
     if (!(daysOfWeek.length > 0 && daysOfWeek.includes(dayName))) return false;
     const createdAt = String(mission.created_at || '').slice(0, 10);
