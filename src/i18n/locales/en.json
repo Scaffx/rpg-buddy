@@ -1652,7 +1652,8 @@
       "enemy": "Enemy",
       "you": "You",
       "resume": "Resume",
-      "leave": "Leave combat"
+      "leave": "Leave combat",
+      "fullscreen_pref": "Open fullscreen on tap"
     }
   },
   "footer": {

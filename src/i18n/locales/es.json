@@ -1663,7 +1663,8 @@
       "enemy": "Enemigo",
       "you": "Tú",
       "resume": "Reanudar",
-      "leave": "Salir del combate"
+      "leave": "Salir del combate",
+      "fullscreen_pref": "Abrir en pantalla completa al tocar"
     }
   },
   "footer": {

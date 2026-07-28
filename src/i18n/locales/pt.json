@@ -1677,7 +1677,8 @@
       "enemy": "Inimigo",
       "you": "Você",
       "resume": "Retomar",
-      "leave": "Sair do combate"
+      "leave": "Sair do combate",
+      "fullscreen_pref": "Abrir em tela cheia ao tocar"
     }
   },
   "footer": {
