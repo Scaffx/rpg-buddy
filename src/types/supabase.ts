@@ -98,6 +98,56 @@ export interface Database {
           max_count?: number | null
         }
       }
+      reminders: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          remind_at: string
+          recurrence_type: 'once' | 'weekly'
+          days_of_week: number[]
+          starts_on: string | null
+          ends_on: string | null
+          remind_time: string | null
+          timezone: string
+          notified_at: string | null
+          dismissed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          title: string
+          description?: string | null
+          remind_at: string
+          recurrence_type?: 'once' | 'weekly'
+          days_of_week?: number[]
+          starts_on?: string | null
+          ends_on?: string | null
+          remind_time?: string | null
+          timezone?: string
+          notified_at?: string | null
+          dismissed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          remind_at?: string
+          recurrence_type?: 'once' | 'weekly'
+          days_of_week?: number[]
+          starts_on?: string | null
+          ends_on?: string | null
+          remind_time?: string | null
+          timezone?: string
+          notified_at?: string | null
+          dismissed_at?: string | null
+          created_at?: string
+        }
+      }
       mission_daily_completions: { // ✅ NOVA TABELA
         Row: {
           id: string

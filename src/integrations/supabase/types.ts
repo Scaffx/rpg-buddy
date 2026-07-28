@@ -2148,6 +2148,57 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          created_at: string
+          days_of_week: number[]
+          description: string | null
+          dismissed_at: string | null
+          ends_on: string | null
+          id: string
+          notified_at: string | null
+          recurrence_type: string
+          remind_at: string
+          remind_time: string | null
+          starts_on: string | null
+          timezone: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_of_week?: number[]
+          description?: string | null
+          dismissed_at?: string | null
+          ends_on?: string | null
+          id?: string
+          notified_at?: string | null
+          recurrence_type?: string
+          remind_at: string
+          remind_time?: string | null
+          starts_on?: string | null
+          timezone?: string
+          title: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          days_of_week?: number[]
+          description?: string | null
+          dismissed_at?: string | null
+          ends_on?: string | null
+          id?: string
+          notified_at?: string | null
+          recurrence_type?: string
+          remind_at?: string
+          remind_time?: string | null
+          starts_on?: string | null
+          timezone?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
