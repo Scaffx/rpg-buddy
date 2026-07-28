@@ -1421,7 +1421,10 @@
       "time_expired": "Expirado",
       "expires_prefix": "Expira en",
       "scanner_tooltip": "Compra el \"Escáner de Portal\" en la tienda (120🪙)",
-      "public_players": "{{count}}/{{max}} jugadores"
+      "public_players": "{{count}}/{{max}} jugadores",
+      "toast_defeat_title": "🌑 Derrotado y expulsado del portal",
+      "toast_defeat_grace": "Escapaste por poco — agotado, pero vivo. Esta vez el portal sigue abierto. La próxima caída lo cierra para siempre.",
+      "toast_defeat_closed": "Los fragmentos se perdieron y el portal se cerró. Descansa, come, bebe agua: la rutina es lo que te trae de vuelta."
     },
     "crafting": {
       "title": "Taller de Crafteo",

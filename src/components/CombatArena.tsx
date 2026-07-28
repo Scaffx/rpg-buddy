@@ -4,6 +4,7 @@ import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getActivePetType } from '@/lib/pets';
+import { useQueryClient } from '@tanstack/react-query';
 import { submitCombatTurn } from '@/lib/combatTurn';
 import { decideAutoAction, AUTO_TURN_DELAY_MS } from '@/lib/autoBattle';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
@@ -322,6 +323,7 @@ export default function CombatArena({
 }: CombatArenaProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const dataProvider = useMemo(() => provider ?? mockProvider, [provider]);
 
   const bossResourceType: BossResource = useMemo(
@@ -1282,7 +1284,16 @@ export default function CombatArena({
       }
 
       if (turnResult.status === 'derrota') {
-        persistPlayerVitals(currentHpForSummons, mpAfterTurn, nextFatigue);
+        // A queda cobra do CORPO (HP a 1 + fadiga alta), nunca do XP: a rotina
+        // conquistada não pode ser apagada por um dado ruim. Server-side, para
+        // que a consequência não dependa do cliente estar aberto.
+        try {
+          await supabase.rpc('resolve_combat_defeat' as never, { p_context: 'boss' } as never);
+        } catch {
+          // Se a RPC falhar, ainda persistimos o que der pelo caminho antigo.
+          persistPlayerVitals(1, mpAfterTurn, Math.max(nextFatigue, 80));
+        }
+        qc.invalidateQueries({ queryKey: ['health_stats'] });
         launchDefeatCinematic();
         setTurn('finished');
         return;

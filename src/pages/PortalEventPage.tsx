@@ -610,6 +610,40 @@ export default function PortalEventPage() {
     setIsEnteringPortal(false);
   }
 
+  /**
+   * Queda no portal (F6). Não é morte: o herói é derrotado e EXPULSO — sai vivo
+   * por um fio e exausto. A cobrança é do corpo e dos fragmentos, nunca do XP:
+   * rotina conquistada não se perde por um dado ruim.
+   *
+   * A primeira queda da vida devolve o portal (não os fragmentos), pela mesma
+   * lógica do "nunca falhe duas vezes" das missões.
+   */
+  async function handlePortalDefeat() {
+    try {
+      const { data } = await supabase.rpc('resolve_combat_defeat' as never, { p_context: 'portal' } as never);
+      const r = (Array.isArray(data) ? data[0] : data) as
+        | { grace_used?: boolean; portal_lost?: boolean }
+        | null;
+
+      toast({
+        title: t('app.portal.toast_defeat_title'),
+        description: r?.grace_used
+          ? t('app.portal.toast_defeat_grace')
+          : t('app.portal.toast_defeat_closed'),
+        variant: r?.grace_used ? undefined : 'destructive',
+        duration: 7000,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['my-fragments'] });
+      queryClient.invalidateQueries({ queryKey: ['portal-event'] });
+    } catch {
+      /* a derrota nunca pode travar a saída da dungeon */
+    }
+    setIsEnteringPortal(false);
+  }
+
   async function handleClaimDungeon() {
     const result = await claimDungeon.mutateAsync();
     if ((result as any).error) { toast({ title: t('app.portal.toast_error'), description: (result as any).error, variant: 'destructive' }); return; }
@@ -644,7 +678,7 @@ export default function PortalEventPage() {
           potions={potions} friendCount={0} isPortalDungeon
           difficultyMult={meta.difficultyMult}
           onVictory={handlePortalVictory}
-          onDefeat={() => setIsEnteringPortal(false)}
+          onDefeat={handlePortalDefeat}
           onFlee={() => setIsEnteringPortal(false)}
         />
       </div>
@@ -662,7 +696,7 @@ export default function PortalEventPage() {
           initialPlayerHp={curHp} initialPlayerMaxHp={maxHp} initialPlayerMp={curMp} initialPlayerMaxMp={maxMp}
           potions={potions} friendCount={0}
           onVictory={handleFragmentVictory}
-          onDefeat={() => { setActiveFragSession(null); setActiveFragTier(null); }}
+          onDefeat={() => { void handlePortalDefeat(); setActiveFragSession(null); setActiveFragTier(null); }}
         />
       </div>
     );

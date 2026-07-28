@@ -1410,7 +1410,10 @@
       "time_expired": "Expired",
       "expires_prefix": "Expires in",
       "scanner_tooltip": "Buy the \"Portal Scanner\" in the shop (120🪙)",
-      "public_players": "{{count}}/{{max}} players"
+      "public_players": "{{count}}/{{max}} players",
+      "toast_defeat_title": "🌑 Defeated and cast out of the portal",
+      "toast_defeat_grace": "You barely escaped — exhausted, but alive. This time the portal stays open. Next fall closes it for good.",
+      "toast_defeat_closed": "The fragments are gone and the portal has closed. Rest, eat, drink water: routine is what brings you back."
     },
     "crafting": {
       "title": "Crafting Workshop",
