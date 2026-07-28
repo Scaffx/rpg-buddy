@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getActivePetType } from '@/lib/pets';
 import { submitCombatTurn } from '@/lib/combatTurn';
+import { decideAutoAction, AUTO_TURN_DELAY_MS } from '@/lib/autoBattle';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
 import { useToast } from '@/hooks/use-toast';
 
@@ -356,6 +357,25 @@ export default function CombatArena({
   const [playerMp, setPlayerMp] = useState(initialPlayerMp);
   const [playerFatigue, setPlayerFatigue] = useState(initialPlayerFatigue);
   // Frascos (estilo Elden Ring): pool por luta alocado HP/MP (default 2/2; sobrescrito no load).
+  // Automático: preferência do jogador, guardada por dispositivo. O ref evita
+  // que o efeito de turno recrie a si mesmo a cada toggle.
+  const [autoBattle, setAutoBattle] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('combat_auto_battle') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const autoBattleRef = useRef(autoBattle);
+  useEffect(() => {
+    autoBattleRef.current = autoBattle;
+    try {
+      localStorage.setItem('combat_auto_battle', autoBattle ? '1' : '0');
+    } catch {
+      /* sem localStorage: preferência vale só nesta sessão */
+    }
+  }, [autoBattle]);
+
   const [flaskHpLeft, setFlaskHpLeft] = useState(2);
   const [flaskMpLeft, setFlaskMpLeft] = useState(2);
   const [bossResource, setBossResource] = useState(bossResourceMax);
@@ -806,6 +826,41 @@ export default function CombatArena({
       }
 
       const battleToken = currentBattleTokenRef.current;
+
+      // Automático (F4): a rotação de habilidades já era automática; o que faltava
+      // era beber frasco sozinho. Decisão em lib/autoBattle (pura e testada); a
+      // execução segue na edge. De propósito não troca equipamento — vantagem
+      // elemental é prêmio de quem joga no manual.
+      if (autoBattleRef.current) {
+        const decision = decideAutoAction({
+          hpPlayer: playerHpRef.current,
+          hpPlayerMax: initialPlayerHp,
+          mpPlayer: playerMpRef.current,
+          skills: selectedSkills.map((s) => ({
+            id: s.id,
+            name: s.name,
+            power: s.power,
+            mpCost: s.mpCost !== undefined ? s.mpCost : getSkillMpCost(s.power),
+            effectType: s.effectType,
+            element: s.element,
+          })),
+          turnsTaken: skillCursorRef.current,
+          flaskHpLeft,
+          flaskMpLeft,
+        });
+
+        if (decision.kind === 'flask_hp' || decision.kind === 'flask_mp') {
+          await useFlaskInCombat(decision.kind === 'flask_hp' ? 'hp' : 'mp');
+          if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
+          // Beber consome o turno: reagenda para o próximo ciclo e sai.
+          setTimeout(() => {
+            if (mountedRef.current && battleToken === currentBattleTokenRef.current) {
+              setTurn('player');
+            }
+          }, AUTO_TURN_DELAY_MS);
+          return;
+        }
+      }
       const { skill: chosenSkill, warning } = pickAffordableSkill(playerMpRef.current);
       setInsufficientResourceWarning(warning);
 
@@ -1314,6 +1369,17 @@ export default function CombatArena({
             className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/20 disabled:opacity-40"
           >
             💧 Mana ({flaskMpLeft})
+          </button>
+          <button
+            onClick={() => setAutoBattle((v) => !v)}
+            title="No automático o herói alterna as habilidades e bebe frasco sozinho. Trocar equipamento continua sendo só no manual."
+            className={`ml-auto inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${
+              autoBattle
+                ? 'border-amber-400/60 bg-amber-500/20 text-amber-200'
+                : 'border-zinc-600/60 bg-zinc-700/30 text-zinc-400 hover:bg-zinc-700/50'
+            }`}
+          >
+            🤖 Auto {autoBattle ? 'ON' : 'OFF'}
           </button>
         </div>
         {selectedSkills.length > 0 ? (
