@@ -1201,43 +1201,22 @@ Deno.serve(async (req) => {
           won: true,
         });
 
-        // Grant XP and gold rewards on first victory
-        const xpReward = Math.max(50, bossLevel * 30);
-        const goldReward = Math.max(10, bossLevel * 5);
-
-        const { data: profileRewards } = await supabase
-          .from('profiles')
-          .select('total_xp, level')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (profileRewards) {
-          const newXp = toNumber(profileRewards.total_xp, 0) + xpReward;
-          const newLevel = Math.max(toNumber(profileRewards.level, 1), Math.floor(newXp / 200) + 1);
-          await supabase
-            .from('profiles')
-            .update({ total_xp: newXp, level: newLevel })
-            .eq('user_id', user.id);
-        }
-
-        const { data: balanceRow } = await supabase
-          .from('user_balance')
-          .select('gold')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (balanceRow) {
-          await supabase
-            .from('user_balance')
-            .update({ gold: toNumber(balanceRow.gold, 0) + goldReward, updated_at: new Date().toISOString() })
-            .eq('user_id', user.id);
-        }
-
+        // Torneira única (§9.2): derrotar boss NÃO concede XP nem ouro. O XP é
+        // rotina cristalizada — só complete_mission escreve nele. O combate é
+        // ralo: dá troféu, item e história, e a vitória acima (boss_battles) é
+        // justamente esse registro.
+        //
+        // Este bloco creditava XP (bossLevel * 30) e ouro (bossLevel * 5), sobra
+        // da era anterior ao feat/torneira-unica-xp. Pior: calculava o nível com
+        // a curva linear antiga (XP/200), que já havia sido substituída pela
+        // quadrática get_level_from_xp_v2 — o mesmo defeito corrigido em
+        // claim_achievement. Removido em vez de consertado: a fórmula certa aqui
+        // seria consertar a torneira paralela em vez de fechá-la.
         await supabase.from('activity_log').insert({
           user_id: user.id,
           action: 'boss_defeated',
-          description: `Boss derrotado! +${xpReward} XP +${goldReward} 🪙`,
-          xp_gained: xpReward,
+          description: `Boss derrotado! O espólio vem em itens — o poder vem da rotina.`,
+          xp_gained: 0,
         });
       }
 
