@@ -9,6 +9,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useInventory } from '@/hooks/useInventory';
 import { useHeroClass } from '@/hooks/useHeroClass';
 import { useSkillTreeNodes, usePlayerSkillNodes } from '@/hooks/useSkillTree';
+import { buildTreeSkillEntry } from '@/lib/combat';
 
 // Loadout LIVRE: sem teto rígido. O jogador leva todas as skills que desbloqueou;
 // o balanceio vem da PROFUNDIDADE da árvore (focar/maxar 2 elementos > espalhar).
@@ -19,19 +20,12 @@ const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe
 function buildTreeSkills(nodes: any[], ranks: Record<string, number>, archetype = 'Árvore'): any[] {
   return (nodes || [])
     .filter((n) => n.node_type === 'skill' && (ranks[n.id] || 0) >= 1)
-    .map((n) => {
-      const eff: any = n.effect || {};
-      const rank = ranks[n.id] || 1;
-      const pct = Number(eff.pct_per_rank ?? 10);
-      const power = Math.round(Number(eff.power ?? 30) * (1 + (rank - 1) * pct / 100));
-      const element = String(eff.element || 'arcano');
-      return {
-        id: n.id, name: n.name, power, cooldown: Number(eff.cooldown ?? 2),
-        category: element === 'fisico' ? 'fisica' : 'magica', tier: 'classe',
-        mpCost: Number(eff.mpCost ?? 0), effectType: String(eff.effectType || 'dano'),
-        effectLabel: n.description, element, archetype, unlocked: true, _src: 'tree',
-      } as any;
-    });
+    .map((n) => ({
+      ...buildTreeSkillEntry(n, ranks[n.id] || 1),
+      archetype,
+      unlocked: true,
+      _src: 'tree',
+    }) as any);
 }
 
 /** Editor de loadout de combate — fonte única usada no hub de Habilidades. */
