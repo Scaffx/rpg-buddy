@@ -5,10 +5,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Shield, Users, Globe, Lock, Copy, CheckCheck, Zap, Clock,
   Search, AlertTriangle, Sparkles, Timer, Gem,
-  Swords, ArrowRight,
+  Swords, ArrowRight, PawPrint,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
+import { getActivePetType, getPetBonus, applyPetBonus, petBonusLabel } from '@/lib/pets';
 import { useProfile, useAttributes, useHealthStats } from '@/hooks/useProfile';
 import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
 import { useToast } from '@/hooks/use-toast';
@@ -522,17 +523,38 @@ export default function PortalEventPage() {
   const attrLevels      = getAttributeLevels((attributes as any[]) ?? []);
   const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
   const equipBonuses    = getEquipmentBonuses((inventory || []) as InventoryItem[]);
+
+  // Pet ativo (F0.2): o bloqueio de pets no portal era resquício do pet-combatente,
+  // que a spec cortou. Hoje o pet é só bônus passivo de stat, então vale aqui pela
+  // mesma regra do combate solo (useBossCombat). 1 pet por vez.
+  const petBonus = getPetBonus(getActivePetType(user?.id));
+  const rawMaxHp = healthStats?.max_hp != null
+    ? Number(healthStats.max_hp)
+    : (playerStatsBase.hp + equipBonuses.hp) ?? 120;
+  const rawMaxMp = healthStats?.max_mp != null
+    ? Number(healthStats.max_mp)
+    : (playerStatsBase.mp + equipBonuses.mp) ?? 40;
+  const petAdjusted = applyPetBonus(
+    {
+      ataqueBase: playerStatsBase.atk + equipBonuses.atk,
+      defesaBase: playerStatsBase.def + equipBonuses.def,
+      hpMax: rawMaxHp,
+      mpMax: rawMaxMp,
+    },
+    petBonus,
+  );
+
   const playerStats = {
     ...playerStatsBase,
-    atk: playerStatsBase.atk + equipBonuses.atk,
-    def: playerStatsBase.def + equipBonuses.def,
-    hp:  playerStatsBase.hp  + equipBonuses.hp,
-    mp:  playerStatsBase.mp + equipBonuses.mp,
+    atk: petAdjusted.ataqueBase,
+    def: petAdjusted.defesaBase,
+    hp:  petAdjusted.hpMax,
+    mp:  petAdjusted.mpMax,
   };
-  const curHp = healthStats?.current_hp != null ? Number(healthStats.current_hp) : playerStats.hp  ?? 120;
-  const curMp = healthStats?.current_mp != null ? Number(healthStats.current_mp) : playerStats.mp ?? 40;
-  const maxHp = healthStats?.max_hp     != null ? Number(healthStats.max_hp)     : playerStats.hp  ?? 120;
-  const maxMp = healthStats?.max_mp     != null ? Number(healthStats.max_mp)     : playerStats.mp ?? 40;
+  const maxHp = petAdjusted.hpMax;
+  const maxMp = petAdjusted.mpMax;
+  const curHp = healthStats?.current_hp != null ? Number(healthStats.current_hp) : maxHp;
+  const curMp = healthStats?.current_mp != null ? Number(healthStats.current_mp) : maxMp;
 
   const potions: PotionItem[] = (inventory || [])
     .filter(inv => inv.game_items?.is_consumable && (
@@ -757,10 +779,18 @@ export default function PortalEventPage() {
           <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-xl px-3.5 py-3">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
             <div className="text-xs text-muted-foreground space-y-0.5">
-              <p className="text-amber-300 font-semibold">{t('app.portal.pets_warning')}</p>
               <p>{t('app.portal.cooldown_warning', { s: 45 })}</p>
             </div>
           </div>
+
+          {petBonus && (
+            <div className="flex items-start gap-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-3.5 py-3">
+              <PawPrint className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-emerald-300 font-semibold">
+                {t('app.portal.pet_bonus_active', { bonus: petBonusLabel(petBonus) })}
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-2.5">
             {(Object.keys(FRAGMENT_TIERS) as FragmentTier[]).map(tier => (

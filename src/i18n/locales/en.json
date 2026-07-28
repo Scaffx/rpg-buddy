@@ -1346,7 +1346,7 @@
       "pending_header": "Dungeon Awaiting",
       "frag_dungeons_title": "Fragment Dungeons",
       "frag_dungeons_sub": "Summon with {{n}} fragments",
-      "pets_warning": "Pets are not allowed in these dungeons.",
+      "pet_bonus_active": "Your pet comes along: {{bonus}}.",
       "cooldown_warning": "Each action has a {{s}}-second cooldown. Plan carefully.",
       "frag_bar_title": "Portal Fragments",
       "frag_bar_remaining": "{{n}} more to summon",

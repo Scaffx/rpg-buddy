@@ -1371,7 +1371,7 @@
       "pending_header": "Dungeon Aguardando",
       "frag_dungeons_title": "Dungeons de Fragmento",
       "frag_dungeons_sub": "Invoque com {{n}} fragmentos",
-      "pets_warning": "Pets não são permitidos nestas dungeons.",
+      "pet_bonus_active": "Seu pet entra com você: {{bonus}}.",
       "cooldown_warning": "Cada ação tem cooldown de {{s}} segundos. Planeje bem.",
       "frag_bar_title": "Fragmentos de Portal",
       "frag_bar_remaining": "Faltam {{n}} para invocar",

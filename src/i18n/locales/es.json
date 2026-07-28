@@ -1357,7 +1357,7 @@
       "pending_header": "Mazmorra en Espera",
       "frag_dungeons_title": "Mazmorras de Fragmento",
       "frag_dungeons_sub": "Invoca con {{n}} fragmentos",
-      "pets_warning": "No se permiten mascotas en estas mazmorras.",
+      "pet_bonus_active": "Tu mascota te acompaña: {{bonus}}.",
       "cooldown_warning": "Cada acción tiene un enfriamiento de {{s}} segundos. Planifica bien.",
       "frag_bar_title": "Fragmentos de Portal",
       "frag_bar_remaining": "Faltan {{n}} para invocar",
