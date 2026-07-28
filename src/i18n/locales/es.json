@@ -478,7 +478,11 @@
       "greeting": "¡Hola, {{name}}!",
       "default_hero_name": "Aventurero",
       "no_missions_today": "No hay misiones para hoy.",
-      "mission_complete_button": "Ok"
+      "mission_complete_button": "Ok",
+      "weekly_flexible_badge": "Flexible · {{current}}/{{target}} esta semana",
+      "weekly_progress_toast_title": "¡Progreso semanal registrado! ✅",
+      "weekly_target_toast_title": "¡Meta semanal completada! 🎉",
+      "weekly_progress_toast_desc": "{{current}}/{{target}} esta semana · +{{xp}} XP"
     },
     "boss": {
       "page_title": "Arena de Jefes",

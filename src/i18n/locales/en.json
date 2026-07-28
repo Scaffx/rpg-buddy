@@ -465,7 +465,11 @@
       "greeting": "Hi, {{name}}!",
       "default_hero_name": "Adventurer",
       "no_missions_today": "No missions for today.",
-      "mission_complete_button": "Ok"
+      "mission_complete_button": "Ok",
+      "weekly_flexible_badge": "Flexible · {{current}}/{{target}} this week",
+      "weekly_progress_toast_title": "Weekly progress recorded! ✅",
+      "weekly_target_toast_title": "Weekly goal completed! 🎉",
+      "weekly_progress_toast_desc": "{{current}}/{{target}} this week · +{{xp}} XP"
     },
     "boss": {
       "page_title": "Boss Arena",

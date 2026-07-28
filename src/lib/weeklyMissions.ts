@@ -78,11 +78,13 @@ export function getWeeklyMissionState(
 
   const current = Math.max(0, Number(mission.weekly_current_count || 0));
   const target = Math.max(1, Number(mission.target_count || 1));
-  const max = Math.max(target, Math.min(7, Number(mission.max_count || 7)));
+  // A meta escolhida também é o limite semanal. Atividades extras devem virar
+  // uma missão única, ou o jogador pode editar a meta (4x -> 5x).
+  const max = target;
   const completedToday =
     mission.weekly_last_completed_date === getSaoPauloDateString(now);
   const targetReached = current >= target;
-  const capReached = current >= max;
+  const capReached = targetReached;
 
   return {
     current,
@@ -91,7 +93,7 @@ export function getWeeklyMissionState(
     completedToday,
     capReached,
     targetReached,
-    overflowAvailable: targetReached && !capReached && !completedToday,
+    overflowAvailable: false,
     progressPercent: Math.min(100, (current / target) * 100),
   };
 }
@@ -101,7 +103,7 @@ export function getWeeklyListBucket(
   now: Date = new Date(),
 ): WeeklyListBucket {
   const state = getWeeklyMissionState(mission, now);
-  return state?.completedToday || state?.capReached ? 'later' : 'today';
+  return state?.completedToday || state?.targetReached ? 'later' : 'today';
 }
 
 export function isWeeklyFocusCandidate(
@@ -139,7 +141,7 @@ export function getWeeklyMissionErrorMessage(code: WeeklyMissionErrorCode): stri
     return 'Você já concluiu esta missão hoje. Volte amanhã para continuar.';
   }
   if (code === 'WEEKLY_CAP_REACHED') {
-    return 'Você já atingiu o limite de 7 conclusões desta missão na semana.';
+    return 'Você já atingiu a meta desta missão na semana. Aumente a meta ou crie uma missão única para registrar uma atividade extra.';
   }
   if (code === 'INVALID_WEEKLY_CONFIGURATION') {
     return 'Esta missão semanal está com uma configuração inválida.';

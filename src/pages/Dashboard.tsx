@@ -23,6 +23,11 @@ import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 import { FailedMissionsSection } from '@/components/FailedMissionsSection';
 import { useFailedMissions } from '@/hooks/useFailedMissions';
 import { OnboardingMissionsCard } from '@/components/OnboardingMissionsCard';
+import {
+  getWeeklyMissionState,
+  isWeeklyMission,
+} from '@/lib/weeklyMissions';
+import { isMissionAvailableOnDashboardToday } from '@/lib/dashboardMissions';
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -50,6 +55,7 @@ type DashboardMission = {
   daily_status?: Record<string, string> | null;
   failed_date?: string | null;
   is_failed?: boolean | null;
+  frequency_type?: 'daily' | 'weekly' | null;
 };
 
 function getLocalDateString(date: Date = new Date()): string {
@@ -129,20 +135,13 @@ export default function Dashboard() {
     return days[new Date().getDay()];
   })();
 
-  // Filter today's daily missions
+  // Missões diárias agendadas + missões semanais flexíveis ainda disponíveis.
   const todayMissions = useMemo(() => {
     if (!allMissions) return [];
     const today = getLocalDateString();
     return allMissions
-      .filter((m: any) => {
-        if (m.completed) return false;
-        if (m.is_failed) return false;
-        const days: string[] = m.days_of_week || [];
-        if (!(days.length > 0 && days.includes(todayDay))) return false;
-        // Verificar se já foi concluída hoje
-        const dailyStatus = (m.daily_status as { [key: string]: string }) || {};
-        return dailyStatus[today] !== 'completed';
-      })
+      .filter((mission) =>
+        isMissionAvailableOnDashboardToday(mission, today, todayDay))
       .sort((a: any, b: any) => {
         const order: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
         return (order[a.priority || "media"] ?? 1) - (order[b.priority || "media"] ?? 1);
@@ -185,6 +184,7 @@ export default function Dashboard() {
 
   const todayMissionMetrics = useMemo(() => {
     const required = (allMissions || []).filter((m: any) => {
+      if (isWeeklyMission(m)) return false;
       const days: string[] = m.days_of_week || [];
       if (!(days.length > 0 && days.includes(todayDay))) return false;
       return !m.completed;
@@ -228,6 +228,7 @@ export default function Dashboard() {
       const dayName = DAYS_MAP[date.getDay()];
 
       const requiredMissions = allMissions.filter((mission: DashboardMission) => {
+        if (isWeeklyMission(mission)) return false;
         const daysOfWeek: string[] = mission.days_of_week || [];
         if (!(daysOfWeek.length > 0 && daysOfWeek.includes(dayName))) return false;
 
@@ -328,6 +329,7 @@ export default function Dashboard() {
       const dayName = DAYS_MAP[date.getDay()];
 
       const required = (allMissions || []).filter((m: any) => {
+        if (isWeeklyMission(m)) return false;
         const days: string[] = m.days_of_week || [];
         return days.length > 0 && days.includes(dayName);
       });
@@ -395,9 +397,22 @@ export default function Dashboard() {
     // §5.1: o ritual de marcar concluído tem que ser gostoso (som + "+atributo").
     try { sfx.complete(); } catch { /* áudio pode estar bloqueado */ }
     const attrName = mission.attributes?.name;
-    toast.success('Missão concluída! ✅', {
-      description: `+${res?.xpGained ?? mission.xp_reward} XP${attrName ? ` · +${attrName}` : ''}`,
-    });
+    if (res?.frequencyType === 'weekly') {
+      const reachedTarget = res.weeklyCount >= res.weeklyTarget;
+      toast.success(t(reachedTarget
+        ? 'app.dashboard.weekly_target_toast_title'
+        : 'app.dashboard.weekly_progress_toast_title'), {
+        description: t('app.dashboard.weekly_progress_toast_desc', {
+          current: res.weeklyCount,
+          target: res.weeklyTarget,
+          xp: res?.xpGained ?? mission.xp_reward,
+        }),
+      });
+    } else {
+      toast.success('Missão concluída! ✅', {
+        description: `+${res?.xpGained ?? mission.xp_reward} XP${attrName ? ` · +${attrName}` : ''}`,
+      });
+    }
   };
 
   return (
@@ -541,6 +556,7 @@ export default function Dashboard() {
           ) : todayMissions.length > 0 ? (
             <div className="space-y-2">
               {todayMissions.map((m: any, idx: number) => {
+                const weeklyState = getWeeklyMissionState(m);
                 const allAttrs = [
                   m.attributes && { name: m.attributes.name, icon: m.attributes.icon },
                   ...(attributes || [])
@@ -559,6 +575,14 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{m.title}</p>
                       <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {weeklyState && (
+                          <span className="inline-flex items-center gap-1 rounded bg-violet-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-300">
+                            {t('app.dashboard.weekly_flexible_badge', {
+                              current: weeklyState.current,
+                              target: weeklyState.target,
+                            })}
+                          </span>
+                        )}
                         {allAttrs.map((a: any, attrIdx: number) => (
                           <span
                             key={attrIdx}
