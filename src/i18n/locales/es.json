@@ -1657,6 +1657,13 @@
       "toast_success_title": "¡Contraseña restablecida!",
       "toast_success_desc": "Ya puedes iniciar sesión con tu nueva contraseña.",
       "toast_error": "Error"
+    },
+    "combat_pip": {
+      "title": "Combate en curso",
+      "enemy": "Enemigo",
+      "you": "Tú",
+      "resume": "Reanudar",
+      "leave": "Salir del combate"
     }
   },
   "footer": {

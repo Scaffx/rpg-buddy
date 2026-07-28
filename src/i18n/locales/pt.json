@@ -1671,6 +1671,13 @@
       "toast_success_title": "Senha redefinida!",
       "toast_success_desc": "Você já pode entrar com sua nova senha.",
       "toast_error": "Erro"
+    },
+    "combat_pip": {
+      "title": "Combate em andamento",
+      "enemy": "Inimigo",
+      "you": "Você",
+      "resume": "Retomar",
+      "leave": "Sair do combate"
     }
   },
   "footer": {

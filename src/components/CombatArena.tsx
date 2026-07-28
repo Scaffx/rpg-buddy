@@ -4,6 +4,7 @@ import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getActivePetType } from '@/lib/pets';
+import { submitCombatTurn } from '@/lib/combatTurn';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
 import { useToast } from '@/hooks/use-toast';
 
@@ -242,47 +243,18 @@ const isSummonSkill = (skillName?: string): boolean =>
 const mockProvider: CombatDataProvider = {
   async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower, skillEffectType, skillMpCost, skillElement, activePetType }) {
     if (combateId) {
-      const { data, error } = await supabase.functions.invoke('processar_turno', {
-        body: {
-          combate_id: combateId,
-          acao_escolhida: acaoEscolhida,
-          skill_id: skillId,
-          skill_name: skillName,
-          skill_power: skillPower,
-          current_mp: currentPlayerMp,
-          ...(skillEffectType ? { skill_effect_type: skillEffectType } : {}),
-          ...(skillMpCost !== undefined ? { skill_mp_cost: skillMpCost } : {}),
-          ...(skillElement ? { skill_element: skillElement } : {}),
-          ...(activePetType ? { active_pet_type: activePetType } : {}),
-        },
-      });
-
-      if (error) {
-        // supabase-js v2 retorna FunctionsHttpError com mensagem genérica.
-        // O corpo JSON com a mensagem real está em error.context (Response).
-        let realMessage = error.message || 'Erro desconhecido';
-        try {
-          const ctx = (error as any).context;
-          if (ctx && typeof ctx.json === 'function') {
-            const body = await ctx.json();
-            if (body?.error) realMessage = String(body.error);
-            if (body?.message) realMessage = String(body.message);
-          } else if (ctx && typeof ctx.text === 'function') {
-            const txt = await ctx.text();
-            if (txt) realMessage = txt;
-          }
-        } catch {
-          /* ignore parse failure, keep generic message */
-        }
-        throw new Error(realMessage);
-      }
-
-      // Edge function pode retornar 2xx com payload de erro (ex.: insufficient_mp).
-      if (data && typeof data === 'object' && 'error' in (data as any)) {
-        throw new Error(String((data as any).message || (data as any).error));
-      }
-
-      return data as TurnSummary;
+      return (await submitCombatTurn({
+        combateId,
+        acaoEscolhida,
+        currentPlayerMp,
+        skillId,
+        skillName,
+        skillPower,
+        skillEffectType,
+        skillMpCost,
+        skillElement,
+        activePetType,
+      })) as TurnSummary;
     }
 
     await wait(900);

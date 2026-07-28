@@ -1646,6 +1646,13 @@
       "toast_success_title": "Password reset!",
       "toast_success_desc": "You can now sign in with your new password.",
       "toast_error": "Error"
+    },
+    "combat_pip": {
+      "title": "Combat in progress",
+      "enemy": "Enemy",
+      "you": "You",
+      "resume": "Resume",
+      "leave": "Leave combat"
     }
   },
   "footer": {
