@@ -7,6 +7,7 @@ import { getActivePetType } from '@/lib/pets';
 import { useQueryClient } from '@tanstack/react-query';
 import { submitCombatTurn } from '@/lib/combatTurn';
 import { decideAutoAction, AUTO_TURN_DELAY_MS } from '@/lib/autoBattle';
+import CombatEquipSwap from '@/components/CombatEquipSwap';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
 import { useToast } from '@/hooks/use-toast';
 
@@ -369,6 +370,11 @@ export default function CombatArena({
     }
   });
   const autoBattleRef = useRef(autoBattle);
+  // Reabre o ciclo do automático depois de uma ação livre (frasco): o estado do
+  // turno continua em "player", então sozinho ele não redispara o efeito.
+  const [autoTick, setAutoTick] = useState(0);
+  // Trocar de arma gasta a rodada: o jogador passa a vez e só o boss age.
+  const [skipPlayerActionOnce, setSkipPlayerActionOnce] = useState(false);
   useEffect(() => {
     autoBattleRef.current = autoBattle;
     try {
@@ -854,16 +860,30 @@ export default function CombatArena({
         if (decision.kind === 'flask_hp' || decision.kind === 'flask_mp') {
           await useFlaskInCombat(decision.kind === 'flask_hp' ? 'hp' : 'mp');
           if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
-          // Beber consome o turno: reagenda para o próximo ciclo e sai.
+          // Beber é ação livre (igual ao botão manual), então o turno segue sendo
+          // do jogador. Como `turn` não muda de valor, o efeito não re-executaria
+          // sozinho — o tick é o que reabre o ciclo e evita o automático travar.
           setTimeout(() => {
             if (mountedRef.current && battleToken === currentBattleTokenRef.current) {
-              setTurn('player');
+              setAutoTick((n) => n + 1);
             }
           }, AUTO_TURN_DELAY_MS);
           return;
         }
       }
-      const { skill: chosenSkill, warning } = pickAffordableSkill(playerMpRef.current);
+      // Custo da troca de arma: na rodada em que troca, o jogador abre mão da
+      // habilidade e desfere apenas o golpe básico. É o que impede contra-equipar
+      // de graça a cada inimigo e mantém a preparação (e as lupas) valendo algo.
+      //
+      // A versão mais dura — perder a rodada inteira, só apanhando — depende da
+      // edge processar_turno aceitar uma ação de "passar a vez"; hoje ela só
+      // aceita 'atacar'. Fica registrado para quando a edge for atualizada.
+      const swappedThisTurn = skipPlayerActionOnce;
+      if (swappedThisTurn) setSkipPlayerActionOnce(false);
+
+      const { skill: chosenSkill, warning } = swappedThisTurn
+        ? { skill: null as CombatSkill | null, warning: null as string | null }
+        : pickAffordableSkill(playerMpRef.current);
       setInsufficientResourceWarning(warning);
 
       const skillCost = chosenSkill ? (chosenSkill.mpCost !== undefined ? chosenSkill.mpCost : getSkillMpCost(chosenSkill.power)) : 0;
@@ -1331,7 +1351,7 @@ export default function CombatArena({
         setIsRolling(false);
       }
     });
-  }, [turn, dataProvider, combateId, selectedSkills]);
+  }, [turn, autoTick, dataProvider, combateId, selectedSkills]);
 
   const winnerLabel =
     turn === 'finished'
@@ -1381,6 +1401,16 @@ export default function CombatArena({
           >
             💧 Mana ({flaskMpLeft})
           </button>
+          <CombatEquipSwap
+            disabled={turn !== 'player' || isRolling || autoBattle}
+            onSwapped={() => {
+              // A troca consome a rodada: o jogador não ataca, e o boss age.
+              // É esse custo que mantém o matchup elemental valendo alguma
+              // coisa — sem ele, bastaria contra-equipar sempre na hora.
+              setSkipPlayerActionOnce(true);
+              setAutoTick((n) => n + 1);
+            }}
+          />
           <button
             onClick={() => setAutoBattle((v) => !v)}
             title="No automático o herói alterna as habilidades e bebe frasco sozinho. Trocar equipamento continua sendo só no manual."
