@@ -4,22 +4,41 @@ import { useMissions } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
 import { Calendar } from '@/components/ui/calendar';
-import { Loader2, BookOpen, Save } from 'lucide-react';
+import { Loader2, BookOpen, Save, CheckCircle2, Clock3, Sparkles, CircleAlert, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useJournalEntry, useSaveJournalEntry, useJournalDates, type JournalMood } from '@/hooks/useAdventureJournal';
-import { useFailedDates } from '@/hooks/useMissionReports';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
+import { parseLocalDate, today } from '@/lib/dateUtils';
+import {
+  getCalendarDayPerformance,
+  getCalendarMissionDayState,
+  isMissionScheduledForDate,
+  type CalendarCompletionLike,
+  type CalendarMissionDayState,
+  type CalendarMissionLike,
+} from '@/lib/calendarMissions';
 
-const DAYS_MAP = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+type CalendarMissionView = CalendarMissionLike & {
+  title: string;
+  calendarState: CalendarMissionDayState;
+};
 
 export default function CalendarPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [searchParams] = useSearchParams();
+  const requestedDate = searchParams.get('date');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() =>
+    requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+      ? parseLocalDate(requestedDate)
+      : new Date(),
+  );
   const { data: allMissions, isLoading } = useMissions();
+  const todayStr = today();
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
@@ -27,7 +46,6 @@ export default function CalendarPage() {
   const { data: journalEntry } = useJournalEntry(selectedDateStr);
   const saveJournal = useSaveJournalEntry();
   const journalDates = useJournalDates();
-  const { data: failedDateStrs = [] } = useFailedDates(60);
   const [journalText, setJournalText] = useState('');
   const [journalMood, setJournalMood] = useState<JournalMood>('neutro');
   const journalInitialized = useRef('');
@@ -45,88 +63,94 @@ export default function CalendarPage() {
     journalInitialized.current = ''; // force re-sync on next render
   };
   
-  // Fetch completions for today's missions
+  // Fetch the completion history used by the calendar.
   const { data: completions = [] } = useQuery({
     queryKey: ['mission_completions', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
-        .from('mission_daily_completions' as any)
+        .from('mission_daily_completions')
         .select('mission_id, completion_date')
         .eq('user_id', user.id);
       if (error) throw error;
-      return data || [];
+      return (data || []) as CalendarCompletionLike[];
     },
     enabled: !!user,
   });
 
-  const completedDates = useMemo(() => {
-    if (!completions) return [];
-    return completions
-      .map((c: any) => new Date(c.completion_date))
-      .filter((d) => !isNaN(d.getTime()));
-  }, [completions]);
-
-  const missionsForDate = useMemo(() => {
+  const missionsForDate = useMemo<CalendarMissionView[]>(() => {
     if (!allMissions || !selectedDate) return [];
-    
-    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    const dayIndex = selectedDate.getDay();
-    const dayName = DAYS_MAP[dayIndex];
-    
-    // Get all missions that apply to this day of week
-    const missionsOnThisDay = allMissions.filter((m: any) => {
-      const days: string[] = m.days_of_week || [];
-      // Diárias com dias específicos
-      if (days.length > 0 && days.includes(dayName)) {
-        return true;
-      }
-      return false;
-    });
 
-    // Add completion status from completions table
-    return missionsOnThisDay.map((m: any) => {
-      const isCompletedOnDate = completions.some((c: any) => 
-        c.mission_id === m.id && c.completion_date === selectedDateStr
-      );
-      return {
-        ...m,
-        completedOnDate: isCompletedOnDate,
-      };
-    });
-  }, [allMissions, selectedDate, completions]);
+    return (allMissions as Array<CalendarMissionLike & { title: string }>)
+      .filter((mission) => isMissionScheduledForDate(mission, selectedDate))
+      .map((mission) => ({
+        ...mission,
+        calendarState: getCalendarMissionDayState(
+          mission,
+          selectedDate,
+          completions,
+          todayStr,
+        ),
+      }));
+  }, [allMissions, completions, selectedDate, todayStr]);
 
-  const failedDates = useMemo(
-    () => failedDateStrs.map((d) => new Date(d + 'T12:00:00')).filter((d) => !isNaN(d.getTime())),
-    [failedDateStrs],
-  );
+  const performanceDates = useMemo(() => {
+    const grouped = {
+      perfect: [] as Date[],
+      onTrack: [] as Date[],
+      attention: [] as Date[],
+    };
+    const missions = (allMissions || []) as CalendarMissionLike[];
+
+    for (let offset = 90; offset >= 0; offset--) {
+      const date = new Date();
+      date.setHours(12, 0, 0, 0);
+      date.setDate(date.getDate() - offset);
+      const performance = getCalendarDayPerformance(missions, date, completions, todayStr);
+      if (performance?.tier === 'perfect') grouped.perfect.push(date);
+      else if (performance?.tier === 'on_track') grouped.onTrack.push(date);
+      else if (performance?.tier === 'attention') grouped.attention.push(date);
+    }
+
+    return grouped;
+  }, [allMissions, completions, todayStr]);
+
+  const selectedPerformance = useMemo(() => {
+    if (!selectedDate) return null;
+    return getCalendarDayPerformance(
+      (allMissions || []) as CalendarMissionLike[],
+      selectedDate,
+      completions,
+      todayStr,
+    );
+  }, [allMissions, completions, selectedDate, todayStr]);
 
   const modifiers = {
-    completed: completedDates,
-    failed: failedDates,
+    perfect: performanceDates.perfect,
+    onTrack: performanceDates.onTrack,
+    attention: performanceDates.attention,
     journaled: [...journalDates]
       .map((d) => new Date(d + 'T12:00:00'))
       .filter((d) => !isNaN(d.getTime())),
   };
 
-  const modifiersStyles = {
-    completed: {
-      backgroundColor: 'hsl(43 96% 56% / 0.2)',
-      borderRadius: '50%',
-      color: 'hsl(43 96% 56%)',
-      fontWeight: 'bold' as const,
-    },
-    failed: {
-      backgroundColor: 'hsl(0 75% 55% / 0.25)',
-      color: 'hsl(0 75% 70%)',
-      borderRadius: '50%',
-      fontWeight: 'bold' as const,
-      boxShadow: 'inset 0 0 0 1px hsl(0 75% 55% / 0.6)',
-    },
-    journaled: {
-      outline: '2px solid hsl(217 91% 60% / 0.5)',
-      borderRadius: '50%',
-    },
+  const modifiersClassNames = {
+    perfect: 'bg-emerald-500/25 text-emerald-300 font-bold rounded-full',
+    onTrack: 'bg-amber-500/25 text-amber-300 font-bold rounded-full',
+    attention: 'bg-red-500/20 text-red-300 font-bold rounded-full',
+    journaled: 'ring-2 ring-sky-500/60 ring-offset-1 ring-offset-background rounded-full',
+  };
+
+  const missionStateMeta = (state: CalendarMissionDayState) => {
+    const meta = {
+      completed: { label: t('app.calendar.badge_done'), icon: CheckCircle2, className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
+      recovered: { label: t('app.calendar.badge_recovered'), icon: RotateCcw, className: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+      new: { label: t('app.calendar.badge_new'), icon: Sparkles, className: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
+      scheduled: { label: t('app.calendar.badge_scheduled'), icon: Clock3, className: 'bg-muted text-muted-foreground border-border' },
+      pending: { label: t('app.calendar.badge_pending'), icon: Clock3, className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30' },
+      attention: { label: t('app.calendar.badge_not_completed'), icon: CircleAlert, className: 'bg-red-500/15 text-red-300 border-red-500/30' },
+    } as const;
+    return meta[state];
   };
 
   return (
@@ -136,12 +160,15 @@ export default function CalendarPage() {
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
             {t('app.calendar.page_title')}
           </h1>
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400/50" /> {t('app.calendar.legend_completions')}
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500/70" /> {t('app.calendar.legend_perfect')}
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-destructive/60" /> {t('app.calendar.legend_failures')}
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500/70" /> {t('app.calendar.legend_on_track')}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500/70" /> {t('app.calendar.legend_attention')}
             </span>
             <span className="flex items-center gap-1">
               <span className="inline-block w-2.5 h-2.5 rounded-full ring-2 ring-blue-500/50" /> {t('app.calendar.legend_journal')}
@@ -163,30 +190,53 @@ export default function CalendarPage() {
                 onSelect={handleDateSelect}
                 locale={ptBR}
                 modifiers={modifiers}
-                modifiersStyles={modifiersStyles}
+                modifiersClassNames={modifiersClassNames}
+                classNames={{
+                  cell: 'h-10 w-10 text-center text-sm p-0 relative focus-within:relative focus-within:z-20',
+                  head_cell: 'text-muted-foreground rounded-md w-10 font-normal text-[0.8rem]',
+                  row: 'flex w-full mt-2 gap-1',
+                  day: 'h-10 w-10 p-0 font-normal rounded-full aria-selected:opacity-100 transition-colors',
+                  day_selected: '!bg-primary !text-primary-foreground hover:!bg-primary focus:!bg-primary rounded-full shadow-[0_0_14px_hsl(var(--primary)/0.35)]',
+                  day_today: 'border border-primary/60 text-primary font-semibold rounded-full',
+                }}
                 className="pointer-events-auto"
               />
             </div>
             <div className="space-y-3">
-              <h2 className="font-display font-semibold text-foreground">
-                {selectedDate
-                  ? format(selectedDate, "dd 'de' MMMM", { locale: ptBR })
-                  : 'Selecione um dia'}
-              </h2>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h2 className="font-display font-semibold text-foreground">
+                  {selectedDate
+                    ? format(selectedDate, "dd 'de' MMMM", { locale: ptBR })
+                    : t('app.calendar.select_day')}
+                </h2>
+                {selectedPerformance && (
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                    selectedPerformance.tier === 'perfect'
+                      ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+                      : selectedPerformance.tier === 'on_track'
+                        ? 'text-amber-300 border-amber-500/30 bg-amber-500/10'
+                        : 'text-red-300 border-red-500/30 bg-red-500/10'
+                  }`}>
+                    {selectedPerformance.percentage}% · {selectedPerformance.completed}/{selectedPerformance.scheduled}
+                  </span>
+                )}
+              </div>
               {missionsForDate.length > 0 ? (
                 <div className="space-y-2">
-                  {missionsForDate.map((m: any) => (
-                    <div key={m.id} className="rpg-card">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm text-foreground flex-1">{m.title}</span>
-                        {m.completedOnDate ? (
-                          <span className="rpg-badge bg-green-500/20 text-green-400 border-green-500/30">{t('app.calendar.badge_done')}</span>
-                        ) : (
-                          <span className="rpg-badge bg-yellow-500/20 text-yellow-400 border-yellow-500/30">{t('app.calendar.badge_pending')}</span>
-                        )}
+                  {missionsForDate.map((m) => {
+                    const state = missionStateMeta(m.calendarState);
+                    const StateIcon = state.icon;
+                    return (
+                      <div key={m.id} className={`rpg-card ${m.calendarState === 'new' ? 'border-sky-500/30 bg-sky-500/5' : ''}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-foreground flex-1">{m.title}</span>
+                          <span className={`rpg-badge inline-flex items-center gap-1 ${state.className}`}>
+                            <StateIcon className="w-3 h-3" /> {state.label}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground rpg-card py-4 text-center">{t('app.calendar.missions_empty')}</p>

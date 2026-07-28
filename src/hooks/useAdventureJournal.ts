@@ -15,7 +15,7 @@ export type JournalEntry = {
 
 export type JournalMood = JournalEntry['mood'];
 
-/** Carrega todas as entradas do diário do usuário (últimas 90). */
+/** Carrega até um ano de entradas do diário do usuário, da mais recente para a mais antiga. */
 export function useJournalEntries() {
   const { user } = useAuth();
   return useQuery<JournalEntry[]>({
@@ -23,11 +23,11 @@ export function useJournalEntries() {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('adventure_journal' as any)
+        .from('adventure_journal')
         .select('*')
         .eq('user_id', user!.id)
         .order('entry_date', { ascending: false })
-        .limit(90);
+        .limit(365);
       if (error) throw error;
       return ((data || []) as unknown) as JournalEntry[];
     },
@@ -43,7 +43,7 @@ export function useJournalEntry(dateStr: string) {
     enabled: !!user && !!dateStr,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('adventure_journal' as any)
+        .from('adventure_journal')
         .select('*')
         .eq('user_id', user!.id)
         .eq('entry_date', dateStr)
@@ -81,8 +81,8 @@ export function useSaveJournalEntry() {
       };
 
       const { error } = await supabase
-        .from('adventure_journal' as any)
-        .upsert(payload as any, { onConflict: 'user_id,entry_date' });
+        .from('adventure_journal')
+        .upsert(payload, { onConflict: 'user_id,entry_date' });
       if (error) throw error;
     },
     onSuccess: (_data, { dateStr }) => {
@@ -106,7 +106,7 @@ export function useJournalCount() {
     enabled: !!user,
     queryFn: async () => {
       const { count, error } = await supabase
-        .from('adventure_journal' as any)
+        .from('adventure_journal')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user!.id);
       if (error) throw error;

@@ -2,11 +2,23 @@
 import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { useMissions } from '@/hooks/useProfile';
-import { useAuth } from '@/hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Circle, AlertTriangle, CheckCircle2, RotateCcw, TrendingDown, TrendingUp, Calendar } from 'lucide-react';
+import { AlertTriangle, BookOpen, CheckCircle2, RotateCcw, ScrollText, TrendingDown, TrendingUp, Calendar } from 'lucide-react';
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { JournalArchive } from '@/components/JournalArchive';
+
+type VirtueMission = {
+  id: string;
+  title: string;
+  daily_status?: unknown;
+};
+
+function getDailyStatus(mission: VirtueMission): Record<string, string> {
+  if (!mission.daily_status || typeof mission.daily_status !== 'object' || Array.isArray(mission.daily_status)) {
+    return {};
+  }
+  return mission.daily_status as Record<string, string>;
+}
 
 function toLocalDate(d: Date) {
   return d.toLocaleDateString('en-CA');
@@ -23,29 +35,6 @@ function getLast7Days(): string[] {
   return days;
 }
 
-function useWeeklyActivity() {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: ['virtues_weekly_activity', user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const startOfWeek = new Date();
-      startOfWeek.setDate(startOfWeek.getDate() - 7);
-      startOfWeek.setHours(0, 0, 0, 0);
-
-      const { data, error } = await supabase
-        .from('activity_log')
-        .select('action, description, created_at')
-        .eq('user_id', user!.id)
-        .gte('created_at', startOfWeek.toISOString())
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return (data || []) as any[];
-    },
-  });
-}
-
 export default function VirtuesPage() {
   const { t, i18n } = useTranslation();
   const virtuesTourSteps: TourStep[] = [
@@ -55,7 +44,7 @@ export default function VirtuesPage() {
     { target: 'virtues-rankings', title: t('app.virtues.tour_4_title'), description: t('app.virtues.tour_4_desc') },
   ];
   const { data: missions = [] } = useMissions();
-  const { data: activity = [] } = useWeeklyActivity();
+  const virtueMissions = missions as VirtueMission[];
 
   const weekDays = useMemo(() => getLast7Days(), []);
 
@@ -68,8 +57,8 @@ export default function VirtuesPage() {
       recovered: number;
     }>();
 
-    (missions as any[]).forEach((m) => {
-      const dailyStatus = (m.daily_status || {}) as Record<string, string>;
+    virtueMissions.forEach((m) => {
+      const dailyStatus = getDailyStatus(m);
       let completed = 0;
       let failed = 0;
       let recovered = 0;
@@ -88,7 +77,7 @@ export default function VirtuesPage() {
     });
 
     return Array.from(stats.values());
-  }, [missions, weekDays]);
+  }, [virtueMissions, weekDays]);
 
   // Totais
   const totals = useMemo(() => {
@@ -116,8 +105,8 @@ export default function VirtuesPage() {
   const dailyBreakdown = useMemo(() => {
     return weekDays.map((day) => {
       let c = 0, f = 0, r = 0;
-      (missions as any[]).forEach((m) => {
-        const s = (m.daily_status || {})[day];
+      virtueMissions.forEach((m) => {
+        const s = getDailyStatus(m)[day];
         if (s === 'completed') c++;
         else if (s === 'failed') f++;
         else if (s === 'failed_accepted') r++;
@@ -127,7 +116,7 @@ export default function VirtuesPage() {
       const label = date.toLocaleDateString(locale, { weekday: 'short', day: '2-digit' });
       return { day, label, completed: c, failed: f, recovered: r };
     });
-  }, [i18n.resolvedLanguage, missions, weekDays]);
+  }, [i18n.resolvedLanguage, virtueMissions, weekDays]);
 
   const totalActions = totals.completed + totals.failed + totals.recovered;
   const successRate = totalActions > 0 ? Math.round((totals.completed / totalActions) * 100) : 0;
@@ -136,7 +125,7 @@ export default function VirtuesPage() {
     <AppLayout>
       <div className="space-y-6">
         <div data-tour="virtues-header" className="flex items-center gap-3">
-          <Circle className="w-7 h-7 text-primary" />
+          <BookOpen className="w-7 h-7 text-primary" />
           <div>
             <h1 className="text-2xl font-display font-bold text-primary">{t('app.virtues.title')}</h1>
             <p className="text-xs text-muted-foreground">
@@ -144,6 +133,18 @@ export default function VirtuesPage() {
             </p>
           </div>
         </div>
+
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="overview" className="gap-2">
+              <Calendar className="w-4 h-4" /> {t('app.virtues.tab_overview')}
+            </TabsTrigger>
+            <TabsTrigger value="journals" className="gap-2">
+              <ScrollText className="w-4 h-4" /> {t('app.virtues.tab_journals')}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6 mt-6">
 
         {/* Cards de resumo */}
         <div data-tour="virtues-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -313,6 +314,12 @@ export default function VirtuesPage() {
             </p>
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="journals" className="mt-6">
+            <JournalArchive />
+          </TabsContent>
+        </Tabs>
       </div>
       <GuidedTour tourKey="virtues" steps={virtuesTourSteps} />
     </AppLayout>
