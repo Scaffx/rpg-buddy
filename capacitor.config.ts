@@ -5,7 +5,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const isDev = process.env.NODE_ENV === 'development' && process.env.CAPACITOR_DEV !== 'false';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.6f14b44eedde41539aa41093c4284f49',
+  // Alinhado com android/app/build.gradle (applicationId) e strings.xml
+  // (custom_url_scheme) — o projeto nativo já usa este id; só a config
+  // fonte do Capacitor estava com o id de scaffolding do Lovable.
+  appId: 'app.lovable.rpgbuddy',
   appName: 'LifeOnRPG',
   webDir: 'dist',
   // Bloco "server" DESATIVADO para APK — sempre usa /dist

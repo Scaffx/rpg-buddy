@@ -240,6 +240,9 @@ export const useCompleteMission = () => {
       queryClient.invalidateQueries({ queryKey: ['missions_today_count'] });
       queryClient.invalidateQueries({ queryKey: ['rank_position'] });
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+      // Progresso das Prioridades avança no servidor (complete_mission) quando
+      // a missão está vinculada a um plano — refetch pra refletir o novo valor.
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
     },
   });
 };

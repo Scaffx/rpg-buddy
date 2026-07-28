@@ -29,6 +29,8 @@ export function useUndoMission() {
       queryClient.invalidateQueries({ queryKey: ['attributes'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
+      // undo_mission reverte o progresso de planos vinculados (-1) no servidor.
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
 
       toast({
         title: '↩️ Missão desfeita!',
