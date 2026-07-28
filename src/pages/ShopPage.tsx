@@ -587,49 +587,76 @@ export default function ShopPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(shopPets as any[]).map((pet) => {
-                const owned = ownedPetTypes.has(pet.pet_type);
+                const owned = ownedPetTypes.has(pet.pet_type) || pet.owned;
                 const canAfford = currentGold >= pet.price;
+                // Enquanto a criatura grande não cair, o mini é só uma silhueta:
+                // o pet é troféu, não item de prateleira.
+                const locked = pet.unlocked === false;
                 return (
-                  <div key={pet.pet_type} className="rounded-xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-500/10 to-card p-4 space-y-3">
+                  <div key={pet.pet_type} className={`rounded-xl border p-4 space-y-3 ${
+                    locked
+                      ? 'border-border bg-muted/20'
+                      : 'border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-500/10 to-card'
+                  }`}>
                     <div className="flex items-center gap-3">
-                      <span className="text-4xl shrink-0">{pet.emoji}</span>
+                      <span className={`text-4xl shrink-0 ${locked ? 'grayscale opacity-30' : ''}`}>
+                        {pet.emoji}
+                      </span>
                       <div className="min-w-0">
-                        <p className="font-display font-bold text-foreground text-sm">{pet.name}</p>
+                        <p className="font-display font-bold text-foreground text-sm">
+                          {locked ? '???' : pet.name}
+                        </p>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                          {roleLabel(pet.role)}
+                          {locked ? t('app.shop.pet_locked_tag') : roleLabel(pet.role)}
                         </span>
                       </div>
                     </div>
+
+                    {locked && (
+                      <p className="text-[11px] text-amber-300/90 leading-relaxed">
+                        ⚔️ {t('app.shop.pet_locked_hint', { boss: pet.unlock_boss })}
+                      </p>
+                    )}
                     {/* O pet não luta: mostrar atk/def/hp/mp dele era resquício da era
                         do pet-combatente e só levantava a pergunta "pra que serve isso?".
                         Aqui vai o que o pet de fato entrega. */}
-                    <div className="flex flex-wrap gap-1.5 text-[10px]">
-                      {petBonusLabel(getPetBonus(pet.pet_type)) && (
-                        <span className="bg-emerald-950/40 border border-emerald-500/30 rounded px-1.5 py-0.5 text-emerald-300">
-                          ✨ {petBonusLabel(getPetBonus(pet.pet_type))}
-                        </span>
-                      )}
-                      {sustainLabel(getSustainEffect(pet.pet_type)) && (
-                        <span className="bg-cyan-950/40 border border-cyan-500/30 rounded px-1.5 py-0.5 text-cyan-300">
-                          ⚔️ {sustainLabel(getSustainEffect(pet.pet_type))}
-                        </span>
-                      )}
-                      {isForagePet(pet.pet_type) && (
-                        <span className="bg-amber-950/40 border border-amber-500/30 rounded px-1.5 py-0.5 text-amber-300">
-                          🎒 {t('app.shop.pet_forage')}
-                        </span>
-                      )}
-                    </div>
+                    {/* A ficha só aparece depois da vitória: parte da recompensa
+                        de derrotar a criatura é descobrir o que o mini dela faz. */}
+                    {!locked && (
+                      <div className="flex flex-wrap gap-1.5 text-[10px]">
+                        {petBonusLabel(getPetBonus(pet.pet_type)) && (
+                          <span className="bg-emerald-950/40 border border-emerald-500/30 rounded px-1.5 py-0.5 text-emerald-300">
+                            ✨ {petBonusLabel(getPetBonus(pet.pet_type))}
+                          </span>
+                        )}
+                        {sustainLabel(getSustainEffect(pet.pet_type)) && (
+                          <span className="bg-cyan-950/40 border border-cyan-500/30 rounded px-1.5 py-0.5 text-cyan-300">
+                            ⚔️ {sustainLabel(getSustainEffect(pet.pet_type))}
+                          </span>
+                        )}
+                        {isForagePet(pet.pet_type) && (
+                          <span className="bg-amber-950/40 border border-amber-500/30 rounded px-1.5 py-0.5 text-amber-300">
+                            🎒 {t('app.shop.pet_forage')}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1 text-sm font-bold text-yellow-400">
                         <Coins className="w-4 h-4" /> {pet.price}
                       </span>
                       <button
                         onClick={() => handleBuyPet(pet)}
-                        disabled={owned || !canAfford || buyPet.isPending}
+                        disabled={locked || owned || !canAfford || buyPet.isPending}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold bg-fuchsia-600 text-white hover:bg-fuchsia-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        {owned ? t('app.shop.pet_owned') : !canAfford ? t('app.shop.button_no_gold') : t('app.shop.pet_buy')}
+                        {locked
+                          ? t('app.shop.pet_locked_button')
+                          : owned
+                          ? t('app.shop.pet_owned')
+                          : !canAfford
+                          ? t('app.shop.button_no_gold')
+                          : t('app.shop.pet_buy')}
                       </button>
                     </div>
                   </div>

@@ -405,7 +405,10 @@
       "pet_buy": "Buy",
       "pet_forage": "Forages once a day",
       "toast_pet_bought": "{{name}} is now your companion! 🐾",
-      "toast_pet_error": "Error buying the pet."
+      "toast_pet_error": "Error buying the pet.",
+      "pet_locked_tag": "Not earned",
+      "pet_locked_hint": "Defeat {{boss}} to reveal and unlock the purchase.",
+      "pet_locked_button": "Locked"
     },
     "calendar": {
       "page_title": "Calendar",
