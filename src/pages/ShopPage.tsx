@@ -7,6 +7,7 @@ import { useShopItems, useBuyEquipment, useInventory, type GameItem, type Invent
 import { useShopPets, useBuyPet, useAllCompanions } from '@/hooks/useCompanion';
 import { getPetBonus, petBonusLabel, getSustainEffect, sustainLabel, isForagePet } from '@/lib/pets';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -266,7 +267,7 @@ export default function ShopPage() {
     <AppLayout>
       <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="space-y-4">
+        <div data-tour="shop-header" className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <ShoppingBag className="w-8 h-8 text-cyan-400" />
@@ -277,7 +278,7 @@ export default function ShopPage() {
                 <p className="text-sm text-muted-foreground">{t('app.shop.page_subtitle')}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2">
+            <div data-tour="shop-balance" className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2">
               <span className="text-sm text-muted-foreground">{t('app.shop.label_balance')}</span>
               <Coins className="w-5 h-5 text-yellow-400" />
               <span className="text-xl font-bold text-emerald-400">
@@ -305,7 +306,7 @@ export default function ShopPage() {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="tempo" className="w-full">
+        <Tabs data-tour="shop-tabs" defaultValue="tempo" className="w-full">
           <TabsList className="grid w-full max-w-xl grid-cols-3 bg-secondary/50 border border-border rounded-lg p-1">
             <TabsTrigger value="tempo" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <Clock className="w-4 h-4 mr-2" />
@@ -322,7 +323,7 @@ export default function ShopPage() {
           </TabsList>
 
           {/* Loja do Tempo */}
-          <TabsContent value="tempo" className="space-y-4 mt-6">
+          <TabsContent data-tour="shop-items" value="tempo" className="space-y-4 mt-6">
             <div className="space-y-2">
               <h2 className="text-lg font-display font-bold text-cyan-400">{t('app.shop.section_time_shop_title')}</h2>
               <p className="text-sm text-muted-foreground italic">
@@ -666,6 +667,15 @@ export default function ShopPage() {
           </TabsContent>
         </Tabs>
       </div>
+      <TranslatedGuidedTour
+        tourKey="shop"
+        targets={[
+          { target: 'shop-header', key: 'overview' },
+          { target: 'shop-balance', key: 'balance' },
+          { target: 'shop-tabs', key: 'categories' },
+          { target: 'shop-items', key: 'items' },
+        ]}
+      />
     </AppLayout>
   );
 }

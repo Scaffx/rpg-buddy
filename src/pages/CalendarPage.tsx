@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useMissions } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { Calendar } from '@/components/ui/calendar';
 import { Loader2, BookOpen, Save, CheckCircle2, Clock3, Sparkles, CircleAlert, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
@@ -156,7 +157,7 @@ export default function CalendarPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-end justify-between flex-wrap gap-2">
+        <div data-tour="calendar-header" className="flex items-end justify-between flex-wrap gap-2">
           <h1 className="text-2xl font-display font-bold text-primary text-glow">
             {t('app.calendar.page_title')}
           </h1>
@@ -183,7 +184,7 @@ export default function CalendarPage() {
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="rpg-card flex justify-center">
+            <div data-tour="calendar-grid" className="rpg-card flex justify-center">
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -202,7 +203,7 @@ export default function CalendarPage() {
                 className="pointer-events-auto"
               />
             </div>
-            <div className="space-y-3">
+            <div data-tour="calendar-missions" className="space-y-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h2 className="font-display font-semibold text-foreground">
                   {selectedDate
@@ -244,7 +245,7 @@ export default function CalendarPage() {
 
               {/* Diário de Aventura */}
               {selectedDate && (
-                <div className="rpg-card space-y-3 mt-2">
+                <div data-tour="calendar-journal" className="rpg-card space-y-3 mt-2">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-primary" />
                     <h3 className="text-sm font-bold text-foreground">{t('app.calendar.journal_header')}</h3>
@@ -310,6 +311,15 @@ export default function CalendarPage() {
           </div>
         )}
       </div>
+      <TranslatedGuidedTour
+        tourKey="calendar"
+        targets={[
+          { target: 'calendar-header', key: 'overview' },
+          { target: 'calendar-grid', key: 'days' },
+          { target: 'calendar-missions', key: 'missions' },
+          { target: 'calendar-journal', key: 'journal' },
+        ]}
+      />
     </AppLayout>
   );
 }

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Smartphone, Download, CheckCircle2, ShieldCheck, Wifi, Bell, Github, Apple, Play, ChevronRight, Package, Zap, Sparkles, RefreshCw } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,7 @@ export default function MobilePage() {
       <div className="container max-w-5xl mx-auto p-4 md:p-6 space-y-8">
         {/* Hero */}
         <motion.div
+          data-tour="mobile-download"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card p-6 md:p-10"
@@ -138,7 +140,7 @@ export default function MobilePage() {
         <SubscriptionPaywall />
 
         {/* Benefits */}
-        <section>
+        <section data-tour="mobile-benefits">
           <h2 className="font-display text-xl text-primary mb-4 flex items-center gap-2">
             <Package className="w-5 h-5" /> {t("app.mobile.why_use")}
           </h2>
@@ -165,7 +167,7 @@ export default function MobilePage() {
         </section>
 
         {/* Tutorial */}
-        <section>
+        <section data-tour="mobile-install">
           <h2 className="font-display text-xl text-primary mb-4 flex items-center gap-2">
             <Play className="w-5 h-5" /> {t("app.mobile.how_to_install")}
           </h2>
@@ -235,7 +237,7 @@ export default function MobilePage() {
         </section>
 
         {/* FAQ */}
-        <section>
+        <section data-tour="mobile-faq">
           <h2 className="font-display text-xl text-primary mb-4">{t("app.mobile.faq_title")}</h2>
           <div className="space-y-3">
             {faq.map((f) => (
@@ -277,6 +279,15 @@ export default function MobilePage() {
           </p>
         </div>
       </div>
+      <TranslatedGuidedTour
+        tourKey="mobile"
+        targets={[
+          { target: 'mobile-download', key: 'download' },
+          { target: 'mobile-benefits', key: 'benefits' },
+          { target: 'mobile-install', key: 'install' },
+          { target: 'mobile-faq', key: 'faq' },
+        ]}
+      />
     </AppLayout>
   );
 }

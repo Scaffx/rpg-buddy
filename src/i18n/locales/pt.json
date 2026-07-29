@@ -1905,6 +1905,83 @@
     "classChangeErrorToast": "Falha ao fazer respec de classe",
     "notAuthenticated": "Não autenticado",
     "alreadyInClass": "Você já está nessa classe.",
-    "insufficientGold": "Ouro insuficiente! Você tem {{gold}}, precisa de {{required}}."
+    "insufficientGold": "Ouro insuficiente! Você tem {{gold}}, precisa de {{required}}.",
+    "guided_tours": {
+      "controls": { "previous": "Anterior", "next": "Próximo", "finish": "Entendi! ✓", "skip": "Pular tutorial" },
+      "calendar": {
+        "overview_title": "Seu histórico de consistência 📅", "overview_desc": "As cores resumem como sua rotina foi em cada dia e o anel azul indica que há diário salvo.",
+        "days_title": "Escolha um dia", "days_desc": "Clique em qualquer data para revisar apenas as missões que já existiam e estavam previstas naquele dia.",
+        "missions_title": "O que aconteceu no dia", "missions_desc": "Aqui aparecem conclusões, recuperações, pendências e missões novas sem reescrever o passado.",
+        "journal_title": "Diário do Herói 📖", "journal_desc": "Registre humor e reflexão. A entrada fica ligada à data e disponível no histórico do diário."
+      },
+      "portal": {
+        "overview_title": "Evento do Portal ⚡", "overview_desc": "O portal semanal é uma atividade de risco, exploração e recompensas especiais.",
+        "event_title": "Janela do evento", "event_desc": "Confira se o portal está ativo e quanto tempo resta antes de entrar.",
+        "fragments_title": "Fragmentos dimensionais", "fragments_desc": "Junte fragmentos durante o evento para invocar masmorras extras.",
+        "dungeons_title": "Masmorras de fragmentos", "dungeons_desc": "Escolha a dificuldade com cuidado: derrota fecha a tentativa e cada ação possui intervalo."
+      },
+      "health": {
+        "overview_title": "Central de Saúde ❤️", "overview_desc": "Acompanhe sinais de alimentação e hidratação e mantenha seus registros organizados.",
+        "exams_title": "Análise de exames", "exams_desc": "Envie um arquivo para receber uma leitura auxiliar. Ela não substitui avaliação médica.",
+        "tips_title": "Orientações importantes", "tips_desc": "Use estas recomendações como apoio e procure um profissional quando necessário."
+      },
+      "skills_hub": {
+        "overview_title": "Central de Habilidades 🌳", "overview_desc": "Aqui você desenvolve poderes, equipa ações de combate e escolhe talentos de vida.",
+        "tabs_title": "Três formas de evoluir", "tabs_desc": "Árvore desbloqueia habilidades, Loadout equipa ações e Talentos concede efeitos passivos.",
+        "content_title": "Monte sua estratégia", "content_desc": "Revise custos, limites e efeitos antes de confirmar suas escolhas."
+      },
+      "feats": {
+        "overview_title": "Talentos de Vida ✨", "overview_desc": "Talentos são bônus passivos conquistados pela sua progressão.",
+        "points_title": "Pontos e limite", "points_desc": "Gaste pontos para desbloquear talentos e observe quantos podem ficar equipados.",
+        "loadout_title": "Habilidades ativas", "loadout_desc": "Este resumo mostra as ações que você leva para cada modo de combate.",
+        "tree_title": "Escolha seus talentos", "tree_desc": "Compare os efeitos por área e equipe os que combinam com sua rotina."
+      },
+      "skill_tree": {
+        "overview_title": "Árvore da sua classe 🌳", "overview_desc": "Cada classe possui caminhos próprios de habilidades e passivas.",
+        "points_title": "Pontos de habilidade", "points_desc": "Veja pontos disponíveis, pontos gastos e o custo de redefinir escolhas.",
+        "nodes_title": "Caminhos e requisitos", "nodes_desc": "Selecione os nós respeitando nível, custo e conexões anteriores da árvore.",
+        "legend_title": "Leia os símbolos", "legend_desc": "A legenda diferencia habilidades, passivas, variantes e conteúdo futuro."
+      },
+      "progress": {
+        "summary_title": "Resumo do herói", "summary_desc": "Nível, ranking, classe e atividade recente ficam reunidos nestes indicadores.",
+        "xp_title": "XP dos últimos 7 dias", "xp_desc": "Use o gráfico para enxergar ritmo, pausas e retomadas da sua rotina.",
+        "radar_title": "Evolução dos atributos", "radar_desc": "O radar mostra quais áreas da vida recebem mais atenção.",
+        "attributes_title": "Detalhe por atributo", "attributes_desc": "Compare XP e nível individual para decidir o próximo foco."
+      },
+      "shop": {
+        "overview_title": "Loja do Tempo 🛒", "overview_desc": "Transforme ouro conquistado pela rotina em recursos do jogo.",
+        "balance_title": "Seu saldo", "balance_desc": "Confira o ouro disponível antes de comprar; combates não geram ouro.",
+        "categories_title": "Categorias da loja", "categories_desc": "Alterne entre tempo, equipamentos e pets para encontrar o que precisa.",
+        "items_title": "Compre com propósito", "items_desc": "Leia duração, efeito e preço antes de confirmar uma compra."
+      },
+      "leaderboard": {
+        "overview_title": "Ranking dos heróis 🏆", "overview_desc": "Compare sua jornada sem perder de vista a própria consistência.",
+        "scope_title": "Global ou regional", "scope_desc": "Troque o alcance para comparar com toda a comunidade ou com sua região.",
+        "rankings_title": "Vários tipos de ranking", "rankings_desc": "Veja XP, streak, desempenho semanal, campeões e colocação por classe."
+      },
+      "companion_locked": { "unlock_title": "Companheiro ainda bloqueado 🐾", "unlock_desc": "Alcance o nível indicado para escolher seu primeiro companheiro." },
+      "companion": {
+        "overview_title": "Seus companheiros 🐾", "overview_desc": "Aqui ficam o companheiro escolhido e os pets conquistados.",
+        "roster_title": "Escolha e gerencie", "roster_desc": "Dê um nome ao primeiro companheiro e selecione qual criatura fica ativa.",
+        "tips_title": "Como funcionam", "tips_desc": "Companheiros têm papel cosmético; confira aqui as regras e limites atuais."
+      },
+      "social": {
+        "overview_title": "Área Social 🤝", "overview_desc": "Encontre heróis, converse e crie missões em conjunto.",
+        "tabs_title": "Amigos e missões", "tabs_desc": "Alterne entre sua rede de amigos e os desafios cooperativos ativos.",
+        "content_title": "Construa sua equipe", "content_desc": "Aceite pedidos, pesquise jogadores e acompanhe o progresso compartilhado."
+      },
+      "mobile": {
+        "download_title": "LifeonRPG no celular 📱", "download_desc": "Confira a versão disponível e baixe o aplicativo Android por aqui.",
+        "benefits_title": "Por que usar o app", "benefits_desc": "Veja os recursos que deixam o acompanhamento diário mais prático no celular.",
+        "install_title": "Instalação passo a passo", "install_desc": "Siga esta sequência para instalar o APK com segurança.",
+        "faq_title": "Dúvidas frequentes", "faq_desc": "Consulte respostas rápidas sobre instalação, atualização e compatibilidade."
+      },
+      "system_info": {
+        "overview_title": "Informações do sistema 📜", "overview_desc": "Acompanhe novidades e envie sugestões diretamente para a equipe.",
+        "updates_title": "Histórico de atualizações", "updates_desc": "Veja o que mudou em cada versão e quais novidades estão em destaque.",
+        "feedback_title": "Envie uma melhoria", "feedback_desc": "Descreva a ideia com um título claro para facilitar a avaliação.",
+        "history_title": "Acompanhe seus envios", "history_desc": "Consulte o status e o histórico das sugestões que você registrou."
+      }
+    }
   }
 }

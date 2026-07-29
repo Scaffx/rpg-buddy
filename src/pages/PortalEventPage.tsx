@@ -19,6 +19,7 @@ import { getPlayerCombatStats, getAttributeLevels } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
 
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import DungeonArena, { type SessionPlayer, type PotionItem } from '@/components/DungeonArena';
 import FragmentDungeonArena, { type FragmentVictoryResult } from '@/components/FragmentDungeonArena';
 import {
@@ -713,7 +714,7 @@ export default function PortalEventPage() {
       <div className="relative p-4 space-y-5 max-w-xl mx-auto pb-10">
 
         {/* header */}
-        <div className="text-center pt-2 space-y-1">
+        <div data-tour="portal-header" className="text-center pt-2 space-y-1">
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center gap-2 mb-1">
             <Sparkles className="w-4 h-4 text-purple-400" />
             <span className="text-xs font-semibold text-purple-400 uppercase tracking-widest">{t('app.portal.weekly_event')}</span>
@@ -730,6 +731,7 @@ export default function PortalEventPage() {
         </div>
 
         {/* event timer */}
+        <div data-tour="portal-event">
         {eventLoading ? (
           <div className="h-12 rounded-2xl bg-white/[0.04] animate-pulse" />
         ) : portalEvent ? (
@@ -754,6 +756,7 @@ export default function PortalEventPage() {
             <p className="text-sm text-muted-foreground/60">{t('app.portal.no_active_subtitle')}</p>
           </motion.div>
         )}
+        </div>
 
         {/* daily portal */}
         {portalEvent && (
@@ -785,7 +788,7 @@ export default function PortalEventPage() {
         </AnimatePresence>
 
         {/* fragments */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        <motion.div data-tour="portal-fragments" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4 space-y-3"
         >
           <FragmentBar count={fragmentCount} />
@@ -802,7 +805,7 @@ export default function PortalEventPage() {
         <DungeonRevealCard currentGold={Number((goldBalance as { gold?: number } | undefined)?.gold ?? 0)} />
 
         {/* fragment dungeons */}
-        <div className="space-y-3">
+        <div data-tour="portal-dungeons" className="space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
               <h2 className="text-sm font-bold text-foreground flex items-center gap-1.5">
@@ -851,6 +854,15 @@ export default function PortalEventPage() {
           />
         )}
       </AnimatePresence>
+      <TranslatedGuidedTour
+        tourKey="portal"
+        targets={[
+          { target: 'portal-header', key: 'overview' },
+          { target: 'portal-event', key: 'event' },
+          { target: 'portal-fragments', key: 'fragments' },
+          { target: 'portal-dungeons', key: 'dungeons' },
+        ]}
+      />
     </div>
     </AppLayout>
   );

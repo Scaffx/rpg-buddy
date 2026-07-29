@@ -15,6 +15,7 @@ import {
   useXpHistory,
 } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { starterClassDisplayName } from '@/hooks/useHeroClass';
 import { Calendar, Hexagon, Loader2, Star, Swords, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 
@@ -85,7 +86,7 @@ export default function ProgressPage() {
     <AppLayout>
       <div className="space-y-6">
         {/* Hero stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div data-tour="progress-summary" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {statCards.map((stat, index) => (
             <motion.div
               key={stat.key}
@@ -111,6 +112,7 @@ export default function ProgressPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          data-tour="progress-xp"
           className="rpg-card-glow"
         >
           <h2 className="text-lg font-display font-semibold text-foreground mb-4">
@@ -164,6 +166,7 @@ export default function ProgressPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          data-tour="progress-radar"
           className="rpg-card-glow"
         >
           <h2 className="text-lg font-display font-semibold text-foreground mb-2">
@@ -222,7 +225,7 @@ export default function ProgressPage() {
         </motion.div>
 
         {/* Attribute cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div data-tour="progress-attributes" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {attributes?.map((a, i) => (
             <motion.div
               key={a.id}
@@ -239,6 +242,15 @@ export default function ProgressPage() {
           ))}
         </div>
       </div>
+      <TranslatedGuidedTour
+        tourKey="progress"
+        targets={[
+          { target: 'progress-summary', key: 'summary' },
+          { target: 'progress-xp', key: 'xp' },
+          { target: 'progress-radar', key: 'radar' },
+          { target: 'progress-attributes', key: 'attributes' },
+        ]}
+      />
     </AppLayout>
   );
 }

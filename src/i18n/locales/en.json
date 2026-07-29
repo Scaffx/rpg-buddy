@@ -1337,7 +1337,84 @@
       "insufficientGold": "Insufficient gold! You have {{gold}}, need {{required}}.",
       "changeAvatarTooltip": "Change profile photo",
       "avatarUpdatedToast": "Profile photo updated!",
-      "avatarErrorToast": "Error uploading photo."
+      "avatarErrorToast": "Error uploading photo.",
+      "guided_tours": {
+        "controls": { "previous": "Previous", "next": "Next", "finish": "Got it! ✓", "skip": "Skip tutorial" },
+        "calendar": {
+          "overview_title": "Your consistency history 📅", "overview_desc": "Colors summarize each day; a blue ring means a journal entry was saved.",
+          "days_title": "Choose a day", "days_desc": "Select a date to review only missions that existed and were scheduled then.",
+          "missions_title": "What happened that day", "missions_desc": "See completions, recoveries, pending and new missions without rewriting the past.",
+          "journal_title": "Hero Journal 📖", "journal_desc": "Save your mood and reflection. Each entry stays linked to its date."
+        },
+        "portal": {
+          "overview_title": "Portal Event ⚡", "overview_desc": "The weekly portal is a high-risk activity with exploration and special rewards.",
+          "event_title": "Event window", "event_desc": "Check whether the portal is active and how much time remains.",
+          "fragments_title": "Dimensional fragments", "fragments_desc": "Collect fragments during the event to summon extra dungeons.",
+          "dungeons_title": "Fragment dungeons", "dungeons_desc": "Choose carefully: defeat ends the attempt and actions have a cooldown."
+        },
+        "health": {
+          "overview_title": "Health Center ❤️", "overview_desc": "Track food and hydration signals and keep your records organized.",
+          "exams_title": "Exam analysis", "exams_desc": "Upload a file for supporting guidance. It does not replace medical advice.",
+          "tips_title": "Important guidance", "tips_desc": "Use these tips as support and seek a professional when needed."
+        },
+        "skills_hub": {
+          "overview_title": "Skills Center 🌳", "overview_desc": "Develop powers, equip combat actions and choose life talents here.",
+          "tabs_title": "Three ways to grow", "tabs_desc": "Tree unlocks skills, Loadout equips actions and Talents grants passive effects.",
+          "content_title": "Build your strategy", "content_desc": "Review costs, limits and effects before confirming choices."
+        },
+        "feats": {
+          "overview_title": "Life Talents ✨", "overview_desc": "Talents are passive bonuses earned through progression.",
+          "points_title": "Points and limit", "points_desc": "Spend points to unlock talents and watch how many can be equipped.",
+          "loadout_title": "Active skills", "loadout_desc": "This summary shows the actions you take into each combat mode.",
+          "tree_title": "Choose your talents", "tree_desc": "Compare effects by area and equip those matching your routine."
+        },
+        "skill_tree": {
+          "overview_title": "Your class skill tree 🌳", "overview_desc": "Each class has its own paths of skills and passives.",
+          "points_title": "Skill points", "points_desc": "See available and spent points plus the reset cost.",
+          "nodes_title": "Paths and requirements", "nodes_desc": "Select nodes while respecting level, cost and previous connections.",
+          "legend_title": "Read the symbols", "legend_desc": "The legend distinguishes skills, passives, variants and future content."
+        },
+        "progress": {
+          "summary_title": "Hero summary", "summary_desc": "Level, rank, class and recent activity are gathered here.",
+          "xp_title": "XP over the last 7 days", "xp_desc": "Use the chart to spot rhythm, pauses and returns in your routine.",
+          "radar_title": "Attribute growth", "radar_desc": "The radar shows which areas of life receive more attention.",
+          "attributes_title": "Attribute details", "attributes_desc": "Compare individual XP and level to choose your next focus."
+        },
+        "shop": {
+          "overview_title": "Time Shop 🛒", "overview_desc": "Turn gold earned through routine into game resources.",
+          "balance_title": "Your balance", "balance_desc": "Check available gold before buying; combat does not generate gold.",
+          "categories_title": "Shop categories", "categories_desc": "Switch between time, equipment and pets to find what you need.",
+          "items_title": "Buy with purpose", "items_desc": "Read duration, effect and price before confirming a purchase."
+        },
+        "leaderboard": {
+          "overview_title": "Hero rankings 🏆", "overview_desc": "Compare journeys without losing sight of your own consistency.",
+          "scope_title": "Global or regional", "scope_desc": "Compare with the entire community or only your region.",
+          "rankings_title": "Several ranking types", "rankings_desc": "Explore XP, streak, weekly performance, champions and class rankings."
+        },
+        "companion_locked": { "unlock_title": "Companion still locked 🐾", "unlock_desc": "Reach the shown level to choose your first companion." },
+        "companion": {
+          "overview_title": "Your companions 🐾", "overview_desc": "Your chosen companion and earned pets live here.",
+          "roster_title": "Choose and manage", "roster_desc": "Name your first companion and select which creature stays active.",
+          "tips_title": "How they work", "tips_desc": "Companions are cosmetic; review their current rules and limits here."
+        },
+        "social": {
+          "overview_title": "Social Area 🤝", "overview_desc": "Find heroes, chat and create missions together.",
+          "tabs_title": "Friends and missions", "tabs_desc": "Switch between your friend network and active co-op challenges.",
+          "content_title": "Build your party", "content_desc": "Accept requests, find players and track shared progress."
+        },
+        "mobile": {
+          "download_title": "LifeonRPG on mobile 📱", "download_desc": "Check the available version and download the Android app here.",
+          "benefits_title": "Why use the app", "benefits_desc": "See what makes daily tracking more convenient on mobile.",
+          "install_title": "Step-by-step installation", "install_desc": "Follow this sequence to install the APK safely.",
+          "faq_title": "Frequently asked questions", "faq_desc": "Find quick answers about installation, updates and compatibility."
+        },
+        "system_info": {
+          "overview_title": "System Information 📜", "overview_desc": "Follow updates and send suggestions directly to the team.",
+          "updates_title": "Update history", "updates_desc": "See what changed in each version and highlighted improvements.",
+          "feedback_title": "Suggest an improvement", "feedback_desc": "Describe your idea with a clear title to help evaluation.",
+          "history_title": "Track submissions", "history_desc": "Review the status and history of suggestions you submitted."
+        }
+      }
     },
     "portal": {
       "weekly_event": "Weekly Event",
