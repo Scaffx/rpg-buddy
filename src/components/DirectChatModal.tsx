@@ -1,14 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, X, Loader2 } from 'lucide-react';
+import { Send, X, Loader2, MoreVertical, Ban, Flag, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import ReportUserDialog from '@/components/ReportUserDialog';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useDirectMessages,
   useSendDirectMessage,
   useMarkConversationRead,
 } from '@/hooks/useDirectMessages';
+import { useBlockUser, useUnblockUser, useIsBlocked } from '@/hooks/useModeration';
 import { isOnline } from '@/hooks/usePresence';
 import { starterClassDisplayName } from '@/hooks/useHeroClass';
 
@@ -36,6 +54,12 @@ export default function DirectChatModal({
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const blocked = useIsBlocked(friend.user_id);
+  const blockUser = useBlockUser();
+  const unblockUser = useUnblockUser();
+  const [confirmBlock, setConfirmBlock] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+
   // Marca todas como lidas ao abrir o modal
   useEffect(() => {
     if (friend.user_id) {
@@ -60,6 +84,25 @@ export default function DirectChatModal({
         onError: (e: any) => toast.error(e.message || 'Erro ao enviar mensagem'),
       },
     );
+  };
+
+  const handleBlock = () => {
+    blockUser.mutate(friend.user_id, {
+      onSuccess: () => {
+        toast.success(`${friend.display_name || 'Aventureiro'} foi bloqueado`, {
+          description: 'A conversa some para os dois lados e ninguém mais consegue escrever.',
+        });
+        setConfirmBlock(false);
+      },
+      onError: (e: any) => toast.error(e.message || 'Não foi possível bloquear'),
+    });
+  };
+
+  const handleUnblock = () => {
+    unblockUser.mutate(friend.user_id, {
+      onSuccess: () => toast.success('Bloqueio desfeito'),
+      onError: (e: any) => toast.error(e.message || 'Não foi possível desbloquear'),
+    });
   };
 
   const online = isOnline(friend.last_seen_at);
@@ -95,12 +138,45 @@ export default function DirectChatModal({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-muted/40 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label="Mais opções"
+                  className="p-1.5 hover:bg-muted/40 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setReportOpen(true)}>
+                  <Flag className="w-4 h-4 mr-2" />
+                  Denunciar
+                </DropdownMenuItem>
+                {blocked ? (
+                  <DropdownMenuItem onClick={handleUnblock} disabled={unblockUser.isPending}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Desbloquear
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => setConfirmBlock(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Ban className="w-4 h-4 mr-2" />
+                    Bloquear
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <button
+              onClick={onClose}
+              aria-label="Fechar conversa"
+              className="p-1.5 hover:bg-muted/40 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Mensagens */}
@@ -143,7 +219,22 @@ export default function DirectChatModal({
           )}
         </div>
 
-        {/* Input */}
+        {/* Input — bloqueado troca o compositor por um aviso com saída */}
+        {blocked ? (
+          <div className="px-4 py-4 border-t border-border text-center space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Você bloqueou {friend.display_name || 'este aventureiro'}. Ninguém consegue
+              escrever enquanto o bloqueio existir.
+            </p>
+            <Button variant="outline" size="sm" onClick={handleUnblock} disabled={unblockUser.isPending}>
+              {unblockUser.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Desbloquear'
+              )}
+            </Button>
+          </div>
+        ) : (
         <div className="px-4 py-3 border-t border-border">
           <div className="flex items-end gap-2">
             <textarea
@@ -177,7 +268,35 @@ export default function DirectChatModal({
             Enter envia · Shift+Enter quebra linha · {draft.length}/1000
           </p>
         </div>
+        )}
       </motion.div>
+
+      <AlertDialog open={confirmBlock} onOpenChange={setConfirmBlock}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Bloquear {friend.display_name || 'este aventureiro'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              A conversa some para os dois lados e nenhum dos dois consegue mandar mensagem.
+              A pessoa não é avisada do bloqueio. Você pode desfazer quando quiser.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={blockUser.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBlock} disabled={blockUser.isPending}>
+              {blockUser.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Bloquear'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ReportUserDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        reportedUserId={friend.user_id}
+        reportedName={friend.display_name || 'Aventureiro'}
+      />
     </div>
   );
 }
