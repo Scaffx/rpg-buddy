@@ -11,6 +11,8 @@ import { PaymentTestModeBanner } from '@/components/PaymentTestModeBanner';
 import { SubscriptionExpiryNotice } from '@/components/SubscriptionExpiryNotice';
 import FloatingAiChat from '@/components/FloatingAiChat';
 import CombatPiP from '@/components/CombatPiP';
+import PermissionsGate from '@/components/PermissionsGate';
+import { useNotificationScheduler } from '@/hooks/useNotificationScheduler';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 import { Flame, Gift, Shield, ShieldAlert, Trophy } from 'lucide-react';
@@ -63,6 +65,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useSleepWakeAlerts();
   useAutoCheckAchievements();
   usePresenceHeartbeat();
+  useNotificationScheduler();
   useReminderNotifications();
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [headerSeconds, setHeaderSeconds] = useState<number | null>(null);
@@ -413,6 +416,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <AppUpdateModal />
         <FloatingAiChat />
         <CombatPiP />
+        <PermissionsGate />
       </div>
     </SidebarProvider>
   );
