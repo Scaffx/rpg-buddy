@@ -7,6 +7,7 @@ import {
   MIN_GAP_MINUTES,
   type ScheduledRecord,
   type NotificationKind,
+  detectReactiveTriggers,
 } from '@/lib/notifications';
 
 const at = (h: number, m = 0) => new Date(2026, 6, 28, h, m, 0);
@@ -131,5 +132,57 @@ describe('mensagens', () => {
     const a = pickMessage('water', new Date(2026, 0, 1));
     const b = pickMessage('water', new Date(2026, 0, 2));
     expect(a).not.toEqual(b);
+  });
+});
+
+describe('gatilhos reativos', () => {
+  const saudavel = { hpRatio: 1, fatigue: 10 };
+
+  it('dispara quando o HP cruza o limiar para baixo', () => {
+    expect(detectReactiveTriggers(saudavel, { hpRatio: 0.01, fatigue: 10 })).toEqual(['hp_low']);
+  });
+
+  it('dispara quando a fadiga cruza o limiar para cima', () => {
+    expect(detectReactiveTriggers(saudavel, { hpRatio: 1, fatigue: 85 })).toEqual(['fatigue_high']);
+  });
+
+  it('não redispara enquanto a condição permanece — evita virar cobrança', () => {
+    const ferido = { hpRatio: 0.1, fatigue: 90 };
+    expect(detectReactiveTriggers(ferido, ferido)).toEqual([]);
+  });
+
+  it('sem leitura anterior não inventa transição', () => {
+    expect(detectReactiveTriggers(null, { hpRatio: 0.05, fatigue: 99 })).toEqual([]);
+  });
+
+  it('pega os dois de uma vez — derrota no portal deixa ferido e exausto', () => {
+    const d = detectReactiveTriggers(saudavel, { hpRatio: 0.01, fatigue: 80 });
+    expect(d).toContain('hp_low');
+    expect(d).toContain('fatigue_high');
+  });
+
+  it('não dispara quando a condição melhora', () => {
+    expect(detectReactiveTriggers({ hpRatio: 0.1, fatigue: 90 }, saudavel)).toEqual([]);
+  });
+
+  it('notícia fresca fura a fila de prioridade', () => {
+    // missions_pending ganharia pela prioridade normal; hp_low acabou de acontecer.
+    const d = decideNotification(['missions_pending', 'hp_low'], input(), ['hp_low']);
+    expect(d).toEqual({ allowed: true, kind: 'hp_low' });
+  });
+
+  it('urgência não fura o silêncio da madrugada', () => {
+    const d = decideNotification(['hp_low'], input({ now: at(3) }), ['hp_low']);
+    expect(d).toEqual({ allowed: false, reason: 'quiet' });
+  });
+
+  it('urgência não fura o teto diário', () => {
+    const history: ScheduledRecord[] = [
+      { kind: 'meal', sentAt: at(8).toISOString() },
+      { kind: 'water', sentAt: at(10).toISOString() },
+      { kind: 'journal_empty', sentAt: at(12).toISOString() },
+    ];
+    const d = decideNotification(['hp_low'], input({ history }), ['hp_low']);
+    expect(d).toEqual({ allowed: false, reason: 'daily_cap' });
   });
 });

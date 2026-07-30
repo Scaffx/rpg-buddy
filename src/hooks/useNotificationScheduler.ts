@@ -7,8 +7,12 @@ import { useProfile, useHealthStats } from './useProfile';
 import {
   decideNotification,
   pickMessage,
+  detectReactiveTriggers,
+  isHpLow,
+  isFatigueHigh,
   type NotificationKind,
   type ScheduledRecord,
+  type VitalsSnapshot,
 } from '@/lib/notifications';
 
 /**
@@ -60,6 +64,8 @@ export function useNotificationScheduler() {
   const { data: profile } = useProfile();
   const { data: health } = useHealthStats();
   const running = useRef(false);
+  // Última leitura de vitais, para saber o que MUDOU e não só o que está ruim.
+  const prevVitals = useRef<VitalsSnapshot | null>(null);
 
   const reschedule = useCallback(async () => {
     if (!user || !profile || running.current) return;
@@ -103,10 +109,20 @@ export function useNotificationScheduler() {
       const water = Number((health as { water_completed_ml?: number } | undefined)?.water_completed_ml ?? 0);
       const waterTarget = Number((health as { water_target_ml?: number } | undefined)?.water_target_ml ?? 2000);
 
-      if (maxHp > 0 && curHp / maxHp <= 0.3) pending.push('hp_low');
-      if (fatigue >= 70) pending.push('fatigue_high');
+      const vitals: VitalsSnapshot = {
+        hpRatio: maxHp > 0 ? curHp / maxHp : 1,
+        fatigue,
+      };
+      if (isHpLow(vitals)) pending.push('hp_low');
+      if (isFatigueHigh(vitals)) pending.push('fatigue_high');
       if (meals === 0) pending.push('meal');
       if (waterTarget > 0 && water / waterTarget < 0.5) pending.push('water');
+
+      // Reativo: o que CRUZOU o limiar desde a última leitura. Cair no portal
+      // deixa o herói com 1 de HP e exausto — esse aviso vale muito mais na
+      // hora do que num horário fixo à tarde.
+      const urgent = detectReactiveTriggers(prevVitals.current, vitals);
+      prevVitals.current = vitals;
 
       const { count: missoesAbertas } = await supabase
         .from('missions')
@@ -127,18 +143,22 @@ export function useNotificationScheduler() {
         sentAt: String(r.sent_at),
       }));
 
-      const decision = decideNotification(pending, {
-        now,
-        quiet: {
-          sleepTime: (health as { sleep_time?: string } | undefined)?.sleep_time ?? null,
-          wakeTime: (health as { wake_time?: string } | undefined)?.wake_time ?? null,
+      const decision = decideNotification(
+        pending,
+        {
+          now,
+          quiet: {
+            sleepTime: (health as { sleep_time?: string } | undefined)?.sleep_time ?? null,
+            wakeTime: (health as { wake_time?: string } | undefined)?.wake_time ?? null,
+          },
+          restMode: Boolean((health as { rest_mode_enabled?: boolean } | undefined)?.rest_mode_enabled),
+          history,
+          mutedKinds:
+            ((profile as { notification_muted_kinds?: string[] } | undefined)?.notification_muted_kinds ??
+              []) as NotificationKind[],
         },
-        restMode: Boolean((health as { rest_mode_enabled?: boolean } | undefined)?.rest_mode_enabled),
-        history,
-        mutedKinds:
-          ((profile as { notification_muted_kinds?: string[] } | undefined)?.notification_muted_kinds ??
-            []) as NotificationKind[],
-      });
+        urgent,
+      );
 
       if (!decision.allowed) return;
 
