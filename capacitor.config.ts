@@ -5,7 +5,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const isDev = process.env.NODE_ENV === 'development' && process.env.CAPACITOR_DEV !== 'false';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.6f14b44eedde41539aa41093c4284f49',
+  // Alinhado com android/app/build.gradle (applicationId) e strings.xml
+  // (package_name/custom_url_scheme). Este é o nome do pacote registrado na
+  // Play Store — permanente após a publicação, não alterar.
+  appId: 'com.scaffx.lifeonrpg',
   appName: 'LifeOnRPG',
   webDir: 'dist',
   // Bloco "server" DESATIVADO para APK — sempre usa /dist

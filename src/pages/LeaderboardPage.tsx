@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import {
@@ -191,7 +192,7 @@ export default function LeaderboardPage() {
     <AppLayout>
       <div className="min-h-screen p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-3">
+        <div data-tour="leaderboard-header" className="flex items-center gap-3">
           <Trophy className="w-7 h-7 text-primary" />
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t('app.leaderboard.title')}</h1>
@@ -221,7 +222,7 @@ export default function LeaderboardPage() {
         )}
 
         {/* ── Scope switcher: Global | Regional ── */}
-        <div className="flex gap-2">
+        <div data-tour="leaderboard-scope" className="flex gap-2">
           <button
             onClick={() => setScope('global')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold transition-all ${
@@ -256,7 +257,7 @@ export default function LeaderboardPage() {
         )}
 
         {/* ── Inner tabs: Geral | Streak | Semanal | Campeões | Por Classe ── */}
-        <Tabs defaultValue="geral">
+        <Tabs data-tour="leaderboard-rankings" defaultValue="geral">
           <TabsList className="w-full grid grid-cols-5">
             <TabsTrigger value="geral"     className="gap-1.5"><Trophy className="w-4 h-4" />{t('app.leaderboard.tab_general')}</TabsTrigger>
             <TabsTrigger value="streak"    className="gap-1.5"><Zap    className="w-4 h-4" />{t('app.leaderboard.tab_streak')}</TabsTrigger>
@@ -390,6 +391,14 @@ export default function LeaderboardPage() {
           </TabsContent>
         </Tabs>
       </div>
+      <TranslatedGuidedTour
+        tourKey="leaderboard"
+        targets={[
+          { target: 'leaderboard-header', key: 'overview' },
+          { target: 'leaderboard-scope', key: 'scope' },
+          { target: 'leaderboard-rankings', key: 'rankings' },
+        ]}
+      />
     </AppLayout>
   );
 }

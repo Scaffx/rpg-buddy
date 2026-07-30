@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { useProfile } from '@/hooks/useProfile';
 import { useAvailableTalents, useBuyTalent, usePlayerTalents, useToggleEquipTalent, MAX_EQUIPPED_TALENTS, type Talent } from '@/hooks/useTalents';
 import { MODE_SKILL_LIMITS } from '@/lib/constants';
@@ -273,12 +274,12 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
 
   const content = (
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
+        <div data-tour="feats-header" className="flex items-center gap-2">
           <Sparkles className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">{t('app.feats.page_title')}</h1>
         </div>
 
-        <div className="rpg-card flex flex-wrap items-center justify-between gap-3">
+        <div data-tour="feats-points" className="rpg-card flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm">
               <span className="text-muted-foreground">{t('app.feats.available_points')}</span>
@@ -296,7 +297,7 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
         </div>
 
         {/* ── Habilidades ativas de combate (loadout) — visão unificada ───────── */}
-        <div className="rpg-card border-cyan-500/30 space-y-3">
+        <div data-tour="feats-loadout" className="rpg-card border-cyan-500/30 space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <Swords className="w-5 h-5 text-cyan-400" />
@@ -333,6 +334,7 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
         </div>
 
         {/* ── Talentos (passivos) agrupados por área ──────────────────────────── */}
+        <div data-tour="feats-tree" className="space-y-6">
         {talentsByArea.map(({ area, items }) => (
           <div key={area} className="space-y-3">
             <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
@@ -344,6 +346,18 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
             </div>
           </div>
         ))}
+        </div>
+        {!embedded && (
+          <TranslatedGuidedTour
+            tourKey="feats"
+            targets={[
+              { target: 'feats-header', key: 'overview' },
+              { target: 'feats-points', key: 'points' },
+              { target: 'feats-loadout', key: 'loadout' },
+              { target: 'feats-tree', key: 'tree' },
+            ]}
+          />
+        )}
       </div>
   );
   return embedded ? content : <AppLayout>{content}</AppLayout>;

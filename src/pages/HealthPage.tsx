@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Upload, FileText, BarChart3, Heart, AlertCircle, Utensils, Droplets, TrendingDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -190,7 +191,7 @@ export default function HealthPage() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-3xl mx-auto">
-        <div className="flex items-center gap-2">
+        <div data-tour="health-header" className="flex items-center gap-2">
           <Heart className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">{t('app.health.page_title')}</h1>
         </div>
@@ -211,6 +212,7 @@ export default function HealthPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          data-tour="health-exams"
           className="rpg-card-glow border-emerald-500/30 space-y-4"
         >
           <div className="flex items-center gap-2 mb-4">
@@ -303,6 +305,7 @@ export default function HealthPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          data-tour="health-tips"
           className="rpg-card space-y-2"
         >
           <h3 className="font-bold text-foreground">{t('app.health.section_tips')}</h3>
@@ -431,6 +434,14 @@ export default function HealthPage() {
           </motion.div>
         )}
       </div>
+      <TranslatedGuidedTour
+        tourKey="health"
+        targets={[
+          { target: 'health-header', key: 'overview' },
+          { target: 'health-exams', key: 'exams' },
+          { target: 'health-tips', key: 'tips' },
+        ]}
+      />
     </AppLayout>
   );
 }

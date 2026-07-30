@@ -5,10 +5,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Shield, Users, Globe, Lock, Copy, CheckCheck, Zap, Clock,
   Search, AlertTriangle, Sparkles, Timer, Gem,
-  Swords, ArrowRight,
+  Swords, ArrowRight, PawPrint,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
+import { useGoldBalance } from '@/hooks/useGold';
+import DungeonRevealCard from '@/components/DungeonRevealCard';
+import { getActivePetType, getPetBonus, applyPetBonus, petBonusLabel } from '@/lib/pets';
 import { useProfile, useAttributes, useHealthStats } from '@/hooks/useProfile';
 import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +19,7 @@ import { getPlayerCombatStats, getAttributeLevels } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
 
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import DungeonArena, { type SessionPlayer, type PotionItem } from '@/components/DungeonArena';
 import FragmentDungeonArena, { type FragmentVictoryResult } from '@/components/FragmentDungeonArena';
 import {
@@ -508,6 +512,7 @@ export default function PortalEventPage() {
   const { data: inventory }   = useInventory();
   const { data: portalEvent, isLoading: eventLoading } = usePortalEvent();
   const { data: fragments }   = useMyFragments();
+  const { data: goldBalance } = useGoldBalance();
 
   const completeRun  = useCompletePortalRun();
   const scanPortal   = useScanPortal();
@@ -522,17 +527,38 @@ export default function PortalEventPage() {
   const attrLevels      = getAttributeLevels((attributes as any[]) ?? []);
   const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
   const equipBonuses    = getEquipmentBonuses((inventory || []) as InventoryItem[]);
+
+  // Pet ativo (F0.2): o bloqueio de pets no portal era resquício do pet-combatente,
+  // que a spec cortou. Hoje o pet é só bônus passivo de stat, então vale aqui pela
+  // mesma regra do combate solo (useBossCombat). 1 pet por vez.
+  const petBonus = getPetBonus(getActivePetType(user?.id));
+  const rawMaxHp = healthStats?.max_hp != null
+    ? Number(healthStats.max_hp)
+    : (playerStatsBase.hp + equipBonuses.hp) ?? 120;
+  const rawMaxMp = healthStats?.max_mp != null
+    ? Number(healthStats.max_mp)
+    : (playerStatsBase.mp + equipBonuses.mp) ?? 40;
+  const petAdjusted = applyPetBonus(
+    {
+      ataqueBase: playerStatsBase.atk + equipBonuses.atk,
+      defesaBase: playerStatsBase.def + equipBonuses.def,
+      hpMax: rawMaxHp,
+      mpMax: rawMaxMp,
+    },
+    petBonus,
+  );
+
   const playerStats = {
     ...playerStatsBase,
-    atk: playerStatsBase.atk + equipBonuses.atk,
-    def: playerStatsBase.def + equipBonuses.def,
-    hp:  playerStatsBase.hp  + equipBonuses.hp,
-    mp:  playerStatsBase.mp + equipBonuses.mp,
+    atk: petAdjusted.ataqueBase,
+    def: petAdjusted.defesaBase,
+    hp:  petAdjusted.hpMax,
+    mp:  petAdjusted.mpMax,
   };
-  const curHp = healthStats?.current_hp != null ? Number(healthStats.current_hp) : playerStats.hp  ?? 120;
-  const curMp = healthStats?.current_mp != null ? Number(healthStats.current_mp) : playerStats.mp ?? 40;
-  const maxHp = healthStats?.max_hp     != null ? Number(healthStats.max_hp)     : playerStats.hp  ?? 120;
-  const maxMp = healthStats?.max_mp     != null ? Number(healthStats.max_mp)     : playerStats.mp ?? 40;
+  const maxHp = petAdjusted.hpMax;
+  const maxMp = petAdjusted.mpMax;
+  const curHp = healthStats?.current_hp != null ? Number(healthStats.current_hp) : maxHp;
+  const curMp = healthStats?.current_mp != null ? Number(healthStats.current_mp) : maxMp;
 
   const potions: PotionItem[] = (inventory || [])
     .filter(inv => inv.game_items?.is_consumable && (
@@ -588,6 +614,40 @@ export default function PortalEventPage() {
     setIsEnteringPortal(false);
   }
 
+  /**
+   * Queda no portal (F6). Não é morte: o herói é derrotado e EXPULSO — sai vivo
+   * por um fio e exausto. A cobrança é do corpo e dos fragmentos, nunca do XP:
+   * rotina conquistada não se perde por um dado ruim.
+   *
+   * A primeira queda da vida devolve o portal (não os fragmentos), pela mesma
+   * lógica do "nunca falhe duas vezes" das missões.
+   */
+  async function handlePortalDefeat() {
+    try {
+      const { data } = await supabase.rpc('resolve_combat_defeat' as never, { p_context: 'portal' } as never);
+      const r = (Array.isArray(data) ? data[0] : data) as
+        | { grace_used?: boolean; portal_lost?: boolean }
+        | null;
+
+      toast({
+        title: t('app.portal.toast_defeat_title'),
+        description: r?.grace_used
+          ? t('app.portal.toast_defeat_grace')
+          : t('app.portal.toast_defeat_closed'),
+        variant: r?.grace_used ? undefined : 'destructive',
+        duration: 7000,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['my-fragments'] });
+      queryClient.invalidateQueries({ queryKey: ['portal-event'] });
+    } catch {
+      /* a derrota nunca pode travar a saída da dungeon */
+    }
+    setIsEnteringPortal(false);
+  }
+
   async function handleClaimDungeon() {
     const result = await claimDungeon.mutateAsync();
     if ((result as any).error) { toast({ title: t('app.portal.toast_error'), description: (result as any).error, variant: 'destructive' }); return; }
@@ -622,7 +682,7 @@ export default function PortalEventPage() {
           potions={potions} friendCount={0} isPortalDungeon
           difficultyMult={meta.difficultyMult}
           onVictory={handlePortalVictory}
-          onDefeat={() => setIsEnteringPortal(false)}
+          onDefeat={handlePortalDefeat}
           onFlee={() => setIsEnteringPortal(false)}
         />
       </div>
@@ -640,7 +700,7 @@ export default function PortalEventPage() {
           initialPlayerHp={curHp} initialPlayerMaxHp={maxHp} initialPlayerMp={curMp} initialPlayerMaxMp={maxMp}
           potions={potions} friendCount={0}
           onVictory={handleFragmentVictory}
-          onDefeat={() => { setActiveFragSession(null); setActiveFragTier(null); }}
+          onDefeat={() => { void handlePortalDefeat(); setActiveFragSession(null); setActiveFragTier(null); }}
         />
       </div>
     );
@@ -654,7 +714,7 @@ export default function PortalEventPage() {
       <div className="relative p-4 space-y-5 max-w-xl mx-auto pb-10">
 
         {/* header */}
-        <div className="text-center pt-2 space-y-1">
+        <div data-tour="portal-header" className="text-center pt-2 space-y-1">
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center gap-2 mb-1">
             <Sparkles className="w-4 h-4 text-purple-400" />
             <span className="text-xs font-semibold text-purple-400 uppercase tracking-widest">{t('app.portal.weekly_event')}</span>
@@ -671,6 +731,7 @@ export default function PortalEventPage() {
         </div>
 
         {/* event timer */}
+        <div data-tour="portal-event">
         {eventLoading ? (
           <div className="h-12 rounded-2xl bg-white/[0.04] animate-pulse" />
         ) : portalEvent ? (
@@ -695,6 +756,7 @@ export default function PortalEventPage() {
             <p className="text-sm text-muted-foreground/60">{t('app.portal.no_active_subtitle')}</p>
           </motion.div>
         )}
+        </div>
 
         {/* daily portal */}
         {portalEvent && (
@@ -726,7 +788,7 @@ export default function PortalEventPage() {
         </AnimatePresence>
 
         {/* fragments */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        <motion.div data-tour="portal-fragments" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4 space-y-3"
         >
           <FragmentBar count={fragmentCount} />
@@ -740,8 +802,10 @@ export default function PortalEventPage() {
           <WeeklyHistory runs={portalEvent!.runs_this_week} />
         )}
 
+        <DungeonRevealCard currentGold={Number((goldBalance as { gold?: number } | undefined)?.gold ?? 0)} />
+
         {/* fragment dungeons */}
-        <div className="space-y-3">
+        <div data-tour="portal-dungeons" className="space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
               <h2 className="text-sm font-bold text-foreground flex items-center gap-1.5">
@@ -757,10 +821,18 @@ export default function PortalEventPage() {
           <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-xl px-3.5 py-3">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
             <div className="text-xs text-muted-foreground space-y-0.5">
-              <p className="text-amber-300 font-semibold">{t('app.portal.pets_warning')}</p>
               <p>{t('app.portal.cooldown_warning', { s: 45 })}</p>
             </div>
           </div>
+
+          {petBonus && (
+            <div className="flex items-start gap-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-3.5 py-3">
+              <PawPrint className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-emerald-300 font-semibold">
+                {t('app.portal.pet_bonus_active', { bonus: petBonusLabel(petBonus) })}
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-2.5">
             {(Object.keys(FRAGMENT_TIERS) as FragmentTier[]).map(tier => (
@@ -782,6 +854,15 @@ export default function PortalEventPage() {
           />
         )}
       </AnimatePresence>
+      <TranslatedGuidedTour
+        tourKey="portal"
+        targets={[
+          { target: 'portal-header', key: 'overview' },
+          { target: 'portal-event', key: 'event' },
+          { target: 'portal-fragments', key: 'fragments' },
+          { target: 'portal-dungeons', key: 'dungeons' },
+        ]}
+      />
     </div>
     </AppLayout>
   );

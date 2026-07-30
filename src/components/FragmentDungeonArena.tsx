@@ -2,7 +2,8 @@
  * FragmentDungeonArena
  * Multi-floor dungeon arena for Fragment Dungeons (invoked with 10 Portal Fragments).
  * Supports up to 8 players, 45s action cooldown, multi-floor progression.
- * No pets allowed.
+ * Pets entram junto: o bônus passivo de stat já vem embutido nos stats
+ * recebidos por prop (aplicado em PortalEventPage).
  */
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

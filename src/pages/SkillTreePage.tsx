@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Network, Lock, RotateCcw, Check } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { Button } from '@/components/ui/button';
 import { useProfile } from '@/hooks/useProfile';
 import { useHeroClass } from '@/hooks/useHeroClass';
@@ -168,14 +169,14 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
 
   const content = (
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
+        <div data-tour="skill-tree-header" className="flex items-center gap-2">
           <Network className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-display font-bold text-primary text-glow">{t('app.skilltree.page_title')}</h1>
           <span className="ml-1 text-sm text-muted-foreground">· {t(`app.skilltree.class_${tree}`, { defaultValue: tree })}</span>
         </div>
 
         {/* Barra de pontos + respec */}
-        <div className="rpg-card flex flex-wrap items-center justify-between gap-3">
+        <div data-tour="skill-tree-points" className="rpg-card flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-6">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">{t('app.skilltree.points_available')}</p>
@@ -200,7 +201,7 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
         ) : nodes.length === 0 ? (
           <div className="rpg-card text-center py-10 text-muted-foreground">{t('app.skilltree.coming_soon')}</div>
         ) : (
-          <div className="rpg-card overflow-x-auto">
+          <div data-tour="skill-tree-nodes" className="rpg-card overflow-x-auto">
             {/* Tronco */}
             {tronco && (
               <div className="flex flex-col items-center">
@@ -237,12 +238,23 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
         )}
 
         {/* Legenda */}
-        <div className="rpg-card flex flex-wrap gap-4 text-xs text-muted-foreground">
+        <div data-tour="skill-tree-legend" className="rpg-card flex flex-wrap gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-secondary border-2 border-foreground/40" /> {t('app.skilltree.legend_skill')}</span>
           <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-full bg-secondary border-2 border-foreground/40" /> {t('app.skilltree.legend_passive')}</span>
           <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rotate-45 bg-secondary border-2 border-foreground/40" /> {t('app.skilltree.legend_variant')}</span>
           <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-primary" /> {t('app.skilltree.legend_phase2')}</span>
         </div>
+        {!embedded && (
+          <TranslatedGuidedTour
+            tourKey="skill_tree"
+            targets={[
+              { target: 'skill-tree-header', key: 'overview' },
+              { target: 'skill-tree-points', key: 'points' },
+              { target: 'skill-tree-nodes', key: 'nodes' },
+              { target: 'skill-tree-legend', key: 'legend' },
+            ]}
+          />
+        )}
       </div>
   );
   return embedded ? content : <AppLayout>{content}</AppLayout>;

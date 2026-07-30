@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface TourStep {
   /** Matches the value of the `data-tour="..."` attribute on the target element */
@@ -41,18 +42,25 @@ function calcTooltipStyle(rect: DOMRect | null): React.CSSProperties {
 }
 
 export default function GuidedTour({ tourKey, steps }: GuidedTourProps) {
+  const { t } = useTranslation();
   const storageKey = `tour_done_${tourKey}`;
   const uid = useId();
   // useId returns ":r0:" etc — strip non-alphanumeric chars for a valid SVG ID
   const maskId = `tour-mask-${uid.replace(/\W/g, '')}`;
 
-  const [active, setActive] = useState(
-    () => localStorage.getItem(storageKey) !== 'true'
-  );
+  const [mounted, setMounted] = useState(false);
+  const [active, setActive] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
   const current = steps[stepIdx];
+
+  // createPortal is client-only. Deferring activation also keeps server renders
+  // deterministic and avoids reading localStorage during SSR/tests.
+  useEffect(() => {
+    setActive(localStorage.getItem(storageKey) !== 'true');
+    setMounted(true);
+  }, [storageKey]);
 
   const finish = useCallback(() => {
     localStorage.setItem(storageKey, 'true');
@@ -64,21 +72,23 @@ export default function GuidedTour({ tourKey, steps }: GuidedTourProps) {
   useEffect(() => {
     if (!active || !current) return;
 
-    const el = document.querySelector<HTMLElement>(`[data-tour="${current.target}"]`);
-    if (!el) {
-      setRect(null);
-      return;
-    }
-
-    // Scroll the target into view if it's off-screen
-    const r = el.getBoundingClientRect();
-    const inView = r.top >= 0 && r.bottom <= window.innerHeight;
-    if (!inView) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
     let rafId: number;
+    let lastTarget: HTMLElement | null = null;
     const tick = () => {
+      const el = document.querySelector<HTMLElement>(`[data-tour="${current.target}"]`);
+      if (!el) {
+        lastTarget = null;
+        setRect(null);
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
+
+      if (el !== lastTarget) {
+        lastTarget = el;
+        const initialRect = el.getBoundingClientRect();
+        const inView = initialRect.top >= 0 && initialRect.bottom <= window.innerHeight;
+        if (!inView) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
       setRect(el.getBoundingClientRect());
       rafId = requestAnimationFrame(tick);
     };
@@ -86,7 +96,7 @@ export default function GuidedTour({ tourKey, steps }: GuidedTourProps) {
     return () => cancelAnimationFrame(rafId);
   }, [active, stepIdx, current]);
 
-  if (!active) return null;
+  if (!mounted || !active) return null;
 
   // Spotlight rect (target + padding)
   const hx = rect ? rect.left - PAD : -9999;
@@ -186,7 +196,7 @@ export default function GuidedTour({ tourKey, steps }: GuidedTourProps) {
             <button
               onClick={finish}
               className="p-1 rounded-lg hover:bg-muted/60 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-              title="Pular tutorial"
+              title={t('app_profile.guided_tours.controls.skip')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -207,7 +217,7 @@ export default function GuidedTour({ tourKey, steps }: GuidedTourProps) {
               disabled={stepIdx === 0}
               className="flex items-center gap-0.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-0 transition-all"
             >
-              <ChevronLeft className="w-3 h-3" /> Anterior
+              <ChevronLeft className="w-3 h-3" /> {t('app_profile.guided_tours.controls.previous')}
             </button>
 
             <span className="text-[10px] text-muted-foreground/40 font-medium tabular-nums">
@@ -219,10 +229,10 @@ export default function GuidedTour({ tourKey, steps }: GuidedTourProps) {
               className="flex items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-colors"
             >
               {isLast ? (
-                'Entendi! ✓'
+                t('app_profile.guided_tours.controls.finish')
               ) : (
                 <>
-                  Próximo <ChevronRight className="w-3 h-3" />
+                  {t('app_profile.guided_tours.controls.next')} <ChevronRight className="w-3 h-3" />
                 </>
               )}
             </button>
@@ -234,7 +244,7 @@ export default function GuidedTour({ tourKey, steps }: GuidedTourProps) {
               onClick={finish}
               className="text-[10px] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors underline-offset-2 hover:underline"
             >
-              Pular tutorial
+              {t('app_profile.guided_tours.controls.skip')}
             </button>
           </div>
         </motion.div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -117,7 +118,7 @@ export default function SystemInfoPage() {
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto space-y-6">
-        <div>
+        <div data-tour="system-info-header">
           <h1 className="text-2xl font-display font-bold text-primary text-glow">{t('app.system_info.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {t('app.system_info.subtitle')}
@@ -125,7 +126,7 @@ export default function SystemInfoPage() {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.9fr] gap-6">
-          <section className="bg-card border border-border rounded-xl p-6 space-y-4">
+          <section data-tour="system-info-updates" className="bg-card border border-border rounded-xl p-6 space-y-4">
             <div className="flex items-center gap-2">
               <ScrollText className="w-5 h-5 text-primary" />
               <h2 className="text-lg font-bold text-foreground">{t('app.system_info.update_logs')}</h2>
@@ -162,7 +163,7 @@ export default function SystemInfoPage() {
           </section>
 
           <section className="space-y-6">
-            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <div data-tour="system-info-feedback" className="bg-card border border-border rounded-xl p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-5 h-5 text-yellow-400" />
                 <h2 className="text-lg font-bold text-foreground">{t('app.system_info.suggest_improvements')}</h2>
@@ -191,7 +192,7 @@ export default function SystemInfoPage() {
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <div data-tour="system-info-history" className="bg-card border border-border rounded-xl p-6 space-y-4">
               <h2 className="text-base font-bold text-foreground">{t('app.system_info.your_feedback')}</h2>
               {loadingFeedback ? (
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -264,6 +265,15 @@ export default function SystemInfoPage() {
           </section>
         </div>
       </div>
+      <TranslatedGuidedTour
+        tourKey="system_info"
+        targets={[
+          { target: 'system-info-header', key: 'overview' },
+          { target: 'system-info-updates', key: 'updates' },
+          { target: 'system-info-feedback', key: 'feedback' },
+          { target: 'system-info-history', key: 'history' },
+        ]}
+      />
     </AppLayout>
   );
 }

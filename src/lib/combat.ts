@@ -235,7 +235,7 @@ export function getBossCombatBuffModifiers(effects: Set<string>): {
   };
 }
 
-function getWeaknessByIndex(index: number): string {
+export function getWeaknessByIndex(index: number): string {
   const weaknesses = ['Forca', 'Inteligencia', 'Agilidade', 'Disciplina', 'Sabedoria', 'Resiliencia'];
   return weaknesses[index % weaknesses.length];
 }
@@ -981,3 +981,42 @@ export function getSkillLoadout(
   return { noviceSkills, classSkills, specialtySkills };
 }
 
+
+// ── Loadout de combate a partir de nós da árvore ──────────────────────────────
+// Aprender uma skill (player_skill_nodes) e EQUIPÁ-LA (profiles.combat_skill_loadout)
+// são coisas distintas: o combate lê apenas o loadout. Esta é a fonte única do
+// formato da entrada, usada pelo editor (CombatLoadout) e pelo onboarding.
+
+export type LoadoutEntry = {
+  id: string;
+  name: string;
+  power: number;
+  cooldown: number;
+  category: 'fisica' | 'magica';
+  tier: string;
+  mpCost: number;
+  effectType: string;
+  effectLabel: string;
+  element: string;
+};
+
+/** Converte um nó de árvore (com seu rank) na entrada de loadout equivalente. */
+export function buildTreeSkillEntry(node: GenericRecord, rank = 1, tier = 'classe'): LoadoutEntry {
+  const eff: GenericRecord = node?.effect || {};
+  const safeRank = Math.max(1, Number(rank) || 1);
+  const pct = Number(eff.pct_per_rank ?? 10);
+  const power = Math.round(Number(eff.power ?? 30) * (1 + ((safeRank - 1) * pct) / 100));
+  const element = String(eff.element || 'arcano');
+  return {
+    id: String(node?.id || ''),
+    name: String(node?.name || 'Habilidade'),
+    power,
+    cooldown: Number(eff.cooldown ?? 2),
+    category: element === 'fisico' ? 'fisica' : 'magica',
+    tier,
+    mpCost: Number(eff.mpCost ?? 0),
+    effectType: String(eff.effectType || 'dano'),
+    effectLabel: String(node?.description || ''),
+    element,
+  };
+}

@@ -416,8 +416,12 @@
       "pet_role_support": "Soporte",
       "pet_owned": "Adquirido",
       "pet_buy": "Comprar",
+      "pet_forage": "Forrajea 1 vez al día",
       "toast_pet_bought": "¡{{name}} ahora es tu compañero! 🐾",
-      "toast_pet_error": "Error al comprar la mascota."
+      "toast_pet_error": "Error al comprar la mascota.",
+      "pet_locked_tag": "No conquistado",
+      "pet_locked_hint": "Derrota a {{boss}} para revelar y desbloquear la compra.",
+      "pet_locked_button": "Bloqueado"
     },
     "calendar": {
       "page_title": "Calendario",
@@ -1344,7 +1348,84 @@
       "insufficientGold": "¡Oro insuficiente! Tienes {{gold}}, necesitas {{required}}.",
       "changeAvatarTooltip": "Cambiar foto de perfil",
       "avatarUpdatedToast": "¡Foto de perfil actualizada!",
-      "avatarErrorToast": "Error al subir la foto."
+      "avatarErrorToast": "Error al subir la foto.",
+      "guided_tours": {
+        "controls": { "previous": "Anterior", "next": "Siguiente", "finish": "¡Entendido! ✓", "skip": "Saltar tutorial" },
+        "calendar": {
+          "overview_title": "Tu historial de constancia 📅", "overview_desc": "Los colores resumen cada día; el anillo azul indica un diario guardado.",
+          "days_title": "Elige un día", "days_desc": "Selecciona una fecha para revisar solo las misiones que ya existían y estaban programadas.",
+          "missions_title": "Qué pasó ese día", "missions_desc": "Mira conclusiones, recuperaciones, pendientes y misiones nuevas sin reescribir el pasado.",
+          "journal_title": "Diario del Héroe 📖", "journal_desc": "Guarda tu ánimo y reflexión. Cada entrada queda vinculada a su fecha."
+        },
+        "portal": {
+          "overview_title": "Evento del Portal ⚡", "overview_desc": "El portal semanal es una actividad de riesgo, exploración y recompensas especiales.",
+          "event_title": "Ventana del evento", "event_desc": "Comprueba si el portal está activo y cuánto tiempo queda.",
+          "fragments_title": "Fragmentos dimensionales", "fragments_desc": "Reúne fragmentos durante el evento para invocar mazmorras extra.",
+          "dungeons_title": "Mazmorras de fragmentos", "dungeons_desc": "Elige con cuidado: la derrota termina el intento y las acciones tienen espera."
+        },
+        "health": {
+          "overview_title": "Centro de Salud ❤️", "overview_desc": "Sigue alimentación e hidratación y mantén tus registros organizados.",
+          "exams_title": "Análisis de exámenes", "exams_desc": "Sube un archivo para orientación auxiliar. No sustituye una evaluación médica.",
+          "tips_title": "Orientaciones importantes", "tips_desc": "Usa estos consejos como apoyo y busca un profesional cuando sea necesario."
+        },
+        "skills_hub": {
+          "overview_title": "Centro de Habilidades 🌳", "overview_desc": "Desarrolla poderes, equipa acciones y elige talentos de vida.",
+          "tabs_title": "Tres formas de crecer", "tabs_desc": "Árbol desbloquea habilidades, Loadout equipa acciones y Talentos da efectos pasivos.",
+          "content_title": "Monta tu estrategia", "content_desc": "Revisa costes, límites y efectos antes de confirmar tus elecciones."
+        },
+        "feats": {
+          "overview_title": "Talentos de Vida ✨", "overview_desc": "Los talentos son bonos pasivos obtenidos con la progresión.",
+          "points_title": "Puntos y límite", "points_desc": "Gasta puntos para desbloquear talentos y controla cuántos puedes equipar.",
+          "loadout_title": "Habilidades activas", "loadout_desc": "Este resumen muestra las acciones que llevas a cada modo de combate.",
+          "tree_title": "Elige tus talentos", "tree_desc": "Compara efectos por área y equipa los que encajen con tu rutina."
+        },
+        "skill_tree": {
+          "overview_title": "Árbol de tu clase 🌳", "overview_desc": "Cada clase tiene sus propios caminos de habilidades y pasivas.",
+          "points_title": "Puntos de habilidad", "points_desc": "Mira puntos disponibles, gastados y el coste de reiniciar.",
+          "nodes_title": "Caminos y requisitos", "nodes_desc": "Selecciona nodos respetando nivel, coste y conexiones anteriores.",
+          "legend_title": "Lee los símbolos", "legend_desc": "La leyenda distingue habilidades, pasivas, variantes y contenido futuro."
+        },
+        "progress": {
+          "summary_title": "Resumen del héroe", "summary_desc": "Nivel, ranking, clase y actividad reciente están reunidos aquí.",
+          "xp_title": "XP de los últimos 7 días", "xp_desc": "Usa el gráfico para ver ritmo, pausas y regresos de tu rutina.",
+          "radar_title": "Evolución de atributos", "radar_desc": "El radar muestra qué áreas de la vida reciben más atención.",
+          "attributes_title": "Detalle por atributo", "attributes_desc": "Compara XP y nivel individual para elegir tu próximo foco."
+        },
+        "shop": {
+          "overview_title": "Tienda del Tiempo 🛒", "overview_desc": "Convierte el oro ganado con tu rutina en recursos del juego.",
+          "balance_title": "Tu saldo", "balance_desc": "Comprueba tu oro antes de comprar; el combate no genera oro.",
+          "categories_title": "Categorías de la tienda", "categories_desc": "Cambia entre tiempo, equipamiento y mascotas.",
+          "items_title": "Compra con propósito", "items_desc": "Lee duración, efecto y precio antes de confirmar una compra."
+        },
+        "leaderboard": {
+          "overview_title": "Ranking de héroes 🏆", "overview_desc": "Compara jornadas sin perder de vista tu propia constancia.",
+          "scope_title": "Global o regional", "scope_desc": "Compara con toda la comunidad o solamente con tu región.",
+          "rankings_title": "Varios tipos de ranking", "rankings_desc": "Explora XP, racha, semana, campeones y clasificación por clase."
+        },
+        "companion_locked": { "unlock_title": "Compañero aún bloqueado 🐾", "unlock_desc": "Alcanza el nivel indicado para elegir tu primer compañero." },
+        "companion": {
+          "overview_title": "Tus compañeros 🐾", "overview_desc": "Aquí viven tu compañero elegido y las mascotas conquistadas.",
+          "roster_title": "Elige y administra", "roster_desc": "Nombra a tu primer compañero y selecciona qué criatura queda activa.",
+          "tips_title": "Cómo funcionan", "tips_desc": "Los compañeros son cosméticos; consulta aquí sus reglas y límites."
+        },
+        "social": {
+          "overview_title": "Área Social 🤝", "overview_desc": "Encuentra héroes, conversa y crea misiones en conjunto.",
+          "tabs_title": "Amigos y misiones", "tabs_desc": "Cambia entre tu red de amigos y los desafíos cooperativos activos.",
+          "content_title": "Construye tu equipo", "content_desc": "Acepta solicitudes, busca jugadores y sigue el progreso compartido."
+        },
+        "mobile": {
+          "download_title": "LifeonRPG en el móvil 📱", "download_desc": "Comprueba la versión disponible y descarga la app Android aquí.",
+          "benefits_title": "Por qué usar la app", "benefits_desc": "Mira qué hace más práctico el seguimiento diario en el móvil.",
+          "install_title": "Instalación paso a paso", "install_desc": "Sigue esta secuencia para instalar el APK con seguridad.",
+          "faq_title": "Preguntas frecuentes", "faq_desc": "Encuentra respuestas sobre instalación, actualización y compatibilidad."
+        },
+        "system_info": {
+          "overview_title": "Información del sistema 📜", "overview_desc": "Sigue las novedades y envía sugerencias al equipo.",
+          "updates_title": "Historial de actualizaciones", "updates_desc": "Mira qué cambió en cada versión y las novedades destacadas.",
+          "feedback_title": "Sugiere una mejora", "feedback_desc": "Describe tu idea con un título claro para facilitar su evaluación.",
+          "history_title": "Sigue tus envíos", "history_desc": "Consulta el estado y el historial de tus sugerencias."
+        }
+      }
     },
     "portal": {
       "weekly_event": "Evento Semanal",
@@ -1357,7 +1438,7 @@
       "pending_header": "Mazmorra en Espera",
       "frag_dungeons_title": "Mazmorras de Fragmento",
       "frag_dungeons_sub": "Invoca con {{n}} fragmentos",
-      "pets_warning": "No se permiten mascotas en estas mazmorras.",
+      "pet_bonus_active": "Tu mascota te acompaña: {{bonus}}.",
       "cooldown_warning": "Cada acción tiene un enfriamiento de {{s}} segundos. Planifica bien.",
       "frag_bar_title": "Fragmentos de Portal",
       "frag_bar_remaining": "Faltan {{n}} para invocar",
@@ -1420,7 +1501,22 @@
       "time_expired": "Expirado",
       "expires_prefix": "Expira en",
       "scanner_tooltip": "Compra el \"Escáner de Portal\" en la tienda (120🪙)",
-      "public_players": "{{count}}/{{max}} jugadores"
+      "public_players": "{{count}}/{{max}} jugadores",
+      "toast_defeat_title": "🌑 Derrotado y expulsado del portal",
+      "toast_defeat_grace": "Escapaste por poco — agotado, pero vivo. Esta vez el portal sigue abierto. La próxima caída lo cierra para siempre.",
+      "toast_defeat_closed": "Los fragmentos se perdieron y el portal se cerró. Descansa, come, bebe agua: la rutina es lo que te trae de vuelta.",
+      "reveal_title": "Lupas de Revelación",
+      "reveal_sub": "Caer cierra el portal para siempre. Conviene saber qué te espera.",
+      "reveal_nothing": "Nada revelado aún — entrarías a ciegas.",
+      "reveal_floors": "{{n}} pisos hasta el jefe",
+      "reveal_enemies": "Enemigos en el camino:",
+      "reveal_weakness": "débil contra {{attr}}",
+      "reveal_tier_basic": "Lupa Básica — pisos",
+      "reveal_tier_medium": "Lupa Media — enemigos",
+      "reveal_tier_superior": "Lupa Superior — jefe y debilidad",
+      "reveal_bought": "🔍 ¡Revelado!",
+      "reveal_no_gold": "Oro insuficiente para esta lupa.",
+      "reveal_error": "No se pudo revelar ahora."
     },
     "crafting": {
       "title": "Taller de Crafteo",
@@ -1656,6 +1752,14 @@
       "toast_success_title": "¡Contraseña restablecida!",
       "toast_success_desc": "Ya puedes iniciar sesión con tu nueva contraseña.",
       "toast_error": "Error"
+    },
+    "combat_pip": {
+      "title": "Combate en curso",
+      "enemy": "Enemigo",
+      "you": "Tú",
+      "resume": "Reanudar",
+      "leave": "Salir del combate",
+      "fullscreen_pref": "Abrir en pantalla completa al tocar"
     }
   },
   "footer": {

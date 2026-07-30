@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -51,6 +52,7 @@ function LockedScreen({ level }: { level: number }) {
   return (
     <div className="min-h-screen p-4 md:p-6 flex flex-col items-center justify-center gap-6 text-center">
       <motion.div
+        data-tour="companion-locked"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         className="flex flex-col items-center gap-4"
@@ -75,6 +77,10 @@ function LockedScreen({ level }: { level: number }) {
           <Progress value={Math.min(100, (level / 3) * 100)} className="h-2" />
         </div>
       </motion.div>
+      <TranslatedGuidedTour
+        tourKey="companion_locked"
+        targets={[{ target: 'companion-locked', key: 'unlock' }]}
+      />
     </div>
   );
 }
@@ -407,7 +413,7 @@ export default function CompanionPage() {
     <AppLayout>
       <div className="min-h-screen p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-3">
+        <div data-tour="companion-header" className="flex items-center gap-3">
           <PawPrint className="w-7 h-7 text-primary" />
           <div>
             <h1 className="text-2xl font-bold">{t('app.companion.page_title')}</h1>
@@ -416,21 +422,23 @@ export default function CompanionPage() {
         </div>
 
         {/* Selection if lv3+ but no animal companion yet */}
-        {!animalCompanion && level >= 3 && (
-          <SelectionScreen />
-        )}
+        <div data-tour="companion-roster">
+          {!animalCompanion && level >= 3 && (
+            <SelectionScreen />
+          )}
 
-        {/* Companions grid (animal + pets) — todos cosméticos */}
-        {companions.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {companions.map((c) => (
-              <CompanionCard key={c.id} companion={c} activeType={activeType} onToggleActive={setActive} />
-            ))}
-          </div>
-        )}
+          {/* Companions grid (animal + pets) — todos cosméticos */}
+          {companions.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {companions.map((c) => (
+                <CompanionCard key={c.id} companion={c} activeType={activeType} onToggleActive={setActive} />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Tips */}
-        <div className="rounded-xl border border-border bg-card/40 p-4">
+        <div data-tour="companion-tips" className="rounded-xl border border-border bg-card/40 p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t('app.companion.tips_title')}</p>
           <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
             <li>{t('app.companion.tip_1')}</li>
@@ -439,6 +447,14 @@ export default function CompanionPage() {
           </ul>
         </div>
       </div>
+      <TranslatedGuidedTour
+        tourKey="companion"
+        targets={[
+          { target: 'companion-header', key: 'overview' },
+          { target: 'companion-roster', key: 'roster' },
+          { target: 'companion-tips', key: 'tips' },
+        ]}
+      />
     </AppLayout>
   );
 }

@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { hasCompletedOnboarding, markOnboardingCompletedLocal } from '@/lib/onboarding';
+import { buildTreeSkillEntry } from '@/lib/combat';
 import {
   Sword,
   BookOpen,
@@ -260,6 +261,19 @@ export default function Onboarding() {
       if (troncoNode) {
         try {
           await supabase.rpc('allocate_skill_node', { p_node_id: troncoNode.id } as any);
+
+          // Aprender != equipar: o combate lê só profiles.combat_skill_loadout.
+          // Sem este passo o jogador chega ao primeiro combate com Ataque Básico
+          // apenas, mesmo tendo a habilidade na árvore.
+          const existingLoadout = Array.isArray((profile as any)?.combat_skill_loadout)
+            ? (profile as any).combat_skill_loadout
+            : [];
+          if (existingLoadout.length === 0) {
+            await supabase
+              .from('profiles')
+              .update({ combat_skill_loadout: [buildTreeSkillEntry(troncoNode)] } as any)
+              .eq('user_id', user.id);
+          }
         } catch {
           // Já alocado / sem ponto — ignora; jogador pode pegar no hub depois.
         }

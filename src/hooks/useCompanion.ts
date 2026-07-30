@@ -244,21 +244,29 @@ export function useCreateCompanion() {
 export type ShopPet = {
   pet_type: string; name: string; emoji: string; role: string;
   atk: number; def: number; hp: number; mp: number; price: number; sort: number;
+  /** Boss que precisa ter caído para liberar a compra (null = sem exigência). */
+  unlock_boss?: string | null;
+  unlocked?: boolean;
+  owned?: boolean;
 };
 
-/** Catálogo de pets da loja (minis de boss). */
+/**
+ * Catálogo de pets da loja (minis de boss), já com o estado de desbloqueio de
+ * quem está olhando.
+ *
+ * Cada mini exige derrotar a criatura grande equivalente antes da compra, então
+ * a vitrine precisa saber, por jogador, o que já foi conquistado. A trava de
+ * verdade vive no buy_pet — isto aqui é só o que a loja mostra.
+ */
 export function useShopPets() {
   return useQuery<ShopPet[]>({
     queryKey: ['pet_catalog'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('pet_catalog')
-        .select('*')
-        .order('sort', { ascending: true });
+      const { data, error } = await supabase.rpc('get_pet_catalog' as never);
       if (error) throw error;
-      return (data ?? []) as ShopPet[];
+      return (data ?? []) as unknown as ShopPet[];
     },
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
   });
 }
 

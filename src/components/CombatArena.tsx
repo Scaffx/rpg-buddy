@@ -4,6 +4,10 @@ import { Dices } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getActivePetType } from '@/lib/pets';
+import { useQueryClient } from '@tanstack/react-query';
+import { submitCombatTurn } from '@/lib/combatTurn';
+import { decideAutoAction, AUTO_TURN_DELAY_MS } from '@/lib/autoBattle';
+import CombatEquipSwap from '@/components/CombatEquipSwap';
 import { sfx, resumeAudioContext } from '@/lib/sfx';
 import { useToast } from '@/hooks/use-toast';
 
@@ -242,47 +246,18 @@ const isSummonSkill = (skillName?: string): boolean =>
 const mockProvider: CombatDataProvider = {
   async processTurn({ combateId, currentBossHp, currentPlayerHp, currentPlayerMp, acaoEscolhida, skillId, skillName, skillPower, skillEffectType, skillMpCost, skillElement, activePetType }) {
     if (combateId) {
-      const { data, error } = await supabase.functions.invoke('processar_turno', {
-        body: {
-          combate_id: combateId,
-          acao_escolhida: acaoEscolhida,
-          skill_id: skillId,
-          skill_name: skillName,
-          skill_power: skillPower,
-          current_mp: currentPlayerMp,
-          ...(skillEffectType ? { skill_effect_type: skillEffectType } : {}),
-          ...(skillMpCost !== undefined ? { skill_mp_cost: skillMpCost } : {}),
-          ...(skillElement ? { skill_element: skillElement } : {}),
-          ...(activePetType ? { active_pet_type: activePetType } : {}),
-        },
-      });
-
-      if (error) {
-        // supabase-js v2 retorna FunctionsHttpError com mensagem genérica.
-        // O corpo JSON com a mensagem real está em error.context (Response).
-        let realMessage = error.message || 'Erro desconhecido';
-        try {
-          const ctx = (error as any).context;
-          if (ctx && typeof ctx.json === 'function') {
-            const body = await ctx.json();
-            if (body?.error) realMessage = String(body.error);
-            if (body?.message) realMessage = String(body.message);
-          } else if (ctx && typeof ctx.text === 'function') {
-            const txt = await ctx.text();
-            if (txt) realMessage = txt;
-          }
-        } catch {
-          /* ignore parse failure, keep generic message */
-        }
-        throw new Error(realMessage);
-      }
-
-      // Edge function pode retornar 2xx com payload de erro (ex.: insufficient_mp).
-      if (data && typeof data === 'object' && 'error' in (data as any)) {
-        throw new Error(String((data as any).message || (data as any).error));
-      }
-
-      return data as TurnSummary;
+      return (await submitCombatTurn({
+        combateId,
+        acaoEscolhida,
+        currentPlayerMp,
+        skillId,
+        skillName,
+        skillPower,
+        skillEffectType,
+        skillMpCost,
+        skillElement,
+        activePetType,
+      })) as TurnSummary;
     }
 
     await wait(900);
@@ -349,6 +324,7 @@ export default function CombatArena({
 }: CombatArenaProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const dataProvider = useMemo(() => provider ?? mockProvider, [provider]);
 
   const bossResourceType: BossResource = useMemo(
@@ -384,6 +360,30 @@ export default function CombatArena({
   const [playerMp, setPlayerMp] = useState(initialPlayerMp);
   const [playerFatigue, setPlayerFatigue] = useState(initialPlayerFatigue);
   // Frascos (estilo Elden Ring): pool por luta alocado HP/MP (default 2/2; sobrescrito no load).
+  // Automático: preferência do jogador, guardada por dispositivo. O ref evita
+  // que o efeito de turno recrie a si mesmo a cada toggle.
+  const [autoBattle, setAutoBattle] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('combat_auto_battle') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const autoBattleRef = useRef(autoBattle);
+  // Reabre o ciclo do automático depois de uma ação livre (frasco): o estado do
+  // turno continua em "player", então sozinho ele não redispara o efeito.
+  const [autoTick, setAutoTick] = useState(0);
+  // Trocar de arma gasta a rodada: o jogador passa a vez e só o boss age.
+  const [skipPlayerActionOnce, setSkipPlayerActionOnce] = useState(false);
+  useEffect(() => {
+    autoBattleRef.current = autoBattle;
+    try {
+      localStorage.setItem('combat_auto_battle', autoBattle ? '1' : '0');
+    } catch {
+      /* sem localStorage: preferência vale só nesta sessão */
+    }
+  }, [autoBattle]);
+
   const [flaskHpLeft, setFlaskHpLeft] = useState(2);
   const [flaskMpLeft, setFlaskMpLeft] = useState(2);
   const [bossResource, setBossResource] = useState(bossResourceMax);
@@ -834,7 +834,56 @@ export default function CombatArena({
       }
 
       const battleToken = currentBattleTokenRef.current;
-      const { skill: chosenSkill, warning } = pickAffordableSkill(playerMpRef.current);
+
+      // Automático (F4): a rotação de habilidades já era automática; o que faltava
+      // era beber frasco sozinho. Decisão em lib/autoBattle (pura e testada); a
+      // execução segue na edge. De propósito não troca equipamento — vantagem
+      // elemental é prêmio de quem joga no manual.
+      if (autoBattleRef.current) {
+        const decision = decideAutoAction({
+          hpPlayer: playerHpRef.current,
+          hpPlayerMax: initialPlayerHp,
+          mpPlayer: playerMpRef.current,
+          skills: selectedSkills.map((s) => ({
+            id: s.id,
+            name: s.name,
+            power: s.power,
+            mpCost: s.mpCost !== undefined ? s.mpCost : getSkillMpCost(s.power),
+            effectType: s.effectType,
+            element: s.element,
+          })),
+          turnsTaken: skillCursorRef.current,
+          flaskHpLeft,
+          flaskMpLeft,
+        });
+
+        if (decision.kind === 'flask_hp' || decision.kind === 'flask_mp') {
+          await useFlaskInCombat(decision.kind === 'flask_hp' ? 'hp' : 'mp');
+          if (!mountedRef.current || battleToken !== currentBattleTokenRef.current) return;
+          // Beber é ação livre (igual ao botão manual), então o turno segue sendo
+          // do jogador. Como `turn` não muda de valor, o efeito não re-executaria
+          // sozinho — o tick é o que reabre o ciclo e evita o automático travar.
+          setTimeout(() => {
+            if (mountedRef.current && battleToken === currentBattleTokenRef.current) {
+              setAutoTick((n) => n + 1);
+            }
+          }, AUTO_TURN_DELAY_MS);
+          return;
+        }
+      }
+      // Custo da troca de arma: na rodada em que troca, o jogador abre mão da
+      // habilidade e desfere apenas o golpe básico. É o que impede contra-equipar
+      // de graça a cada inimigo e mantém a preparação (e as lupas) valendo algo.
+      //
+      // A versão mais dura — perder a rodada inteira, só apanhando — depende da
+      // edge processar_turno aceitar uma ação de "passar a vez"; hoje ela só
+      // aceita 'atacar'. Fica registrado para quando a edge for atualizada.
+      const swappedThisTurn = skipPlayerActionOnce;
+      if (swappedThisTurn) setSkipPlayerActionOnce(false);
+
+      const { skill: chosenSkill, warning } = swappedThisTurn
+        ? { skill: null as CombatSkill | null, warning: null as string | null }
+        : pickAffordableSkill(playerMpRef.current);
       setInsufficientResourceWarning(warning);
 
       const skillCost = chosenSkill ? (chosenSkill.mpCost !== undefined ? chosenSkill.mpCost : getSkillMpCost(chosenSkill.power)) : 0;
@@ -1255,7 +1304,16 @@ export default function CombatArena({
       }
 
       if (turnResult.status === 'derrota') {
-        persistPlayerVitals(currentHpForSummons, mpAfterTurn, nextFatigue);
+        // A queda cobra do CORPO (HP a 1 + fadiga alta), nunca do XP: a rotina
+        // conquistada não pode ser apagada por um dado ruim. Server-side, para
+        // que a consequência não dependa do cliente estar aberto.
+        try {
+          await supabase.rpc('resolve_combat_defeat' as never, { p_context: 'boss' } as never);
+        } catch {
+          // Se a RPC falhar, ainda persistimos o que der pelo caminho antigo.
+          persistPlayerVitals(1, mpAfterTurn, Math.max(nextFatigue, 80));
+        }
+        qc.invalidateQueries({ queryKey: ['health_stats'] });
         launchDefeatCinematic();
         setTurn('finished');
         return;
@@ -1293,7 +1351,7 @@ export default function CombatArena({
         setIsRolling(false);
       }
     });
-  }, [turn, dataProvider, combateId, selectedSkills]);
+  }, [turn, autoTick, dataProvider, combateId, selectedSkills]);
 
   const winnerLabel =
     turn === 'finished'
@@ -1342,6 +1400,27 @@ export default function CombatArena({
             className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/20 disabled:opacity-40"
           >
             💧 Mana ({flaskMpLeft})
+          </button>
+          <CombatEquipSwap
+            disabled={turn !== 'player' || isRolling || autoBattle}
+            onSwapped={() => {
+              // A troca consome a rodada: o jogador não ataca, e o boss age.
+              // É esse custo que mantém o matchup elemental valendo alguma
+              // coisa — sem ele, bastaria contra-equipar sempre na hora.
+              setSkipPlayerActionOnce(true);
+              setAutoTick((n) => n + 1);
+            }}
+          />
+          <button
+            onClick={() => setAutoBattle((v) => !v)}
+            title="No automático o herói alterna as habilidades e bebe frasco sozinho. Trocar equipamento continua sendo só no manual."
+            className={`ml-auto inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${
+              autoBattle
+                ? 'border-amber-400/60 bg-amber-500/20 text-amber-200'
+                : 'border-zinc-600/60 bg-zinc-700/30 text-zinc-400 hover:bg-zinc-700/50'
+            }`}
+          >
+            🤖 Auto {autoBattle ? 'ON' : 'OFF'}
           </button>
         </div>
         {selectedSkills.length > 0 ? (

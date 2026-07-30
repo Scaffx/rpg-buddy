@@ -1,10 +1,25 @@
 apply plugin: 'com.android.application'
 
+// ── Assinatura de release ────────────────────────────────────────────────────
+// Lê de android/keystore.properties (gitignored, ver keystore.properties.example)
+// OU das env vars RELEASE_STORE_FILE/RELEASE_STORE_PASSWORD/RELEASE_KEY_ALIAS/
+// RELEASE_KEY_PASSWORD (útil em CI). Sem nenhum dos dois, o build de release
+// segue SEM assinatura (comportamento atual, inalterado) — nada quebra até
+// você fornecer o keystore de upload real.
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def hasKeystoreFile = keystorePropertiesFile.exists()
+def keystoreProperties = new Properties()
+if (hasKeystoreFile) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+def hasReleaseSigningEnv = System.getenv('RELEASE_STORE_FILE') != null
+def hasReleaseSigning = hasKeystoreFile || hasReleaseSigningEnv
+
 android {
     namespace = "app.lovable.rpgbuddy"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.lovable.rpgbuddy"
+        applicationId "com.scaffx.lifeonrpg"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 15
@@ -16,10 +31,28 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasKeystoreFile) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            } else if (hasReleaseSigningEnv) {
+                storeFile file(System.getenv('RELEASE_STORE_FILE'))
+                storePassword System.getenv('RELEASE_STORE_PASSWORD')
+                keyAlias System.getenv('RELEASE_KEY_ALIAS')
+                keyPassword System.getenv('RELEASE_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

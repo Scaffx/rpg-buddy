@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import AppLayout from "@/components/AppLayout";
+import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import {
   useFriends,
   usePendingRequests,
@@ -75,7 +76,7 @@ function CoOpMissionModal({
         className="w-full max-w-md bg-card border border-border rounded-2xl p-5 space-y-4"
       >
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div data-tour="social-header" className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Swords className="w-5 h-5 text-primary" />
             <h2 className="text-base font-bold text-foreground">{t('app.social.coop_mission')}</h2>
@@ -312,7 +313,7 @@ export default function SocialPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 bg-muted/30 rounded-xl p-1">
+        <div data-tour="social-tabs" className="flex gap-2 bg-muted/30 rounded-xl p-1">
           {(["friends", "missions"] as const).map((tabId) => (
             <button
               key={tabId}
@@ -328,6 +329,7 @@ export default function SocialPage() {
           ))}
         </div>
 
+        <div data-tour="social-content">
         {/* ── TAB: AMIGOS ── */}
         {tab === "friends" && (
           <div className="space-y-4">
@@ -653,7 +655,16 @@ export default function SocialPage() {
             )}
           </div>
         )}
+        </div>
       </div>
+      <TranslatedGuidedTour
+        tourKey="social"
+        targets={[
+          { target: 'social-header', key: 'overview' },
+          { target: 'social-tabs', key: 'tabs' },
+          { target: 'social-content', key: 'content' },
+        ]}
+      />
     </AppLayout>
   );
 }
