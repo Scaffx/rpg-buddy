@@ -1231,21 +1231,10 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (weeklyClaim) {
-        const bonusGold = 5;
+        // Torneira única (§9.2): repetir boss na semana rende MATERIAL, não ouro.
+        // Item é espólio legítimo de masmorra; ouro é recompensa de rotina e só
+        // sai de complete_mission. Antes daqui saíam 5 de ouro por repetição.
         const materialGain = 3;
-
-        const { data: balance } = await supabase
-          .from('user_balance')
-          .select('gold')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (balance) {
-          await supabase
-            .from('user_balance')
-            .update({ gold: Number((balance as any).gold || 0) + bonusGold, updated_at: new Date().toISOString() })
-            .eq('user_id', user.id);
-        }
 
         const { data: mats } = await supabase
           .from('user_crafting_materials')
@@ -1267,7 +1256,7 @@ Deno.serve(async (req) => {
         await supabase.from('activity_log').insert({
           user_id: user.id,
           action: 'boss_repeat_reward',
-          description: `Boss repetido na semana (Lv ${bossLevel}): +${bonusGold} Ouro e +${materialGain} Materiais`,
+          description: `Boss repetido na semana (Lv ${bossLevel}): +${materialGain} Materiais`,
           xp_gained: 0,
         });
       } else {
