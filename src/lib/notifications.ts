@@ -111,12 +111,20 @@ export type NotifyDecision =
 
 /**
  * Decide se pode notificar agora e qual gatilho vence.
+ *
  * `pending` são os gatilhos verdadeiros neste instante (calculados pelo app a
  * partir do estado real: missões, fadiga, HP, água, refeição).
+ *
+ * `urgent` são os que ACABARAM de virar verdade — o herói caiu no portal agora,
+ * a exaustão estourou agora. Notícia fresca fura a fila de prioridade, porque
+ * chegar na hora é o que faz a diferença entre um lembrete útil e um aviso
+ * genérico. Os tetos e o silêncio continuam valendo: urgência não abre exceção
+ * para acordar ninguém de madrugada.
  */
 export function decideNotification(
   pending: NotificationKind[],
   input: CanNotifyInput,
+  urgent: NotificationKind[] = [],
 ): NotifyDecision {
   const { now, quiet, restMode, history, mutedKinds } = input;
 
@@ -137,9 +145,14 @@ export function decideNotification(
   // Não repetir a mesma categoria no mesmo dia: duas cobranças de água soam
   // como cobrança, não como lembrete.
   const usedToday = new Set(today.map((r) => r.kind));
-  const candidates = KIND_PRIORITY.filter(
-    (k) => pending.includes(k) && !muted.has(k) && !usedToday.has(k),
-  );
+  const elegivel = (k: NotificationKind) =>
+    pending.includes(k) && !muted.has(k) && !usedToday.has(k);
+
+  // Fila: primeiro o que acabou de acontecer (na ordem de prioridade entre si),
+  // depois o resto.
+  const urgentes = KIND_PRIORITY.filter((k) => urgent.includes(k) && elegivel(k));
+  const demais = KIND_PRIORITY.filter((k) => !urgent.includes(k) && elegivel(k));
+  const candidates = [...urgentes, ...demais];
 
   if (candidates.length === 0) {
     const havePending = pending.some((k) => !muted.has(k));
@@ -187,4 +200,43 @@ export function pickMessage(kind: NotificationKind, date = new Date()): { title:
     (date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86_400_000,
   );
   return variants[dayOfYear % variants.length];
+}
+
+// ── Gatilhos reativos ────────────────────────────────────────────────────────
+// Um lembrete de "vida baixa" vale quando a vida ACABOU de cair — não a cada
+// vez que o app abre e encontra o herói ferido. Sem olhar a transição, a mesma
+// condição dispararia de novo a cada visita, virando cobrança.
+
+export const HP_LOW_RATIO = 0.3;
+export const FATIGUE_HIGH = 70;
+
+export type VitalsSnapshot = {
+  /** HP atual dividido pelo máximo (0..1). */
+  hpRatio: number;
+  /** Fadiga de 0 a 100. */
+  fatigue: number;
+};
+
+export function isHpLow(v: VitalsSnapshot): boolean {
+  return v.hpRatio <= HP_LOW_RATIO;
+}
+
+export function isFatigueHigh(v: VitalsSnapshot): boolean {
+  return v.fatigue >= FATIGUE_HIGH;
+}
+
+/**
+ * Gatilhos que cruzaram o limiar entre duas leituras — de saudável para ferido,
+ * de descansado para exausto. Sem leitura anterior (primeira vez na sessão) não
+ * há transição a relatar: o estado atual entra pelo caminho normal, agendado.
+ */
+export function detectReactiveTriggers(
+  prev: VitalsSnapshot | null,
+  next: VitalsSnapshot,
+): NotificationKind[] {
+  if (!prev) return [];
+  const out: NotificationKind[] = [];
+  if (!isHpLow(prev) && isHpLow(next)) out.push('hp_low');
+  if (!isFatigueHigh(prev) && isFatigueHigh(next)) out.push('fatigue_high');
+  return out;
 }

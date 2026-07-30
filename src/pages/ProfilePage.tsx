@@ -35,6 +35,7 @@ import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillL
 import { getLevelProgress } from "@/lib/progression";
 import { useDungeonPartnerships, BOND_TIERS, runsToNextTier } from "@/hooks/useDungeonPartnerships";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
+import NotificationSettings from '@/components/NotificationSettings';
 
 const PROFILE_TOUR_STEPS: TourStep[] = [
   {
@@ -1568,6 +1569,8 @@ export default function ProfilePage() {
                 <p className="text-[10px] text-muted-foreground mt-1">{t('app.profile.mealsMinimumHint', { count: Math.ceil(mealsTarget / 2) })}</p>
               </div>
             </div>
+
+            <NotificationSettings />
 
             {/* Sleep schedule */}
             <div className="p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-4">
