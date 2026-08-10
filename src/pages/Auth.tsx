@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Sword, Shield, Loader2, Mail, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { signInWithDiscord, isNative } from '@/lib/nativeAuth';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -114,14 +115,11 @@ export default function Auth() {
   const handleDiscordLogin = async () => {
     setDiscordLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'discord',
-        options: {
-          redirectTo: `${window.location.origin}/`,
-        },
-      });
-      if (error) throw error;
-      // Em caso de sucesso o browser redireciona; mantemos o loading até lá.
+      await signInWithDiscord();
+      // Na web o browser redireciona e o loading morre com a página. No app a
+      // aba do sistema assume: liberamos o botão para não deixar o usuário
+      // preso girando caso ele volte sem concluir.
+      if (isNative()) setDiscordLoading(false);
     } catch (err: any) {
       toast({ title: t('app.auth.toast_discord_error'), description: err.message, variant: 'destructive' });
       setDiscordLoading(false);

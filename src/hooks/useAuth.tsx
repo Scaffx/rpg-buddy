@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { initDeepLinkAuth } from '@/lib/nativeAuth';
 
 interface AuthContextType {
   user: User | null;
@@ -20,6 +21,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
+    // 0) No app, o retorno do OAuth chega por deep link. Registrar aqui garante
+    //    que o listener exista antes de qualquer tela de login montar — se o
+    //    Android reabrir o app pelo link, o evento não se perde.
+    //    A sessão resultante entra pelo onAuthStateChange abaixo.
+    initDeepLinkAuth();
 
     // 1) Resolve a sessão inicial antes de tudo.
     supabase.auth.getSession().then(({ data: { session } }) => {

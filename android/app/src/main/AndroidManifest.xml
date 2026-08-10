@@ -22,6 +22,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep link do OAuth. Sem isto, o Supabase devolvia a sessao para
+                 window.location.origin — que dentro do Capacitor e "localhost",
+                 endereco que so existe no proprio app. O navegador ficava com a
+                 sessao e o app seguia deslogado.
+                 launchMode singleTask acima garante que o retorno cai na
+                 instancia ja aberta, em vez de empilhar outra. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/custom_url_scheme" />
+            </intent-filter>
+
         </activity>
 
         <provider
