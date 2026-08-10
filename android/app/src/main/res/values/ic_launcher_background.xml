@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Parada externa do gradiente de public/brand/appicon.svg. Era #FFFFFF, o
+         que fazia o Android 8+ desenhar o portal sobre um quadrado branco. -->
+    <color name="ic_launcher_background">#161320</color>
 </resources>
