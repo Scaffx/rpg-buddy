@@ -50,6 +50,7 @@ const TermsPage = lazy(() => import("./pages/legal/TermsPage"));
 const PrivacyPage = lazy(() => import("./pages/legal/PrivacyPage"));
 const RefundPage = lazy(() => import("./pages/legal/RefundPage"));
 const DeleteAccountPage = lazy(() => import("./pages/legal/DeleteAccountPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -159,6 +160,7 @@ function AppRoutes() {
         <Route path="/npc" element={<ProtectedRoute><NpcPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/prioridade" element={<ProtectedRoute><PrioridadePage /></ProtectedRoute>} />
+        <Route path="/ajustes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/system-info" element={<ProtectedRoute><SystemInfoPage /></ProtectedRoute>} />
         <Route path="/virtues" element={<ProtectedRoute><VirtuesPage /></ProtectedRoute>} />
         <Route path="/mobile" element={<ProtectedRoute><MobilePage /></ProtectedRoute>} />

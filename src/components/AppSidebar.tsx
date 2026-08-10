@@ -9,8 +9,8 @@ import HelpTutorialModal from '@/components/HelpTutorialModal';
 import { LifeonRPGEmblem } from '@/components/branding/LifeonRPGLogo';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users,
-  ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Zap, Network,
+  ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart,
+  Sparkles, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Zap, Network,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -64,14 +64,9 @@ const navGroups = [
       { key: 'social',      url: '/social',      icon: UsersRound },
     ],
   },
-  {
-    labelKey: 'nav_group.system',
-    label: 'Sistema',
-    items: [
-      { key: 'mobile',      url: '/mobile',      icon: Smartphone },
-      { key: 'system_info', url: '/system-info', icon: ScrollText },
-    ],
-  },
+  // O grupo "Sistema" saiu daqui. Informações do sistema, o app para celular e
+  // a exclusão de conta viraram uma página só, /ajustes, alcançada pelo Perfil:
+  // são coisas que se procura quando precisa, não que se navega todo dia.
 ];
 
 function getRankKey(level: number) {

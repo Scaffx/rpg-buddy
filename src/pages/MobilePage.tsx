@@ -22,18 +22,26 @@ export default function MobilePage() {
   const { latest, hasUpdate } = useAppUpdate();
   const { isAdmin } = useIsAdmin();
   const isNative = Capacitor.isNativePlatform();
-  const apkUrl = latest?.apk_url && latest.apk_url !== "#" ? latest.apk_url : null;
   const latestVersion = latest?.version ?? APP_VERSION;
 
-  const handleApkDownload = async (e: React.MouseEvent) => {
+  /**
+   * O download direto de APK saiu daqui.
+   *
+   * A politica de Device and Network Abuse da Google Play proibe que um app
+   * distribuido pela loja se atualize ou se distribua por qualquer via que nao
+   * seja a propria Play. Servir o .apk de dentro do app era violacao, e a
+   * origem do risco nao era o botao: era o app poder se instalar sozinho.
+   *
+   * Agora a pagina manda pra ficha da loja, que e o caminho suportado.
+   */
+  const playStoreUrl = "https://play.google.com/store/apps/details?id=com.scaffx.lifeonrpg";
+
+  const handlePlayStore = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!apkUrl) return;
     if (isNative) {
-      // No APK nativo, use Browser.open()
-      await Browser.open({ url: apkUrl });
+      await Browser.open({ url: playStoreUrl });
     } else {
-      // Na web, permite download normal
-      window.open(apkUrl, "_blank", "noopener,noreferrer");
+      window.open(playStoreUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -104,21 +112,11 @@ export default function MobilePage() {
             </div>
             <Button
               size="lg"
-              onClick={apkUrl ? handleApkDownload : undefined}
-              disabled={!apkUrl}
+              onClick={handlePlayStore}
               className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
             >
-              {apkUrl ? (
-                <>
-                  <Download className="w-5 h-5 mr-2" />
-                  {t("app.mobile.download_apk")} v{latestVersion}
-                </>
-              ) : (
-                <span>
-                  <RefreshCw className="w-5 h-5 mr-2" />
-                  {t("app.mobile.apk_preparing")}
-                </span>
-              )}
+              <Play className="w-5 h-5 mr-2" />
+              {t("app.mobile.download_play", "Baixar na Google Play")}
             </Button>
           </div>
         </motion.div>
@@ -258,21 +256,11 @@ export default function MobilePage() {
         <div className="text-center py-6">
           <Button
             size="lg"
-            onClick={apkUrl ? handleApkDownload : undefined}
-            disabled={!apkUrl}
+            onClick={handlePlayStore}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
           >
-            {apkUrl ? (
-              <>
-                <Download className="w-5 h-5 mr-2" />
-                {t("app.mobile.download_apk")} v{latestVersion}
-              </>
-            ) : (
-              <span>
-                <RefreshCw className="w-5 h-5 mr-2" />
-                {t("app.mobile.apk_preparing")}
-              </span>
-            )}
+            <Play className="w-5 h-5 mr-2" />
+            {t("app.mobile.download_play", "Baixar na Google Play")}
           </Button>
           <p className="text-xs text-muted-foreground mt-3">
             {t("app.mobile.footer_note")}

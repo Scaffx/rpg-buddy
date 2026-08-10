@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
-import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useUpdateRegion, useClasses, useSyncHealthMaxes, useUpdateAvatar } from "@/hooks/useProfile";
@@ -29,7 +28,7 @@ import {
   ChevronUp, ChevronDown, Camera, Ruler, TrendingUp, Skull, Coins, Loader2,
   Calendar, Upload, Trash2, ChevronLeft, ChevronRight, Pencil, Check, X as XIcon,
   Moon, Sun, UserPlus, UserCheck, UserX, Search, Trophy, Lock,
-  AlertTriangle, Sword, Scroll, Clock, CheckCircle, XCircle, Award,
+  AlertTriangle, Sword, Scroll, Clock, CheckCircle, XCircle, Award, Settings,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
@@ -2625,9 +2624,23 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Exigência da Google Play: caminho de exclusão de conta dentro do app.
-            Fica no fim da página de propósito — ninguém tropeça nisso. */}
-        <DeleteAccountSection />
+        {/* A exclusão de conta mudou para /ajustes, junto das informações do
+            sistema. Aqui fica a porta: a Google Play exige que o caminho exista
+            dentro do app e seja encontrável — esconder demais é tão problemático
+            quanto não ter. */}
+        <Link
+          to="/ajustes"
+          className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:border-primary/50 transition-colors"
+        >
+          <Settings className="w-5 h-5 text-muted-foreground shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">Ajustes</p>
+            <p className="text-xs text-muted-foreground">
+              Informações do sistema, o app no celular e exclusão de conta.
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </Link>
       </div>
       <GuidedTour tourKey="profile" steps={PROFILE_TOUR_STEPS} />
     </AppLayout>
