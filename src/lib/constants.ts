@@ -90,3 +90,30 @@ export function getHealthChallengeXp(level: number): number {
   const safeLevel = Math.max(1, Math.floor(level || 1));
   return HEALTH_CHALLENGE_XP + (safeLevel - 1) * 4;
 }
+
+// ─── Prioridade de missão ──────────────────────────────────────────────────
+// Prioridade deixou de ser decoração: ela multiplica o XP base da missão.
+// Espelha o CASE de `v_priority_mult` nas RPCs `_complete_mission_daily` e
+// `_complete_mission_with_weekly` (migration 20260810120000). Se mudar aqui,
+// mude lá — senão o app promete um XP que o servidor não paga.
+export const PRIORITY_XP_MULT: Record<string, number> = {
+  baixa: 0.7,
+  media: 1.0,
+  alta: 1.5,
+};
+
+/** Teto de missões de prioridade ALTA agendadas para um mesmo dia. */
+export const MAX_HIGH_PRIORITY_PER_DAY = 4;
+
+/**
+ * XP base que a missão paga, já com a prioridade aplicada.
+ * Não inclui multiplicadores de nível, streak, buff ou fim de semana — esses
+ * são resolvidos no servidor no momento da conclusão.
+ */
+export function getMissionBaseXp(
+  xpReward: number | null | undefined,
+  priority: string | null | undefined,
+): number {
+  const mult = PRIORITY_XP_MULT[String(priority || 'media').toLowerCase()] ?? 1;
+  return Math.round(Math.max(0, xpReward ?? 0) * mult);
+}

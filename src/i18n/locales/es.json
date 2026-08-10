@@ -483,6 +483,7 @@
       "default_hero_name": "Aventurero",
       "no_missions_today": "No hay misiones para hoy.",
       "mission_complete_button": "Ok",
+      "priority_overload": "Tienes {{count}} misiones de prioridad alta hoy (el tope es {{max}}). Demasiadas prioridades es ninguna prioridad.",
       "weekly_flexible_badge": "Flexible · {{current}}/{{target}} esta semana",
       "weekly_progress_toast_title": "¡Progreso semanal registrado! ✅",
       "weekly_target_toast_title": "¡Meta semanal completada! 🎉",
@@ -1024,6 +1025,8 @@
     },
     "missions": {
       "priority_low": "Baja",
+      "priority_cap_title": "🔥 Demasiadas prioridades",
+      "priority_cap_desc": "Ya tienes {{max}} misiones de prioridad alta el {{day}}. Si todo es prioridad, nada lo es — baja una antes de crear otra.",
       "priority_medium": "Media",
       "priority_high": "Alta",
       "tab_pending": "Pendientes",

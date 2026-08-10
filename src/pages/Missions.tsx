@@ -35,6 +35,8 @@ import {
   isWeeklyMission,
 } from "@/lib/weeklyMissions";
 import { hasWeekendXpSchedule } from '@/lib/weekendXpBonus';
+import { findHighPriorityOverflow, missionScheduledDays } from '@/lib/missionPriority';
+import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY } from '@/lib/constants';
 import AppLayout from "@/components/AppLayout";
 import { FailedMissionsSection } from "@/components/FailedMissionsSection";
 import { Button } from "@/components/ui/button";
@@ -477,6 +479,29 @@ const handleSave = async () => {
     const isWeekly = formMissionType === 'recorrente' && formFrequencyType === 'weekly';
     const daysToSave = formMissionType === "unica" || isWeekly ? [] : formDays;
     const frequencyType = isWeekly ? 'weekly' : 'daily';
+    // Teto de prioridade alta por dia. Sem ele, em duas semanas tudo vira alta
+    // e a prioridade deixa de significar escolha — que é o ponto dela.
+    const overflow = findHighPriorityOverflow(allMissions || [], {
+      id: editingMission?.id,
+      priority: formPriority,
+      days: missionScheduledDays({
+        frequency_type: frequencyType,
+        days_of_week: daysToSave,
+        due_date: formMissionType === "unica" ? formDueDate : null,
+      }),
+    });
+
+    if (overflow) {
+      toast({
+        title: t('app.missions.priority_cap_title'),
+        description: t('app.missions.priority_cap_desc', {
+          day: overflow.day,
+          max: MAX_HIGH_PRIORITY_PER_DAY,
+        }),
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (editingMission) {
       await updateMission.mutateAsync({
@@ -562,12 +587,12 @@ const handleSave = async () => {
       } else if (streak >= 3 && bonusLabel) {
         toast({
           title: `🔥 Streak ${streak} dias! ${bonusLabel}`,
-          description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
+          description: t('app.missions.mission_completed_desc', { xp: getMissionBaseXp(mission.xp_reward, mission.priority), next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
         });
       } else {
         toast({
           title: t('app.missions.mission_completed'),
-          description: t('app.missions.mission_completed_desc', { xp: mission.xp_reward, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
+          description: t('app.missions.mission_completed_desc', { xp: getMissionBaseXp(mission.xp_reward, mission.priority), next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
         });
       }
     } catch (error) {
@@ -1318,7 +1343,11 @@ function MissionCard({
 
         {/* XP + Date */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-primary font-bold">✨ +{mission.xp_reward} XP</span>
+          <span className="text-sm text-primary font-bold">
+
+            ✨ +{getMissionBaseXp(mission.xp_reward, mission.priority)} XP
+
+          </span>
           {mission.due_date && days.length === 0 && (
             <span className="text-xs text-muted-foreground">
               🎯 {new Date(mission.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
