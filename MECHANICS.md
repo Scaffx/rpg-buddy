@@ -23,9 +23,33 @@ buffBonus       = xpBoost(+0.5)
                 + madrugador(+0.15 se hora < 8)
                 + (streakMultiplier − 1)
 
+priorityMult    = alta 1.5× | media 1.0× | baixa 0.7×
 xpMultiplier    = levelMultiplier × (1 + buffBonus)
-xpFinal         = round(xpBase × xpMultiplier) + checklistBonus
+xpFinal         = round(xpBase × priorityMult × xpMultiplier) + checklistBonus
 ```
+
+### Prioridade da missão
+
+`xpBase` é o `xp_reward` da missão — na prática sempre o DEFAULT `25`, já que o app
+nunca preenche a coluna. A prioridade é o que diferencia uma missão da outra:
+
+| Prioridade | Multiplicador | XP base (com `xp_reward = 25`) |
+|------------|---------------|--------------------------------|
+| Alta 🔥    | 1.5×          | 38                             |
+| Média 🛡️   | 1.0×          | 25                             |
+| Baixa 🍺   | 0.7×          | 18                             |
+
+- Aplicado nas RPCs `_complete_mission_daily` e `_complete_mission_with_weekly`
+  (migration `20260810120000_priority_xp_multiplier.sql`). Prioridade nula ou
+  desconhecida cai em `media`.
+- Espelhado no front em `PRIORITY_XP_MULT` / `getMissionBaseXp()`
+  ([`src/lib/constants.ts`](src/lib/constants.ts)) — **os dois precisam mudar juntos**,
+  senão o app promete um XP que o servidor não paga.
+- **Teto: 4 missões de prioridade alta por dia** (`MAX_HIGH_PRIORITY_PER_DAY`),
+  validado no formulário de missão. Semanal flexível ocupa vaga em todos os dias,
+  porque fica disponível no Painel até bater a meta. Missões legadas acima do teto
+  continuam válidas; o teto só impede criar mais.
+- Ouro **não** escala por prioridade — a economia segue o balanceamento 1.0.
 
 ### `levelMultiplier` por nível (capado em 3.5×)
 

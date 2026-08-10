@@ -470,6 +470,7 @@
       "default_hero_name": "Adventurer",
       "no_missions_today": "No missions for today.",
       "mission_complete_button": "Ok",
+      "priority_overload": "You have {{count}} high-priority missions today (the cap is {{max}}). Too many priorities means no priorities.",
       "weekly_flexible_badge": "Flexible · {{current}}/{{target}} this week",
       "weekly_progress_toast_title": "Weekly progress recorded! ✅",
       "weekly_target_toast_title": "Weekly goal completed! 🎉",
@@ -1011,6 +1012,8 @@
     },
     "missions": {
       "priority_low": "Low",
+      "priority_cap_title": "🔥 Too many priorities",
+      "priority_cap_desc": "You already have {{max}} high-priority missions on {{day}}. If everything is a priority, nothing is — lower one before adding another.",
       "priority_medium": "Medium",
       "priority_high": "High",
       "tab_pending": "Pending",

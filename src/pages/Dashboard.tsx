@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useProfile, useAttributes, useMissions } from "@/hooks/useProfile";
 import { useCompleteMission } from "@/hooks/useProfile";
 import { useDailyBonus } from "@/hooks/useDailyBonus";
-import { Loader2, Check, Gift, Coins, Clock, Flame, AlertTriangle, BookOpen } from "lucide-react";
+import { Loader2, Check, Gift, Coins, Clock, Flame, AlertTriangle, BookOpen, Shield, Beer } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +28,8 @@ import {
   isWeeklyMission,
 } from '@/lib/weeklyMissions';
 import { isMissionAvailableOnDashboardToday } from '@/lib/dashboardMissions';
+import { groupByPriority, normalizePriority, PRIORITY_RANK, type PriorityKey } from '@/lib/missionPriority';
+import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY } from '@/lib/constants';
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -89,6 +91,36 @@ function getMissionStateForDate(mission: DashboardMission, dateStr: string): str
 
 // Importado de @/lib/attributes
 
+// Mesmos ícones e cores do formulário de missão (Missions.tsx), pra prioridade
+// ser lida igual nos dois lugares. multLabel deixa o custo/benefício explícito:
+// o jogador precisa ver que alta paga mais, senão a divisão vira só enfeite.
+const PRIORITY_GROUP_STYLE: Record<
+  PriorityKey,
+  { icon: typeof Flame; labelKey: string; text: string; border: string; multLabel: string }
+> = {
+  alta: {
+    icon: Flame,
+    labelKey: 'app.missions.priority_high',
+    text: 'text-destructive',
+    border: 'border-destructive/50',
+    multLabel: '1.5×',
+  },
+  media: {
+    icon: Shield,
+    labelKey: 'app.missions.priority_medium',
+    text: 'text-yellow-400',
+    border: 'border-yellow-400/50',
+    multLabel: '1×',
+  },
+  baixa: {
+    icon: Beer,
+    labelKey: 'app.missions.priority_low',
+    text: 'text-success',
+    border: 'border-success/50',
+    multLabel: '0.7×',
+  },
+};
+
 function BonusCountdown({ nextClaimAt }: { nextClaimAt: string | null }) {
   const [timeLeft, setTimeLeft] = useState('');
 
@@ -142,11 +174,19 @@ export default function Dashboard() {
     return allMissions
       .filter((mission) =>
         isMissionAvailableOnDashboardToday(mission, today, todayDay))
-      .sort((a: any, b: any) => {
-        const order: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
-        return (order[a.priority || "media"] ?? 1) - (order[b.priority || "media"] ?? 1);
-      });
+      .sort((a: any, b: any) =>
+        (PRIORITY_RANK[a.priority || "media"] ?? 1) - (PRIORITY_RANK[b.priority || "media"] ?? 1));
   }, [allMissions, todayDay]);
+
+  // O Painel agrupa por prioridade em vez de cuspir uma lista corrida: sem
+  // cabeçalho, a ordenação por prioridade é invisível e as 2 missões que
+  // realmente importam somem no meio das 7 que não importam.
+  const missionGroups = useMemo(() => groupByPriority(todayMissions), [todayMissions]);
+
+  const highPriorityToday = useMemo(
+    () => todayMissions.filter((m) => normalizePriority(m.priority) === 'alta').length,
+    [todayMissions],
+  );
 
   const todayDate = getLocalDateString();
 
@@ -554,8 +594,37 @@ export default function Dashboard() {
           {missionsLoading ? (
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           ) : todayMissions.length > 0 ? (
-            <div className="space-y-2">
-              {todayMissions.map((m: any, idx: number) => {
+            <div className="space-y-4">
+              {highPriorityToday > MAX_HIGH_PRIORITY_PER_DAY && (
+                <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {t('app.dashboard.priority_overload', {
+                    count: highPriorityToday,
+                    max: MAX_HIGH_PRIORITY_PER_DAY,
+                  })}
+                </p>
+              )}
+
+              {missionGroups.map(({ priority, missions }) => {
+                const style = PRIORITY_GROUP_STYLE[priority];
+                const GroupIcon = style.icon;
+
+                return (
+                  <section key={priority}>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <GroupIcon className={`w-3.5 h-3.5 ${style.text}`} />
+                      <h3 className={`text-xs font-semibold uppercase tracking-wide ${style.text}`}>
+                        {t(style.labelKey)}
+                      </h3>
+                      <span className="text-[10px] text-muted-foreground">
+                        {missions.length}
+                      </span>
+                      <span className={`ml-auto text-[10px] ${style.text} opacity-70`}>
+                        {style.multLabel}
+                      </span>
+                    </div>
+
+                    <div className={`space-y-2 border-l-2 pl-2 ${style.border}`}>
+                      {missions.map((m: any, idx: number) => {
                 const weeklyState = getWeeklyMissionState(m);
                 const allAttrs = [
                   m.attributes && { name: m.attributes.name, icon: m.attributes.icon },
@@ -594,7 +663,9 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-primary font-bold">+{m.xp_reward} XP</span>
+                      <span className="text-xs text-primary font-bold">
+                        +{getMissionBaseXp(m.xp_reward, m.priority)} XP
+                      </span>
                       <Button
                         size="sm"
                         onClick={() => handleComplete(m)}
@@ -611,6 +682,10 @@ export default function Dashboard() {
                       </Button>
                     </div>
                   </motion.div>
+                );
+                      })}
+                    </div>
+                  </section>
                 );
               })}
             </div>
