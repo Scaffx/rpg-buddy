@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
+import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useUpdateRegion, useClasses, useSyncHealthMaxes, useUpdateAvatar } from "@/hooks/useProfile";
@@ -2623,6 +2624,10 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+
+        {/* Exigência da Google Play: caminho de exclusão de conta dentro do app.
+            Fica no fim da página de propósito — ninguém tropeça nisso. */}
+        <DeleteAccountSection />
       </div>
       <GuidedTour tourKey="profile" steps={PROFILE_TOUR_STEPS} />
     </AppLayout>

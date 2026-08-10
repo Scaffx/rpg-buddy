@@ -49,6 +49,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const TermsPage = lazy(() => import("./pages/legal/TermsPage"));
 const PrivacyPage = lazy(() => import("./pages/legal/PrivacyPage"));
 const RefundPage = lazy(() => import("./pages/legal/RefundPage"));
+const DeleteAccountPage = lazy(() => import("./pages/legal/DeleteAccountPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,6 +141,8 @@ function AppRoutes() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/refund" element={<RefundPage />} />
+        {/* Pública de propósito: a Google Play exige URL de exclusão sem login. */}
+        <Route path="/excluir-conta" element={<DeleteAccountPage />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/missions" element={<ProtectedRoute><Missions /></ProtectedRoute>} />
