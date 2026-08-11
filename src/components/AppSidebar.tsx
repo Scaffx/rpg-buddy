@@ -56,7 +56,8 @@ const navGroups = [
     label: 'Mundo',
     items: [
       { key: 'shop',        url: '/shop',        icon: Store },
-      { key: 'npc_missions',url: '/npc',         icon: Users },
+      // soon: a página está fechada até o equilíbrio das recompensas fechar.
+      { key: 'npc_missions',url: '/npc',         icon: Users, soon: true },
       { key: 'boss_arena',  url: '/boss',        icon: Skull },
       { key: 'portal_event', url: '/portal',      icon: Zap },
       { key: 'leaderboard', url: '/leaderboard', icon: Trophy },
@@ -209,6 +210,11 @@ export function AppSidebar() {
                         <item.icon className="h-4 w-4 shrink-0 transition-transform group-hover:scale-105" />
                         {!collapsed && (
                           <span className="text-[13px] truncate">{t(`app.sidebar.${item.key}`)}</span>
+                        )}
+                        {!collapsed && item.soon && (
+                          <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border">
+                            em breve
+                          </span>
                         )}
                       </NavLink>
                     </SidebarMenuButton>
