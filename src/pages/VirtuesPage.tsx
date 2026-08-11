@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { useMissions } from '@/hooks/useProfile';
-import { AlertTriangle, BookOpen, CheckCircle2, RotateCcw, ScrollText, TrendingDown, TrendingUp, Calendar } from 'lucide-react';
+import { AlertTriangle, BookOpen, CheckCircle2, RotateCcw, ScrollText, TrendingDown, TrendingUp, Calendar, Flame, Trophy } from 'lucide-react';
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { JournalArchive } from '@/components/JournalArchive';
@@ -65,9 +65,12 @@ export default function VirtuesPage() {
 
       weekDays.forEach((day) => {
         const status = dailyStatus[day];
+        // 'failed_accepted' e o dia que passou sem ser cumprido — o app nunca
+        // escreve 'failed' puro. Contar por ele deixava tudo zerado, e estes
+        // dias apareciam como "recuperados", que e o oposto do que sao.
         if (status === 'completed') completed++;
-        else if (status === 'failed') failed++;
-        else if (status === 'failed_accepted') recovered++;
+        else if (status === 'failed_accepted') failed++;
+        else if (status === 'protected') recovered++;
       });
 
       // Inclui apenas missoes com algum movimento na semana
@@ -108,8 +111,8 @@ export default function VirtuesPage() {
       virtueMissions.forEach((m) => {
         const s = getDailyStatus(m)[day];
         if (s === 'completed') c++;
-        else if (s === 'failed') f++;
-        else if (s === 'failed_accepted') r++;
+        else if (s === 'failed_accepted') f++;
+        else if (s === 'protected') r++;
       });
       const date = new Date(day + 'T12:00:00');
       const locale = i18n.resolvedLanguage === 'pt' ? 'pt-BR' : i18n.resolvedLanguage;
@@ -118,8 +121,69 @@ export default function VirtuesPage() {
     });
   }, [i18n.resolvedLanguage, virtueMissions, weekDays]);
 
-  const totalActions = totals.completed + totals.failed + totals.recovered;
-  const successRate = totalActions > 0 ? Math.round((totals.completed / totalActions) * 100) : 0;
+  /**
+   * Constância, medida sobre o histórico inteiro — não sobre os 7 dias da tela.
+   *
+   * O painel antigo contava "fracasso" olhando status === 'failed', que o app
+   * nunca escreve: os status reais sao completed, failed_accepted, grace e
+   * protected. O contador ficava zerado para todo mundo, e os dias perdidos
+   * (failed_accepted) apareciam na caixa de "Recuperadas".
+   *
+   * Um dia conta como mantido quando teve conclusao ou protetor de streak.
+   * 'grace' e 'failed_accepted' nao mantem — sao justamente o dia que escapou.
+   */
+  const consistencia = useMemo(() => {
+    const mantidos = new Set<string>();
+    const conhecidos = new Set<string>();
+
+    virtueMissions.forEach((m) => {
+      const status = getDailyStatus(m);
+      Object.entries(status).forEach(([dia, s]) => {
+        conhecidos.add(dia);
+        if (s === 'completed' || s === 'protected') mantidos.add(dia);
+      });
+    });
+
+    const ordenados = Array.from(mantidos).sort();
+    let maior = ordenados.length > 0 ? 1 : 0;
+    let corrida = maior;
+    for (let i = 1; i < ordenados.length; i++) {
+      const dif = Math.round(
+        (new Date(`${ordenados[i]}T00:00:00`).getTime() -
+          new Date(`${ordenados[i - 1]}T00:00:00`).getTime()) / 86_400_000,
+      );
+      corrida = dif === 1 ? corrida + 1 : 1;
+      if (corrida > maior) maior = corrida;
+    }
+
+    // Sequencia atual: dias consecutivos ate hoje. Sem nada hoje, conta a
+    // partir de ontem — o dia ainda nao acabou.
+    const cursor = new Date();
+    if (!mantidos.has(toLocalDate(cursor))) cursor.setDate(cursor.getDate() - 1);
+    let atual = 0;
+    while (mantidos.has(toLocalDate(cursor))) {
+      atual += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    // Denominador: dias desde o primeiro registro, nao a janela inteira. Quem
+    // comecou ha tres dias nao merece nota baixa por isso.
+    const primeiros = Array.from(conhecidos).sort();
+    let acompanhados = 0;
+    if (primeiros.length > 0) {
+      const inicio = new Date(`${primeiros[0]}T00:00:00`);
+      const hoje = new Date(`${toLocalDate(new Date())}T00:00:00`);
+      acompanhados = Math.max(1, Math.round((hoje.getTime() - inicio.getTime()) / 86_400_000) + 1);
+    }
+
+    return {
+      atual,
+      maior,
+      mantidos: mantidos.size,
+      acompanhados,
+      taxa: acompanhados > 0 ? Math.round((mantidos.size / acompanhados) * 100) : 0,
+    };
+  }, [virtueMissions]);
 
   return (
     <AppLayout>
@@ -158,27 +222,34 @@ export default function VirtuesPage() {
 
           <div className="rpg-card p-4 space-y-1">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-400" />
-              <span className="text-xs text-muted-foreground">{t('app.virtues.failed')}</span>
+              <Flame className="w-4 h-4 text-orange-400" />
+              <span className="text-xs text-muted-foreground">Sequência atual</span>
             </div>
-            <p className="text-2xl font-bold text-red-400">{totals.failed}</p>
+            <p className="text-2xl font-bold text-orange-400">
+              {consistencia.atual} {consistencia.atual === 1 ? 'dia' : 'dias'}
+            </p>
           </div>
 
           <div className="rpg-card p-4 space-y-1">
             <div className="flex items-center gap-2">
-              <RotateCcw className="w-4 h-4 text-amber-400" />
-              <span className="text-xs text-muted-foreground">{t('app.virtues.recovered')}</span>
+              <Trophy className="w-4 h-4 text-amber-400" />
+              <span className="text-xs text-muted-foreground">Maior sequência</span>
             </div>
-            <p className="text-2xl font-bold text-amber-400">{totals.recovered}</p>
-            <p className="text-[10px] text-muted-foreground">{t('app.virtues.recovered_hint')}</p>
+            <p className="text-2xl font-bold text-amber-400">
+              {consistencia.maior} {consistencia.maior === 1 ? 'dia' : 'dias'}
+            </p>
+            <p className="text-[10px] text-muted-foreground">Seu recorde até hoje</p>
           </div>
 
           <div className="rpg-card p-4 space-y-1">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">{t('app.virtues.success_rate')}</span>
+              <span className="text-xs text-muted-foreground">Taxa de resolução</span>
             </div>
-            <p className="text-2xl font-bold text-primary">{successRate}%</p>
+            <p className="text-2xl font-bold text-primary">{consistencia.taxa}%</p>
+            <p className="text-[10px] text-muted-foreground">
+              {consistencia.mantidos} de {consistencia.acompanhados} dias
+            </p>
           </div>
         </div>
 
