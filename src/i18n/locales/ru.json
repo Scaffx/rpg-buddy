@@ -13,7 +13,7 @@
     "cta_signup": "Начать",
     "cta_login": "У меня есть аккаунт",
     "perk_trial": "7 дней бесплатно",
-    "perk_apk": "Скоро в Play Store",
+    "perk_apk": "Доступно в Play Store",
     "perk_bosses": "60 боссов"
   },
   "what": {
@@ -121,7 +121,7 @@
     "cta_download": "Скачать APK",
     "cta_preparing": "APK готовится",
     "cta_browser": "Открыть в браузере",
-    "cta_playstore": "Скоро в Play Store",
+    "cta_playstore": "Скачать в Play Store",
     "footnote_beta": "Бета-сборка · ",
     "footnote": "Работает в любом современном браузере"
   },

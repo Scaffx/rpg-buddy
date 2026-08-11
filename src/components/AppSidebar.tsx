@@ -9,8 +9,8 @@ import HelpTutorialModal from '@/components/HelpTutorialModal';
 import { LifeonRPGEmblem } from '@/components/branding/LifeonRPGLogo';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users,
-  ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart, ScrollText,
-  Sparkles, Smartphone, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Zap, Network,
+  ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart,
+  Sparkles, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Zap, Network,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -56,7 +56,8 @@ const navGroups = [
     label: 'Mundo',
     items: [
       { key: 'shop',        url: '/shop',        icon: Store },
-      { key: 'npc_missions',url: '/npc',         icon: Users },
+      // soon: a página está fechada até o equilíbrio das recompensas fechar.
+      { key: 'npc_missions',url: '/npc',         icon: Users, soon: true },
       { key: 'boss_arena',  url: '/boss',        icon: Skull },
       { key: 'portal_event', url: '/portal',      icon: Zap },
       { key: 'leaderboard', url: '/leaderboard', icon: Trophy },
@@ -64,14 +65,9 @@ const navGroups = [
       { key: 'social',      url: '/social',      icon: UsersRound },
     ],
   },
-  {
-    labelKey: 'nav_group.system',
-    label: 'Sistema',
-    items: [
-      { key: 'mobile',      url: '/mobile',      icon: Smartphone },
-      { key: 'system_info', url: '/system-info', icon: ScrollText },
-    ],
-  },
+  // O grupo "Sistema" saiu daqui. Informações do sistema, o app para celular e
+  // a exclusão de conta viraram uma página só, /ajustes, alcançada pelo Perfil:
+  // são coisas que se procura quando precisa, não que se navega todo dia.
 ];
 
 function getRankKey(level: number) {
@@ -214,6 +210,11 @@ export function AppSidebar() {
                         <item.icon className="h-4 w-4 shrink-0 transition-transform group-hover:scale-105" />
                         {!collapsed && (
                           <span className="text-[13px] truncate">{t(`app.sidebar.${item.key}`)}</span>
+                        )}
+                        {!collapsed && item.soon && (
+                          <span className="ml-auto shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border">
+                            em breve
+                          </span>
                         )}
                       </NavLink>
                     </SidebarMenuButton>

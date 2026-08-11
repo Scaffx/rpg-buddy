@@ -42,6 +42,10 @@ function CoOpMissionModal({
   const createMission = useCreateCoOpMission();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  // Meta e prazo: sem eles o combinado fica só no texto livre, e ninguém
+  // consegue medir "correr 10 km todo dia durante uma semana".
+  const [targetCount, setTargetCount] = useState(3);
+  const [durationDays, setDurationDays] = useState(7);
   const [selectedIds, setSelectedIds] = useState<string[]>(
     preselectedFriendId ? [preselectedFriendId] : []
   );
@@ -55,8 +59,19 @@ function CoOpMissionModal({
   const handleCreate = () => {
     if (!title.trim()) return toast.error(t('app.social.toast_title_required'));
     if (selectedIds.length === 0) return toast.error(t('app.social.toast_select_friend'));
+    if (targetCount > durationDays) {
+      return toast.error(
+        `A meta não cabe no prazo: ${targetCount} vezes em ${durationDays} dias.`,
+      );
+    }
     createMission.mutate(
-      { title: title.trim(), description: description.trim(), memberIds: selectedIds },
+      {
+        title: title.trim(),
+        description: description.trim(),
+        memberIds: selectedIds,
+        targetCount,
+        durationDays,
+      },
       {
         onSuccess: () => {
           toast.success(t('app.social.toast_mission_created'));
@@ -114,6 +129,40 @@ function CoOpMissionModal({
             placeholder={t('app.social.mission_desc_placeholder')}
             className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:border-primary/60 resize-none"
           />
+        </div>
+
+        {/* Meta e prazo — o que transforma a combinação em algo mensurável */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Quantas vezes</label>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={targetCount}
+              onChange={(e) => setTargetCount(Math.max(1, Number(e.target.value) || 1))}
+              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:border-primary/60"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Em quantos dias</label>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={durationDays}
+              onChange={(e) => setDurationDays(Math.max(1, Number(e.target.value) || 1))}
+              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:border-primary/60"
+            />
+          </div>
+          <p className="col-span-2 text-[11px] text-muted-foreground">
+            Cada participante precisa cumprir{' '}
+            <strong className="text-primary">{targetCount}x</strong> em{' '}
+            <strong className="text-primary">{durationDays} dias</strong>.
+            {targetCount > durationDays && (
+              <span className="text-destructive"> A meta não cabe no prazo.</span>
+            )}
+          </p>
         </div>
 
         {/* Selecionar amigos */}
@@ -179,6 +228,12 @@ function CoOpMissionCard({ mission, currentUserId }: { mission: CoOpMission; cur
           {mission.description && (
             <p className="text-xs text-muted-foreground mt-0.5">{mission.description}</p>
           )}
+          {/* Meta explícita: o combinado deixa de morar só na descrição. */}
+          <p className="text-[11px] text-muted-foreground mt-1">
+            <strong className="text-primary">{mission.target_count ?? 1}x</strong> em{' '}
+            <strong className="text-primary">{mission.duration_days ?? 7} dias</strong>
+            {mission.ends_at && ` · até ${new Date(mission.ends_at).toLocaleDateString('pt-BR')}`}
+          </p>
         </div>
         <span className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 bg-primary/15 text-primary rounded-full text-xs font-bold">
           <Star className="w-3 h-3" /> {mission.xp_per_player} XP

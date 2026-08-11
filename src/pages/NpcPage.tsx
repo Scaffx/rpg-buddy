@@ -5,7 +5,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2, Coins, Gift, MessageCircle, Send, TrendingUp } from 'lucide-react';
+import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2, Coins, Gift, MessageCircle, Send, TrendingUp, Lock } from 'lucide-react';
+
+/**
+ * Porta das Missões de NPC.
+ *
+ * O recurso existe inteiro abaixo, mas ainda não está equilibrado o suficiente
+ * para ir ao público. Virar para true reabre a página como estava — nada foi
+ * removido.
+ */
+const NPC_LIBERADO = false;
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
 import { useNpcAffinity, useIncrementNpcAffinity, getAffinityTier } from '@/hooks/useNpcAffinity';
@@ -503,6 +512,48 @@ export default function NpcPage() {
     } finally {
       setChatLoading(false);
     }
+  }
+
+  // Missões de NPC ainda não estão prontas para o público, e mostrar um recurso
+  // pela metade custa caro: o revisor da Play lê "em breve" como funcionalidade
+  // anunciada que não existe, e o usuário lê como app inacabado.
+  //
+  // A página curto-circuita aqui em vez de ser removida. As ~700 linhas abaixo
+  // continuam intactas e voltam a valer virando esta constante para true — não
+  // há trabalho a refazer, só uma porta fechada.
+  if (!NPC_LIBERADO) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen p-4 md:p-6 flex items-start justify-center">
+          <div className="rpg-card max-w-lg w-full p-6 space-y-4 text-center mt-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-muted/40 border border-border">
+              <Lock className="w-6 h-6 text-muted-foreground" />
+            </div>
+
+            <div className="space-y-1">
+              <h1 className="text-xl font-display font-bold text-foreground">
+                Missões de NPC
+              </h1>
+              <span className="inline-block text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30">
+                Em breve
+              </span>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Os habitantes do mundo vão te procurar com desafios semanais feitos
+              sob medida para a sua rotina. Cumprir o que cada um pede aumenta a
+              afinidade com ele — e afinidade abre recompensas, itens e histórias
+              que só aquele personagem oferece.
+            </p>
+
+            <p className="text-xs text-muted-foreground">
+              Ainda estamos afinando o equilíbrio dessas recompensas para que elas
+              somem à sua rotina em vez de competir com ela. Volte em breve.
+            </p>
+          </div>
+        </div>
+      </AppLayout>
+    );
   }
 
   return (
