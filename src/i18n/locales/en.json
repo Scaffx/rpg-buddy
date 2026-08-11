@@ -13,7 +13,7 @@
     "cta_signup": "Get started",
     "cta_login": "I have an account",
     "perk_trial": "7 days free",
-    "perk_apk": "Play Store coming soon",
+    "perk_apk": "Available on Play Store",
     "perk_bosses": "60 bosses"
   },
   "what": {
@@ -108,7 +108,7 @@
     "cta_download": "Download APK",
     "cta_preparing": "APK in preparation",
     "cta_browser": "Play in browser",
-    "cta_playstore": "Coming soon on Play Store",
+    "cta_playstore": "Get it on Play Store",
     "footnote_beta": "Beta build · ",
     "footnote": "Works in any modern browser · iOS via Safari (Add to Home Screen)"
   },

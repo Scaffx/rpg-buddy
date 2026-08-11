@@ -672,6 +672,12 @@ export type CoOpMission = {
   status: 'open' | 'active' | 'completed' | 'cancelled';
   created_at: string;
   completed_at: string | null;
+  /** Quantas vezes cada participante precisa cumprir. */
+  target_count: number;
+  /** Em quantos dias, contados da criação. */
+  duration_days: number;
+  /** Prazo final, derivado no servidor para não recalcular no cliente. */
+  ends_at: string | null;
   members?: CoOpMember[];
 };
 
@@ -742,13 +748,23 @@ export function useCreateCoOpMission() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (params: { title: string; description: string; memberIds: string[] }) => {
+    mutationFn: async (params: {
+      title: string;
+      description: string;
+      memberIds: string[];
+      /** Quantas vezes cada um precisa cumprir. Padrão 1. */
+      targetCount?: number;
+      /** Em quantos dias. Padrão 7. */
+      durationDays?: number;
+    }) => {
       if (!user) throw new Error('Não autenticado');
       const { data, error } = await supabase.rpc('create_co_op_mission', {
         p_title: params.title,
         p_description: params.description,
         p_member_ids: params.memberIds,
-      });
+        p_target_count: params.targetCount ?? 1,
+        p_duration_days: params.durationDays ?? 7,
+      } as any);
       if (error) throw error;
       return data as string; // mission id
     },
