@@ -27,7 +27,7 @@ const CONFIRMACAO = 'EXCLUIR';
  * todas as tabelas do usuário, os arquivos no storage e o login, na hora.
  */
 export default function DeleteAccountSection() {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [confirmacao, setConfirmacao] = useState('');
@@ -35,9 +35,36 @@ export default function DeleteAccountSection() {
 
   const podeExcluir = confirmacao.trim().toUpperCase() === CONFIRMACAO && !excluindo;
 
+  /**
+   * Apaga os arquivos do usuário pela Storage API.
+   *
+   * Não dá para fazer isso no SQL: o trigger storage.protect_delete() do
+   * Supabase recusa DELETE direto em storage.objects, e como tudo roda numa
+   * transação só, a exceção derrubava a exclusão inteira — o usuário recebia
+   * erro e nada era apagado.
+   *
+   * Todo upload do app usa o id do usuário como primeiro segmento do caminho,
+   * então listar por esse prefixo cobre avatar, fotos de progresso e exames.
+   */
+  const apagarArquivos = async (userId: string) => {
+    for (const bucket of ['avatars', 'body-photos']) {
+      const { data, error } = await supabase.storage.from(bucket).list(userId);
+      // Bucket inexistente ou sem permissão não pode travar a exclusão: o que
+      // não pode falhar é o apagamento dos dados.
+      if (error || !data?.length) continue;
+      await supabase.storage
+        .from(bucket)
+        .remove(data.map((f) => `${userId}/${f.name}`));
+    }
+  };
+
   const handleDelete = async () => {
     setExcluindo(true);
     try {
+      // Arquivos primeiro: depois da RPC não existe mais sessão para autorizar
+      // chamada ao storage.
+      if (user?.id) await apagarArquivos(user.id);
+
       const { error } = await supabase.rpc('delete_my_account' as any);
       if (error) throw error;
 
