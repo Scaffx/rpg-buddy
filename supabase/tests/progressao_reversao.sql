@@ -83,6 +83,16 @@ BEGIN
     IF NOT v_retry_rejected THEN
       RAISE EXCEPTION '%: data fora de D-1 aceita', v_mode;
     END IF;
+    v_retry_rejected := false;
+    BEGIN
+      PERFORM public.complete_mission(v_mission, v_today + 1);
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN
+      IF SQLERRM <> 'DATE_OUT_OF_WINDOW' THEN RAISE; END IF;
+      v_retry_rejected := true;
+    END;
+    IF NOT v_retry_rejected THEN
+      RAISE EXCEPTION '%: conclusao futura aceita', v_mode;
+    END IF;
 
     v_reward := public.complete_mission(v_mission, v_date);
     v_xp := (v_reward->>'xp_gained')::integer;
@@ -98,8 +108,8 @@ BEGIN
       INTO STRICT v_ledger_xp, v_ledger_gold, v_verified, v_kind, v_week
       FROM public.mission_daily_completions
      WHERE mission_id = v_mission AND completion_date = v_date;
-    IF NOT v_verified OR v_kind <> CASE WHEN v_frequency = 'weekly' THEN 'weekly'
-      WHEN v_mode IN ('unique', 'd1-unique') THEN 'unique' ELSE 'daily' END THEN
+    IF NOT v_verified OR v_kind <> (CASE WHEN v_frequency = 'weekly' THEN 'weekly'
+      WHEN v_mode IN ('unique', 'd1-unique') THEN 'unique' ELSE 'daily' END) THEN
       RAISE EXCEPTION '%: ledger nao selado', v_mode;
     END IF;
     IF v_frequency = 'weekly' THEN
@@ -123,6 +133,17 @@ BEGIN
     IF NOT v_retry_rejected OR
        (SELECT total_xp FROM public.profiles WHERE user_id = v_uid) <> v_xp THEN
       RAISE EXCEPTION '%: retry duplicou XP', v_mode;
+    END IF;
+
+    v_retry_rejected := false;
+    BEGIN
+      PERFORM public.undo_mission(v_mission, v_today + 1);
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN
+      IF SQLERRM <> 'DATE_OUT_OF_WINDOW' THEN RAISE; END IF;
+      v_retry_rejected := true;
+    END;
+    IF NOT v_retry_rejected THEN
+      RAISE EXCEPTION '%: undo futuro aceito', v_mode;
     END IF;
 
     v_undo := public.undo_mission(v_mission, v_date);
