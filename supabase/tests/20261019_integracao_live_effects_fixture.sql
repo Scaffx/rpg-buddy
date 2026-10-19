@@ -4,6 +4,8 @@
 -- mirror pg_get_functiondef; this is not a full remote schema or a migration.
 -- The live sync_health_on_profile_level_change function has no attached trigger
 -- in live-health-triggers.json, so no health-on-level trigger is fabricated here.
+-- get_level_from_xp_v2 below comes from live-level-functions.json; the base
+-- fixture's 100-XP step is intentionally replaced before composition replay.
 
 ALTER TABLE public.user_health_stats
   ADD COLUMN max_mp integer DEFAULT 10,
@@ -96,3 +98,28 @@ $function$;
 CREATE TRIGGER sync_talent_points_on_level_change_trigger
 BEFORE UPDATE OF level ON public.profiles
 FOR EACH ROW EXECUTE FUNCTION public.sync_talent_points_on_level_change();
+
+CREATE OR REPLACE FUNCTION public.get_level_from_xp_v2(p_total_xp integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+ IMMUTABLE
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  xp_table int[] := ARRAY[
+        0,    320,   1000,   2080,   3600,   5600,   8120,  11200,  14880,  19200,
+    24200,  29920,  36400,  43680,  51800,  60800,  70720,  81600,  93480, 106400,
+   120400, 135520, 151800, 169280, 188000, 208000, 229320, 252000, 276080, 301600,
+   328600, 357120, 387200, 418880, 452200, 487200, 523920, 562400, 602680, 644800,
+   688800, 734720, 782600, 832480, 884400, 938400, 994520,1052800,1113280,1176000,
+  1241000,1308320,1378000,1450080,1524600,1601600,1681120,1763200,1847880,1935200
+  ];
+  v_xp int := GREATEST(0, COALESCE(p_total_xp, 0));
+  i int;
+BEGIN
+  FOR i IN REVERSE array_length(xp_table, 1)..2 LOOP
+    IF v_xp >= xp_table[i] THEN RETURN i; END IF;
+  END LOOP;
+  RETURN 1;
+END;
+$function$;
