@@ -61,6 +61,11 @@ DECLARE
   v_slots integer;
   v_level integer;
   v_class text;
+  v_current_class_id uuid;
+  v_class_node public.classes%ROWTYPE;
+  v_seen_classes uuid[] := ARRAY[]::uuid[];
+  v_class_hops integer := 0;
+  v_previous_column integer;
   v_attributes record;
   v_attribute_power integer;
   v_equipment record;
@@ -90,9 +95,49 @@ BEGIN
   -- Discard time older than 24 hours; never let repeat requests harvest it.
   v_cursor := greatest(v_state.last_tick_at, v_now - interval '24 hours');
   v_slots := least(48, greatest(0, floor(extract(epoch FROM (v_now - v_cursor)) / 1800)::integer));
-  SELECT coalesce(p.level, 1), lower(coalesce(p.starter_class, 'novato'))
-    INTO v_level, v_class FROM public.profiles p WHERE p.user_id = v_uid;
+  SELECT coalesce(p.level, 1), p.current_class_id,
+         lower(coalesce(nullif(btrim(p.starter_class), ''), 'novato'))
+    INTO v_level, v_current_class_id, v_class
+    FROM public.profiles p WHERE p.user_id = v_uid;
   v_level := greatest(1, coalesce(v_level, 1));
+  -- The selected class outranks the starter class, including after a respec.
+  -- Walk to the real column-2 ancestor; Aprendiz has no specialized branch.
+  IF v_current_class_id IS NOT NULL THEN
+    LOOP
+      v_class_hops := v_class_hops + 1;
+      IF v_class_hops > 16 OR v_current_class_id = ANY(v_seen_classes) THEN
+        RAISE EXCEPTION 'invalid current class ancestry' USING ERRCODE = '22023';
+      END IF;
+      v_seen_classes := array_append(v_seen_classes, v_current_class_id);
+      SELECT * INTO v_class_node FROM public.classes WHERE id = v_current_class_id;
+      IF NOT FOUND OR v_class_node.column_index IS NULL OR
+         (v_previous_column IS NOT NULL AND v_class_node.column_index <> v_previous_column - 1) THEN
+        RAISE EXCEPTION 'invalid current class ancestry' USING ERRCODE = '22023';
+      END IF;
+
+      IF v_class_node.column_index = 1 AND v_class_node.name = 'Aprendiz' THEN
+        v_class := 'novato';
+        EXIT;
+      ELSIF v_class_node.column_index = 2 THEN
+        v_class := CASE v_class_node.name
+          WHEN 'Espadachim' THEN 'guerreiro'
+          WHEN 'Mago' THEN 'mago'
+          WHEN 'Gatuno' THEN 'gatuno'
+          WHEN 'Noviço' THEN 'clerico'
+          WHEN 'Arqueiro' THEN 'arqueiro'
+          WHEN 'Ferreiro' THEN 'ferreiro'
+          END;
+        IF v_class IS NULL THEN
+          RAISE EXCEPTION 'unknown current class base' USING ERRCODE = '22023';
+        END IF;
+        EXIT;
+      ELSIF v_class_node.column_index <= 1 OR v_class_node.parent_class_id IS NULL THEN
+        RAISE EXCEPTION 'invalid current class ancestry' USING ERRCODE = '22023';
+      END IF;
+      v_previous_column := v_class_node.column_index;
+      v_current_class_id := v_class_node.parent_class_id;
+    END LOOP;
+  END IF;
   -- Use the same trained attribute names and weights as getPlayerCombatStats.
   -- Missing attributes start at level 1; extreme levels contribute at most 50.
   SELECT coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) IN ('força','forca')),1) AS strength,
@@ -104,7 +149,7 @@ BEGIN
          coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) = 'agilidade'),1) AS agility,
          coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) = 'criatividade'),1) AS creativity
     INTO v_attributes FROM public.attributes a WHERE a.user_id = v_uid;
-  -- The starter class selects the attack branch used by existing combat stats.
+  -- The current class (or starter fallback when absent) selects the attack branch.
   -- Defense, agility and HP add smaller shared contributions to every class.
   v_attribute_power := least(180,
     CASE WHEN v_class IN ('mago','clerico') THEN

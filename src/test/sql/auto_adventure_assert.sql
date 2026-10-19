@@ -45,24 +45,88 @@ RESET ROLE;
 SELECT pg_temp.assert_true((SELECT stage=10 FROM public.adventure_state WHERE user_id='11111111-1111-1111-1111-111111111111'), 'stage 9 normal then stage 10 boss defeat');
 SELECT pg_temp.assert_true((SELECT kind='boss' AND NOT won AND gold=0 FROM public.adventure_encounters WHERE user_id='11111111-1111-1111-1111-111111111111' AND stage=10 AND attempt=0), 'boss 10 defeat neutral');
 
--- Same hero level and empty equipment, but trained Strength from routine changes power and result.
+-- Same hero, level, trained attributes and empty equipment throughout class changes.
+-- Starter Mago must not override the selected Espadachim after a respec.
 INSERT INTO public.adventure_state(user_id,stage,attempt,last_tick_at)
 VALUES ('33333333-3333-3333-3333-333333333333',10,0,now()-interval '30 minutes');
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
 SELECT public.sync_auto_adventure();
 RESET ROLE;
-SELECT pg_temp.assert_true((SELECT NOT won AND hero_power=74 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=10 AND attempt=0), 'magic class does not use physical attack branch');
-UPDATE public.profiles SET starter_class='guerreiro' WHERE user_id='33333333-3333-3333-3333-333333333333';
+SELECT pg_temp.assert_true((SELECT won AND hero_power=86 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=10 AND attempt=0), 'current Espadachim chooses physical despite Mago starter');
+
+UPDATE public.profiles SET current_class_id='00000002-0000-0000-0000-000000000002', starter_class='guerreiro'
+ WHERE user_id='33333333-3333-3333-3333-333333333333';
+UPDATE public.adventure_state SET stage=20,attempt=0,last_tick_at=now()-interval '30 minutes'
+ WHERE user_id='33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SELECT public.sync_auto_adventure();
+RESET ROLE;
+SELECT pg_temp.assert_true((SELECT NOT won AND hero_power=74 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=20 AND attempt=0), 'current Mago chooses magic despite Guerreiro starter and stronger physical attack');
+
+UPDATE public.profiles SET current_class_id='00000003-0000-0000-0000-000000000001'
+ WHERE user_id='33333333-3333-3333-3333-333333333333';
 UPDATE public.adventure_state SET last_tick_at=now()-interval '30 minutes' WHERE user_id='33333333-3333-3333-3333-333333333333';
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
 SELECT public.sync_auto_adventure();
 RESET ROLE;
-SELECT pg_temp.assert_true((SELECT won AND hero_power=86 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=10 AND attempt=1), 'trained Strength wins with physical class at level 1');
+SELECT pg_temp.assert_true((SELECT NOT won AND hero_power=86 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=20 AND attempt=1), 'Cavaleiro resolves physical Espadachim ancestor');
+
+UPDATE public.profiles SET current_class_id='00000003-0000-0000-0000-000000000003'
+ WHERE user_id='33333333-3333-3333-3333-333333333333';
+UPDATE public.adventure_state SET last_tick_at=now()-interval '30 minutes' WHERE user_id='33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SELECT public.sync_auto_adventure();
+RESET ROLE;
+SELECT pg_temp.assert_true((SELECT NOT won AND hero_power=74 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=20 AND attempt=2), 'Bruxo resolves magical Mago ancestor');
+
+UPDATE public.profiles SET current_class_id=NULL, starter_class='mago'
+ WHERE user_id='33333333-3333-3333-3333-333333333333';
+UPDATE public.adventure_state SET last_tick_at=now()-interval '30 minutes' WHERE user_id='33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SELECT public.sync_auto_adventure();
+RESET ROLE;
+SELECT pg_temp.assert_true((SELECT NOT won AND hero_power=74 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=20 AND attempt=3), 'absent current class falls back to Mago starter');
+
+UPDATE public.profiles SET current_class_id='00000001-0000-0000-0000-000000000001'
+ WHERE user_id='33333333-3333-3333-3333-333333333333';
+UPDATE public.adventure_state SET last_tick_at=now()-interval '30 minutes' WHERE user_id='33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SELECT public.sync_auto_adventure();
+RESET ROLE;
+SELECT pg_temp.assert_true((SELECT NOT won AND hero_power=86 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=20 AND attempt=4), 'Aprendiz uses unspecialized branch, not starter');
+
+UPDATE public.profiles SET current_class_id='00000002-0000-0000-0000-000000000005'
+ WHERE user_id='33333333-3333-3333-3333-333333333333';
+UPDATE public.adventure_state SET last_tick_at=now()-interval '30 minutes' WHERE user_id='33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SELECT public.sync_auto_adventure();
+RESET ROLE;
+SELECT pg_temp.assert_true((SELECT NOT won AND hero_power=74 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=20 AND attempt=5), 'known Noviço uses magic branch, never strongest attack');
+-- A malformed tree must fail closed without crediting a combat encounter.
+UPDATE public.classes SET parent_class_id=id WHERE id='00000003-0000-0000-0000-000000000001';
+UPDATE public.profiles SET current_class_id='00000003-0000-0000-0000-000000000001'
+ WHERE user_id='33333333-3333-3333-3333-333333333333';
+UPDATE public.adventure_state SET last_tick_at=now()-interval '30 minutes' WHERE user_id='33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+DO $$
+BEGIN
+  PERFORM public.sync_auto_adventure();
+  RAISE EXCEPTION 'malformed class ancestry was accepted';
+EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+END $$;
+RESET ROLE;
+SELECT pg_temp.assert_true((SELECT count(*)=0 FROM public.adventure_encounters WHERE user_id='33333333-3333-3333-3333-333333333333' AND stage=20 AND attempt=6), 'invalid ancestry creates no encounter');
 SELECT pg_temp.assert_true((SELECT hero_power=73 AND NOT won FROM public.adventure_encounters WHERE user_id='11111111-1111-1111-1111-111111111111' AND stage=10 AND attempt=0), 'untrained equal-level hero loses boss 10');
-SELECT pg_temp.assert_true((SELECT level=1 AND total_xp=0 FROM public.profiles WHERE user_id='33333333-3333-3333-3333-333333333333'), 'trained hero battle grants no XP');
-SELECT pg_temp.assert_true((SELECT level=3 AND xp=0 FROM public.attributes WHERE user_id='33333333-3333-3333-3333-333333333333' AND name='Força'), 'battle does not train Strength');
+SELECT pg_temp.assert_true((SELECT level=1 AND total_xp=1234 FROM public.profiles WHERE user_id='33333333-3333-3333-3333-333333333333'), 'class changes and battle preserve XP');
+SELECT pg_temp.assert_true((SELECT count(*)=1 AND max(level)=3 AND max(xp)=7 FROM public.attributes WHERE user_id='33333333-3333-3333-3333-333333333333'), 'battle preserves permanent attributes');
 
 UPDATE public.profiles SET level=4 WHERE user_id='11111111-1111-1111-1111-111111111111';
 UPDATE public.adventure_state SET last_tick_at=now()-interval '1 hour' WHERE user_id='11111111-1111-1111-1111-111111111111';
