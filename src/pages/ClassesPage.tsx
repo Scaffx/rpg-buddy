@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile, useClasses, useSelectClass } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
-import { useAddGold } from '@/hooks/useGold';
+import { useClaimClassGoldReward } from '@/hooks/useGold';
 import { useClaimClassKit } from '@/hooks/useInventory';
 import AppLayout from '@/components/AppLayout';
 import { Loader2, Lock, Check, Swords, ChevronDown, ChevronRight, ArrowDown, Gift, AlertTriangle } from 'lucide-react';
@@ -71,7 +71,7 @@ export default function ClassesPage() {
   const selectClass = useSelectClass();
   const claimClassKit = useClaimClassKit();
   const { user } = useAuth();
-  const addGold = useAddGold();
+  const claimGoldReward = useClaimClassGoldReward();
   const { toast } = useToast();
   const [selecting, setSelecting] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<ClassNode | null>(null);
@@ -272,10 +272,13 @@ export default function ClassesPage() {
     if (!user || rewardClaimed || claimingReward) return;
     setClaimingReward(true);
     try {
-      await addGold.mutateAsync({ amount: 50, reason: 'Recompensa de classe inicial', type: 'class_reward' });
+      const result = await claimGoldReward.mutateAsync();
       localStorage.setItem(`class_reward_claimed_${user.id}`, 'true');
       setRewardClaimed(true);
-      toast({ title: `🎉 ${t('app.classes.reward_collected')}`, description: t('app.classes.reward_collected_desc') });
+      toast({
+        title: result.already_claimed ? t('app.classes.reward_collected') : `🎉 ${t('app.classes.reward_collected')}`,
+        description: result.already_claimed ? 'Recompensa já resgatada.' : t('app.classes.reward_collected_desc'),
+      });
       setSelectedDetail(null);
     } catch {
       toast({ title: t('app.classes.error_reward'), variant: 'destructive' });

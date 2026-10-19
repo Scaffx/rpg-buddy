@@ -722,7 +722,7 @@ export default function DungeonArena({
 
   const addLoot = useCallback((items: LootDrop[]) => {
     setAllLoot(prev => mergeLoot(prev, items));
-    items.forEach(l => addLog(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
+    items.forEach(l => addLog(`   📦 Encontrado: ${l.qty}x ${l.icon} ${l.name} (não creditado)`));
   }, [addLog]);
 
   // ── Potion use ─────────────────────────────────────────────────────────
@@ -750,16 +750,15 @@ export default function DungeonArena({
 
     addLog(`${auto ? '🤖 [Auto]' : '🧪 [Manual]'} ${potion.name} usada! ${healHp > 0 ? `+${healHp} HP` : ''}${healMp > 0 ? ` +${healMp} MP` : ''}`);
 
-    // DB: reduce quantity
+    // DB: server validates and decrements the owned charge.
     if (user) {
-      supabase.from('user_inventory').select('quantity').eq('id', potion.invId).maybeSingle().then(({ data }: any) => {
-        const qty = data?.quantity ?? 1;
-        if (qty <= 1) supabase.from('user_inventory').delete().eq('id', potion.invId);
-        else supabase.from('user_inventory').update({ quantity: qty - 1 }).eq('id', potion.invId);
-      });
+      void (supabase as any).rpc('consume_inventory_item', { p_inventory_id: potion.invId })
+        .then(({ error }: any) => {
+          if (error) toast({ title: 'Poção não consumida', description: error.message, variant: 'destructive' });
+        });
     }
     return true;
-  }, [user, initialPlayerMaxHp, initialPlayerMaxMp, addLog]);
+  }, [user, initialPlayerMaxHp, initialPlayerMaxMp, addLog, toast]);
 
   // ── Enter a room ───────────────────────────────────────────────────────
   const enterRoom = useCallback((idx: number) => {
@@ -1104,7 +1103,7 @@ export default function DungeonArena({
 
   // ── Grant rewards ──────────────────────────────────────────────────────
   // §9.2 (Rotina é a Torneira): dungeon é RALO — NÃO concede mais XP/ouro.
-  // Só devolve loot/materiais (expressão) + registra a parceria co-op.
+  // O resultado client-only não comprova a origem dos materiais; só registra a parceria co-op.
   const grantRewards = useCallback(async () => {
     if (!user || isGranting || grantedRef.current) return;
     grantedRef.current = true;
@@ -1114,26 +1113,11 @@ export default function DungeonArena({
     setGoldEarned(0);
 
     try {
-      // Loot/materiais (expressão) → game_items by effect
-      for (const loot of allLoot.filter(l => l.id !== 'moeda_cobre')) {
-        try {
-          const { data: gi } = await supabase.from('game_items').select('id').eq('effect', loot.id).maybeSingle();
-          if (gi?.id) {
-            const { data: ex } = await supabase.from('user_inventory').select('id, quantity').eq('user_id', user.id).eq('item_id', gi.id).maybeSingle();
-            if (ex?.id) {
-              await supabase.from('user_inventory').update({ quantity: ex.quantity + loot.qty }).eq('id', ex.id);
-            } else {
-              await supabase.from('user_inventory').insert({ user_id: user.id, item_id: gi.id, quantity: loot.qty, equipped: false });
-            }
-          }
-        } catch { /* item not in game_items yet — tracked in activity_log */ }
-      }
-
       // Activity log
       await supabase.from('activity_log').insert({
         user_id: user.id,
         action: 'dungeon_completed',
-        description: `Dungeon "${dungeonName}" concluída! Resgatou ${rescued} NPC(s). Materiais: ${allLoot.map(l => `${l.qty}x ${l.name}`).join(', ')}`,
+        description: `Dungeon "${dungeonName}" concluída! Resgatou ${rescued} NPC(s). Materiais client-only não creditados.`,
         xp_gained: 0,
       });
 
@@ -1144,6 +1128,7 @@ export default function DungeonArena({
       }
 
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      toast({ title: 'Materiais não creditados', description: 'Esta dungeon ainda não possui resultado de loot validado no servidor.' });
     } catch (err: any) {
       toast({ title: 'Erro ao salvar recompensas', description: err?.message, variant: 'destructive' });
     } finally {
@@ -1593,7 +1578,7 @@ export default function DungeonArena({
                   exit={{ opacity: 0, height: 0 }}
                   className="rpg-card bg-amber-500/10 border-amber-500/30"
                 >
-                  <p className="text-xs font-semibold text-amber-300 mb-2">📦 Materiais coletados:</p>
+                  <p className="text-xs font-semibold text-amber-300 mb-2">📦 Materiais encontrados (não creditados):</p>
                   <div className="flex flex-wrap gap-2">
                     {allLoot.map(l => (
                       <span key={l.id} className="text-xs px-2 py-1 rounded-full bg-muted/40 border border-border/40 text-foreground">
@@ -1731,7 +1716,7 @@ export default function DungeonArena({
               <div className="rpg-card space-y-2">
                 <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Package className="w-4 h-4 text-amber-400" />
-                  Materiais de Fabricação Coletados
+                  Materiais encontrados (não creditados)
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {allLoot.map(l => (
@@ -1850,7 +1835,7 @@ export default function DungeonArena({
             {isGranting && <p className="text-xs text-center text-muted-foreground animate-pulse">Salvando recompensas...</p>}
 
             <button
-              onClick={() => onVictory({ xpGained: xpEarned, goldGained: goldEarned, loot: allLoot, rescued })}
+              onClick={() => onVictory({ xpGained: xpEarned, goldGained: goldEarned, loot: [], rescued })}
               disabled={isGranting}
               className="w-full py-3 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-base transition-colors disabled:opacity-60"
             >
@@ -1871,7 +1856,7 @@ export default function DungeonArena({
 
             {allLoot.length > 0 && (
               <div className="rpg-card space-y-2">
-                <p className="text-sm font-semibold text-muted-foreground">Materiais que você coletou antes de cair:</p>
+                <p className="text-sm font-semibold text-muted-foreground">Materiais encontrados (não creditados):</p>
                 <div className="flex flex-wrap gap-2">
                   {allLoot.map(l => (
                     <span key={l.id} className="text-xs px-2 py-1 rounded-full bg-muted/30 border border-border/30 text-muted-foreground">

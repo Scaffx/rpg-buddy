@@ -14,13 +14,12 @@ export function useGoldBalance() {
         .maybeSingle();
       if (error) throw error;
       if (!data) {
-        const { data: newBal, error: insertErr } = await supabase
-          .from('user_balance')
-          .insert({ user_id: user!.id, balance_percent: 100, gold: 100 } as any)
-          .select()
-          .single();
-        if (insertErr) throw insertErr;
-        return newBal;
+        const { error: ensureError } = await (supabase as any).rpc('ensure_user_balance');
+        if (ensureError) throw ensureError;
+        const { data: newBalance, error: readError } = await supabase
+          .from('user_balance').select('*').eq('user_id', user!.id).single();
+        if (readError) throw readError;
+        return newBalance;
       }
       return data;
     },
@@ -28,23 +27,15 @@ export function useGoldBalance() {
   });
 }
 
-export function useAddGold() {
+export function useClaimClassGoldReward() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ amount, reason, type }: { amount: number; reason: string; type: string }) => {
+    mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
-
-      // 🔒 Server-side: crédito de ouro via add_gold_to_user (auth.uid() + clamp).
-      const { error } = await supabase.rpc('add_gold_to_user', { p_user_id: user.id, p_gold: amount });
+      const { data, error } = await (supabase as any).rpc('claim_class_gold_reward');
       if (error) throw error;
-
-      await supabase.from('gold_history' as any).insert({
-        user_id: user.id,
-        type,
-        amount,
-        reason,
-      } as any);
+      return data as { ok: boolean; already_claimed: boolean };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });

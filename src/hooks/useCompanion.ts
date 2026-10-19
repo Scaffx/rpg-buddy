@@ -229,11 +229,10 @@ export function useCreateCompanion() {
   return useMutation({
     mutationFn: async ({ type, name }: { type: string; name: string }) => {
       if (!user) throw new Error('Não autenticado');
-      const { data, error } = await supabase
-        .from('companions')
-        .insert({ user_id: user.id, companion_type: type, origin: 'lvl3_choice', name })
-        .select('*')
-        .single();
+      const { data, error } = await (supabase as any).rpc('choose_level3_companion', {
+        p_type: type,
+        p_name: name,
+      });
       if (error) throw error;
       return data as CompanionRow;
     },

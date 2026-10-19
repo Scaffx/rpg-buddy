@@ -38,17 +38,12 @@ export default function CombatEquipSwap({
   const swap = useMutation({
     mutationFn: async (inv: InventoryItem) => {
       if (!user) throw new Error('Não autenticado');
-      // Desequipa a arma atual e equipa a escolhida. Só armas são afetadas —
-      // armadura e acessório seguem no lugar.
-      const ids = weapons.map((w) => w.id);
-      if (ids.length > 0) {
-        await supabase.from('user_inventory').update({ equipped: false }).in('id', ids).eq('user_id', user.id);
-      }
-      const { error } = await supabase
-        .from('user_inventory')
-        .update({ equipped: true })
-        .eq('id', inv.id)
-        .eq('user_id', user.id);
+      // O servidor troca apenas armas possuídas e valida slots em uma transação.
+      const { error } = await (supabase as any).rpc('set_inventory_equipped', {
+        p_inventory_id: inv.id,
+        p_equipped: true,
+        p_replace_weapon: true,
+      });
       if (error) throw error;
       return inv;
     },

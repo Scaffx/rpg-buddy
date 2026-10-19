@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Loader2, Coin
 const NPC_LIBERADO = false;
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
-import { useNpcAffinity, useIncrementNpcAffinity, getAffinityTier } from '@/hooks/useNpcAffinity';
+import { useNpcAffinity, getAffinityTier } from '@/hooks/useNpcAffinity';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,11 +45,6 @@ interface NpcChallenge {
 type NpcCompletion = {
   npc_id: string;
   challenge_id: string;
-};
-
-type InventoryRow = {
-  id: string;
-  quantity: number;
 };
 
 interface Npc {
@@ -165,16 +160,6 @@ function normalizeChallenge(value: unknown): NpcChallenge | null {
   };
 }
 
-function buildRewardText(challenge: NpcChallenge) {
-  const parts = [`+${challenge.gold_reward} 🪙`];
-
-  if (challenge.reward_item && challenge.reward_item_quantity > 0) {
-    parts.push(`+${challenge.reward_item_quantity}x ${challenge.reward_item.icon ?? '🎁'} ${challenge.reward_item.name}`);
-  }
-
-  return parts.join(' • ');
-}
-
 export default function NpcPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -205,7 +190,6 @@ export default function NpcPage() {
   const conversationHistoryRef = useRef<ChatMessage[]>([]);
   const npcWeeklyChallengesTable = 'npc_weekly_challenges';
   const npcCompletionsTable = 'npc_challenge_completions';
-  const userInventoryTable = 'user_inventory';
 
   // Missões criadas por cada NPC via chat
   const { data: npcCreatedMissions = [], refetch: refetchNpcMissions } = useQuery<{
@@ -232,7 +216,6 @@ export default function NpcPage() {
   const atWeeklyLimit = weeklyNpcCount >= 3;
 
   const { data: affinityRows = [] } = useNpcAffinity();
-  const incrementAffinity = useIncrementNpcAffinity();
 
   const affinityMap = useMemo(
     () => new Map(affinityRows.map((r) => [r.npc_id, r])),
@@ -306,112 +289,14 @@ export default function NpcPage() {
   const isCompleted = (npcId: string, challengeId: string) =>
     completedSet.has(`${npcId}|${challengeId}`);
 
-  // Toggle (complete or uncomplete) a challenge via Supabase
+  // NPC completion remains unavailable until reward and reversal have a
+  // server-owned challenge result. The page is gated by NPC_LIBERADO above.
   const toggleChallenge = useMutation({
-    mutationFn: async (challenge: NpcChallenge) => {
-      if (!user) throw new Error('Não autenticado');
-      const key = `${challenge.npc_id}|${challenge.challenge_id}`;
-      const alreadyDone = completedSet.has(key);
-
-      if (alreadyDone) {
-        // Reverte os valores registrados; conclusões antigas ainda podem ter XP.
-        const { error } = await supabase.rpc('undo_npc_challenge', {
-          p_npc_id: challenge.npc_id,
-          p_challenge_id: challenge.challenge_id,
-          p_week_token: weekToken,
-        });
-        if (error) throw error;
-
-        if (challenge.reward_item_id && challenge.reward_item_quantity > 0) {
-          const { data: inventoryRow } = await supabase
-            .from(userInventoryTable)
-            .select('id, quantity')
-            .eq('user_id', user.id)
-            .eq('item_id', challenge.reward_item_id)
-            .maybeSingle();
-
-          if (inventoryRow) {
-            const typedInventoryRow = inventoryRow as unknown as InventoryRow;
-            const nextQuantity = Number(typedInventoryRow.quantity ?? 0) - challenge.reward_item_quantity;
-            if (nextQuantity > 0) {
-              await supabase
-                .from(userInventoryTable)
-                .update({ quantity: nextQuantity })
-                .eq('id', typedInventoryRow.id);
-            } else {
-              await supabase
-                .from(userInventoryTable)
-                .delete()
-                .eq('id', typedInventoryRow.id);
-            }
-          }
-        }
-      } else {
-        const { error } = await supabase
-          .from(npcCompletionsTable)
-          .insert({
-            user_id: user.id,
-            npc_id: challenge.npc_id,
-            challenge_id: challenge.challenge_id,
-            week_token: weekToken,
-            xp_earned: 0,
-            gold_earned: challenge.gold_reward,
-          });
-        if (error) {
-          if (error.code === '23505') throw new Error(t('app.npc.error_already_done'));
-          throw error;
-        }
-
-        await supabase.rpc('add_gold_to_user', { p_user_id: user.id, p_gold: challenge.gold_reward });
-
-        if (challenge.reward_item_id && challenge.reward_item_quantity > 0) {
-          const { data: inventoryRow } = await supabase
-            .from(userInventoryTable)
-            .select('id, quantity')
-            .eq('user_id', user.id)
-            .eq('item_id', challenge.reward_item_id)
-            .maybeSingle();
-
-          if (inventoryRow) {
-            const typedInventoryRow = inventoryRow as unknown as InventoryRow;
-            await supabase
-              .from(userInventoryTable)
-              .update({ quantity: Number(typedInventoryRow.quantity ?? 0) + challenge.reward_item_quantity })
-              .eq('id', typedInventoryRow.id);
-          } else {
-            await supabase.from(userInventoryTable).insert({
-              user_id: user.id,
-              item_id: challenge.reward_item_id,
-              quantity: challenge.reward_item_quantity,
-              equipped: false,
-            });
-          }
-        }
-      }
-
-      return { wasCompleted: alreadyDone, challenge };
-    },
-    onSuccess: ({ wasCompleted, challenge }) => {
-      qc.invalidateQueries({ queryKey: ['npc_completions', user?.id, weekToken] });
-      qc.invalidateQueries({ queryKey: ['npc_weekly_challenges', user?.id, weekToken] });
-      qc.invalidateQueries({ queryKey: ['profile'] });
-      qc.invalidateQueries({ queryKey: ['gold-balance'] });
-      qc.invalidateQueries({ queryKey: ['inventory', user?.id] });
-
-      if (!wasCompleted) {
-        incrementAffinity.mutate({ npcId: challenge.npc_id, xpAmount: 25 });
-        toast.success(t('app.npc.challenge_done'), {
-          description: buildRewardText(challenge),
-        });
-      } else {
-        toast(t('app.npc.challenge_undone'), {
-          description: buildRewardText(challenge),
-        });
-      }
+    mutationFn: async (_challenge: NpcChallenge) => {
+      throw new Error('Desafios de NPC temporariamente indisponíveis.');
     },
     onError: (err: unknown) => toast.error(err instanceof Error ? err.message : t('app.npc.error_challenge')),
   });
-
   const totalChallenges = weeklyChallenges.length;
   const completedChallenges = weeklyChallenges.filter(
     (c) => completedSet.has(`${c.npc_id}|${c.challenge_id}`)
