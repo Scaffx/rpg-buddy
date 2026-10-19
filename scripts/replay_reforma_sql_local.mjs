@@ -17,6 +17,7 @@ const migrations = [
   '20261019210221_attribute_award_receipts.sql',
   '20261019211310_auto_adventure_reachable_catalog.sql',
   '20261019212523_restore_unpaid_weekly_milestone_after_target_edit.sql',
+  '20261019220257_undo_mission_derived_effect_receipts.sql',
 ];
 
 const database = process.argv[2];
@@ -32,7 +33,9 @@ const psql = process.env.PSQL17 ?? (process.platform === 'win32'
   ? 'C:/Program Files/PostgreSQL/17/bin/psql.exe'
   : 'psql');
 
-for (const name of stopBeforeA6 ? migrations.slice(0, -1) : migrations) {
+for (const name of stopBeforeA6
+  ? migrations.slice(0, migrations.indexOf('20261019212523_restore_unpaid_weekly_milestone_after_target_edit.sql'))
+  : migrations) {
   const path = resolve('supabase/migrations', name);
   const sql = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
   const sha256 = createHash('sha256').update(sql).digest('hex');

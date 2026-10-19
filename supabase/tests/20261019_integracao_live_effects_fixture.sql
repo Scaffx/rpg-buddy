@@ -12,6 +12,17 @@ ALTER TABLE public.user_health_stats
   ADD COLUMN current_mp integer DEFAULT 10;
 ALTER TABLE public.profiles ADD COLUMN pontos_talento integer DEFAULT 0;
 
+-- Read policies are fixture grants for authenticated RPC assertions, not an
+-- assertion that the complete remote RLS catalogue has been reproduced.
+ALTER TABLE public.user_buffs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY integration_effect_buffs_own_select ON public.user_buffs
+  FOR SELECT TO authenticated USING (user_id=auth.uid());
+GRANT SELECT ON public.user_buffs TO authenticated;
+ALTER TABLE public.user_health_stats ENABLE ROW LEVEL SECURITY;
+CREATE POLICY integration_effect_health_own_select ON public.user_health_stats
+  FOR SELECT TO authenticated USING (user_id=auth.uid());
+GRANT SELECT ON public.user_health_stats TO authenticated;
+
 CREATE OR REPLACE FUNCTION public._apply_mission_health_effects(p_uid uuid, p_recover_pct numeric, p_add_hp integer, p_add_mp integer)
  RETURNS void
  LANGUAGE plpgsql
