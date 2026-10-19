@@ -19,6 +19,13 @@ CREATE TABLE public.missions (
   due_date date,
   frequency_type text NOT NULL DEFAULT 'daily'
 );
+-- Legado hostil: chave com formato correto, mas data impossivel, e XP acima
+-- da base nova. A migration deve ignorar a chave sem falhar nem pagar credito.
+INSERT INTO public.missions (user_id, priority, xp_reward, days_of_week, daily_status)
+VALUES
+  ('00000000-0000-0000-0000-000000000010', 'alta', 1000, '["Seg"]',
+   '{"2026-99-99":"completed","2026-02-30":"completed","2026-10-19":"completed"}'),
+  ('00000000-0000-0000-0000-000000000011', 'baixa', 1000, '["Seg"]', '{}');
 CREATE FUNCTION public._complete_mission_daily(uuid, date, integer)
 RETURNS jsonb LANGUAGE plpgsql AS $$
 DECLARE v_priority_mult numeric;

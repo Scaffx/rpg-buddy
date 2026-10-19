@@ -22,6 +22,36 @@ BEGIN
 END;
 $$;
 
+SET app.uid = '';
+INSERT INTO public.missions (user_id, priority, due_date, xp_reward)
+VALUES ('00000000-0000-0000-0000-000000000012', 'baixa', '2026-10-22', 1000);
+DO $$ BEGIN
+  ASSERT (SELECT xp_reward = 25 FROM public.missions
+          WHERE user_id = '00000000-0000-0000-0000-000000000012'),
+    'privileged insert bypassed future XP base';
+END $$;
+SET app.uid = '00000000-0000-0000-0000-000000000001';
+DO $$ BEGIN
+  ASSERT (SELECT xp_reward = 25 FROM public.missions
+          WHERE user_id = '00000000-0000-0000-0000-000000000011'),
+    'legacy green future XP base exceeds 25';
+  ASSERT (SELECT count(*) = 1 FROM private.mission_priority_paid_days
+          WHERE user_id = '00000000-0000-0000-0000-000000000010'
+            AND day = DATE '2026-10-19'), 'valid legacy day not preserved';
+  ASSERT (SELECT count(*) = 1 FROM private.mission_priority_paid_days
+          WHERE user_id = '00000000-0000-0000-0000-000000000010'),
+    'invalid legacy day was credited';
+END $$;
+SET app.uid = '00000000-0000-0000-0000-000000000010';
+UPDATE public.missions
+   SET daily_status = '{"2026-99-99":"completed","2026-02-30":"completed","2026-10-19":"completed"}'
+ WHERE user_id = auth.uid();
+DO $$ BEGIN
+  ASSERT (SELECT count(*) = 1 FROM private.mission_priority_paid_days
+          WHERE user_id = auth.uid()), 'invalid runtime day was credited';
+  ASSERT (SELECT xp_reward = 25 FROM public.missions WHERE user_id = auth.uid()),
+    'legacy high future XP base exceeds 25';
+END $$;
 SET app.uid = '00000000-0000-0000-0000-000000000001';
 INSERT INTO public.missions (user_id, priority, days_of_week)
 SELECT auth.uid(), 'alta', '["Seg"]' FROM generate_series(1, 4);

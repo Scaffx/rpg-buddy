@@ -1,5 +1,6 @@
 -- Reforma 19/10: agenda e recompensa de prioridade. Aplicar depois das RPCs de
 -- progressao da mesma reforma; a substituicao abaixo preserva o restante delas.
+-- PostgreSQL 16+ (pg_input_is_valid) evita casts acidentais de datas malformadas.
 DO $$
 DECLARE v_sig text; v_def text;
 BEGIN
@@ -44,6 +45,7 @@ CROSS JOIN LATERAL jsonb_each_text(COALESCE(m.daily_status, '{}'::jsonb)) d
 WHERE private.mission_priority_key(m.priority) IN ('alta', 'media')
   AND d.value = 'completed'
   AND d.key ~ '^\d{4}-\d{2}-\d{2}$'
+  AND pg_catalog.pg_input_is_valid(d.key, 'date')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO private.mission_priority_paid_days (user_id, mission_id, priority, day)
@@ -52,6 +54,10 @@ FROM public.missions m
 WHERE private.mission_priority_key(m.priority) IN ('alta', 'media')
   AND m.completed AND m.due_date IS NOT NULL
 ON CONFLICT DO NOTHING;
+
+-- A base futura e 25 para todas as prioridades, inclusive missoes legadas
+-- com xp_reward arbitrario. Nao altera perfis, ledgers nem XP ja creditado.
+UPDATE public.missions SET xp_reward = 25 WHERE xp_reward IS DISTINCT FROM 25;
 
 CREATE OR REPLACE FUNCTION private.mission_priority_occurs_on(m public.missions, p_day date)
 RETURNS boolean LANGUAGE sql STABLE SET search_path = '' AS $$
@@ -90,12 +96,8 @@ BEGIN
     IF auth.uid() IS NOT NULL AND auth.uid() <> NEW.user_id THEN
       RAISE EXCEPTION 'MISSION_OWNER_MISMATCH' USING ERRCODE = '42501';
     END IF;
-    -- Browser nunca escolhe a base de XP. Edicoes comuns preservam legado.
-    IF auth.uid() IS NOT NULL THEN
-      IF TG_OP = 'INSERT' THEN NEW.xp_reward := 25;
-      ELSIF NEW.xp_reward IS DISTINCT FROM OLD.xp_reward THEN NEW.xp_reward := OLD.xp_reward;
-      END IF;
-    END IF;
+    -- Toda recompensa futura usa a mesma base, inclusive payload privilegiado.
+    NEW.xp_reward := 25;
     v_row := NEW;
   END IF;
 
@@ -108,6 +110,7 @@ BEGIN
     SELECT OLD.user_id, OLD.id, private.mission_priority_key(OLD.priority), d.key::date
     FROM pg_catalog.jsonb_each_text(COALESCE(OLD.daily_status, '{}'::jsonb)) d
     WHERE d.value = 'completed' AND d.key ~ '^\d{4}-\d{2}-\d{2}$'
+      AND pg_catalog.pg_input_is_valid(d.key, 'date')
     ON CONFLICT DO NOTHING;
     IF OLD.completed AND OLD.due_date IS NOT NULL THEN
       INSERT INTO private.mission_priority_paid_days VALUES (OLD.user_id, OLD.id, private.mission_priority_key(OLD.priority), OLD.due_date)
@@ -208,6 +211,7 @@ BEGIN
     SELECT NEW.user_id, NEW.id, v_priority, d.key::date
     FROM pg_catalog.jsonb_each_text(COALESCE(NEW.daily_status, '{}'::jsonb)) d
     WHERE d.value = 'completed' AND d.key ~ '^\d{4}-\d{2}-\d{2}$'
+      AND pg_catalog.pg_input_is_valid(d.key, 'date')
     ON CONFLICT DO NOTHING;
     IF NEW.completed AND NEW.due_date IS NOT NULL THEN
       INSERT INTO private.mission_priority_paid_days VALUES (NEW.user_id, NEW.id, v_priority, NEW.due_date)
