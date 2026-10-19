@@ -8,6 +8,17 @@
 -- get_level_from_xp_v2 below comes from live-level-functions.json; the base
 -- fixture's 100-XP step is intentionally replaced before composition replay.
 
+-- The base fixture inherits PostgreSQL's default PUBLIC EXECUTE on these two
+-- RPCs. The read-only Primary capture live-guard-function-metadata.json at
+-- 2026-10-19 23:02:06 UTC instead has anon=false, authenticated=true. Reproduce
+-- that observed authority before replay; do not relax the migration guard to
+-- accept the fixture's broader default. Trusted service_role ACLs are not
+-- modelled by this reduced fixture.
+REVOKE EXECUTE ON FUNCTION public.complete_mission(uuid),
+  public.undo_mission(uuid,date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.complete_mission(uuid),
+  public.undo_mission(uuid,date) TO authenticated;
+
 ALTER TABLE public.user_health_stats
   ADD COLUMN max_mp integer DEFAULT 10,
   ADD COLUMN current_mp integer DEFAULT 10;
