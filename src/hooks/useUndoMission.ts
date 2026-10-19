@@ -3,10 +3,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getSaoPauloDateString } from '@/lib/weeklyMissions';
+import { useTranslation } from 'react-i18next';
 
 export function useUndoMission() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async ({ missionId, date }: { missionId: string; date?: string }) => {
@@ -62,9 +64,18 @@ export function useUndoMission() {
     },
 
     onError: (error: Error) => {
+      // Keep the RPC diagnostic for investigation; the toast explains what
+      // the person can do without exposing a receipt or migration code.
+      const detail = error.message;
+      const description = detail.includes('Saldo de ouro insuficiente para desfazer')
+        ? t('app.undoMessages.goldUnavailable')
+        : /DERIVED_EFFECT_RECEIPT_MISSING|ATTRIBUTE_AWARD_RECEIPT_INCOMPLETE|ATTRIBUTE_MILESTONE_RECEIPT_MISSING|REVERSAL_LEDGER_INVALID|não está comprovado|requer conciliação/i.test(detail)
+          ? t('app.undoMessages.unverifiedCredit')
+          : detail;
+      if (description !== detail) console.error('Undo mission RPC rejected:', error);
       toast({
-        title: 'Erro ao desfazer',
-        description: error.message,
+        title: t('app.undoMessages.title'),
+        description,
         variant: 'destructive',
       });
     },

@@ -142,6 +142,12 @@
       "npcSoon": "More NPC updates coming soon"
     },
     "autoAdventure": {"title":"Automatic adventure","loading":"Preparing your adventure...","unavailable":"The adventure is unavailable right now.","invalidResponse":"Adventure data could not be confirmed. Try refreshing.","retryHint":"Try again in a moment.","retry":"Try again","stage":"Stage {{stage}}","bossAhead":"🐉 Boss ahead","normalAhead":"⚔️ Next enemy","noTurns":"combat runs without turn commands","syncHint":"Updates when you open or return","heroFallback":"Adventurer","normalEnemy":"Enemy at stage {{stage}}","unknownBoss":"Boss at stage {{stage}}","nextBoss":"Next boss: {{name}} (stage {{stage}})","heroPowerHint":"Level, trained attributes and equipment affect combat","nextEncounter":"Next encounter","offlineHint":"No battles happen in real time while the app is closed. When you return, the server catches up at most {{hours}} hours. A defeat pauses the stage until the next attempt.","goldToday":"Adventure gold today","itemsToday":"Adventure items today","lastResult":"Latest result","victory":"Victory","defeatNeutral":"Defeat without penalty","waiting":"Waiting","recent":"Recent encounters","refresh":"Refresh adventure","noneYet":"No encounters yet.","victoryReward":"Victory · +{{gold}} gold{{item}}","itemInInventory":" · item in inventory","defeatNoLoss":"Defeat · no loss","routineProgressOnly":"Combat gives no XP, levels or attributes. Those come from completed routines."},
+    "undoMessages": {
+      "title": "Could not undo",
+      "goldUnavailable": "The gold earned from this routine is no longer available. Nothing changed; adventure can replenish your balance before you try again.",
+      "unverifiedCredit": "This completion's credit cannot be verified. Nothing changed; this record needs review.",
+      "spentTalentPoint": "A talent point earned through this routine has already been spent. Nothing changed; review this record before trying again."
+    },
     "sidebar": {
       "nav_title": "Navigation menu",
       "nav_description": "Access LifeonRPG areas, help, and sign out.",

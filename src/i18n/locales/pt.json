@@ -142,6 +142,12 @@
       "npcSoon": "Novidades sobre NPCs em breve"
     },
     "autoAdventure": {"title":"Aventura automática","loading":"Preparando sua aventura...","unavailable":"A aventura está indisponível agora.","invalidResponse":"Os dados da aventura não puderam ser confirmados. Tente atualizar.","retryHint":"Tente novamente em instantes.","retry":"Tentar novamente","stage":"Etapa {{stage}}","bossAhead":"🐉 Chefe à frente","normalAhead":"⚔️ Próximo inimigo","noTurns":"combate sem comandos por turno","syncHint":"Atualiza ao abrir e voltar","heroFallback":"Aventureiro","normalEnemy":"Inimigo da etapa {{stage}}","unknownBoss":"Chefe da etapa {{stage}}","nextBoss":"Próximo chefe: {{name}} (etapa {{stage}})","heroPowerHint":"Nível, atributos treinados e equipamento influenciam o combate","nextEncounter":"Próximo confronto","offlineHint":"Com o app fechado, não há lutas em tempo real. Ao voltar, o servidor reconcilia no máximo {{hours}} horas. Derrotas pausam a etapa até a próxima tentativa.","goldToday":"Ouro da aventura hoje","itemsToday":"Itens da aventura hoje","lastResult":"Último resultado","victory":"Vitória","defeatNeutral":"Derrota sem penalidade","waiting":"Aguardando","recent":"Confrontos recentes","refresh":"Atualizar aventura","noneYet":"Nenhum confronto ainda.","victoryReward":"Vitória · +{{gold}} ouro{{item}}","itemInInventory":" · item no inventário","defeatNoLoss":"Derrota · sem perda","routineProgressOnly":"Combate não concede XP, nível nem atributos. Essas evoluções vêm de rotinas concluídas."},
+    "undoMessages": {
+      "title": "Não foi possível desfazer",
+      "goldUnavailable": "O ouro recebido nessa rotina já não está disponível. Nada foi alterado; você pode recompor o saldo com a aventura antes de tentar novamente.",
+      "unverifiedCredit": "O crédito deste registro não pode ser confirmado. Nada foi alterado; o registro precisa de revisão.",
+      "spentTalentPoint": "Um ponto de talento obtido com esta rotina já foi gasto. Nada foi alterado; revise o registro antes de tentar novamente."
+    },
     "sidebar": {
       "nav_title": "Menu de navegação",
       "nav_description": "Acesse as áreas do LifeonRPG, ajuda e a opção de sair.",

@@ -158,6 +158,12 @@
     "social": {"invite_desc":"邀请 1–4 位好友记录合作任务。合作任务不提供经验值；成长来自完成日常任务。","collective_record":"团队记录","no_xp_note":"此合作任务不提供经验值。完成日常任务才能成长。","toast_mission_created":"合作任务已创建。参与记录不会获得经验值。","toast_participation_recorded":"你在合作任务中的参与已记录。"},
     "shop": {"undo_gold_note":"消费前请注意：撤销日常任务时，账户中须保留该任务奖励的金币。冒险胜利可补充余额。"},
     "feats": {"points_hint":"通过日常任务成长，到达 {{n}} 级可获得下一个点数。","undo_points_note":"购买前请注意：如果撤销日常任务会收回已花费的点数，撤销将被拒绝。已购买的天赋会保留。"},
+    "undoMessages": {
+      "title": "无法撤销",
+      "goldUnavailable": "这项日常任务奖励的金币目前不足。没有任何变更；可通过冒险补足余额后再试。",
+      "unverifiedCredit": "无法确认这条完成记录的奖励。没有任何变更；该记录需要核查。",
+      "spentTalentPoint": "这项日常任务获得的天赋点已经花费。没有任何变更；请先核查记录。"
+    },
     "sidebar": {
       "nav_title": "导航菜单",
       "nav_description": "访问 LifeonRPG 的各个页面、帮助和退出登录选项。",

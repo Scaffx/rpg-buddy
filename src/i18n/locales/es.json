@@ -155,6 +155,12 @@
       "npcSoon": "Habrá más novedades sobre NPC pronto"
     },
     "autoAdventure": {"title":"Aventura automática","loading":"Preparando tu aventura...","unavailable":"La aventura no está disponible ahora.","invalidResponse":"No se pudieron confirmar los datos de la aventura. Intenta actualizar.","retryHint":"Vuelve a intentarlo en unos momentos.","retry":"Intentar de nuevo","stage":"Etapa {{stage}}","bossAhead":"🐉 Jefe adelante","normalAhead":"⚔️ Próximo enemigo","noTurns":"combate sin comandos por turno","syncHint":"Se actualiza al abrir o volver","heroFallback":"Aventurero","normalEnemy":"Enemigo de la etapa {{stage}}","unknownBoss":"Jefe de la etapa {{stage}}","nextBoss":"Próximo jefe: {{name}} (etapa {{stage}})","heroPowerHint":"Nivel, atributos entrenados y equipo influyen en el combate","nextEncounter":"Próximo encuentro","offlineHint":"Con la app cerrada no hay combates en tiempo real. Al volver, el servidor recupera hasta {{hours}} horas. La derrota pausa la etapa hasta el próximo intento.","goldToday":"Oro de aventura hoy","itemsToday":"Objetos de aventura hoy","lastResult":"Último resultado","victory":"Victoria","defeatNeutral":"Derrota sin penalización","waiting":"Esperando","recent":"Encuentros recientes","refresh":"Actualizar aventura","noneYet":"Todavía no hay encuentros.","victoryReward":"Victoria · +{{gold}} oro{{item}}","itemInInventory":" · objeto en el inventario","defeatNoLoss":"Derrota · sin pérdida","routineProgressOnly":"El combate no da XP, niveles ni atributos. Estos vienen de rutinas completadas."},
+    "undoMessages": {
+      "title": "No se pudo deshacer",
+      "goldUnavailable": "El oro obtenido por esta rutina ya no está disponible. Nada cambió; la aventura puede reponer el saldo antes de intentarlo otra vez.",
+      "unverifiedCredit": "No se puede verificar el crédito de este registro. Nada cambió; el registro necesita revisión.",
+      "spentTalentPoint": "Ya gastaste un punto de talento obtenido con esta rutina. Nada cambió; revisa el registro antes de intentarlo otra vez."
+    },
     "sidebar": {
       "nav_title": "Menú de navegación",
       "nav_description": "Accede a las áreas de LifeonRPG, ayuda y la opción de cerrar sesión.",

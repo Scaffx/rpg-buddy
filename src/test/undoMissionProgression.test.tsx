@@ -2,6 +2,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '@/i18n';
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), toast: vi.fn() }));
 vi.mock('@/integrations/supabase/client', () => ({
@@ -90,7 +91,7 @@ describe('undo_mission: contrato e reconciliação do cliente', () => {
     });
     expect(invalidations).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Erro ao desfazer', variant: 'destructive', description: 'DATE_OUT_OF_WINDOW',
+      variant: 'destructive', description: 'DATE_OUT_OF_WINDOW',
     }));
   });
 
