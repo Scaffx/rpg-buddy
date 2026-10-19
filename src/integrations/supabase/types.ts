@@ -15,10 +15,10 @@ export type Database = {
   public: {
     Tables: {
       adventure_encounters: {
-        Row: { user_id: string; stage: number; attempt: number; fought_at: string; kind: string; won: boolean; hero_power: number; enemy_power: number; gold: number; item_id: string | null }
-        Insert: { user_id: string; stage: number; attempt: number; fought_at?: string; kind: string; won: boolean; hero_power: number; enemy_power: number; gold?: number; item_id?: string | null }
-        Update: { user_id?: string; stage?: number; attempt?: number; fought_at?: string; kind?: string; won?: boolean; hero_power?: number; enemy_power?: number; gold?: number; item_id?: string | null }
-        Relationships: [{ foreignKeyName: "adventure_encounters_item_id_fkey"; columns: ["item_id"]; isOneToOne: false; referencedRelation: "game_items"; referencedColumns: ["id"] }]
+        Row: { user_id: string; stage: number; attempt: number; fought_at: string; kind: string; won: boolean; hero_power: number; enemy_power: number; gold: number; item_id: string | null; boss_id: string | null }
+        Insert: { user_id: string; stage: number; attempt: number; fought_at?: string; kind: string; won: boolean; hero_power: number; enemy_power: number; gold?: number; item_id?: string | null; boss_id?: string | null }
+        Update: { user_id?: string; stage?: number; attempt?: number; fought_at?: string; kind?: string; won?: boolean; hero_power?: number; enemy_power?: number; gold?: number; item_id?: string | null; boss_id?: string | null }
+        Relationships: [{ foreignKeyName: "adventure_encounters_item_id_fkey"; columns: ["item_id"]; isOneToOne: false; referencedRelation: "game_items"; referencedColumns: ["id"] }, { foreignKeyName: "adventure_encounters_boss_id_fkey"; columns: ["boss_id"]; isOneToOne: false; referencedRelation: "bosses"; referencedColumns: ["id"] }]
       }
       adventure_state: {
         Row: { user_id: string; stage: number; attempt: number; last_tick_at: string; reward_day: string; gold_today: number; loot_today: number; last_result: Json | null; updated_at: string }
@@ -3042,6 +3042,7 @@ export type Database = {
       allocate_skill_node: { Args: { p_node_id: string }; Returns: Json }
       apply_xp_penalty: { Args: { p_amount: number }; Returns: undefined }
       buy_pet: { Args: { p_pet_type: string }; Returns: Json }
+      get_pet_catalog: { Args: never; Returns: { pet_type: string; name: string; price: number; role: string; emoji: string; sort: number; unlock_boss: string | null; unlocked: boolean; owned: boolean }[] }
       buy_shop_item: {
         Args: { p_item_id: string; p_today: string }
         Returns: Json

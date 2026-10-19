@@ -6,9 +6,10 @@ tarefas coladas: é um tracker de hábito cuja única moeda de poder é a rotina
 **Se você é um agente entrando frio neste repo, leia nesta ordem:**
 
 1. Este arquivo (mapa + invariantes).
-2. [`DESIGN_ROTINA_TORNEIRA.md`](DESIGN_ROTINA_TORNEIRA.md) — **spec mestra**. Ganha de qualquer prompt.
-3. [`docs/REGRAS_DE_NEGOCIO.md`](docs/REGRAS_DE_NEGOCIO.md) — as regras do domínio, por sistema.
-4. [`MECHANICS.md`](MECHANICS.md) — fórmulas exatas (XP, ouro, combate, progressão).
+2. [`docs/REFORMA_AUTOMATICA_20261019.md`](docs/REFORMA_AUTOMATICA_20261019.md) — decisões de 19/10/2026 que substituem a antiga proibição de ouro de combate.
+3. [`DESIGN_ROTINA_TORNEIRA.md`](DESIGN_ROTINA_TORNEIRA.md) — princípios de design, lidos com a reforma acima.
+4. [`docs/REGRAS_DE_NEGOCIO.md`](docs/REGRAS_DE_NEGOCIO.md) — as regras do domínio, por sistema.
+5. [`MECHANICS.md`](MECHANICS.md) — fórmulas exatas (XP, ouro, combate, progressão).
 
 ---
 
@@ -16,8 +17,8 @@ tarefas coladas: é um tracker de hábito cuja única moeda de poder é a rotina
 
 | # | Fonte | Manda sobre |
 |---|-------|-------------|
-| 1 | `DESIGN_ROTINA_TORNEIRA.md` | Tudo. Se um pedido contradiz a spec, a spec ganha — levante a contradição antes de codar. |
-| 2 | `docs/REGRAS_DE_NEGOCIO.md` | Comportamento de produto e limites do domínio. |
+| 1 | Decisões do usuário em `docs/REFORMA_AUTOMATICA_20261019.md` | Reforma automática de 19/10/2026; ouro/itens de aventura foram autorizados. |
+| 2 | `DESIGN_ROTINA_TORNEIRA.md` e `docs/REGRAS_DE_NEGOCIO.md` | Princípios e limites do domínio, conforme a reforma. |
 | 3 | **O código** (`supabase/migrations/` + `src/lib/`) | Fórmulas e números. Se `MECHANICS.md` divergir do código, **o código é a verdade** e a doc está desatualizada — corrija a doc no mesmo PR. |
 | 4 | `docs/ROADMAP.md` | Intenção futura. Histórico de decisões, não contrato. |
 
@@ -34,14 +35,15 @@ que uma RPC faz, confira no banco — ver `docs/REGRAS_DE_NEGOCIO.md` §2.3.
 
 Violar qualquer um destes é um bug de design, mesmo que o código funcione.
 
-1. **Torneira única.** XP, nível, atributos e ouro **só** nascem de missão da rotina concluída.
-   Combate, portais, dungeons, pets, loja e login são **ralos**: consomem recurso e devolvem
-   expressão (variedade, cosmético, status, narrativa). Nunca progressão.
+1. **Progressão permanente por rotina.** XP, nível e atributos permanentes só nascem de missão
+   concluída. Checklist apenas marca estado até a conclusão. A aventura automática concede ouro
+   e itens confirmados pelo servidor, com teto diário, mas nunca XP, nível ou atributo permanente.
+   Pets não concedem XP, ouro ou multiplicadores por si mesmos.
    *Teste de vazamento:* "isto faz o jogador querer abrir o app num dia em que ele NÃO cumpriu a
    rotina?" Se sim, é vazamento — corrija ou corte.
 
-2. **Economia é server-authoritative.** Todo XP/ouro/nível/chave é calculado dentro de RPC
-   `SECURITY DEFINER` no Postgres. O cliente **nunca** envia valor de recompensa; envia
+2. **Economia é server-authoritative.** Todo XP/ouro/nível/chave é calculado no servidor. O
+   cliente **nunca** envia valor de recompensa; envia
    intenção (qual missão, qual dia). Um `.rpc()` novo que aceite `xp` ou `gold` do browser é
    uma falha de segurança, não uma conveniência.
 
@@ -80,7 +82,7 @@ android/         wrapper Capacitor (pacote com.scaffx.lifeonrpg — PERMANENTE, 
 | `supabase/migrations/*_priority_xp_multiplier.sql` | contém `_complete_mission_daily` e `_complete_mission_with_weekly` — o coração da torneira |
 | `src/lib/constants.ts` | espelha no front os multiplicadores do servidor. **Os dois mudam juntos** ou o app promete XP que o servidor não paga |
 | `src/hooks/useMissionsHooks.ts` | optimistic update de conclusão; se divergir do servidor, a UI mente |
-| `supabase/functions/processar_turno` | motor de combate; **deploy é manual** via Supabase CLI (o projeto está na Vercel, não no Lovable) |
+| `supabase/migrations/20261019194052_auto_adventure.sql` e corretivas | aventura automática e recompensa de ouro/itens; a Edge `processar_turno` é legado a auditar antes de publicar |
 
 ---
 

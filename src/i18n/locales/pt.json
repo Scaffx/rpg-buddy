@@ -113,6 +113,7 @@
     "footnote": "Funciona em qualquer navegador moderno · iOS via Safari (Adicionar à tela de início)"
   },
   "app": {
+    "autoAdventure": {"title":"Aventura automática","loading":"Preparando sua aventura...","unavailable":"A aventura está indisponível agora.","invalidResponse":"Os dados da aventura não puderam ser confirmados. Tente atualizar.","retryHint":"Tente novamente em instantes.","retry":"Tentar novamente","stage":"Etapa {{stage}}","bossAhead":"🐉 Chefe à frente","normalAhead":"⚔️ Próximo inimigo","noTurns":"combate sem comandos por turno","syncHint":"Atualiza ao abrir e voltar","heroFallback":"Aventureiro","normalEnemy":"Inimigo da etapa {{stage}}","unknownBoss":"Chefe da etapa {{stage}}","nextBoss":"Próximo chefe: {{name}} (etapa {{stage}})","heroPowerHint":"Nível, atributos treinados e equipamento influenciam o combate","nextEncounter":"Próximo confronto","offlineHint":"Com o app fechado, não há lutas em tempo real. Ao voltar, o servidor reconcilia no máximo {{hours}} horas. Derrotas pausam a etapa até a próxima tentativa.","goldToday":"Ouro da aventura hoje","itemsToday":"Itens da aventura hoje","lastResult":"Último resultado","victory":"Vitória","defeatNeutral":"Derrota sem penalidade","waiting":"Aguardando","recent":"Confrontos recentes","refresh":"Atualizar aventura","noneYet":"Nenhum confronto ainda.","victoryReward":"Vitória · +{{gold}} ouro{{item}}","itemInInventory":" · item no inventário","defeatNoLoss":"Derrota · sem perda","routineProgressOnly":"Combate não concede XP, nível nem atributos. Essas evoluções vêm de rotinas concluídas."},
     "sidebar": {
       "my_rpg": "Meu RPG",
       "my_rpg_sub": "Monte a sua história",
@@ -1011,6 +1012,9 @@
       "completions_needed_other": "{{count}} conclusões necessárias"
     },
     "missions": {
+      "completed_yesterday": "Concluída ontem",
+      "undo_completion": "Desfazer conclusão",
+      "undo_completion_a11y": "Desfazer conclusão de {{title}} em {{date}}",
       "priority_low": "Baixa",
       "priority_cap_title": "🔥 Prioridade demais",
       "priority_cap_desc": "Você já tem {{max}} missões de prioridade alta em {{day}}. Se tudo é prioridade, nada é — rebaixe uma antes de criar outra.",

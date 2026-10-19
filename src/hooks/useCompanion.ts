@@ -247,7 +247,7 @@ export function useCreateCompanion() {
 
 export type ShopPet = {
   pet_type: string; name: string; emoji: string; role: string;
-  atk: number; def: number; hp: number; mp: number; price: number; sort: number;
+  price: number; sort: number;
   /** Boss que precisa ter caído para liberar a compra (null = sem exigência). */
   unlock_boss?: string | null;
   unlocked?: boolean;
@@ -268,9 +268,9 @@ export function useShopPets() {
     queryKey: ['pet_catalog', user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_pet_catalog' as never);
+      const { data, error } = await supabase.rpc('get_pet_catalog');
       if (error) throw error;
-      return (data ?? []) as unknown as ShopPet[];
+      return data ?? [];
     },
     staleTime: 60_000,
   });
@@ -284,7 +284,7 @@ export function useBuyPet() {
     mutationFn: async (petType: string) => {
       const { data, error } = await supabase.rpc('buy_pet', { p_pet_type: petType });
       if (error) throw error;
-      return data as any;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['companions_all', user?.id] });

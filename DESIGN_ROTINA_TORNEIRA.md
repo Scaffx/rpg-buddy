@@ -1,7 +1,8 @@
 # LifeOnRPG — Especificação de Design: "A Rotina é a Única Torneira"
 
 > Documento de design (não de implementação). Define **as regras** antes dos prompts de código.
-> Toda decisão de PR futura deve obedecer a este doc. Se um prompt contradiz a spec, a spec ganha.
+> A decisão do usuário em 19/10/2026, registrada em `docs/REFORMA_AUTOMATICA_20261019.md`,
+> substitui as proibições antigas de ouro/itens de combate neste documento.
 > Base: log v2.0.0 + decisões da conversa de design. Data: 2026-06-24.
 
 ---
@@ -17,11 +18,11 @@ e devolve *expressão e variedade*, nunca progressão.
 
 ## 1. Princípio mestre (a regra que tudo obedece)
 
-**TORNEIRA ÚNICA:** XP, nível, atributos e ouro só aumentam ao completar missões da rotina.
-Nenhum outro sistema gera esses recursos.
+**PROGRESSÃO PERMANENTE:** XP, nível e atributos só aumentam por missões da rotina concluídas.
+Ouro de missão permanece; a aventura automática também paga ouro e itens sob limites do servidor.
 
-**RALOS:** combate, portais, dungeons, loja, pets, companheiro — todos *consomem* recursos e
-devolvem expressão (variedade, cosmético, status, narrativa), não progressão.
+Combate automático usa o poder construído pela rotina e devolve ouro/loot sem XP ou atributos.
+Loja consome ouro; pets não geram XP, ouro nem multiplicadores por si mesmos.
 
 **Teste de vazamento** (aplicar a QUALQUER mecânica, nova ou existente):
 > "Isto faz o jogador querer abrir o app num dia em que ele NÃO cumpriu a rotina?"
@@ -35,7 +36,8 @@ Mesma mecânica, enquadramento oposto. Toda copy do app segue o enquadramento CE
 
 ### 1.1 Regra de ouro refinada (resolve as zonas cinzentas)
 
-> **Só gera XP/ouro aquilo que EXIGE a ação da rotina ser cumprida.**
+> **Só a rotina concluída gera XP/nível/atributos permanentes.** Aventura automática pode gerar
+> ouro/itens confirmados pelo servidor. Login isolado não gera XP nem ouro.
 
 - **Login NÃO exige** rotina → bônus diário **não pode** dar XP/ouro. "XP só por logar" é o vazamento mais puro: recompensa *presença*, não *hábito*. (Correção de uma versão anterior deste doc que dizia "bônus diário celebra a rotina" — está errado: ele celebra o login, que é outra coisa.)
 - **Conquista de "completou 7 dias" EXIGE** rotina → essa **pode** dar XP/ouro (é a rotina cumprida, só agregada).
@@ -61,7 +63,7 @@ Mesma mecânica, enquadramento oposto. Toda copy do app segue o enquadramento CE
 | **Crafting (6 receitas)** | Remover do código | Redundante com a loja (130 itens); 6 receitas não sustentam sistema; rouba tempo do núcleo | Sim, futuro |
 | **Classe Ferreiro (seleção inicial)** | Tirar da seleção OU marcar "em breve" | Sem crafting, classe fica oca. Não vender classe vazia. Futuro = ramo mecha (projeto separado, não feature) | Sim, futuro (mecha) |
 | **Companheiro (esqueleto)** | Remover | Combate-dentro-de-combate; isolado do motor E da rotina; alto custo de manutenção (triggers de sync), zero conexão com núcleo | Sim, baixa prioridade |
-| **Geração de XP/ouro por combate** | Remover a torneira | Combate vira ralo (ver §4) | Não — é o núcleo da reforma |
+| **XP e atributos por combate** | Remover | Aventura automática paga apenas ouro/itens com teto (ver §4) | Não — é o núcleo da reforma |
 | **Geração de XP/ouro por portais/dungeons** | Remover a torneira | Idem | Não |
 
 > Regra de corte: cortar do **código**, não esconder atrás de flag dormente. Flag dormente =
@@ -71,10 +73,12 @@ Mesma mecânica, enquadramento oposto. Toda copy do app segue o enquadramento CE
 
 ## 4. O que cada sistema VIRA (torneira → ralo)
 
-### Combate / Bosses — RALO (mantido como "porquê lutar")
-- Não dá mais XP/ouro/atributo.
-- Devolve: **expressão** (testar build, ver números altos), **cosmético/loot visual**,
-  **status** (entrada em leaderboard), **narrativa** (avançar história do herói).
+### Combate / Bosses — aventura automática
+- Não dá XP, nível nem atributos permanentes. Vitórias dão ouro/itens confirmados pelo servidor,
+  sujeitos ao teto diário; derrota não debita progressão.
+- Um confronto é reconciliado a cada 30 minutos quando o app está aberto ou ao retornar, até
+  24 horas/48 ticks por sincronização. Com o app fechado não há luta em tempo real.
+- Chefes surgem nas etapas 10, 20, 30 etc.; etapa de aventura não é nível do herói.
 - Acesso reforça o núcleo: bosses/portais da semana abrem conforme a rotina cumprida
   (ex.: % da semana destrava o portal da semana) — mas via enquadramento de FONTE, não muro.
 - Bosses "grindy" (3× HP) deixam de fazer sentido sem grind de recurso → **rebalancear**
@@ -84,7 +88,7 @@ Mesma mecânica, enquadramento oposto. Toda copy do app segue o enquadramento CE
 - Gasta fragmentos (que vêm da rotina), devolve variedade e social. Sem progressão.
 
 ### Loja — RALO (já é)
-- Gasta ouro (da rotina), devolve equipamento. Equipamento dá expressão de build no combate (ralo),
+- Gasta ouro (da rotina ou da aventura), devolve equipamento. Equipamento dá expressão de build no combate,
   não progressão de atributo. OK como está.
 
 ### Pets — RALO
@@ -163,7 +167,7 @@ Mesma mecânica, enquadramento oposto. Toda copy do app segue o enquadramento CE
 ## 9. Ordem de execução sugerida (cada item = 1+ prompt depois)
 
 1. **Cortes** (crafting, companheiro, Ferreiro da seleção) — limpa a base.
-2. **Torneira única**: remover geração de XP/ouro de combate/portais/dungeons.
+2. **Fonte de progressão**: remover XP/atributos de combate; limitar ouro/itens da aventura no servidor.
 3. **Rebalancear combate** como ralo de expressão (encontros curtos, fim do grind).
 4. **Renomear + promover Virtudes** → Crônica, um toque do Dashboard.
 5. **Reorganizar Dashboard** (rotina dominante).

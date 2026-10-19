@@ -2,7 +2,9 @@
 
 > **O que este documento é:** o contrato de comportamento do domínio, sistema por sistema.
 > **O que não é:** tabela de fórmulas (isso é [`MECHANICS.md`](../MECHANICS.md)) nem princípios de
-> design (isso é [`DESIGN_ROTINA_TORNEIRA.md`](../DESIGN_ROTINA_TORNEIRA.md), que ganha daqui em caso de conflito).
+> design (isso é [`DESIGN_ROTINA_TORNEIRA.md`](../DESIGN_ROTINA_TORNEIRA.md)). A reforma autorizada
+> em 19/10/2026 está em [`REFORMA_AUTOMATICA_20261019.md`](REFORMA_AUTOMATICA_20261019.md)
+> e substitui a antiga proibição de ouro de combate.
 >
 > Regra de manutenção: mudou o comportamento, muda este arquivo **no mesmo PR**. Doc que
 > atrasa vira mentira, e mentira em doc custa mais caro que doc nenhuma.
@@ -25,11 +27,13 @@ preguiçosamente na primeira conclusão — não há cron de reset e não há ca
 
 ### 1.2 Prioridade
 
-`alta 1.5×` · `media 1.0×` · `baixa 0.7×`, multiplicando o XP base **antes** de nível/buff/streak.
+`alta 2,0×` · `media 1,0×` · `baixa 0,2×`, multiplicando a base 25 XP **antes** de nível/buff/streak:
+50/25/5 XP. O total pago pela RPC prevalece sobre a prévia.
 
-- Teto de **4 missões de prioridade alta por dia** (`MAX_HIGH_PRIORITY_PER_DAY`), validado no
-  formulário. Semanal flexível ocupa vaga em **todos** os dias, porque fica disponível até bater a meta.
-- Missões legadas acima do teto continuam válidas; o teto só impede criar mais.
+- Teto de **4 altas e 8 médias por dia agendado**; baixas sem limite. Servidor confere
+  criação, edição, reativação e concessão. Semanal flexível reserva os sete dias.
+- Missões legadas acima do teto permanecem; novas concessões não usam desfazer/refazer para
+  contornar o limite. Conclusão não libera vaga de criação no mesmo dia.
 - Prioridade nula ou desconhecida cai em `media`.
 - **Ouro não escala por prioridade.**
 
@@ -89,7 +93,8 @@ Esquecer de marcar é falha de registro, não falha de hábito. O sistema distin
 
 ### 1.4 Checklist
 
-Item concluído soma `xp_bonus` (default +2 XP). A cada 3 itens, +1 🪙, até 3 🪙.
+Item marcado não paga isoladamente. Na conclusão da missão, itens completos compõem o total
+confirmado (`xp_bonus`, default +2 XP cada); a cada 3 itens, +1 🪙, até 3 🪙.
 
 ### 1.5 Âncora (implementation intention)
 
@@ -116,16 +121,23 @@ Não expandir a lista sem evidência de uso: lista longa paralisa.
 
 ### 2.1 Torneira e ralos
 
-Única torneira: missão da rotina concluída. Tudo o mais é ralo.
+XP, nível e atributos permanentes vêm de rotina concluída. Ouro vem de missões e também de
+vitórias da aventura automática, com recibo e teto no servidor; itens de aventura são loot.
 
 | Sistema | Papel | Devolve |
 |---|---|---|
-| Combate / bosses | ralo | expressão de build, cosmético, status em leaderboard, narrativa |
+| Aventura automática / bosses | ouro e loot limitados | 4/12 ouro por vitória normal/chefe, até 120 ouro e 2 itens por dia; zero XP/atributos |
 | Portais / dungeons co-op | ralo | variedade e social |
 | Loja | ralo | equipamento (expressão no combate, não atributo) |
 | Pets | ralo + utilidade fora da torneira | bônus de sustain/forrageio, companhia |
 | Bônus de login diário | **gancho de retorno** | **1 fragmento de portal** — zero XP, zero ouro |
 | Conquistas que não exigem rotina | ralo | fragmento de portal (ver §2.2) |
+
+Aventura: um confronto a cada 30 minutos de tempo devido, até 24 horas/48 ticks por
+sincronização ao voltar. Não há luta em tempo real com o app fechado. Chefes em 10, 20, 30...
+seguem o catálogo regular em sequência e ciclo; etapa da aventura não é nível do personagem.
+Derrota não drena progresso. Pets não pagam XP, ouro nem multiplicadores por si mesmos.
+Históricos e entitlement de transição preservam acesso, sem provar aquisição retroativa.
 
 > O bônus diário **não pode** pagar XP/ouro: recompensa presença, não hábito. Uma conquista de
 > "7 dias cumpridos" **pode**, porque exige a rotina — é a rotina agregada.

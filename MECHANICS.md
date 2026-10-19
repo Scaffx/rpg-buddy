@@ -1,6 +1,7 @@
 # 📖 Sistemas do RPG Buddy
 
-> Fonte canônica das fórmulas. Em caso de divergência com a UI, o **código** manda — esta doc espelha o que está em `src/lib/` e `src/hooks/useProfile.tsx`.
+> Contrato da reforma local de 19/10/2026. Para recompensas já publicadas, confirme as funções
+> vivas; migrations novas deste pacote ainda não demonstram aplicação em produção.
 
 ---
 
@@ -14,7 +15,7 @@
 
 ## 🎯 XP de Missão — fórmula real
 
-Arquivo: [`src/hooks/useProfile.tsx`](src/hooks/useProfile.tsx) (função `useCompleteMission`).
+Fonte da concessão: RPC `complete_mission`; `src/hooks/useProfile.tsx` consome o total confirmado.
 
 ```
 levelMultiplier = min(3.5, 1 + floor((nível − 1) / 5) × 0.5)
@@ -23,7 +24,7 @@ buffBonus       = xpBoost(+0.5)
                 + madrugador(+0.15 se hora < 8)
                 + (streakMultiplier − 1)
 
-priorityMult    = alta 1.5× | media 1.0× | baixa 0.7×
+priorityMult    = alta 2.0× | media 1.0× | baixa 0.2×
 xpMultiplier    = levelMultiplier × (1 + buffBonus)
 xpFinal         = round(xpBase × priorityMult × xpMultiplier) + checklistBonus
 ```
@@ -35,20 +36,20 @@ nunca preenche a coluna. A prioridade é o que diferencia uma missão da outra:
 
 | Prioridade | Multiplicador | XP base (com `xp_reward = 25`) |
 |------------|---------------|--------------------------------|
-| Alta 🔥    | 1.5×          | 38                             |
+| Alta 🔥    | 2.0×          | 50                             |
 | Média 🛡️   | 1.0×          | 25                             |
-| Baixa 🍺   | 0.7×          | 18                             |
+| Baixa 🍺   | 0.2×          | 5                              |
 
 - Aplicado nas RPCs `_complete_mission_daily` e `_complete_mission_with_weekly`
-  (migration `20260810120000_priority_xp_multiplier.sql`). Prioridade nula ou
+  após `20261019200215_mission_priority_daily_caps.sql`. Prioridade nula ou
   desconhecida cai em `media`.
 - Espelhado no front em `PRIORITY_XP_MULT` / `getMissionBaseXp()`
   ([`src/lib/constants.ts`](src/lib/constants.ts)) — **os dois precisam mudar juntos**,
   senão o app promete um XP que o servidor não paga.
-- **Teto: 4 missões de prioridade alta por dia** (`MAX_HIGH_PRIORITY_PER_DAY`),
-  validado no formulário de missão. Semanal flexível ocupa vaga em todos os dias,
-  porque fica disponível no Painel até bater a meta. Missões legadas acima do teto
-  continuam válidas; o teto só impede criar mais.
+- **Teto por dia agendado:** 4 altas, 8 médias, baixas sem limite. Servidor valida
+  criação, edição, reativação e pagamento; a prévia do formulário mostra as vagas.
+  Semanal flexível reserva todos os dias. Legado acima do teto é preservado, mas
+  conclusões não podem usar uma sequência de desfazer/refazer para furar o limite.
 - Ouro **não** escala por prioridade — a economia segue o balanceamento 1.0.
 
 ### `levelMultiplier` por nível (capado em 3.5×)
@@ -79,7 +80,8 @@ nunca preenche a coluna. A prioridade é o que diferencia uma missão da outra:
 
 ### Bônus de checklist
 
-- **XP**: cada item completo soma `xp_bonus` (default **+2 XP**).
+- **XP**: cada item completo soma `xp_bonus` (default **+2 XP**) somente na conclusão
+  da missão. Alternar checklist isoladamente não credita progressão.
 - **Ouro**: +1 🪙 a cada 3 itens completos (até 3 🪙).
 
 ### Missões de NPC
@@ -106,7 +108,8 @@ goldFinal    = max(0, round((goldBase + streakBonus + checklistBonus) × talentG
 
 ## 🎁 Daily Bonus
 
-Arquivo: [`src/lib/constants.ts`](src/lib/constants.ts) (`getDailyBonusXp`, `getDailyBonusGold`).
+Na definição viva consultada em 19/10/2026, `claim_daily_bonus` concede **0 XP, 0 ouro e
+1 fragmento**. Constantes locais antigas abaixo são histórico, não contrato atual.
 
 ```
 xp   = 15 + (nível − 1) × 3
@@ -121,7 +124,8 @@ ouro =  5 + floor((nível − 1) / 5)
 | 20    | 72  | 8    |
 | 30    | 102 | 10   |
 
-**Investidor Anjo** (talento): +1 🪙 no 1º login do dia se streak ofensiva global > 5.
+Login isolado não evolui XP, nível nem atributos. Verifique talentos de login no corpo vivo
+antes de anunciar qualquer crédito adicional.
 
 ---
 
@@ -155,9 +159,10 @@ Trigger no banco concede automaticamente ao subir de nível.
 | Tipo            | Duração   | Recuperação    | XP   |
 |-----------------|-----------|----------------|------|
 | Short Rest      | 1–60 min  | 30% HP/MP      | 0    |
-| Long Rest       | Ao completar Health Challenge | 100% HP/MP | **+`getHealthChallengeXp(nível)`** |
+| Long Rest       | Ao completar Health Challenge | 100% HP/MP | 0 XP de desafio isolado |
 
-`getHealthChallengeXp(nível) = 35 + (nível − 1) × 4`
+O caminho publicado de cura permanece; a migration de progressão local remove o escritor
+de 35 XP que não exigia conclusão da rotina.
 
 ### Penalidades dinâmicas (níveis > 15)
 
@@ -167,7 +172,20 @@ Trigger no banco concede automaticamente ao subir de nível.
 
 ---
 
-## 👹 Boss Battles
+## 👹 Aventura automática e bosses
+
+A rota `/boss` exibe a aventura automática. Cada 30 minutos de tempo devido, a RPC
+`sync_auto_adventure()` reconcilia um confronto; ao voltar, considera no máximo 24 horas ou
+48 ticks. Não há cron de lutas com o app fechado. Etapas 10, 20, 30 etc. são chefes do
+catálogo regular em ordem `(level,id)`, com ciclo após o último. Etapa não equivale a nível.
+Poder inimigo normal `min(380,20+floor(1.5*etapa))`; chefe
+`min(400,30+floor(1.5*etapa))`. Estes são tetos da calibração inicial local.
+
+Vitória paga até 4 ouro normal ou 12 ouro de chefe, sujeita ao teto de 120 ouro e
+2 itens por dia em São Paulo. Derrota não retira XP/atributos. Combate jamais paga XP,
+nível ou atributos permanentes. Ouro de missões continua.
+
+### Fórmulas do combate manual legado
 
 Arquivo: [`src/pages/BossPage.tsx`](src/pages/BossPage.tsx) + [`src/lib/combat.ts`](src/lib/combat.ts) (`getBossCombatStats`).
 
@@ -194,14 +212,9 @@ agi = nível × 2 + Agilidade × 6 + Criatividade × 2
 crit% = min(65, 5 + floor((Agilidade + Criatividade + Carisma) × 0.9))
 ```
 
-### Recompensas
-
-```
-xpReward   = max(50, boss.xp_reward   || nível × 80 + 20)
-goldReward = max(10, boss.gold_reward || nível × 15 + 10)
-```
-
-**Bug corrigido**: o cálculo de nível ao vencer usava `floor(xp/200) + 1` (pulava níveis). Agora usa `getLevelFromXp()` da tabela `XP_TABLE`.
+Essas fórmulas visuais não autorizam recompensa no fluxo novo. A Edge manual legada
+`processar_turno` exige auditoria de callers e publicação antes de qualquer uso; a UI solo
+manual saiu da rota. `bosses.xp_reward` não é pago pela aventura.
 
 ### Inspiração no combate
 
@@ -282,6 +295,6 @@ Fórmula incremental: `incremento(N) = 300·N + 20·N²`.
 |-----------------------|------------------------------|---------------------------------------------|
 | XP multiplier (Lv 60) | 7× sem cap                   | 3.5× cap                                    |
 | Combo buffs XP máx    | ~20× (multiplicativo)        | ~9.98× = 3.5 × (1 + 0.5 + 0.2 + 0.15 + 0.25 + 0.75), streak no teto de 21d |
-| Daily Bonus           | 15 XP / 5 🪙 fixo            | Escala com nível (15→102 XP, 5→10 🪙)        |
+| Daily Bonus           | 15 XP / 5 🪙 em versão antiga | Definição viva lida: 0 XP, 0 ouro, 1 fragmento |
 | Checklist             | +XP apenas                   | +XP **e** +1 🪙 a cada 3 itens (até 3 🪙)    |
-| Boss level on win     | `floor(xp/200) + 1` (bug)    | `getLevelFromXp(xp)` (tabela oficial)       |
+| Boss level on win     | combate manual legado       | Aventura não concede XP nem muda nível      |

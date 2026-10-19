@@ -113,6 +113,7 @@
     "footnote": "Works in any modern browser · iOS via Safari (Add to Home Screen)"
   },
   "app": {
+    "autoAdventure": {"title":"Automatic adventure","loading":"Preparing your adventure...","unavailable":"The adventure is unavailable right now.","invalidResponse":"Adventure data could not be confirmed. Try refreshing.","retryHint":"Try again in a moment.","retry":"Try again","stage":"Stage {{stage}}","bossAhead":"🐉 Boss ahead","normalAhead":"⚔️ Next enemy","noTurns":"combat runs without turn commands","syncHint":"Updates when you open or return","heroFallback":"Adventurer","normalEnemy":"Enemy at stage {{stage}}","unknownBoss":"Boss at stage {{stage}}","nextBoss":"Next boss: {{name}} (stage {{stage}})","heroPowerHint":"Level, trained attributes and equipment affect combat","nextEncounter":"Next encounter","offlineHint":"No battles happen in real time while the app is closed. When you return, the server catches up at most {{hours}} hours. A defeat pauses the stage until the next attempt.","goldToday":"Adventure gold today","itemsToday":"Adventure items today","lastResult":"Latest result","victory":"Victory","defeatNeutral":"Defeat without penalty","waiting":"Waiting","recent":"Recent encounters","refresh":"Refresh adventure","noneYet":"No encounters yet.","victoryReward":"Victory · +{{gold}} gold{{item}}","itemInInventory":" · item in inventory","defeatNoLoss":"Defeat · no loss","routineProgressOnly":"Combat gives no XP, levels or attributes. Those come from completed routines."},
     "sidebar": {
       "my_rpg": "My RPG",
       "my_rpg_sub": "Build your story",
@@ -1011,6 +1012,9 @@
       "completions_needed_other": "{{count}} completions needed"
     },
     "missions": {
+      "completed_yesterday": "Completed yesterday",
+      "undo_completion": "Undo completion",
+      "undo_completion_a11y": "Undo completion of {{title}} on {{date}}",
       "priority_low": "Low",
       "priority_cap_title": "🔥 Too many priorities",
       "priority_cap_desc": "You already have {{max}} high-priority missions on {{day}}. If everything is a priority, nothing is — lower one before adding another.",
