@@ -21,6 +21,7 @@ import HeroStatusBar from '@/components/HeroStatusBar';
 import { useHeroStoryChoices } from '@/hooks/useHeroStoryChoices';
 import { useAuth } from '@/hooks/useAuth';
 import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
+import AutoAdventure from '@/components/AutoAdventure';
 
 /** Boss name patterns for story events (case-insensitive match) */
 const SKELETON_BOSS_PATTERN   = /esquelet/i;
@@ -171,7 +172,7 @@ export default function BossPage() {
     const stored = localStorage.getItem('rpg_combat_arena_visible');
     return stored === null ? true : stored === 'true';
   });
-  const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
+  const [activeTab, setActiveTab] = useState<"aventura" | "coletiva" | "ranking">("aventura");
   const [rankingView, setRankingView] = useState<'mundial' | 'regional'>('mundial');
   const effectiveRegion = rankingView === 'mundial' ? null : (profile?.region ?? null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(effectiveRegion);
@@ -938,14 +939,14 @@ export default function BossPage() {
         {/* Abas */}
         <div data-tour="boss-tabs" className="flex gap-2 flex-wrap">
           <button
-            onClick={() => setActiveTab("solo")}
+            onClick={() => setActiveTab("aventura")}
             className={`px-4 py-2 rounded-lg border font-semibold transition-all ${
-              activeTab === "solo"
+              activeTab === "aventura"
                 ? "bg-primary/20 border-primary/50 text-primary"
                 : "bg-secondary border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            ⚔️ {t('app.boss.tab_solo')}
+            ⚔️ Aventura
           </button>
           <button
             onClick={() => setActiveTab("coletiva")}
@@ -969,262 +970,8 @@ export default function BossPage() {
           </button>
         </div>
 
-        {/* ========== ABA: AVENTURA SOLO ========== */}
-        {activeTab === "solo" && (
-          <>
-            {profile && (
-              <div data-tour="boss-keys" className="rpg-card space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
-                  </p>
-                  <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
-                    <span className="text-lg">🔑</span>
-                    <span className="font-bold text-primary text-lg">{profile.boss_keys || 0}</span>
-                    <span className="text-xs text-muted-foreground">{t('app.boss.keys_label')}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('app.boss.keys_hint')}
-                </p>
-                <HeroStatusBar />
-              </div>
-            )}
-
-            {isLoading ? (
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            ) : (
-              <div data-tour="boss-list" className="space-y-6">
-                {activeCombat && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        Arena ativa: {activeCombat.bossIcon} {activeCombat.bossName}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = !arenaVisible;
-                          setArenaVisible(next);
-                          localStorage.setItem('rpg_combat_arena_visible', String(next));
-                        }}
-                        className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        title={arenaVisible ? 'Ocultar arena de combate' : 'Mostrar arena de combate'}
-                      >
-                        {arenaVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        {arenaVisible ? 'Ocultar arena' : 'Mostrar arena'}
-                      </button>
-                    </div>
-                    {arenaVisible ? (
-                      <CombatArena
-                        combateId={activeCombat.id}
-                        initialBossHp={activeCombat.bossHp}
-                        initialPlayerHp={activeCombat.playerHp}
-                        initialPlayerMp={activeCombat.playerMp}
-                        initialPlayerMaxMp={activeCombat.playerMaxMp}
-                        initialPlayerFatigue={activeCombat.playerFatigue}
-                        bossName={activeCombat.bossName}
-                        bossElement={activeCombat.bossElement}
-                        onVictory={handleCombatVictory}
-                        onDefeat={handleCombatDefeat}
-                        onClose={handleCombatClose}
-                        hasBasiliscoHead={Boolean(
-                          inventory?.some((inv) => (inv.game_items as any)?.effect === 'derrota_guerreiro_imortal'),
-                        )}
-                        onImmortalFlee={handleCombatClose}
-                        onImmortalTrueDefeat={handleImmortalTrueDefeat}
-                        phoenixCanDie={phoenixCanDie}
-                        onPhoenixEscaped={handlePhoenixEscaped}
-                        weaponElement={equippedWeaponElement}
-                        companionData={
-                          // Odin 3v1: se Fenrir foi libertado, ele luta ao seu lado (roadmap #5).
-                          // (O esqueleto não luta mais — companheiros viraram cosméticos, §4.)
-                          ODIN_BOSS_PATTERN.test(activeCombat.bossName ?? '') && storyChoices?.fenrir_allied
-                            ? { name: 'Fenrir', level: 38, mood: 100, emoji: '🐺' }
-                            : undefined
-                        }
-                      />
-                    ) : (
-                      <div className="rpg-card flex items-center justify-between gap-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-3xl">{activeCombat.bossIcon}</span>
-                          <div>
-                            <p className="font-semibold text-foreground">Combate em andamento</p>
-                            <p className="text-xs text-muted-foreground">Arena oculta — o combate continua normalmente</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setArenaVisible(true);
-                            localStorage.setItem('rpg_combat_arena_visible', 'true');
-                          }}
-                          className="flex items-center gap-1.5 rounded-lg bg-primary/20 border border-primary/40 px-3 py-1.5 text-xs text-primary font-semibold hover:bg-primary/30 transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          Abrir arena
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {bosses?.map((boss: any, i: number) => {
-                  const b = getBossCombatStats(boss);
-                  const skills = (boss.skills || []) as { name: string; desc: string }[];
-                  const elementColors: Record<string, string> = {
-                    'Fogo': 'text-orange-400', 'Terra': 'text-amber-600', 'Gelo': 'text-cyan-400',
-                    'Escuridão': 'text-purple-400', 'Morto-Vivo': 'text-gray-400', 'Sagrado': 'text-yellow-300',
-                    'Natureza': 'text-green-400', 'Veneno': 'text-lime-400', 'Demônio': 'text-red-500',
-                    'Água': 'text-blue-400', 'Neutro': 'text-muted-foreground',
-                  };
-                  const difficultyStars = (boss.difficulty || '+P').split('+P').length - 1;
-                  const isDefeated = defeatedBossIds.has(boss.id) || isSkeletonPermanentlyDefeated(boss.name ?? '');
-                  const isLocked = profile && profile.level < boss.level;
-                  // Pré-requisito de sequência (roadmap #1): precisa derrotar o boss anterior da cadeia.
-                  const prereqBoss = boss.prereq_boss_id ? bossById.get(boss.prereq_boss_id) : null;
-                  const prereqMet = !boss.prereq_boss_id || effectiveDefeatedIds.has(boss.prereq_boss_id);
-
-                  return (
-                  <motion.div
-                    key={boss.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: Math.min(i * 0.05, 0.5) }}
-                    className={`rpg-card-glow flex flex-col items-center text-center gap-3 ${isLocked ? 'opacity-50' : ''}`}
-                  >
-                    <span className="text-5xl animate-float">{boss.icon}</span>
-                    <div>
-                      <h3 className="font-display font-bold text-foreground">{boss.name}</h3>
-                      {boss.is_final_boss && (
-                        <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                          👑 {t('app.boss.final_boss_badge')}
-                        </span>
-                      )}
-                      <p className={`text-xs font-semibold mt-1 ${elementColors[boss.element] || 'text-muted-foreground'}`}>
-                        🔮 {boss.element || 'Neutro'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">{boss.description}</p>
-                    </div>
-
-                    {/* Stats row */}
-                    <div className="flex gap-3 text-xs flex-wrap justify-center">
-                      <span className="text-health font-bold">❤️ {boss.hp} HP</span>
-                      <span className="text-primary font-bold">⭐ {t('app.boss.level_abbr', { level: boss.level })}</span>
-                      <span className="font-bold text-accent">🎒 Loot</span>
-                      <span className="font-bold text-primary">🔑 {boss.keys_cost || 1}</span>
-                    </div>
-
-                    {/* Difficulty */}
-                    <div className="flex items-center gap-1 text-xs">
-                      <span className="text-muted-foreground">{t('app.boss.difficulty_label')}:</span>
-                      {Array.from({ length: difficultyStars }).map((_, idx) => (
-                        <span key={idx} className="text-yellow-400">⭐</span>
-                      ))}
-                    </div>
-
-                    {/* Skills */}
-                    {skills.length > 0 && (
-                      <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs text-left space-y-1">
-                        <p className="font-semibold text-foreground mb-1">⚡ {t('app.boss.skills_label')}:</p>
-                        {skills.map((skill, idx) => (
-                          <div key={idx}>
-                            <span className="font-semibold text-primary">{skill.name}</span>
-                            <span className="text-muted-foreground"> — {skill.desc}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Mechanic */}
-                    {boss.mechanic && (
-                      <div className="w-full text-xs text-left bg-primary/10 rounded-lg p-2 border border-primary/20">
-                        <span className="font-semibold text-primary">🎯 {t('app.boss.mechanic_label')}:</span>{' '}
-                        <span className="text-foreground">{boss.mechanic}</span>
-                      </div>
-                    )}
-
-                    {/* Combat stats */}
-                    <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <div><p className="text-muted-foreground">ATK</p><p className="font-bold text-foreground">{b.atk}</p></div>
-                        <div><p className="text-muted-foreground">MATK</p><p className="font-bold text-foreground">{b.matk}</p></div>
-                        <div><p className="text-muted-foreground">DEF</p><p className="font-bold text-foreground">{b.def}</p></div>
-                        <div><p className="text-muted-foreground">AGI</p><p className="font-bold text-foreground">{b.agi}</p></div>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-2">
-                        {t('app.boss.weakness_label')}: <span className="font-semibold text-primary">{b.weakness}</span> • {t('app.boss.threat_label')}: <span className="font-semibold text-destructive">{b.threat}</span>
-                      </p>
-                    </div>
-
-                    {isDefeated ? (
-                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        ✅ {t('app.boss.boss_defeated')}
-                      </Button>
-                    ) : !prereqMet ? (
-                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔒 {t('app.boss.requires_prereq', { name: prereqBoss?.name ?? '???' })}
-                      </Button>
-                    ) : isLocked ? (
-                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔒 {t('app.boss.requires_level', { n: boss.level })}
-                      </Button>
-                    ) : (profile?.boss_keys || 0) < (boss.keys_cost || 1) ? (
-                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔑 {t('app.boss.needs_keys', { need: boss.keys_cost || 1, have: profile?.boss_keys || 0 })}
-                      </Button>
-                    ) : (
-                      <div className="w-full grid grid-cols-1 gap-2">
-                        <Button
-                          onClick={() => handleFightButtonClick(boss)}
-                          disabled={startActiveCombat.isPending}
-                          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                          size="sm"
-                        >
-                          {startActiveCombat.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                          ) : (
-                            <Skull className="w-4 h-4 mr-1" />
-                          )}
-                          {t('app.boss.fight_boss', { keys: boss.keys_cost || 1 })}
-                        </Button>
-                      </div>
-                    )}
-                  </motion.div>
-                  );
-                })}
-                </div>
-              </div>
-            )}
-
-            {/* Battle history */}
-            {battles && battles.length > 0 && (
-              <div>
-                <h2 className="text-lg font-display font-semibold text-foreground mb-3">{t('app.boss.battle_history')}</h2>
-                <div className="space-y-2">
-                  {battles.slice(0, 10).map((b) => (
-                    <div key={b.id} className="rpg-card flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span>{(b as any).bosses?.icon}</span>
-                        <div>
-                          <p className="text-sm text-foreground">{(b as any).bosses?.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {t('app.boss.damage_dealt')}: {b.damage_dealt} • {new Date(b.created_at).toLocaleString('pt-BR')}
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`text-sm font-bold ${b.won ? 'text-success' : 'text-destructive'}`}>
-                        {b.won ? `✅ ${t('app.boss.victory')}` : `❌ ${t('app.boss.defeat')}`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
+        {/* Aventura solo automatica; modos coletivo e ranking continuam abaixo. */}
+        {activeTab === "aventura" && <AutoAdventure />}
         {/* ========== ABA: MASMORRA COLETIVA ========== */}
         {activeTab === "coletiva" && (
           <div className="space-y-6">
