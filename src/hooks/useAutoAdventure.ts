@@ -13,6 +13,9 @@ export type AdventureEncounter = {
   enemy_power: number;
   gold: number;
   item_id: string | null;
+  boss_id: string | null;
+  boss_name: string | null;
+  boss_icon: string | null;
 };
 
 export type AdventureSnapshot = {
@@ -21,6 +24,8 @@ export type AdventureSnapshot = {
   server_now: string;
   last_result: Omit<AdventureEncounter, 'attempt' | 'fought_at'> | null;
   encounters: AdventureEncounter[];
+  boss: { stage: number; id: string; name: string; icon: string };
+  boss_wins_credited: number;
   gold_today: number;
   loot_today: number;
   limits: { interval_minutes: number; offline_hours: number; gold_per_day: number; items_per_day: number };
@@ -49,12 +54,19 @@ export function useAutoAdventure() {
   });
 
   const hasRecordedWin = query.data?.encounters.some(encounter => encounter.won);
+  const hasRecordedBossWin = (query.data?.boss_wins_credited ?? 0) > 0;
   useEffect(() => {
     if (!hasRecordedWin) return;
     void queryClient.invalidateQueries({ queryKey: ['gold-balance', user?.id] });
     void queryClient.invalidateQueries({ queryKey: ['gold-history'] });
     void queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
   }, [query.dataUpdatedAt, hasRecordedWin, queryClient, user?.id]);
+
+  useEffect(() => {
+    if (!hasRecordedBossWin) return;
+    void queryClient.invalidateQueries({ queryKey: ['pet_catalog'] });
+    void queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
+  }, [query.dataUpdatedAt, hasRecordedBossWin, queryClient]);
 
   return query;
 }

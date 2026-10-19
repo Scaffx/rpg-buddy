@@ -2,14 +2,22 @@ import { useEffect, useState } from 'react';
 import { Loader2, RotateCw, Swords, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAutoAdventure, type AdventureEncounter } from '@/hooks/useAutoAdventure';
-import { LifeonRPGMascot } from '@/components/branding/LifeonRPGMascot';
+import { CharacterSprite } from '@/components/CharacterSprite';
+import { useHeroClass, starterClassDisplayName } from '@/hooks/useHeroClass';
+import { useProfile } from '@/hooks/useProfile';
+import { useTranslation } from 'react-i18next';
 
-function kindLabel(encounter: Pick<AdventureEncounter, 'kind' | 'stage'>) {
-  return encounter.kind === 'boss' ? `Chefe da etapa ${encounter.stage}` : `Inimigo da etapa ${encounter.stage}`;
+function kindLabel(encounter: Pick<AdventureEncounter, 'kind' | 'stage' | 'boss_name'>) {
+  return encounter.kind === 'boss'
+    ? (encounter.boss_name || `Chefe da etapa ${encounter.stage}`)
+    : `Inimigo da etapa ${encounter.stage}`;
 }
 
 export default function AutoAdventure() {
   const { data, isLoading, isFetching, error, refetch } = useAutoAdventure();
+  const { data: profile } = useProfile();
+  const { currentClassName, starterClass } = useHeroClass();
+  const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
 
   // This clock only animates the display. The server catches up when any client returns.
@@ -37,6 +45,12 @@ export default function AutoAdventure() {
   const progress = Math.max(0, Math.min(100, 100 * (1 - remaining / (data.limits.interval_minutes * 60))));
   const isBoss = data.stage % 10 === 0;
   const latest = data.encounters[0];
+  const heroName = profile?.display_name || t('app.autoAdventure.heroFallback', { defaultValue: 'Aventureiro' });
+  const heroClass = currentClassName || starterClassDisplayName(starterClass);
+  const enemyName = isBoss
+    ? (data.boss?.name || t('app.autoAdventure.unknownBoss', { defaultValue: 'Chefe da etapa {{stage}}', stage: data.stage }))
+    : t('app.autoAdventure.normalEnemy', { defaultValue: 'Inimigo da etapa {{stage}}', stage: data.stage });
+  const enemyIcon = isBoss ? (data.boss?.icon || '🐉') : '👾';
 
   return <section className="space-y-4" aria-label="Aventura automática">
     <div className="rpg-card-glow space-y-5 border-primary/30 bg-gradient-to-br from-primary/10 to-slate-900/40">
@@ -45,14 +59,22 @@ export default function AutoAdventure() {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Aventura automática</p>
           <h2 className="font-display text-2xl font-bold text-primary">Etapa {data.stage}</h2>
           <p className="text-sm text-muted-foreground">{isBoss ? '🐉 Chefe à frente' : '⚔️ Próximo inimigo'} · combate sem comandos por turno</p>
+          {data.boss && <p className="mt-1 text-xs text-primary/80">{t('app.autoAdventure.nextBoss', { defaultValue: 'Próximo chefe: {{name}} (etapa {{stage}})', name: data.boss.name, stage: data.boss.stage })}</p>}
         </div>
         <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Atualiza ao abrir e voltar</span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-        <div className="rounded-xl border border-primary/30 bg-card/60 p-4 text-center"><div className="mx-auto mb-2 flex h-12 items-center justify-center" aria-hidden="true"><LifeonRPGMascot size={44} /></div><p className="font-semibold">Seu personagem</p><p className="text-xs text-muted-foreground">Nível, atributos treinados e equipamento influenciam o combate</p></div>
+        <div className="rounded-xl border border-primary/30 bg-card/60 p-4 text-center">
+          <div className="mx-auto mb-2 flex h-16 items-center justify-center motion-reduce:[&_*]:!animate-none" aria-hidden="true">
+            {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-full object-cover motion-safe:animate-pulse" /> : <CharacterSprite />}
+          </div>
+          <p className="font-semibold">{heroName}</p>
+          <p className="text-xs text-primary/80">{heroClass}</p>
+          <p className="text-xs text-muted-foreground">Nível, atributos treinados e equipamento influenciam o combate</p>
+        </div>
         <Swords className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <div className="rounded-xl border border-destructive/30 bg-card/60 p-4 text-center"><span className="block text-3xl" aria-hidden="true">{isBoss ? '🐉' : '👾'}</span><p className="font-semibold">{isBoss ? 'Chefe' : 'Inimigo'}</p><p className="text-xs text-muted-foreground">Etapa {data.stage}</p></div>
+        <div className="rounded-xl border border-destructive/30 bg-card/60 p-4 text-center"><span className="block text-3xl motion-safe:animate-pulse" aria-hidden="true">{enemyIcon}</span><p className="font-semibold">{enemyName}</p><p className="text-xs text-muted-foreground">Etapa {data.stage}</p></div>
       </div>
 
       <div className="space-y-2" role="status" aria-live="polite">
@@ -70,7 +92,7 @@ export default function AutoAdventure() {
 
     <div className="rpg-card space-y-3">
       <div className="flex items-center justify-between"><h3 className="flex items-center gap-2 font-display font-bold"><Trophy className="h-4 w-4" /> Confrontos recentes</h3><Button size="sm" variant="ghost" disabled={isFetching} onClick={() => void refetch()} aria-label="Atualizar aventura"><RotateCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /></Button></div>
-      {data.encounters.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum confronto ainda.</p> : <ol className="space-y-2">{data.encounters.map(encounter => <li key={`${encounter.stage}-${encounter.attempt}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/40 px-3 py-2 text-sm"><span>{encounter.kind === 'boss' ? '🐉' : '⚔️'} {kindLabel(encounter)}</span><span className={encounter.won ? 'text-emerald-300' : 'text-amber-300'}>{encounter.won ? `Vitória · +${encounter.gold} ouro${encounter.item_id ? ' · item no inventário' : ''}` : 'Derrota · sem perda'}</span></li>)}</ol>}
+      {data.encounters.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum confronto ainda.</p> : <ol className="space-y-2">{data.encounters.map(encounter => <li key={`${encounter.stage}-${encounter.attempt}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/40 px-3 py-2 text-sm"><span>{encounter.kind === 'boss' ? (encounter.boss_icon || '🐉') : '⚔️'} {kindLabel(encounter)}</span><span className={encounter.won ? 'text-emerald-300' : 'text-amber-300'}>{encounter.won ? `Vitória · +${encounter.gold} ouro${encounter.item_id ? ' · item no inventário' : ''}` : 'Derrota · sem perda'}</span></li>)}</ol>}
       <p className="text-xs text-muted-foreground">Combate não concede XP, nível nem atributos. Essas evoluções vêm de rotinas concluídas.</p>
     </div>
   </section>;
