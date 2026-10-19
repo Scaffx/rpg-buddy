@@ -156,6 +156,8 @@ const STATUS_COLORS: Record<string, string> = {
   arquivada: "bg-muted-foreground",
 };
 
+const MISSION_GRID_CLASS = "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3";
+
 // ✅ FUNÇÃO AUXILIAR: Verificar se a missão foi concluída num dia específico.
 // `daily_status` é preenchido tanto pela conclusão diária quanto pela semanal,
 // então é a única fonte capaz de responder "este dia foi marcado?".
@@ -965,7 +967,7 @@ const handleSave = async () => {
                         <span className="text-[10px] text-muted-foreground/50">({missions.length})</span>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      <div className={MISSION_GRID_CLASS}>
                         {missions.map((m: any, i: number) => (
                           <MissionCard
                             key={m.id}
@@ -1004,7 +1006,7 @@ const handleSave = async () => {
                       🎯 {t('app.missions.unique_today_header')}
                       <span className="text-xs bg-orange-400/20 text-orange-400 px-2 py-1 rounded-full">{todayUniqueMissions.length}</span>
                     </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className={MISSION_GRID_CLASS}>
                       {todayUniqueMissions.map((m: any, i: number) => (
                         <MissionCard
                           key={m.id}
@@ -1037,7 +1039,7 @@ const handleSave = async () => {
                       <div className="flex-1 h-px bg-orange-300/15" />
                       <span className="text-xs font-semibold text-orange-300/60 bg-orange-300/10 rounded-full px-2 py-0.5">{nextUniqueMissions.length}</span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className={MISSION_GRID_CLASS}>
                       {nextUniqueMissions.map((m: any, i: number) => (
                         <MissionCard
                           key={m.id}
@@ -1074,7 +1076,7 @@ const handleSave = async () => {
           <span className="text-xs font-semibold text-muted-foreground/60 bg-muted/50 rounded-full px-2 py-0.5">{nextDaysMissions.length} {t('app.missions.mission_count')}</span>
         </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className={MISSION_GRID_CLASS}>
                   {nextDaysMissions.map((m: any, i: number) => (
                     <MissionCard
                       key={m.id}
@@ -1111,7 +1113,7 @@ const handleSave = async () => {
           <span className="text-xs font-semibold text-emerald-400/70 bg-emerald-400/10 rounded-full px-2 py-0.5">{completedMissions.length}</span>
         </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className={MISSION_GRID_CLASS}>
                   {completedMissions.map((m: any, i: number) => (
                     <MissionCard
                       key={m.id}
@@ -1310,29 +1312,29 @@ function MissionCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.03, 0.4) }}
-      className={`group rounded-xl bg-card border border-border border-l-2 ${priorityBorderColor} p-3 flex flex-col justify-between aspect-square transition-all hover:border-border/80 hover:shadow-md ${
-        isCompleted ? 'opacity-55' : isCompletedToday ? 'opacity-75 border-yellow-400/40' : ''
+      className={`min-w-0 rounded-xl bg-card border border-border border-l-2 ${priorityBorderColor} p-3 flex flex-col justify-between transition-all hover:border-border/80 hover:shadow-md ${
+        isCompleted ? 'opacity-80' : isCompletedToday ? 'opacity-75 border-yellow-400/40' : ''
       }`}
     >
-      {/* Top: Status dot + ações (visíveis só no hover) */}
+      {/* Top: status e ações sempre visíveis em toque, mouse e teclado */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-start justify-between gap-2 mb-2">
           <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
-          <div className="flex items-center gap-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
-            <Button size="sm" variant="ghost" aria-label={`Editar ${mission.title}`} className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}>
-              <Pencil className="w-3.5 h-3.5" />
+          <div className="flex flex-wrap justify-end gap-1">
+            <Button size="sm" variant="ghost" aria-label={`Editar ${mission.title}`} className="h-9 gap-1 px-1.5 text-xs text-muted-foreground hover:text-primary" onClick={onEdit}>
+              <Pencil className="w-3.5 h-3.5" /> Editar
             </Button>
-            <Button size="sm" variant="ghost" aria-label={`Excluir ${mission.title}`} className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
-              <Trash2 className="w-3.5 h-3.5" />
+            <Button size="sm" variant="ghost" aria-label={`Arquivar ${mission.title}`} className="h-9 gap-1 px-1.5 text-xs text-muted-foreground hover:text-foreground" onClick={onArchive}>
+              <Pause className="w-3.5 h-3.5" /> Arquivar
             </Button>
-            <Button size="sm" variant="ghost" aria-label={`Arquivar ${mission.title}`} className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}>
-              <Pause className="w-3.5 h-3.5" />
+            <Button size="sm" variant="ghost" aria-label={`Excluir ${mission.title}`} className="h-9 gap-1 px-1.5 text-xs text-muted-foreground hover:text-destructive" onClick={onDelete}>
+              <Trash2 className="w-3.5 h-3.5" /> Excluir
             </Button>
           </div>
         </div>
 
         {/* Title */}
-        <p className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>
+        <p className={`font-display font-bold text-base text-foreground leading-tight break-words ${isCompleted ? 'line-through' : ''}`}>
           {mission.title}
         </p>
 
@@ -1344,7 +1346,7 @@ function MissionCard({
 
         {/* Description */}
         {mission.description && (
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{mission.description}</p>
+          <p className={`text-sm text-muted-foreground mt-1 break-words whitespace-pre-wrap ${expanded ? '' : 'line-clamp-3'}`}>{mission.description}</p>
         )}
 
         {/* ✅ Status: Concluída Hoje */}
@@ -1471,7 +1473,7 @@ function MissionCard({
                 || isFutureMission
                 || metaSemanalTrava
               }
-              className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-all ${
+              className={`flex-1 min-w-0 h-9 rounded-lg text-sm font-semibold border transition-all ${
                 metaSemanalTrava
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : isCompletedToday
@@ -1513,19 +1515,21 @@ function MissionCard({
               onClick={onPlay}
               aria-label={`${status === 'em_progresso' ? 'Pausar' : 'Retomar'} ${mission.title}`}
               disabled={isCompletedToday || isFutureMission}
-              className={`h-9 w-10 rounded-lg p-0 border transition-all ${
+              className={`h-9 shrink-0 rounded-lg px-2 border transition-all ${
                 isCompletedToday || isFutureMission
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30'
               }`}
             >
               {status === 'em_progresso' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {status === 'em_progresso' ? 'Pausar' : 'Retomar'}
             </Button>
           </div>
         )}
 
         {/* Expand */}
-        <button onClick={onToggle} aria-label={`${expanded ? 'Recolher' : 'Expandir'} detalhes de ${mission.title}`} aria-expanded={expanded} className="w-full flex justify-center text-muted-foreground hover:text-foreground">
+        <button onClick={onToggle} aria-label={`${expanded ? 'Recolher' : 'Expandir'} detalhes de ${mission.title}`} aria-expanded={expanded} className="w-full min-h-9 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md">
+          {expanded ? 'Ocultar detalhes' : 'Ver detalhes'}
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -1772,13 +1776,18 @@ function MissionFormModal({
             {selectedPriority !== 'baixa' && (
               <p className="text-xs text-muted-foreground mt-1" aria-live="polite">
                 {formMissionType === 'unica' && formDueDate
-                  ? `${formDueDate}: ${countPriorityOnDate(existingMissions, selectedPriority, formDueDate)}/${selectedMax} vagas agendadas`
+                  ? `${formDueDate}: ${countPriorityOnDate(existingMissions, selectedPriority, formDueDate)}/${selectedMax} vagas agendadas (prévia)`
                   : selectedDays.length
                     ? selectedDays.map((day) => {
                         const date = nextSaoPauloDateForDay(getSaoPauloDateString(), day);
-                        return `${day} ${date}: ${countPriorityOnDate(existingMissions, selectedPriority, date)}/${selectedMax}`;
+                        return `${day} ${date}: ${countPriorityOnDate(existingMissions, selectedPriority, date)}/${selectedMax} (prévia)`;
                       }).join(' · ')
                     : 'Selecione os dias para ver as vagas.'}
+              </p>
+            )}
+            {selectedPriority !== 'baixa' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                O servidor confirma ao salvar e também pode contar missões concluídas ou removidas do histórico.
               </p>
             )}
           </div>
