@@ -1,0 +1,29 @@
+# A4 — guarda de conclusão e undo por agenda
+
+**Base A3:** `7b1d446d897ac3619ef2a7c3be6cea191e411529` (cinco arquivos, commit separado). **Estado:** validação local PostgreSQL 17.9; sem push, deploy ou escrita remota.
+
+## Correção
+
+A migration [`20261019205347_guard_mission_completion_schedule_and_undo_after_paid_cap.sql`](../../supabase/migrations/20261019205347_guard_mission_completion_schedule_and_undo_after_paid_cap.sql) foi criada por `npx --yes supabase migration new guard_mission_completion_schedule_and_undo_after_paid_cap` (CLI 2.121.0). A ordem exigida é A `20261019193625` → B `20261019200215` → A3 `20261019204003` → B4 `20261019204951` → A4 `20261019205347`. A4 publica novamente apenas `complete_mission(uuid,date)` e `undo_mission(uuid,date)`, preservando os demais ramos e fórmulas de A; não altera dados históricos.
+
+As duas RPCs adquirem `pg_advisory_xact_lock(hashtext(auth.uid()::text), 20261019)` depois de autenticação/janela e **antes** do primeiro `SELECT ... FOR UPDATE`. A conclusão exige `completed=false`, `is_failed=false`, status `pendente`, `em_progresso` ou `em_andamento`, e `private.mission_priority_occurs_on(mission, target_date) IS TRUE`. O helper B exige dia previsto da diária, `due_date` da única e permite qualquer dia da semanal flexível, cuja cota permanece no dispatcher. A validação ocorre antes de XP, ouro, atributo, ledger e atividade.
+
+O undo conserva janela hoje/D‑1, owner, recibo verificado e saldo. Agora recusa `xp_earned` ou `gold_earned` negativo com `REVERSAL_LEDGER_INVALID` antes da primeira mutação: subtrair um ledger negativo poderia creditar XP ou ouro. O recibo legítimo é debitado pelo valor exato; a reserva de dia pago de B4 permanece após undo, conforme contrato da cota.
+
+O Bug Tracker foi consultado em modo leitura por `complete_mission archived mission schedule due_date XP` e `missão arquivada concluída fora agenda complete_mission`; retornou casos vizinhos de checklist, concorrência e undo, sem solução registrada para esta falha de agenda. O coordenador é responsável pelo registro no Notion; o worker não fez escrita remota.
+
+## Fixture e testes
+
+A fixture de progressão ganhou as colunas reais `status`, `is_failed` e `due_date`, grants de DML de missão para `authenticated` e stubs apenas para assinaturas auxiliares exigidas por A3. Os corpos de conclusão/undo de origem continuam carregados de `progressao_live_functions.sql` e passam pelo preflight de hashes de A. As fixtures de rotina passaram a agendar as únicas na data testada, usar dias válidos para a prova de atributo alheio, esperar base futura 25 + checklist 2, e aceitar `MISSION_NOT_ACTIVE` no replay da única já concluída. Nenhuma guarda foi relaxada para fazer teste passar.
+
+[`20261019_agenda_conclusao.sql`](../../supabase/tests/20261019_agenda_conclusao.sql) roda em `BEGIN`/`ROLLBACK` e compara snapshots de perfil, atributo, ouro, estado das missões, ledger, progresso semanal, dias pagos e históricos antes/depois das recusas. Cobre quatro altas ativas pagas a 50 XP cada e duas altas arquivadas recusadas antes/depois, dono cruzado, única futura recusada e depois concluída na `due_date`, diárias de hoje e ontem em dias distintos, missão falhada, semanal flexível e cota cheia, replay, D‑1, D‑2, saldo XP/ouro insuficiente, ledger XP/ouro negativo e reversão exata. [`20261019_agenda_concurrent.ps1`](../../supabase/tests/20261019_agenda_concurrent.ps1) abre duas sessões `authenticated`: duas edições da mesma conta e uma corrida entre RPC e edição; ambas terminam sem deadlock ou escrita perdida.
+
+## Execução observada
+
+Cluster `C:\Users\Murillo\AppData\Local\Temp\rpg-a4-pg17-ctx25509`, porta 55442, banco `a4_full` UTF8. Com `psql -X -q -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 55442 -U postgres -d a4_full -f <arquivo>`, estes arquivos foram aplicados na ordem acima, cada um **exit 0**: fixture, A193625, B200215, A3204003, B4204951 e A4205347. Depois, `progressao_reversao.sql` **exit 0** (sete modos, inclusive D‑1), `progressao_security.sql` **exit 0**, `20261019_agenda_conclusao.sql` **exit 0** (`A4 ... PASS`) e o teste de integração B4 `priority_caps_corrective_rpc.sql` **exit 0** (`PASS`: quinta alta e nona média pagas recusadas, undo não libera reserva). `pwsh -NoProfile -File supabase/tests/20261019_agenda_concurrent.ps1 -Port 55442 -Database a4_full` **exit 0**: `lock-a1,lock-b12` e `lock-b12e:5:1` após RPC/edição. `git diff --check` **exit 0**.
+
+Uma tentativa anterior em banco WIN1252 falhou no preflight de hash de A193625 (**psql exit 3**, antes da migration); o banco UTF8 foi criado com `createdb -E UTF8 -T template0 --lc-collate=C --lc-ctype=C a4_full`, sem alterar o preflight. A fixture recebeu o grant DML de `authenticated` também no banco já carregado antes do teste concorrente; esse grant consta agora no arquivo para reprodução.
+
+**Integridade:** no banco testado, `server_encoding=UTF8`, `authenticated` tem EXECUTE em `complete_mission`, não tem EXECUTE no helper privado de agenda nem no dispatcher; existe um trigger `lock_mission_priority_statement`. SHA‑256 da migration A4: `A53EBB707B83150ACB27EF2DC990BDCBC5E5C9FCD2B69E970BE3279E7F818EB3`; SHA‑256 do B4 lido nesta validação: `3562859EF81048797C075E4D769D1752A6D6A0BF5114FF7F326E415210EEA9A9`.
+
+**Limites:** o schema de teste é reduzido, com helpers auxiliares neutros; não reproduz RLS completo, PostgREST, Edge ou dados de produção. O teste de concorrência deixa suas duas missões no banco local isolado. O arquivo B4 estava em edição na worktree irmã durante esta execução; nova alteração nele requer repetir a cadeia. O cluster foi preservado em disco e encerrado com `pg_ctl -D C:\Users\Murillo\AppData\Local\Temp\rpg-a4-pg17-ctx25509 stop -m fast` (**exit 0**); `pg_isready -h 127.0.0.1 -p 55442` retornou **exit 2**, `no response`. Não houve remoção recursiva.

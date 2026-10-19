@@ -54,10 +54,11 @@ BEGIN
 
     INSERT INTO public.missions (
       id, user_id, title, attribute_id, xp_reward, priority,
-      frequency_type, days_of_week, target_count, max_count
+      frequency_type, days_of_week, due_date, target_count, max_count
     ) VALUES (
       v_mission, v_uid, 'Progression regression', v_attr, 20, 'media',
       v_frequency, v_days,
+      CASE WHEN v_mode IN ('unique', 'd1-unique') THEN v_date END,
       CASE WHEN v_mode = 'weekly-milestone' THEN 1
            WHEN v_frequency = 'weekly' THEN 6 END,
       CASE WHEN v_mode = 'weekly-milestone' THEN 1
@@ -125,7 +126,8 @@ BEGIN
     BEGIN
       PERFORM public.complete_mission(v_mission, v_date);
     EXCEPTION WHEN OTHERS THEN
-      IF SQLERRM NOT LIKE '%concluíd%' AND SQLERRM <> 'ALREADY_COMPLETED_TODAY' THEN
+      IF SQLERRM NOT LIKE '%concluíd%'
+         AND SQLERRM NOT IN ('ALREADY_COMPLETED_TODAY', 'MISSION_NOT_ACTIVE') THEN
         RAISE;
       END IF;
       v_retry_rejected := true;

@@ -70,7 +70,8 @@ BEGIN
   UPDATE public.checklist_items SET completed=true WHERE mission_id=m;
 
   -- O wrapper continua utilizavel pelo dono.
-  IF (public.complete_mission(m,d)->>'xp_gained')::integer <> 22 THEN
+  -- A migration de prioridades fixa a base futura em 25; checklist padrao +2.
+  IF (public.complete_mission(m,d)->>'xp_gained')::integer <> 27 THEN
     RAISE EXCEPTION 'Wrapper do dono nao pagou bonus default';
   END IF;
   PERFORM set_config('request.jwt.claim.sub','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',true);
@@ -134,7 +135,7 @@ BEGIN
     (mission_id,completion_date,user_id,credited_total_verified,completion_kind)
   VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc',d-1,auth.uid(),true,'daily');
   PERFORM public.claim_achievement('66666666-6666-6666-6666-666666666666');
-  IF (SELECT total_xp FROM public.profiles WHERE user_id=auth.uid()) <> 172 THEN
+  IF (SELECT total_xp FROM public.profiles WHERE user_id=auth.uid()) <> 177 THEN
     RAISE EXCEPTION 'Conquistas legitimas nao mantiveram XP';
   END IF;
   RAISE EXCEPTION USING ERRCODE = 'ZX001', MESSAGE = 'rollback only achievement fixture';
@@ -191,7 +192,7 @@ BEGIN
   INSERT INTO public.missions(id,user_id,title,attribute_id,xp_reward,priority,
                               frequency_type,days_of_week)
   SELECT '88888888-8888-8888-8888-888888888888',auth.uid(),'Atributo alheio',
-         id,20,'media','daily','["Seg"]'::jsonb
+         id,20,'media','daily','["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"]'::jsonb
     FROM public.attributes
    WHERE user_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
   PERFORM public.complete_mission('88888888-8888-8888-8888-888888888888',d);

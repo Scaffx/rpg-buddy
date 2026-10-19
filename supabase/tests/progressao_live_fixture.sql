@@ -35,6 +35,8 @@ CREATE TABLE public.missions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
   title text NOT NULL, description text, attribute_id uuid, xp_reward integer NOT NULL DEFAULT 25,
   priority text, completed boolean NOT NULL DEFAULT false, completed_at timestamptz,
+  status text NOT NULL DEFAULT 'pendente', is_failed boolean NOT NULL DEFAULT false,
+  due_date date,
   days_of_week jsonb DEFAULT '[]'::jsonb, daily_status jsonb DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
   secondary_attribute_ids jsonb DEFAULT '[]'::jsonb, mission_category text, npc_id text,
@@ -80,6 +82,11 @@ CREATE TABLE public.user_buffs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, item_id uuid,
   active boolean DEFAULT true, expires_at timestamptz, purchased_at timestamptz DEFAULT now()
 );
+CREATE TABLE public.npc_challenge_completions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
+  npc_id text NOT NULL, challenge_id text NOT NULL, week_token text NOT NULL,
+  xp_earned integer NOT NULL DEFAULT 0, gold_earned integer NOT NULL DEFAULT 0
+);
 CREATE TABLE public.shop_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), effect text);
 CREATE TABLE public.talentos_disponiveis (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), efeito text);
 CREATE TABLE public.talentos_jogador (personagem_id uuid, talento_id uuid);
@@ -109,6 +116,10 @@ CREATE TABLE public.onboarding_mission_catalog (
 
 CREATE FUNCTION public._weekend_xp_bonus(text,jsonb,date) RETURNS numeric
   LANGUAGE sql STABLE AS $$ SELECT 0::numeric $$;
+CREATE FUNCTION public._norm(text) RETURNS text
+  LANGUAGE sql IMMUTABLE AS $$ SELECT lower($1) $$;
+CREATE FUNCTION public.undo_npc_challenge(text,text,text) RETURNS jsonb
+  LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
 CREATE FUNCTION public._derive_mission_category(text,text,text,text) RETURNS text
   LANGUAGE sql STABLE AS $$ SELECT COALESCE($1, 'geral') $$;
 CREATE FUNCTION public.get_level_from_xp_v2(integer) RETURNS integer
@@ -153,6 +164,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles, public.checklist_items,
   public.mission_daily_completions TO anon,authenticated;
 GRANT SELECT, INSERT, DELETE ON public.attributes TO anon,authenticated;
 GRANT SELECT ON public.missions,public.user_balance TO anon,authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.missions TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon,authenticated;
 REVOKE UPDATE ON public.attributes,public.user_balance FROM PUBLIC,anon,authenticated;
 
