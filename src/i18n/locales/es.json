@@ -126,6 +126,32 @@
     "footnote": "Funciona en cualquier navegador moderno · iOS vía Safari"
   },
   "app": {
+    "helpTutorial": {
+      "introTitle": "¡Bienvenido a Life on RPG! 🎮",
+      "introDescription": "Tus rutinas reales hacen crecer a tu héroe. La aventura automática da oro y objetos, sin XP.",
+      "introRoutine": "Las rutinas completadas otorgan XP, atributos y oro confirmados por el servidor",
+      "introAdventure": "La aventura da oro y objetos; el combate no da XP",
+      "dailyTitle": "Misiones diarias",
+      "dailyDescription": "Programa rutinas para los días que elijas y completa las que realices para progresar.",
+      "dailyProgress": "✅ La finalización confirmada por el servidor da XP y mejora atributos",
+      "dailyLimits": "📅 Hasta 4 altas y 8 medias por día programado; las bajas no tienen límite",
+      "dailyNoPenalty": "⏰ Puedes registrar ayer; un fallo no descuenta XP automáticamente",
+      "goldTitle": "Oro",
+      "goldDescription": "Las rutinas completadas y las victorias de aventura pueden dar oro. La aventura también puede dar objetos.",
+      "goldAdventure": "Las victorias de aventura dan oro y objetos dentro de los límites diarios",
+      "goldShop": "Usa oro en la tienda para comprar objetos y beneficios disponibles",
+      "bossTitle": "Aventura automática",
+      "bossDescription": "Tu héroe combate automáticamente. Los jefes aparecen en las etapas 10, 20, 30 y siguientes.",
+      "bossStages": "Al volver, el servidor reconcilia hasta 24 horas de aventura",
+      "bossRewards": "Las victorias pueden dar oro y objetos, nunca XP",
+      "bossNoKey": "No necesitas elegir enemigos ni gastar llaves para avanzar en solitario",
+      "classesTitle": "Clases y habilidades",
+      "classesPower": "El poder en aventura considera nivel, atributos y equipo",
+      "npcTitle": "Clasificación y NPC",
+      "npcDescription": "Compara tu progreso en la clasificación. Los desafíos de NPC llegarán pronto.",
+      "npcNoXp": "Las misiones de NPC no dan XP adicional",
+      "npcSoon": "Habrá más novedades sobre NPC pronto"
+    },
     "autoAdventure": {"title":"Aventura automática","loading":"Preparando tu aventura...","unavailable":"La aventura no está disponible ahora.","invalidResponse":"No se pudieron confirmar los datos de la aventura. Intenta actualizar.","retryHint":"Vuelve a intentarlo en unos momentos.","retry":"Intentar de nuevo","stage":"Etapa {{stage}}","bossAhead":"🐉 Jefe adelante","normalAhead":"⚔️ Próximo enemigo","noTurns":"combate sin comandos por turno","syncHint":"Se actualiza al abrir o volver","heroFallback":"Aventurero","normalEnemy":"Enemigo de la etapa {{stage}}","unknownBoss":"Jefe de la etapa {{stage}}","nextBoss":"Próximo jefe: {{name}} (etapa {{stage}})","heroPowerHint":"Nivel, atributos entrenados y equipo influyen en el combate","nextEncounter":"Próximo encuentro","offlineHint":"Con la app cerrada no hay combates en tiempo real. Al volver, el servidor recupera hasta {{hours}} horas. La derrota pausa la etapa hasta el próximo intento.","goldToday":"Oro de aventura hoy","itemsToday":"Objetos de aventura hoy","lastResult":"Último resultado","victory":"Victoria","defeatNeutral":"Derrota sin penalización","waiting":"Esperando","recent":"Encuentros recientes","refresh":"Actualizar aventura","noneYet":"Todavía no hay encuentros.","victoryReward":"Victoria · +{{gold}} oro{{item}}","itemInInventory":" · objeto en el inventario","defeatNoLoss":"Derrota · sin pérdida","routineProgressOnly":"El combate no da XP, niveles ni atributos. Estos vienen de rutinas completadas."},
     "sidebar": {
       "my_rpg": "Mi RPG",

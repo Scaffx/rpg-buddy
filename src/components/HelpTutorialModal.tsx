@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Sparkles, Target, Trophy, Coins, Heart, Skull, Sword, Calendar, Users, Brain, ScrollText } from 'lucide-react';
@@ -10,24 +11,27 @@ type Step = {
   bullets?: string[];
 };
 
-const STEPS: Step[] = [
+// The progression and adventure copy is kept with the five supported locales.
+const buildSteps = (t: (key: string) => string): Step[] => [
   {
     icon: <Sparkles className="w-10 h-10 text-primary" />,
-    title: 'Bem-vindo ao Life on RPG! 🎮',
-    description: 'Sua vida real virou um RPG. Aqui você ganha XP, ouro e sobe de nível ao cumprir missões da vida real.',
+    title: t('app.helpTutorial.introTitle'),
+    description: t('app.helpTutorial.introDescription'),
     bullets: [
       'Cada hábito é uma missão',
-      'Cada missão dá XP + ouro',
+      t('app.helpTutorial.introRoutine'),
+      t('app.helpTutorial.introAdventure'),
       'Ao subir de nível, libere classes e habilidades',
     ],
   },
   {
     icon: <Target className="w-10 h-10 text-primary" />,
-    title: 'Missões Diárias',
-    description: 'Cadastre missões repetitivas (ex: "Estudar 1h", "Treinar"). Marque como concluída para ganhar XP.',
+    title: t('app.helpTutorial.dailyTitle'),
+    description: t('app.helpTutorial.dailyDescription'),
     bullets: [
-      '✅ Concluir = +XP no atributo escolhido',
-      '⏰ Não fazer no dia agendado = D+1 vira fracasso (-XP)',
+      t('app.helpTutorial.dailyProgress'),
+      t('app.helpTutorial.dailyLimits'),
+      t('app.helpTutorial.dailyNoPenalty'),
       '🛡️ Protetor de Streak salva você 2x por semana',
     ],
   },
@@ -53,32 +57,32 @@ const STEPS: Step[] = [
   },
   {
     icon: <Coins className="w-10 h-10 text-yellow-400" />,
-    title: 'Sistema de Ouro',
-    description: 'Concluir missões dá ouro. Use na Loja do Tempo para buffs temporários (XP boost, descanso, etc).',
+    title: t('app.helpTutorial.goldTitle'),
+    description: t('app.helpTutorial.goldDescription'),
     bullets: [
-      'Pague penalidade de missão fracassada (10 🪙)',
-      'Compre buffs temporários',
+      t('app.helpTutorial.goldAdventure'),
+      t('app.helpTutorial.goldShop'),
       'Item de respec de classe',
     ],
   },
   {
     icon: <Skull className="w-10 h-10 text-destructive" />,
-    title: 'Boss Arena',
-    description: 'A cada 5 missões concluídas você ganha 1 Chave de Boss. Use para enfrentar bosses e ganhar prêmios massivos.',
+    title: t('app.helpTutorial.bossTitle'),
+    description: t('app.helpTutorial.bossDescription'),
     bullets: [
-      '60 bosses únicos',
-      'Recompensas em ouro escalonadas',
-      'Requer nível mínimo',
+      t('app.helpTutorial.bossStages'),
+      t('app.helpTutorial.bossRewards'),
+      t('app.helpTutorial.bossNoKey'),
     ],
   },
   {
     icon: <Sword className="w-10 h-10 text-red-400" />,
-    title: 'Classes & Habilidades',
+    title: t('app.helpTutorial.classesTitle'),
     description: 'Escolha entre 55 classes: Guerreiro, Mago, Assassino, etc. Cada uma tem missões pré-definidas e habilidades únicas.',
     bullets: [
       'Mude de classe na página "Classes"',
       'Habilidades desbloqueiam ao subir de nível',
-      'Equipe até 4 habilidades para boss',
+      t('app.helpTutorial.classesPower'),
     ],
   },
   {
@@ -103,12 +107,12 @@ const STEPS: Step[] = [
   },
   {
     icon: <Users className="w-10 h-10 text-cyan-400" />,
-    title: 'Ranking & NPCs',
-    description: 'Compete no ranking mundial e regional. Aceite desafios de NPCs para sair da zona de conforto.',
+    title: t('app.helpTutorial.npcTitle'),
+    description: t('app.helpTutorial.npcDescription'),
     bullets: [
       'Ranking calculado pelo "Power Level"',
-      'Desafios de NPCs dão XP extra',
-      '4 NPCs temáticos disponíveis',
+      t('app.helpTutorial.npcNoXp'),
+      t('app.helpTutorial.npcSoon'),
     ],
   },
   {
@@ -124,6 +128,8 @@ const STEPS: Step[] = [
 ];
 
 export default function HelpTutorialModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const STEPS = buildSteps(t);
   const [step, setStep] = useState(0);
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;

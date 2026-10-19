@@ -113,6 +113,32 @@
     "footnote": "Works in any modern browser · iOS via Safari (Add to Home Screen)"
   },
   "app": {
+    "helpTutorial": {
+      "introTitle": "Welcome to Life on RPG! 🎮",
+      "introDescription": "Your real-life routines help your hero grow. Automatic adventure earns gold and items, with no XP.",
+      "introRoutine": "Completed routines award server-confirmed XP, attributes and gold",
+      "introAdventure": "Adventure awards gold and items; combat awards no XP",
+      "dailyTitle": "Daily Missions",
+      "dailyDescription": "Schedule routines on the days you choose and complete the ones you do to grow.",
+      "dailyProgress": "✅ Server-confirmed completion grants XP and strengthens attributes",
+      "dailyLimits": "📅 Up to 4 high and 8 medium missions per scheduled day; low has no limit",
+      "dailyNoPenalty": "⏰ You can log yesterday; failure does not automatically deduct XP",
+      "goldTitle": "Gold",
+      "goldDescription": "Completed routines and adventure victories can grant gold. Adventure can also drop items.",
+      "goldAdventure": "Adventure wins award gold and items within daily limits",
+      "goldShop": "Spend gold in the shop on available items and benefits",
+      "bossTitle": "Automatic Adventure",
+      "bossDescription": "Your hero fights automatically. Bosses appear at stages 10, 20, 30 and beyond.",
+      "bossStages": "When you return, the server reconciles up to 24 hours of adventure",
+      "bossRewards": "Wins can award gold and items, never XP",
+      "bossNoKey": "No enemy selection or keys are needed to advance solo",
+      "classesTitle": "Classes and Skills",
+      "classesPower": "Adventure power considers level, attributes and equipment",
+      "npcTitle": "Rankings and NPCs",
+      "npcDescription": "Compare your progress on the rankings. NPC challenges are coming soon.",
+      "npcNoXp": "NPC missions do not grant extra XP",
+      "npcSoon": "More NPC updates coming soon"
+    },
     "autoAdventure": {"title":"Automatic adventure","loading":"Preparing your adventure...","unavailable":"The adventure is unavailable right now.","invalidResponse":"Adventure data could not be confirmed. Try refreshing.","retryHint":"Try again in a moment.","retry":"Try again","stage":"Stage {{stage}}","bossAhead":"🐉 Boss ahead","normalAhead":"⚔️ Next enemy","noTurns":"combat runs without turn commands","syncHint":"Updates when you open or return","heroFallback":"Adventurer","normalEnemy":"Enemy at stage {{stage}}","unknownBoss":"Boss at stage {{stage}}","nextBoss":"Next boss: {{name}} (stage {{stage}})","heroPowerHint":"Level, trained attributes and equipment affect combat","nextEncounter":"Next encounter","offlineHint":"No battles happen in real time while the app is closed. When you return, the server catches up at most {{hours}} hours. A defeat pauses the stage until the next attempt.","goldToday":"Adventure gold today","itemsToday":"Adventure items today","lastResult":"Latest result","victory":"Victory","defeatNeutral":"Defeat without penalty","waiting":"Waiting","recent":"Recent encounters","refresh":"Refresh adventure","noneYet":"No encounters yet.","victoryReward":"Victory · +{{gold}} gold{{item}}","itemInInventory":" · item in inventory","defeatNoLoss":"Defeat · no loss","routineProgressOnly":"Combat gives no XP, levels or attributes. Those come from completed routines."},
     "sidebar": {
       "my_rpg": "My RPG",
