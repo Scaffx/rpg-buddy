@@ -60,6 +60,9 @@ DECLARE
   v_cursor timestamptz;
   v_slots integer;
   v_level integer;
+  v_class text;
+  v_attributes record;
+  v_attribute_power integer;
   v_equipment record;
   v_hero integer;
   v_enemy integer;
@@ -84,11 +87,35 @@ BEGIN
     v_state.loot_today := 0;
   END IF;
 
-  -- Discard time older than eight hours; never let repeat requests harvest it.
-  v_cursor := greatest(v_state.last_tick_at, v_now - interval '8 hours');
-  v_slots := least(16, greatest(0, floor(extract(epoch FROM (v_now - v_cursor)) / 1800)::integer));
-  SELECT coalesce(p.level, 1) INTO v_level FROM public.profiles p WHERE p.user_id = v_uid;
+  -- Discard time older than 24 hours; never let repeat requests harvest it.
+  v_cursor := greatest(v_state.last_tick_at, v_now - interval '24 hours');
+  v_slots := least(48, greatest(0, floor(extract(epoch FROM (v_now - v_cursor)) / 1800)::integer));
+  SELECT coalesce(p.level, 1), lower(coalesce(p.starter_class, 'novato'))
+    INTO v_level, v_class FROM public.profiles p WHERE p.user_id = v_uid;
   v_level := greatest(1, coalesce(v_level, 1));
+  -- Use the same trained attribute names and weights as getPlayerCombatStats.
+  -- Missing attributes start at level 1; extreme levels contribute at most 50.
+  SELECT coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) IN ('força','forca')),1) AS strength,
+         coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) IN ('inteligência','inteligencia')),1) AS intelligence,
+         coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) = 'disciplina'),1) AS discipline,
+         coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) IN ('sabedoria')),1) AS wisdom,
+         coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) IN ('resiliência','resiliencia')),1) AS resilience,
+         coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) = 'vitalidade'),1) AS vitality,
+         coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) = 'agilidade'),1) AS agility,
+         coalesce(max(least(greatest(a.level,1),50)) FILTER (WHERE lower(a.name) = 'criatividade'),1) AS creativity
+    INTO v_attributes FROM public.attributes a WHERE a.user_id = v_uid;
+  -- The starter class selects the attack branch used by existing combat stats.
+  -- Defense, agility and HP add smaller shared contributions to every class.
+  v_attribute_power := least(180,
+    CASE WHEN v_class IN ('mago','clerico') THEN
+      4*(v_attributes.intelligence-1) + 2*(v_attributes.wisdom-1)
+    WHEN v_class IN ('guerreiro','ferreiro','arqueiro','gatuno') THEN
+      6*(v_attributes.strength-1) + 2*(v_attributes.discipline-1)
+    ELSE greatest(6*(v_attributes.strength-1) + 2*(v_attributes.discipline-1),
+                  4*(v_attributes.intelligence-1) + 2*(v_attributes.wisdom-1)) END
+    + (5*(v_attributes.resilience-1) + 3*(v_attributes.vitality-1))/2
+    + (6*(v_attributes.agility-1) + 2*(v_attributes.creativity-1))/3
+    + (8*(v_attributes.strength-1) + 14*(v_attributes.vitality-1))/10);
   SELECT coalesce(sum(greatest(0, i.atk_bonus) + greatest(0, i.matk_bonus)),0) AS attack,
          coalesce(sum(greatest(0, i.def_bonus)),0) AS defense,
          coalesce(sum(greatest(0, i.hp_bonus)),0) AS hp
@@ -100,7 +127,7 @@ BEGIN
   FOR n IN 1..v_slots LOOP
     v_stage := v_state.stage;
     v_kind := CASE WHEN v_stage % 10 = 0 THEN 'boss' ELSE 'normal' END;
-    v_hero := 70 + least(v_level, 50) * 3
+    v_hero := 70 + least(v_level, 50) * 3 + v_attribute_power
       + least(v_equipment.attack, 200) * 2
       + least(v_equipment.defense, 150)
       + least(v_equipment.hp, 400) / 10;
@@ -172,7 +199,7 @@ BEGIN
   RETURN jsonb_build_object('stage',v_state.stage,'next_at',v_state.last_tick_at + interval '30 minutes',
     'server_now',v_now,'last_result',v_state.last_result,'encounters',v_events,
     'gold_today',v_state.gold_today,'loot_today',v_state.loot_today,
-    'limits',jsonb_build_object('interval_minutes',30,'offline_hours',8,'gold_per_day',120,'items_per_day',2));
+    'limits',jsonb_build_object('interval_minutes',30,'offline_hours',24,'gold_per_day',120,'items_per_day',2));
 END;
 $$;
 
@@ -186,3 +213,46 @@ RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path = ''
 AS $$ SELECT app_private.sync_auto_adventure() $$;
 REVOKE ALL ON FUNCTION public.sync_auto_adventure() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.sync_auto_adventure() TO authenticated;
+
+-- The legacy portal client reports its own victory and reward amounts. Until a
+-- server-owned combat result exists, record completion without minting currency,
+-- XP, items or fragments from that declaration. Existing earned fragments stay.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.portal_runs,
+  public.player_portal_fragments FROM PUBLIC, anon, authenticated;
+-- Direct INSERT/DELETE could fabricate or erase trained attribute levels even
+-- though UPDATE was already closed on the live project. Mission RPCs and the
+-- new-user trigger retain their owner privileges.
+REVOKE INSERT, DELETE, TRUNCATE ON public.attributes FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.complete_portal_run(uuid,text,integer,integer,boolean)
+  FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.complete_portal_run(
+  p_event_id uuid, p_xp_earned integer, p_gold_earned integer)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_color text;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'authentication required' USING ERRCODE = '28000'; END IF;
+  -- The profile row serializes duplicate claims from the same user.
+  PERFORM 1 FROM public.profiles WHERE user_id = v_uid FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'profile required'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.portal_events WHERE id = p_event_id AND is_active) THEN
+    RETURN jsonb_build_object('error','Portal não encontrado.');
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.portal_runs WHERE user_id = v_uid AND event_id = p_event_id AND completed) THEN
+    RETURN jsonb_build_object('already_claimed',true);
+  END IF;
+  v_color := public._get_or_roll_portal_color(v_uid,p_event_id);
+  INSERT INTO public.portal_runs
+    (user_id,event_id,portal_color,completed,fragment_earned,fragments_received,
+     xp_earned,gold_earned,legendary_item_received)
+  VALUES (v_uid,p_event_id,v_color,true,false,0,0,0,false);
+  RETURN jsonb_build_object('already_claimed',false,'portal_color',v_color,
+    'frags_dropped',0,'frag_per_player',0,'participant_count',0,
+    'legendary_item',false,'dungeon_tier',null,'rewards_verified',false);
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.complete_portal_run(uuid,integer,integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.complete_portal_run(uuid,integer,integer) TO authenticated;

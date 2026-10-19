@@ -296,7 +296,7 @@ function PendingDungeonCard({
 }
 
 // ── Weekly history ─────────────────────────────────────────────────────────
-function WeeklyHistory({ runs }: { runs: Array<{ color: PortalColor; xp: number; fragments_received: number }> }) {
+function WeeklyHistory({ runs }: { runs: Array<{ color: PortalColor; fragments_received: number }> }) {
   const { t } = useTranslation();
   if (runs.length === 0) return null;
   return (
@@ -314,8 +314,8 @@ function WeeklyHistory({ runs }: { runs: Array<{ color: PortalColor; xp: number;
                 <span className={`text-sm font-medium ${m.colorClass}`}>{t(`app.portal.color_${run.color}_label`)}</span>
               </div>
               <div className="flex items-center gap-3 text-xs">
-                <span className="text-sky-300 font-semibold">+{run.xp} XP</span>
                 {run.fragments_received > 0 && <span className="text-purple-300 font-semibold">+{run.fragments_received} ⬡</span>}
+                {run.fragments_received === 0 && <span className="text-muted-foreground">Confronto registrado</span>}
               </div>
             </div>
           );
@@ -603,14 +603,17 @@ export default function PortalEventPage() {
     }
   }
 
-  async function handlePortalVictory(result: { xpGained: number; goldGained: number }) {
+  async function handlePortalVictory() {
     if (!portalEvent) return;
     try {
-      const data = await completeRun.mutateAsync({ eventId: portalEvent.event_id, xpEarned: 0, goldEarned: 0 });
-      const fragsMsg   = (data.frags_dropped ?? 0) > 0 ? `+${data.frags_dropped} ⬡ fragmento(s)` : 'Sem fragmentos desta vez';
-      const dungeonMsg = data.dungeon_tier ? ` · ${t(`app.portal.tier_${data.dungeon_tier}_label`)}` : '';
-      toast({ title: t('app.portal.toast_portal_done'), description: `${fragsMsg}${dungeonMsg}` });
-    } catch { /* ignore */ }
+      const data = await completeRun.mutateAsync({ eventId: portalEvent.event_id });
+      if (!data || data.error) throw new Error(data?.error || 'Não foi possível registrar o portal.');
+      toast({ title: t('app.portal.toast_portal_done'), description: data.already_claimed
+        ? 'Portal já registrado.'
+        : 'Confronto registrado. Sem XP, ouro ou fragmentos por resultado declarado.' });
+    } catch (error) {
+      toast({ title: 'Erro ao registrar portal', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
+    }
     setIsEnteringPortal(false);
   }
 
@@ -661,10 +664,8 @@ export default function PortalEventPage() {
     setActiveFragTier(fragmentLobbyTier);
   }
 
-  function handleFragmentVictory(result: FragmentVictoryResult) {
-    queryClient.invalidateQueries({ queryKey: ['profile'] });
-    queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-    toast({ title: t('app.portal.toast_dungeon_done'), description: `+${result.totalXp} XP · +${result.totalGold} 🪙${result.classDiversityBonus ? ' ·' : ''}` });
+  function handleFragmentVictory(_result: FragmentVictoryResult) {
+    toast({ title: t('app.portal.toast_dungeon_done'), description: 'Confronto concluído. XP e ouro só vêm das rotinas.' });
     setActiveFragSession(null); setActiveFragTier(null);
   }
 

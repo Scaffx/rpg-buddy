@@ -43,7 +43,6 @@ export type PublicFragmentSession = {
 // ── Portal color metadata ─────────────────────────────────────────────────
 export const PORTAL_COLORS: Record<PortalColor, {
   label: string; emoji: string; difficulty: string; levelRange: string;
-  xp: number; gold: number;
   /** % de chance de cair fragmentos */
   fragmentChance: number;
   /** máximo de fragmentos por drop */
@@ -59,7 +58,6 @@ export const PORTAL_COLORS: Record<PortalColor, {
     emoji: '🔵',
     difficulty: 'Fácil',
     levelRange: 'Lv. 1–15',
-    xp: 350, gold: 140,
     fragmentChance: 5, maxFragments: 2, legendaryChance: 0, difficultyMult: 1.0,
     colorClass: 'text-sky-400',
     bg: 'bg-sky-500/10 border-sky-500/30',
@@ -71,7 +69,6 @@ export const PORTAL_COLORS: Record<PortalColor, {
     emoji: '🟡',
     difficulty: 'Médio',
     levelRange: 'Lv. 11–25',
-    xp: 600, gold: 240,
     fragmentChance: 10, maxFragments: 3, legendaryChance: 0, difficultyMult: 1.35,
     colorClass: 'text-yellow-400',
     bg: 'bg-yellow-500/10 border-yellow-500/30',
@@ -83,7 +80,6 @@ export const PORTAL_COLORS: Record<PortalColor, {
     emoji: '🔴',
     difficulty: 'Difícil',
     levelRange: 'Lv. 21–35',
-    xp: 1000, gold: 400,
     fragmentChance: 15, maxFragments: 4, legendaryChance: 5, difficultyMult: 1.7,
     colorClass: 'text-red-400',
     bg: 'bg-red-500/10 border-red-500/30',
@@ -95,7 +91,6 @@ export const PORTAL_COLORS: Record<PortalColor, {
     emoji: '🟣',
     difficulty: 'Lendário',
     levelRange: 'Lv. 30+',
-    xp: 1800, gold: 700,
     fragmentChance: 25, maxFragments: 6, legendaryChance: 5, difficultyMult: 2.1,
     colorClass: 'text-purple-400',
     bg: 'bg-purple-500/10 border-purple-500/30',
@@ -202,13 +197,12 @@ export function useCompletePortalRun() {
   return useMutation({
     mutationFn: async (params: {
       eventId: string;
-      xpEarned: number;
-      goldEarned: number;
     }) => {
       const { data, error } = await supabase.rpc('complete_portal_run', {
         p_event_id:   params.eventId,
-        p_xp_earned:  params.xpEarned,
-        p_gold_earned: params.goldEarned,
+        // The live RPC records these legacy fields but does not credit either resource.
+        p_xp_earned:  0,
+        p_gold_earned: 0,
       });
       if (error) throw error;
       return data as {

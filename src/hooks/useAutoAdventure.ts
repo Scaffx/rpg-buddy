@@ -48,13 +48,13 @@ export function useAutoAdventure() {
     retry: false,
   });
 
-  const latest = query.data?.encounters[0];
+  const hasRecordedWin = query.data?.encounters.some(encounter => encounter.won);
   useEffect(() => {
-    if (!latest?.won) return;
+    if (!hasRecordedWin) return;
     void queryClient.invalidateQueries({ queryKey: ['gold-balance', user?.id] });
     void queryClient.invalidateQueries({ queryKey: ['gold-history'] });
     void queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
-  }, [latest?.stage, latest?.attempt, latest?.won, queryClient, user?.id]);
+  }, [query.dataUpdatedAt, hasRecordedWin, queryClient, user?.id]);
 
   return query;
 }

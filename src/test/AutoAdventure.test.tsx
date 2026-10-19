@@ -47,7 +47,7 @@ describe('AutoAdventure', () => {
         encounters: [{ stage: 9, attempt: 0, fought_at: new Date().toISOString(), kind: 'normal', won: true, hero_power: 73, enemy_power: 56, gold: 4, item_id: null }],
         gold_today: 4,
         loot_today: 0,
-        limits: { interval_minutes: 30, offline_hours: 8, gold_per_day: 120, items_per_day: 2 },
+        limits: { interval_minutes: 30, offline_hours: 24, gold_per_day: 120, items_per_day: 2 },
       },
       isLoading: false,
       isFetching: false,
@@ -57,6 +57,9 @@ describe('AutoAdventure', () => {
     const page = renderAdventure();
     expect(page.querySelector('h2')?.textContent).toBe('Etapa 10');
     expect(page.textContent).toContain('Chefe à frente');
+    expect(page.textContent).toContain('Nível, atributos treinados e equipamento influenciam o combate');
+    expect(page.textContent).toContain('Com o app fechado, não há lutas em tempo real');
+    expect(page.textContent).toContain('no máximo 24 horas');
     expect(page.textContent).toContain('Vitória · +4 ouro');
     expect([...page.querySelectorAll('button')].some(button => /atacar|poção|resgatar/i.test(button.textContent || ''))).toBe(false);
   });

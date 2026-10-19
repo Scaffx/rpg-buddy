@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Loader2, RotateCw, Shield, Swords, Trophy } from 'lucide-react';
+import { Loader2, RotateCw, Swords, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAutoAdventure, type AdventureEncounter } from '@/hooks/useAutoAdventure';
+import { LifeonRPGMascot } from '@/components/branding/LifeonRPGMascot';
 
 function kindLabel(encounter: Pick<AdventureEncounter, 'kind' | 'stage'>) {
   return encounter.kind === 'boss' ? `Chefe da etapa ${encounter.stage}` : `Inimigo da etapa ${encounter.stage}`;
@@ -45,11 +46,11 @@ export default function AutoAdventure() {
           <h2 className="font-display text-2xl font-bold text-primary">Etapa {data.stage}</h2>
           <p className="text-sm text-muted-foreground">{isBoss ? '🐉 Chefe à frente' : '⚔️ Próximo inimigo'} · combate sem comandos por turno</p>
         </div>
-        <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Ativa automaticamente</span>
+        <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Atualiza ao abrir e voltar</span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-        <div className="rounded-xl border border-primary/30 bg-card/60 p-4 text-center"><Shield className="mx-auto mb-2 h-8 w-8 text-primary" /><p className="font-semibold">Seu personagem</p><p className="text-xs text-muted-foreground">Nível e equipamento influenciam o combate</p></div>
+        <div className="rounded-xl border border-primary/30 bg-card/60 p-4 text-center"><div className="mx-auto mb-2 flex h-12 items-center justify-center" aria-hidden="true"><LifeonRPGMascot size={44} /></div><p className="font-semibold">Seu personagem</p><p className="text-xs text-muted-foreground">Nível, atributos treinados e equipamento influenciam o combate</p></div>
         <Swords className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
         <div className="rounded-xl border border-destructive/30 bg-card/60 p-4 text-center"><span className="block text-3xl" aria-hidden="true">{isBoss ? '🐉' : '👾'}</span><p className="font-semibold">{isBoss ? 'Chefe' : 'Inimigo'}</p><p className="text-xs text-muted-foreground">Etapa {data.stage}</p></div>
       </div>
@@ -58,7 +59,7 @@ export default function AutoAdventure() {
         <div className="flex justify-between text-xs text-muted-foreground"><span>Próximo confronto</span><span>{minutes}:{seconds}</span></div>
         <div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full bg-primary transition-all duration-1000" style={{ width: `${progress}%` }} /></div>
       </div>
-      <p className="text-xs text-muted-foreground">Ao voltar ao app, o servidor recupera no máximo {data.limits.offline_hours} horas. Derrotas apenas pausam a etapa; a próxima tentativa é automática.</p>
+      <p className="text-xs text-muted-foreground">Com o app fechado, não há lutas em tempo real. Ao voltar, o servidor reconcilia no máximo {data.limits.offline_hours} horas. Derrotas pausam a etapa até a próxima tentativa.</p>
     </div>
 
     <div className="grid gap-3 sm:grid-cols-3">
