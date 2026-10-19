@@ -159,14 +159,19 @@ const STATUS_COLORS: Record<string, string> = {
 
 const MISSION_GRID_CLASS = "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3";
 
-// ✅ FUNÇÃO AUXILIAR: Verificar se a missão foi concluída num dia específico.
-// `daily_status` é preenchido tanto pela conclusão diária quanto pela semanal,
-// então é a única fonte capaz de responder "este dia foi marcado?".
-// `weekly_last_completed_date` guarda só a execução mais recente e não serve
-// para perguntar sobre ontem.
+// `daily_status` registra as diárias e semanais. A conclusão única marca
+// `completed` e usa `due_date` como dia elegível; arquivar também marca
+// `completed`, mas não é uma conclusão reversível.
 function foiConcluidaEm(mission: any, dateStr: string): boolean {
-  const dailyStatus = mission.daily_status || {};
-  return dailyStatus[dateStr] === "completed";
+  if (mission.status === 'arquivada' || mission.is_failed) return false;
+  const dailyStatus = mission.daily_status;
+  if (dailyStatus && typeof dailyStatus === 'object' && !Array.isArray(dailyStatus)
+      && dailyStatus[dateStr] === 'completed') return true;
+  const days = mission.days_of_week;
+  const isUnique = mission.frequency_type !== 'weekly'
+    && (days == null || (Array.isArray(days) && days.length === 0))
+    && !!mission.due_date;
+  return isUnique && mission.completed === true && mission.due_date === dateStr;
 }
 
 // ✅ FUNÇÃO AUXILIAR: Obter próximo dia agendado
@@ -286,8 +291,9 @@ export default function Missions() {
     const hoje = focusDate;
 
     allMissions.forEach((m: any) => {
-      // Missões fracassadas são exibidas na seção própria, não na lista regular
-      if ((m as any).is_failed) return;
+      // Fracassadas têm seção própria; arquivadas não são conclusões nem
+      // tarefas disponíveis para registrar no dia em foco.
+      if ((m as any).is_failed || m.status === 'arquivada') return;
 
       const days = (m.days_of_week as string[]) || [];
       const isDaily = days.length > 0;
@@ -305,7 +311,7 @@ export default function Missions() {
 
       // Filtro por aba
       if (activeTab === "concluidas") {
-        if (isCompleted || completedToday) {
+        if (m.status !== 'arquivada' && (m.completed || completedToday)) {
           completed.push(m);
         }
         return;
@@ -1132,7 +1138,7 @@ const handleSave = async () => {
                       completing={completeMission.isPending}
                       newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                       onNewChecklistTextChange={setNewChecklistText}
-                      isCompletedToday={false}
+                      isCompletedToday={foiConcluidaEm(m, focusDate)}
                     />
                   ))}
                 </div>
@@ -1293,6 +1299,9 @@ function MissionCard({
   };
 
   const handleUndo = async () => {
+    const today = getSaoPauloDateString();
+    const yesterday = getSaoPauloDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    if ((focusDate !== today && focusDate !== yesterday) || !foiConcluidaEm(mission, focusDate)) return;
     try {
       // Desfaz o dia que está na tela. Mandar sempre hoje apagava a conclusão
       // errada quando a pessoa estava revendo ontem.
@@ -1350,26 +1359,34 @@ function MissionCard({
           <p className={`text-sm text-muted-foreground mt-1 break-words whitespace-pre-wrap ${expanded ? '' : 'line-clamp-3'}`}>{mission.description}</p>
         )}
 
-        {/* ✅ Status: Concluída Hoje */}
+        {/* Conclusão no dia em foco, com desfazer na janela hoje/ontem. */}
         {isCompletedToday && (
           <div className="mt-2 p-2 bg-yellow-400/10 border border-yellow-400/30 rounded-md space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs text-yellow-400 font-semibold flex items-center gap-1">
                 <Check className="w-3 h-3" />
-                Concluída hoje
+                {focusDate === getSaoPauloDateString()
+                  ? t('app.missions.completed_today')
+                  : t('app.missions.completed_yesterday', { defaultValue: 'Concluída ontem' })}
               </p>
               {/* Semanal também desfaz: undo_mission devolve XP, ouro e a vaga
                   da cota da semana. Esconder o botão aqui deixava a única porta
                   do desfazer semanal fechada. */}
               <Button
+                type="button"
                 size="sm"
                 variant="ghost"
                 onClick={handleUndo}
                 disabled={undoMission.isPending}
-                className="h-6 w-6 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
-                title="Desfazer conclusão"
+                className="h-9 w-9 shrink-0 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
+                aria-label={t('app.missions.undo_completion_a11y', {
+                  title: mission.title,
+                  date: focusDate,
+                  defaultValue: 'Desfazer conclusão de {{title}} em {{date}}',
+                })}
+                title={t('app.missions.undo_completion', { defaultValue: 'Desfazer conclusão' })}
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-4 h-4" />
               </Button>
             </div>
             {proximoDia && (
