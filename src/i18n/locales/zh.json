@@ -127,6 +127,7 @@
   },
   "app": {
     "autoAdventure": {"title":"自动冒险","loading":"正在准备冒险...","unavailable":"冒险暂时无法使用。","invalidResponse":"无法确认冒险数据。请刷新重试。","retryHint":"请稍后重试。","retry":"重试","stage":"第{{stage}}关","bossAhead":"🐉 首领在前方","normalAhead":"⚔️ 下一个敌人","noTurns":"战斗无需回合操作","syncHint":"打开或返回时更新","heroFallback":"冒险者","normalEnemy":"第{{stage}}关的敌人","unknownBoss":"第{{stage}}关的首领","nextBoss":"下一个首领：{{name}}（第{{stage}}关）","heroPowerHint":"等级、训练过的属性和装备影响战斗","nextEncounter":"下一场战斗","offlineHint":"应用关闭时不会实时战斗。返回后服务器最多补算{{hours}}小时。失败后等待下一次尝试。","goldToday":"今日冒险金币","itemsToday":"今日冒险物品","lastResult":"最近结果","victory":"胜利","defeatNeutral":"失败但无惩罚","waiting":"等待中","recent":"最近战斗","refresh":"刷新冒险","noneYet":"尚无战斗记录。","victoryReward":"胜利 · +{{gold}}金币{{item}}","itemInInventory":" · 物品已入背包","defeatNoLoss":"失败 · 无损失","routineProgressOnly":"战斗不提供经验、等级或属性。这些成长来自完成日常任务。"},
+    "social": {"invite_desc":"邀请 1–4 位好友记录合作任务。合作任务不提供经验值；成长来自完成日常任务。","collective_record":"团队记录","no_xp_note":"此合作任务不提供经验值。完成日常任务才能成长。","toast_mission_created":"合作任务已创建。参与记录不会获得经验值。","toast_participation_recorded":"你在合作任务中的参与已记录。"},
     "sidebar": {
       "my_rpg": "我的RPG",
       "my_rpg_sub": "构建你的故事",

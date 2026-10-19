@@ -20,6 +20,7 @@ Esta reforma foi autorizada pelo usuário em 19/10/2026. As decisões abaixo sub
 - A aventura reconcilia um confronto a cada 30 minutos, no máximo 24 horas ou 48 confrontos por sincronização, com teto de 120 ouro e 2 itens por dia de São Paulo. Ouro e itens dependem do resultado confirmado pelo servidor. XP, nível e atributos permanentes só evoluem por rotina concluída.
 - Os pets anteriores ao corte continuam elegíveis por um registro de transição de identidade, tipo e origem. Esse registro preserva o direito de uso, sem atestar compra ou vitória histórica.
 - Resultados declarados por cliente em modos coletivo, portal e dungeon não constituem recibo de XP, ouro, itens ou fragmentos. A interface só deve anunciar crédito que tenha sido confirmado por uma RPC autoritativa.
+- Na fonte viva consultada em 19/10/2026, `complete_co_op_mission(uuid)` apenas registra a participação coletiva (`activity_log.xp_gained = 0`) e não altera XP do perfil. Copy de missão em conjunto não pode prometer o valor legado `xp_per_player` como recompensa atual.
 
 - Servidor valida identidade, agenda, relógio, recompensas e limite. Valores econômicos enviados pelo cliente não são autoridade.
 - Data de rotina permanece America/Sao_Paulo. Completar não deve liberar imediatamente uma vaga para criar e completar outra alta no mesmo dia e contornar o teto.

@@ -128,6 +128,7 @@ vitórias da aventura automática, com recibo e teto no servidor; itens de avent
 |---|---|---|
 | Aventura automática / bosses | ouro e loot limitados | 4/12 ouro por vitória normal/chefe, até 120 ouro e 2 itens por dia; zero XP/atributos |
 | Portais / dungeons co-op | ralo | variedade e social |
+| Missão em conjunto | registro coletivo | participação e fechamento da meta; zero XP de perfil |
 | Loja | ralo | equipamento (expressão no combate, não atributo) |
 | Pets | ralo + utilidade fora da torneira | bônus de sustain/forrageio, companhia |
 | Bônus de login diário | **gancho de retorno** | **1 fragmento de portal** — zero XP, zero ouro |
@@ -138,6 +139,10 @@ sincronização ao voltar. Não há luta em tempo real com o app fechado. Chefes
 seguem o catálogo regular em sequência e ciclo; etapa da aventura não é nível do personagem.
 Derrota não drena progresso. Pets não pagam XP, ouro nem multiplicadores por si mesmos.
 Históricos e entitlement de transição preservam acesso, sem provar aquisição retroativa.
+Na definição viva consultada em 19/10/2026, `complete_co_op_mission(uuid)` marca a
+participação do membro e grava `activity_log.xp_gained = 0`, sem atualizar o perfil.
+`xp_per_player` de um registro antigo não é prova de crédito atual. A UI deve mostrar
+o registro coletivo e reservar a evolução de XP às rotinas concluídas.
 
 > O bônus diário **não pode** pagar XP/ouro: recompensa presença, não hábito. Uma conquista de
 > "7 dias cumpridos" **pode**, porque exige a rotina — é a rotina agregada.

@@ -774,7 +774,7 @@ export function useCreateCoOpMission() {
   });
 }
 
-/** Marca o membro atual como concluído e reivindica o XP. */
+/** Registra a conclusão coletiva do membro atual, sem conceder XP ao perfil. */
 export function useCompleteCoOpMission() {
   const qc = useQueryClient();
   const { user } = useAuth();
