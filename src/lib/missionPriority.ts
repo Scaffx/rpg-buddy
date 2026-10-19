@@ -1,4 +1,4 @@
-import { MAX_HIGH_PRIORITY_PER_DAY } from '@/lib/constants';
+import { MAX_HIGH_PRIORITY_PER_DAY, MAX_MEDIUM_PRIORITY_PER_DAY } from '@/lib/constants';
 import { DAYS_MAP } from '@/lib/streakUtils';
 
 export type PriorityKey = 'alta' | 'media' | 'baixa';
@@ -33,6 +33,7 @@ type MissionLike = {
   completed?: boolean | null;
   is_archived?: boolean | null;
   status?: string | null;
+  daily_status?: Record<string, string> | null;
 };
 
 /**
@@ -65,6 +66,77 @@ export function missionScheduledDays(mission: MissionLike): string[] {
 /** Uma missão só ocupa vaga se ainda está viva na rotina. */
 function isActive(mission: MissionLike): boolean {
   return !mission.completed && !mission.is_archived && mission.status !== 'arquivada';
+}
+
+function isUnique(mission: MissionLike): boolean {
+  return mission.frequency_type !== 'weekly'
+    && !(mission.days_of_week || []).length
+    && Boolean(mission.due_date);
+}
+
+function paidOn(mission: MissionLike, date: string): boolean {
+  return mission.daily_status?.[date] === 'completed'
+    || (isUnique(mission) && mission.completed && mission.due_date === date);
+}
+
+function dayForDate(date: string): string | null {
+  const parsed = new Date(`${date}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : normalizeDay(DAYS_MAP[parsed.getDay()]);
+}
+
+/** Contagem para a data exata; únicas em outras semanas não ocupam esta vaga. */
+export function countPriorityOnDate(missions: MissionLike[], priority: PriorityKey, date: string, ignoreMissionId?: string): number {
+  const weekday = dayForDate(date);
+  if (!weekday) return 0;
+  return (missions || []).filter((mission) => {
+    if (mission.id === ignoreMissionId || normalizePriority(mission.priority) !== priority) return false;
+    if (paidOn(mission, date)) return true;
+    if (!isActive(mission)) return false;
+    if (isUnique(mission)) return mission.due_date === date;
+    return missionScheduledDays(mission).some((day) => normalizeDay(day) === weekday);
+  }).length;
+}
+
+export type PriorityOverflow = { day: string; date?: string; count: number; priority: 'alta' | 'media'; max: number };
+
+/** Pré-validação; o gatilho SQL é a autoridade para concorrência/API direta. */
+export function findPriorityOverflow(
+  missions: MissionLike[],
+  candidate: { id?: string; priority: string; days_of_week?: string[]; frequency_type?: string; due_date?: string | null },
+  today?: string,
+): PriorityOverflow | null {
+  const priority = normalizePriority(candidate.priority);
+  if (priority === 'baixa') return null;
+  const max = priority === 'alta' ? MAX_HIGH_PRIORITY_PER_DAY : MAX_MEDIUM_PRIORITY_PER_DAY;
+  const candidateMission: MissionLike = candidate;
+  const dates = new Set<string>();
+  if (isUnique(candidateMission)) dates.add(candidate.due_date!);
+  else {
+    for (const mission of missions || []) {
+      if (mission.due_date && isUnique(mission) && (!today || mission.due_date >= today)) dates.add(mission.due_date);
+      for (const date of Object.keys(mission.daily_status || {})) {
+        if ((!today || date >= today) && paidOn(mission, date)) dates.add(date);
+      }
+    }
+    if (today) dates.add(today);
+  }
+  for (const date of [...dates].sort()) {
+    const weekday = dayForDate(date);
+    if (!weekday || !missionScheduledDays(candidateMission).some((day) => normalizeDay(day) === weekday)) continue;
+    const count = countPriorityOnDate(missions, priority, date, candidate.id);
+    if (count >= max) return { day: DAYS_MAP.find((day) => normalizeDay(day) === weekday) || weekday, date, count, priority, max };
+  }
+  if (isUnique(candidateMission)) return null;
+  for (const day of missionScheduledDays(candidateMission)) {
+    const key = normalizeDay(day);
+    const count = (missions || []).filter((mission) =>
+      mission.id !== candidate.id && isActive(mission) && !isUnique(mission)
+      && normalizePriority(mission.priority) === priority
+      && missionScheduledDays(mission).some((scheduled) => normalizeDay(scheduled) === key),
+    ).length;
+    if (count >= max) return { day, count, priority, max };
+  }
+  return null;
 }
 
 /**

@@ -35,8 +35,8 @@ import {
   isWeeklyRegistrableOnFocusDate,
 } from "@/lib/weeklyMissions";
 import { hasWeekendXpSchedule } from '@/lib/weekendXpBonus';
-import { findHighPriorityOverflow, missionScheduledDays } from '@/lib/missionPriority';
-import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY } from '@/lib/constants';
+import { countPriorityOnDate, findPriorityOverflow, missionScheduledDays, normalizePriority } from '@/lib/missionPriority';
+import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY, MAX_MEDIUM_PRIORITY_PER_DAY } from '@/lib/constants';
 import AppLayout from "@/components/AppLayout";
 import { FailedMissionsSection } from "@/components/FailedMissionsSection";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,23 @@ const MISSIONS_TOUR_STEPS: TourStep[] = [
 ];
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+function nextSaoPauloDateForDay(today: string, day: string): string {
+  const date = new Date(`${today}T12:00:00Z`);
+  const targetDow = (DAYS.indexOf(day === 'Sab' ? 'Sáb' : day) + 1) % 7;
+  date.setUTCDate(date.getUTCDate() + ((targetDow - date.getUTCDay() + 7) % 7));
+  return date.toISOString().slice(0, 10);
+}
+
+function getPrioritySaveError(error: unknown): string {
+  const message = String((error as { message?: string })?.message || '');
+  if (message.includes('MISSION_PRIORITY_CAP:')) {
+    const [, priority, day, limit] = message.match(/MISSION_PRIORITY_CAP:(alta|media):([^:]+):(\d+)/) || [];
+    return `Limite de ${priority === 'alta' ? 'vermelhas' : 'amarelas'} atingido em ${day || 'este dia'} (${limit || '4'}). Ajuste a data ou a prioridade.`;
+  }
+  if (message.includes('MISSION_SCHEDULE_INVALID')) return 'Selecione uma data ou dias válidos para a missão.';
+  return 'Confira os dados e tente novamente.';
+}
 const DAYS_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 const TIMES = [
   { value: "manha", label: "🌅 Manhã", icon: Sunrise },
@@ -505,25 +522,23 @@ const handleSave = async () => {
     const isWeekly = formMissionType === 'recorrente' && formFrequencyType === 'weekly';
     const daysToSave = formMissionType === "unica" || isWeekly ? [] : formDays;
     const frequencyType = isWeekly ? 'weekly' : 'daily';
-    // Teto de prioridade alta por dia. Sem ele, em duas semanas tudo vira alta
-    // e a prioridade deixa de significar escolha — que é o ponto dela.
-    const overflow = findHighPriorityOverflow(allMissions || [], {
+    const slotUnchanged = editingMission
+      && normalizePriority(editingMission.priority) === normalizePriority(formPriority)
+      && (editingMission.frequency_type || 'daily') === frequencyType
+      && (editingMission.due_date || null) === (formMissionType === 'unica' ? formDueDate : null)
+      && JSON.stringify([...(editingMission.days_of_week || [])].sort()) === JSON.stringify([...daysToSave].sort());
+    const overflow = slotUnchanged ? null : findPriorityOverflow(allMissions || [], {
       id: editingMission?.id,
       priority: formPriority,
-      days: missionScheduledDays({
-        frequency_type: frequencyType,
-        days_of_week: daysToSave,
-        due_date: formMissionType === "unica" ? formDueDate : null,
-      }),
-    });
+      frequency_type: frequencyType,
+      days_of_week: daysToSave,
+      due_date: formMissionType === "unica" ? formDueDate : null,
+    }, getSaoPauloDateString());
 
     if (overflow) {
       toast({
-        title: t('app.missions.priority_cap_title'),
-        description: t('app.missions.priority_cap_desc', {
-          day: overflow.day,
-          max: MAX_HIGH_PRIORITY_PER_DAY,
-        }),
+        title: 'Limite de prioridade no dia',
+        description: `${overflow.priority === 'alta' ? 'Vermelhas' : 'Amarelas'}: ${overflow.count}/${overflow.max} em ${overflow.date || overflow.day}. Ajuste o dia ou a prioridade; nenhuma missão existente foi alterada.`,
         variant: 'destructive',
       });
       return;
@@ -570,8 +585,8 @@ const handleSave = async () => {
     }
 
     setShowCreateEdit(false);
-  } catch {
-    toast({ title: 'Erro', variant: 'destructive' });
+  } catch (error) {
+    toast({ title: 'Não foi possível salvar', description: getPrioritySaveError(error), variant: 'destructive' });
   }
 };
 
@@ -579,9 +594,6 @@ const handleSave = async () => {
     try {
       const result = await completeMission.mutateAsync({
         missionId: mission.id,
-        attributeId: mission.attribute_id,
-        xpReward: mission.xp_reward,
-        secondaryAttributeIds: mission.secondary_attribute_ids || [],
         // Só viaja quando não é hoje: manter o payload igual ao de sempre no
         // caminho comum evita mudar o comportamento de quem nunca usa isto.
         targetDate: isBackfilling ? focusDate : undefined,
@@ -602,12 +614,12 @@ const handleSave = async () => {
         if (result.milestoneReached) {
           toast({
             title: '🎉 Meta semanal concluída!',
-            description: `+${result.xpGained} XP e +${result.goldGained} ouro, incluindo o bônus da meta.`,
+            description: `Execução +${result.executionXp} XP · meta +${result.milestoneXp} XP · total +${result.xpGained} XP e +${result.goldGained} ouro.`,
           });
         } else {
           toast({
             title: 'Missão semanal concluída',
-            description: `Progresso: ${result.weeklyCount}/${result.weeklyTarget} · +${result.xpGained} XP`,
+            description: `Progresso: ${result.weeklyCount}/${result.weeklyTarget} · +${result.xpGained} XP · +${result.goldGained} ouro`,
           });
         }
         return;
@@ -627,12 +639,12 @@ const handleSave = async () => {
       } else if (streak >= 3 && bonusLabel) {
         toast({
           title: `🔥 Streak ${streak} dias! ${bonusLabel}`,
-          description: t('app.missions.mission_completed_desc', { xp: getMissionBaseXp(mission.xp_reward, mission.priority), next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
+          description: t('app.missions.mission_completed_desc', { xp: result.xpGained, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
         });
       } else {
         toast({
           title: t('app.missions.mission_completed'),
-          description: t('app.missions.mission_completed_desc', { xp: getMissionBaseXp(mission.xp_reward, mission.priority), next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
+          description: t('app.missions.mission_completed_desc', { xp: result.xpGained, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
         });
       }
     } catch (error) {
@@ -1164,6 +1176,7 @@ const handleSave = async () => {
   onSave={handleSave}
   saving={createMission.isPending || updateMission.isPending}
   missionId={editingMission?.id}
+  existingMissions={allMissions || []}
 />
 
       {/* Delete Confirmation */}
@@ -1305,14 +1318,14 @@ function MissionCard({
       <div>
         <div className="flex items-center justify-between mb-2">
           <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
-          <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}>
+          <div className="flex items-center gap-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+            <Button size="sm" variant="ghost" aria-label={`Editar ${mission.title}`} className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+            <Button size="sm" variant="ghost" aria-label={`Excluir ${mission.title}`} className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}>
+            <Button size="sm" variant="ghost" aria-label={`Arquivar ${mission.title}`} className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}>
               <Pause className="w-3.5 h-3.5" />
             </Button>
           </div>
@@ -1437,7 +1450,7 @@ function MissionCard({
         <div className="flex items-center justify-between">
           <span className="text-sm text-primary font-bold">
 
-            ✨ +{getMissionBaseXp(mission.xp_reward, mission.priority)} XP
+            ✨ Base: {getMissionBaseXp(mission.xp_reward, mission.priority)} XP
 
           </span>
           {mission.due_date && days.length === 0 && (
@@ -1498,6 +1511,7 @@ function MissionCard({
 
             <Button
               onClick={onPlay}
+              aria-label={`${status === 'em_progresso' ? 'Pausar' : 'Retomar'} ${mission.title}`}
               disabled={isCompletedToday || isFutureMission}
               className={`h-9 w-10 rounded-lg p-0 border transition-all ${
                 isCompletedToday || isFutureMission
@@ -1511,7 +1525,7 @@ function MissionCard({
         )}
 
         {/* Expand */}
-        <button onClick={onToggle} className="w-full flex justify-center text-muted-foreground hover:text-foreground">
+        <button onClick={onToggle} aria-label={`${expanded ? 'Recolher' : 'Expandir'} detalhes de ${mission.title}`} aria-expanded={expanded} className="w-full flex justify-center text-muted-foreground hover:text-foreground">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -1570,7 +1584,7 @@ function MissionFormModal({
   formHorario, setFormHorario, formMissionType, setFormMissionType,
   formFrequencyType, setFormFrequencyType, formTargetCount, setFormTargetCount,
   formDueDate, setFormDueDate, formAnchor, setFormAnchor,
-  formIsAnchor, setFormIsAnchor, onSave, saving, missionId,
+  formIsAnchor, setFormIsAnchor, onSave, saving, missionId, existingMissions,
 }: {
   open: boolean; onOpenChange: (v: boolean) => void; isEditing: boolean; attrs: any[];
   formTitle: string; setFormTitle: (v: string) => void;
@@ -1588,6 +1602,7 @@ function MissionFormModal({
   formAnchor: string; setFormAnchor: (v: string) => void;
   formIsAnchor: boolean; setFormIsAnchor: (v: boolean) => void;
   onSave: () => void; saving: boolean; missionId?: string;
+  existingMissions: any[];
 }) {
   const { t } = useTranslation();
 
@@ -1638,6 +1653,12 @@ function MissionFormModal({
 
   const allSelectedIds = [formAttrId, ...formSecondaryAttrIds].filter(Boolean);
   const horariosArray = Array.isArray(formHorario) ? formHorario : [formHorario].filter(Boolean);
+  const selectedPriority = normalizePriority(formPriority);
+  const selectedMax = selectedPriority === 'alta' ? MAX_HIGH_PRIORITY_PER_DAY : MAX_MEDIUM_PRIORITY_PER_DAY;
+  const selectedDays = formMissionType === 'unica' ? [] : missionScheduledDays({
+    frequency_type: formFrequencyType,
+    days_of_week: formDays,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1651,14 +1672,14 @@ function MissionFormModal({
         <div className="space-y-4">
           {/* Title */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_title_label')} *</label>
-            <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={t('app.missions.form_title_placeholder')} className="bg-secondary border-border" />
+            <label htmlFor="mission-form-title" className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_title_label')} *</label>
+            <Input id="mission-form-title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={t('app.missions.form_title_placeholder')} className="bg-secondary border-border" />
           </div>
 
           {/* Description */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_desc_label')}</label>
-            <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder={t('app.missions.form_desc_placeholder')} className="bg-secondary border-border min-h-[60px]" />
+            <label htmlFor="mission-form-description" className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_desc_label')}</label>
+            <Textarea id="mission-form-description" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder={t('app.missions.form_desc_placeholder')} className="bg-secondary border-border min-h-[60px]" />
           </div>
 
           {/* Primary Attribute */}
@@ -1668,7 +1689,7 @@ function MissionFormModal({
               setFormAttrId(v);
               setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== v));
             }}>
-              <SelectTrigger className="bg-secondary border-border">
+              <SelectTrigger aria-label={t('app.missions.form_attr_label')} className="bg-secondary border-border">
                 <SelectValue placeholder={t('app.missions.form_attr_placeholder')} />
               </SelectTrigger>
               <SelectContent>
@@ -1724,13 +1745,14 @@ function MissionFormModal({
           {/* Priority */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_priority_label')}</label>
-            <div className="flex gap-2">
+            <div className="flex gap-2" role="group" aria-label={t('app.missions.form_priority_label')}>
               {PRIORITIES.map((p) => {
                 const Icon = p.icon;
                 return (
                   <button
                     key={p.value}
                     type="button"
+                    aria-pressed={formPriority === p.value}
                     onClick={() => setFormPriority(p.value)}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border text-xs font-medium transition-all ${
                       formPriority === p.value ? `${p.color} ring-1 ring-current` : 'bg-secondary border-border text-muted-foreground'
@@ -1742,6 +1764,23 @@ function MissionFormModal({
                 );
               })}
             </div>
+            <p className="text-xs text-muted-foreground mt-2" aria-live="polite">
+              {selectedPriority === 'baixa'
+                ? 'Verdes: sem limite · XP base 5 (base 25).'
+                : `${selectedPriority === 'alta' ? 'Vermelhas' : 'Amarelas'}: até ${selectedMax} por dia · XP base ${selectedPriority === 'alta' ? 50 : 25} (base 25).`}
+            </p>
+            {selectedPriority !== 'baixa' && (
+              <p className="text-xs text-muted-foreground mt-1" aria-live="polite">
+                {formMissionType === 'unica' && formDueDate
+                  ? `${formDueDate}: ${countPriorityOnDate(existingMissions, selectedPriority, formDueDate)}/${selectedMax} vagas agendadas`
+                  : selectedDays.length
+                    ? selectedDays.map((day) => {
+                        const date = nextSaoPauloDateForDay(getSaoPauloDateString(), day);
+                        return `${day} ${date}: ${countPriorityOnDate(existingMissions, selectedPriority, date)}/${selectedMax}`;
+                      }).join(' · ')
+                    : 'Selecione os dias para ver as vagas.'}
+              </p>
+            )}
           </div>
 
           {/* Âncora (implementation intention) — gancho do hábito a um evento que já acontece */}
@@ -1830,7 +1869,7 @@ function MissionFormModal({
               <label className="text-xs text-muted-foreground mb-1 block">
                 Frequência
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Frequência da missão">
                 <button
                   type="button"
                   onClick={() => setFormFrequencyType('daily')}
@@ -1884,6 +1923,7 @@ function MissionFormModal({
                 Ela aparece todos os dias até atingir a meta, mas só pode ser
                 concluída uma vez por dia. Para uma atividade extra, aumente a
                 meta ou crie uma missão única.
+                A vaga de prioridade fica reservada em todos os sete dias.
               </p>
             </div>
           )}
@@ -1892,11 +1932,12 @@ function MissionFormModal({
           {formMissionType === "recorrente" && (
             formFrequencyType === 'daily' && <div>
               <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_days_label')}</label>
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex gap-1.5 flex-wrap" role="group" aria-label={t('app.missions.form_days_label')}>
                 {DAYS.map((d) => (
                   <button
                     key={d}
                     type="button"
+                    aria-pressed={formDays.includes(d)}
                     onClick={() => toggleDay(d)}
                     className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
                       formDays.includes(d)
@@ -1914,8 +1955,9 @@ function MissionFormModal({
           {/* Due Date (only for unica) */}
           {formMissionType === "unica" && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_due_date_label')} *</label>
+              <label htmlFor="mission-form-due-date" className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_due_date_label')} *</label>
               <Input
+                id="mission-form-due-date"
                 type="date"
                 value={formDueDate}
                 onChange={(e) => setFormDueDate(e.target.value)}
@@ -1961,11 +2003,12 @@ function MissionFormModal({
                 {checklist?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-2">
                     <Checkbox
+                      aria-label={`${item.completed ? 'Desmarcar' : 'Marcar'} ${item.description}`}
                       checked={item.completed}
                       onCheckedChange={() => toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })}
                     />
                     <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : ''}`}>{item.description}</span>
-                    <span className="text-[10px] text-primary">+{item.xp_bonus} XP</span>
+                    <span className="text-[10px] text-primary">+{item.xp_bonus} XP ao concluir missão</span>
                     <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -1990,7 +2033,8 @@ function MissionFormModal({
           {/* XP preview */}
           <div className="rpg-card bg-secondary/50 text-center">
             <p className="text-xs text-muted-foreground">{t('app.missions.xp_preview_label')}</p>
-            <p className="text-primary font-bold">+25 XP</p>
+            <p className="text-primary font-bold">Base: {getMissionBaseXp(25, formPriority)} XP</p>
+            <p className="text-[11px] text-muted-foreground">Bônus de sequência, nível e meta semanal aparecem no total confirmado ao concluir.</p>
           </div>
         </div>
 

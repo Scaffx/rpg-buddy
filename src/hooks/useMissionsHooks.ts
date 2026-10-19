@@ -55,16 +55,11 @@ export const useCompleteMission = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      missionId, 
-      attributeId, 
-      xpReward, 
-      secondaryAttributeIds = [],
-      targetDate,
-    }: {
+    mutationFn: async ({ missionId, targetDate }: {
       missionId: string;
-      attributeId: string;
-      xpReward: number;
+      /** Mantidos no contrato de chamadores legados; nunca enviados a RPC nem usados como credito. */
+      attributeId?: string;
+      xpReward?: number;
       secondaryAttributeIds?: string[];
       /**
        * Dia que a pessoa está registrando (YYYY-MM-DD). Ausente = hoje.
@@ -134,7 +129,7 @@ export const useCompleteMission = () => {
     },
 
     // ⚡ OPTIMISTIC UPDATE: marca a missão como concluída na UI antes do servidor responder.
-    onMutate: async ({ missionId, attributeId, xpReward, secondaryAttributeIds = [], targetDate }) => {
+    onMutate: async ({ missionId, targetDate }) => {
       const today = targetDate ?? getSaoPauloDateString();
       await queryClient.cancelQueries({ queryKey: ['missions'] });
 
@@ -168,33 +163,7 @@ export const useCompleteMission = () => {
         });
       });
 
-      // Atualiza otimisticamente o XP do perfil (estimativa)
-      queryClient.setQueryData(['profile', user?.id], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          total_xp: (old.total_xp || 0) + xpReward,
-          xp_today: (old.xp_today || 0) + xpReward,
-          missions_completed: (old.missions_completed || 0) + 1,
-        };
-      });
-
-      // Atualiza otimisticamente os atributos
-      queryClient.setQueryData(['attributes', user?.id], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((a: any) => {
-          if (a.id === attributeId) return { ...a, xp: (a.xp || 0) + xpReward };
-          if (secondaryAttributeIds.includes(a.id)) return { ...a, xp: (a.xp || 0) + 12 };
-          return a;
-        });
-      });
-
-      // Atualiza otimisticamente o ouro (estimativa: +2)
-      queryClient.setQueryData(['gold-balance', user?.id], (old: any) => {
-        if (!old) return old;
-        return { ...old, gold: (old.gold || 0) + 2 };
-      });
-
+      // Economia só aparece após retorno confirmado da RPC.
       return { previousMissions, previousProfile, previousAttributes, previousGold };
     },
 
@@ -203,11 +172,12 @@ export const useCompleteMission = () => {
     // "demora pra contabilizar" e o salto de valor (estimativa → real).
     onSuccess: (data: any, _vars, context: any) => {
       const prevProfile = context?.previousProfile as any;
+      const creditedToday = data?.completedDate === getSaoPauloDateString();
       if (prevProfile) {
         queryClient.setQueryData(['profile', user?.id], {
           ...prevProfile,
           total_xp: (prevProfile.total_xp || 0) + (data?.xpGained || 0),
-          xp_today: (prevProfile.xp_today || 0) + (data?.xpGained || 0),
+          xp_today: (prevProfile.xp_today || 0) + (creditedToday ? (data?.xpGained || 0) : 0),
           missions_completed: (prevProfile.missions_completed || 0) + 1,
           boss_keys: (prevProfile.boss_keys || 0) + (data?.gainedKeys || 0),
         });
@@ -220,8 +190,10 @@ export const useCompleteMission = () => {
         });
       }
       // O card "XP hoje" usa a query própria useTodayXp (['xp_today']).
-      queryClient.setQueryData(['xp_today', user?.id], (old: any) =>
-        Number(old || 0) + (data?.xpGained || 0));
+      if (creditedToday) {
+        queryClient.setQueryData(['xp_today', user?.id], (old: any) =>
+          Number(old || 0) + (data?.xpGained || 0));
+      }
 
       if (data?.frequencyType === 'weekly') {
         queryClient.setQueriesData({ queryKey: ['missions'] }, (old: any) => {

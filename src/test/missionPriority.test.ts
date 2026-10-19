@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
   countHighPriorityByDay,
+  countPriorityOnDate,
+  findPriorityOverflow,
   findHighPriorityOverflow,
   groupByPriority,
   missionScheduledDays,
   normalizePriority,
 } from '@/lib/missionPriority';
-import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY } from '@/lib/constants';
+import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY, MAX_MEDIUM_PRIORITY_PER_DAY } from '@/lib/constants';
 
 const alta = (id: string, days: string[]) => ({ id, priority: 'alta', days_of_week: days });
 
 describe('getMissionBaseXp', () => {
   it('escala o XP base pela prioridade', () => {
-    expect(getMissionBaseXp(25, 'baixa')).toBe(18);
+    expect(getMissionBaseXp(25, 'baixa')).toBe(5);
     expect(getMissionBaseXp(25, 'media')).toBe(25);
-    expect(getMissionBaseXp(25, 'alta')).toBe(38);
+    expect(getMissionBaseXp(25, 'alta')).toBe(50);
   });
 
   it('trata prioridade ausente ou desconhecida como média', () => {
@@ -25,6 +27,54 @@ describe('getMissionBaseXp', () => {
   it('não inventa XP em missão sem recompensa', () => {
     expect(getMissionBaseXp(0, 'alta')).toBe(0);
     expect(getMissionBaseXp(null, 'alta')).toBe(0);
+  });
+});
+
+describe('findPriorityOverflow', () => {
+  const high = (id: string, day = 'Seg') => ({ id, priority: 'alta', days_of_week: [day] });
+  const medium = (id: string, day = 'Seg') => ({ id, priority: 'media', days_of_week: [day] });
+
+  it('recusa a quinta alta e a nona media, mas nao as baixas', () => {
+    const missions = [
+      ...Array.from({ length: 4 }, (_, i) => high(`h${i}`)),
+      ...Array.from({ length: 8 }, (_, i) => medium(`m${i}`)),
+    ];
+    expect(findPriorityOverflow(missions, { priority: 'alta', days_of_week: ['Seg'] })?.max).toBe(MAX_HIGH_PRIORITY_PER_DAY);
+    expect(findPriorityOverflow(missions, { priority: 'media', days_of_week: ['Seg'] })?.max).toBe(MAX_MEDIUM_PRIORITY_PER_DAY);
+    expect(findPriorityOverflow(missions, { priority: 'baixa', days_of_week: ['Seg'] })).toBeNull();
+    expect(findPriorityOverflow(missions, { priority: 'alta', days_of_week: ['Ter'] })).toBeNull();
+  });
+
+  it('ignora a propria vaga em edicao, mas nao libera vaga de outra', () => {
+    const missions = Array.from({ length: 4 }, (_, i) => high(`h${i}`));
+    expect(findPriorityOverflow(missions, { id: 'h0', priority: 'alta', days_of_week: ['Seg'] })).toBeNull();
+    expect(findPriorityOverflow(missions, { id: 'h0', priority: 'alta', days_of_week: ['Seg', 'Ter'] })).toBeNull();
+    expect(findPriorityOverflow(missions, { priority: 'alta', days_of_week: ['Seg'] })).not.toBeNull();
+  });
+
+  it('unicas em segundas de datas distintas nao colidem entre si', () => {
+    const missions = Array.from({ length: 4 }, (_, i) => ({ id: `u${i}`, priority: 'alta', due_date: '2026-10-19', days_of_week: [] }));
+    expect(findPriorityOverflow(missions, { priority: 'alta', due_date: '2026-10-26', days_of_week: [] })).toBeNull();
+    expect(findPriorityOverflow(missions, { priority: 'alta', due_date: '2026-10-19', days_of_week: [] })?.date).toBe('2026-10-19');
+    expect(countPriorityOnDate(missions, 'alta', '2026-10-26')).toBe(0);
+  });
+
+  it('semanal flexivel ocupa todos os dias e conta junto da diaria', () => {
+    const missions = [
+      { id: 'w', priority: 'alta', frequency_type: 'weekly', days_of_week: [] },
+      high('h1'), high('h2'), high('h3'),
+    ];
+    expect(findPriorityOverflow(missions, { priority: 'alta', days_of_week: ['Seg'] })).not.toBeNull();
+    expect(findPriorityOverflow(missions, { priority: 'alta', days_of_week: ['Ter'] })).toBeNull();
+  });
+
+  it('conclusao no dia ocupa vaga mesmo apos arquivar ou rebaixar no cliente', () => {
+    const missions = [
+      { id: 'paid', priority: 'alta', days_of_week: ['Seg'], completed: true, daily_status: { '2026-10-19': 'completed' } },
+      high('a'), high('b'), high('c'),
+    ];
+    expect(findPriorityOverflow(missions, { priority: 'alta', days_of_week: ['Seg'] }, '2026-10-19')).not.toBeNull();
+    expect(findPriorityOverflow(missions, { priority: 'alta', days_of_week: ['Ter'] }, '2026-10-19')).toBeNull();
   });
 });
 
