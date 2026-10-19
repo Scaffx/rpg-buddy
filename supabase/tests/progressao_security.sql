@@ -188,22 +188,26 @@ BEGIN
     RAISE EXCEPTION 'Plano vinculado nao revertido';
   END IF;
 
-  -- Uma missao com atributo_id de outro usuario nao altera atributo alheio.
+  -- A nova regra recusa o credito inteiro quando o atributo primario e alheio.
   INSERT INTO public.missions(id,user_id,title,attribute_id,xp_reward,priority,
                               frequency_type,days_of_week)
   SELECT '88888888-8888-8888-8888-888888888888',auth.uid(),'Atributo alheio',
          id,20,'media','daily','["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"]'::jsonb
     FROM public.attributes
    WHERE user_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-  PERFORM public.complete_mission('88888888-8888-8888-8888-888888888888',d);
+  rejected := false;
+  BEGIN
+    PERFORM public.complete_mission('88888888-8888-8888-8888-888888888888',d);
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'ATTRIBUTE_NOT_OWNED_OR_MISSING' THEN rejected := true;
+    ELSE RAISE; END IF;
+  END;
+  IF NOT rejected OR (SELECT total_xp FROM public.profiles WHERE user_id=auth.uid()) <> 0 THEN
+    RAISE EXCEPTION 'Atributo primario alheio nao recusou credito';
+  END IF;
   IF (SELECT xp FROM public.attributes
        WHERE user_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') <> 0 THEN
     RAISE EXCEPTION 'Conclusao mudou atributo alheio';
-  END IF;
-  PERFORM public.undo_mission('88888888-8888-8888-8888-888888888888',d);
-  IF (SELECT xp FROM public.attributes
-       WHERE user_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') <> 0 THEN
-    RAISE EXCEPTION 'Undo mudou atributo alheio';
   END IF;
 END $rollback$;
 ROLLBACK;
