@@ -1,6 +1,6 @@
 // src/pages/Missions.tsx
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -27,12 +27,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  getWeeklyListBucket,
+  getSaoPauloDateString,
   getWeeklyMissionErrorCode,
   getWeeklyMissionErrorMessage,
   getWeeklyMissionState,
-  isWeeklyFocusCandidate,
   isWeeklyMission,
+  isWeeklyRegistrableOnFocusDate,
 } from "@/lib/weeklyMissions";
 import { hasWeekendXpSchedule } from '@/lib/weekendXpBonus';
 import { findHighPriorityOverflow, missionScheduledDays } from '@/lib/missionPriority';
@@ -139,18 +139,14 @@ const STATUS_COLORS: Record<string, string> = {
   arquivada: "bg-muted-foreground",
 };
 
-function getLocalDateString(date: Date = new Date()): string {
-  return date.toLocaleDateString('en-CA');
-}
-
-// ✅ FUNÇÃO AUXILIAR: Verificar se missão foi concluída hoje
-function foiConcluidaHoje(mission: any): boolean {
-  const weeklyState = getWeeklyMissionState(mission);
-  if (weeklyState) return weeklyState.completedToday;
-
-  const today = getLocalDateString();
+// ✅ FUNÇÃO AUXILIAR: Verificar se a missão foi concluída num dia específico.
+// `daily_status` é preenchido tanto pela conclusão diária quanto pela semanal,
+// então é a única fonte capaz de responder "este dia foi marcado?".
+// `weekly_last_completed_date` guarda só a execução mais recente e não serve
+// para perguntar sobre ontem.
+function foiConcluidaEm(mission: any, dateStr: string): boolean {
   const dailyStatus = mission.daily_status || {};
-  return dailyStatus[today] === "completed";
+  return dailyStatus[dateStr] === "completed";
 }
 
 // ✅ FUNÇÃO AUXILIAR: Obter próximo dia agendado
@@ -229,8 +225,31 @@ export default function Missions() {
   const { data: failedMissions = [] } = useFailedMissions();
   const { showWelcomeBack, setShowWelcomeBack, daysAway } = useWelcomeBackCheck();
 
+  // ── Dia em foco ───────────────────────────────────────────────────────
+  // Esquecer de marcar e não ter feito são coisas diferentes, e o app só
+  // distingue as duas se aceitar o registro tardio. A janela é de um dia: além
+  // disso a memória já não é confiável e a marcação vira ficção.
+  // Fuso de São Paulo, não do aparelho: é o servidor que decide qual dia é hoje
+  // (invariante #3). Num aparelho em UTC+9, o "ontem" local ainda é o hoje do
+  // servidor — a UI listaria como ontem e o registro cairia em hoje.
+  const hojeStr = getSaoPauloDateString();
+  const ontemStr = getSaoPauloDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  const [focusDate, setFocusDate] = useState<string>(hojeStr);
+  const isBackfilling = focusDate === ontemStr;
+  // Domingo é o único D-1 que cai na semana anterior (a semana ISO começa na
+  // segunda). Aí a cota que vale é a da semana fechada, e o cliente só carregou
+  // a da semana corrente — nesse caso quem barra por cota é o servidor.
+  const backfillDeOutraSemana =
+    isBackfilling && new Date(`${focusDate}T12:00:00`).getDay() === 0;
+
+  // A virada de meia-noite com o app aberto deixaria focusDate apontando para
+  // um dia fora da janela; nesse caso ele volta pra hoje sozinho.
+  useEffect(() => {
+    if (focusDate !== hojeStr && focusDate !== ontemStr) setFocusDate(hojeStr);
+  }, [focusDate, hojeStr, ontemStr]);
+
   const todayDay = (() => {
-    const d = new Date().getDay();
+    const d = new Date(`${focusDate}T12:00:00`).getDay();
     return DAYS[d === 0 ? 6 : d - 1];
   })();
 
@@ -244,7 +263,7 @@ export default function Missions() {
     let nextUnique: any[] = [];
     let completed: any[] = [];
 
-    const hoje = getLocalDateString();
+    const hoje = focusDate;
 
     allMissions.forEach((m: any) => {
       // Missões fracassadas são exibidas na seção própria, não na lista regular
@@ -254,8 +273,15 @@ export default function Missions() {
       const isDaily = days.length > 0;
       const isUnique = days.length === 0 && m.due_date; // Missão única tem due_date e não tem dias recorrentes
       const isWeekly = isWeeklyMission(m);
-      const completedToday = foiConcluidaHoje(m);
+      const completedToday = foiConcluidaEm(m, focusDate);
       const isCompleted = m.completed || m.status === "arquivada";
+      // Uma regra só para as três abas: sem isto, "pendentes" e "foco" olhavam
+      // apenas para hoje e a janela D-1 só funcionava na aba "todas".
+      const weeklyDisponivel = isWeeklyRegistrableOnFocusDate(m, {
+        isBackfilling,
+        completedOnFocusDate: completedToday,
+        focusDateInPreviousWeek: backfillDeOutraSemana,
+      });
 
       // Filtro por aba
       if (activeTab === "concluidas") {
@@ -268,7 +294,7 @@ export default function Missions() {
       if (activeTab === "todas") {
         if (!isCompleted) {
           if (isWeekly) {
-            if (getWeeklyListBucket(m) === 'today') {
+            if (weeklyDisponivel) {
               today.push(m);
             } else {
               nextDays.push(m);
@@ -293,7 +319,7 @@ export default function Missions() {
       }
 
       if (activeTab === "foco") {
-        if (isWeeklyFocusCandidate(m)) {
+        if (isWeekly && weeklyDisponivel) {
           today.push(m);
         } else if (isUnique && m.due_date === hoje) {
           todayUnique.push(m);
@@ -305,7 +331,7 @@ export default function Missions() {
 
       // Pendentes (padrão)
       if (isWeekly) {
-        if (getWeeklyListBucket(m) === 'today') {
+        if (weeklyDisponivel) {
           today.push(m);
         } else {
           nextDays.push(m);
@@ -367,7 +393,7 @@ export default function Missions() {
       nextUniqueMissions: filterMissions(nextUnique),
       completedMissions: filterMissions(completed),
     };
-  }, [allMissions, activeTab, selectedCategories, searchQuery, todayDay, attrs]);
+  }, [allMissions, activeTab, selectedCategories, searchQuery, todayDay, attrs, focusDate, isBackfilling, backfillDeOutraSemana]);
 
   const toggleCategory = (cat: string) => {
     if (cat === "Todos") {
@@ -556,7 +582,21 @@ const handleSave = async () => {
         attributeId: mission.attribute_id,
         xpReward: mission.xp_reward,
         secondaryAttributeIds: mission.secondary_attribute_ids || [],
+        // Só viaja quando não é hoje: manter o payload igual ao de sempre no
+        // caminho comum evita mudar o comportamento de quem nunca usa isto.
+        targetDate: isBackfilling ? focusDate : undefined,
       });
+
+      if (result.isBackfill) {
+        toast({
+          title: t('app.missions.backfill_toast_title'),
+          description: t('app.missions.backfill_toast_desc', {
+            xp: result.xpGained,
+            gold: result.goldGained,
+          }),
+        });
+        return;
+      }
 
       if (result.frequencyType === 'weekly') {
         if (result.milestoneReached) {
@@ -829,6 +869,41 @@ const handleSave = async () => {
           </div>
         )}
 
+        {/* ── Dia em foco: hoje ou ontem ─────────────────────── */}
+        {!isLoading && (
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/30 p-1">
+              {[
+                { value: hojeStr, label: t('app.missions.focus_today') },
+                { value: ontemStr, label: t('app.missions.focus_yesterday') },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFocusDate(value)}
+                  aria-pressed={focusDate === value}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                    focusDate === value
+                      ? 'bg-primary/20 text-primary border border-primary/40'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {isBackfilling && (
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3">
+                <p className="text-sm font-bold text-foreground">{t('app.missions.backfill_banner_title')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('app.missions.backfill_banner_desc')}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Missões Fracassadas ────────────────────────────── */}
         <FailedMissionsSection missions={failedMissions} />
 
@@ -882,6 +957,7 @@ const handleSave = async () => {
                         {missions.map((m: any, i: number) => (
                           <MissionCard
                             key={m.id}
+                            focusDate={focusDate}
                             mission={m}
                             attrs={attrs || []}
                             index={i}
@@ -896,6 +972,7 @@ const handleSave = async () => {
                             newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                             onNewChecklistTextChange={setNewChecklistText}
                             isCompletedToday={false}
+                            backfillDeOutraSemana={backfillDeOutraSemana}
                           />
                         ))}
                       </div>
@@ -919,6 +996,7 @@ const handleSave = async () => {
                       {todayUniqueMissions.map((m: any, i: number) => (
                         <MissionCard
                           key={m.id}
+                          focusDate={focusDate}
                           mission={m}
                           attrs={attrs || []}
                           index={i}
@@ -951,6 +1029,7 @@ const handleSave = async () => {
                       {nextUniqueMissions.map((m: any, i: number) => (
                         <MissionCard
                           key={m.id}
+                          focusDate={focusDate}
                           mission={m}
                           attrs={attrs || []}
                           index={i}
@@ -987,6 +1066,7 @@ const handleSave = async () => {
                   {nextDaysMissions.map((m: any, i: number) => (
                     <MissionCard
                       key={m.id}
+                      focusDate={focusDate}
                       mission={m}
                       attrs={attrs || []}
                       index={i}
@@ -1000,8 +1080,9 @@ const handleSave = async () => {
                       completing={completeMission.isPending}
                       newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                       onNewChecklistTextChange={setNewChecklistText}
-                      isCompletedToday={foiConcluidaHoje(m)}
-                      isFutureMission={!foiConcluidaHoje(m)}
+                      isCompletedToday={foiConcluidaEm(m, focusDate)}
+                      isFutureMission={!foiConcluidaEm(m, focusDate)}
+                      backfillDeOutraSemana={backfillDeOutraSemana}
                       proximoDia={obterProximoDiaAgendado(m)}
                     />
                   ))}
@@ -1022,6 +1103,7 @@ const handleSave = async () => {
                   {completedMissions.map((m: any, i: number) => (
                     <MissionCard
                       key={m.id}
+                      focusDate={focusDate}
                       mission={m}
                       attrs={attrs || []}
                       index={i}
@@ -1124,12 +1206,14 @@ function AttributeChip({ name, icon }: { name: string; icon: string }) {
 function MissionCard({
   mission, attrs, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
   completing, newChecklistText, onNewChecklistTextChange, isCompletedToday, proximoDia, isFutureMission = false,
+  backfillDeOutraSemana = false, focusDate,
 }: {
   mission: any; attrs: any[]; index: number; expanded: boolean;
   onToggle: () => void; onComplete: () => void; onEdit: () => void;
   onDelete: () => void; onArchive: () => void; onPlay: () => void;
   completing: boolean; newChecklistText: string; onNewChecklistTextChange: (v: string) => void;
   isCompletedToday: boolean; proximoDia?: string | null; isFutureMission?: boolean;
+  backfillDeOutraSemana?: boolean; focusDate: string;
 }) {
   const { t } = useTranslation();
   const { data: checklist } = useChecklistItems(mission.id);
@@ -1147,6 +1231,11 @@ function MissionCard({
   const status = mission.status || 'pendente';
   const isCompleted = mission.completed;
   const weeklyState = getWeeklyMissionState(mission);
+  // A cota que trava é a da semana do dia sendo registrado. Quando esse dia
+  // caiu na semana anterior, o contador carregado aqui é o da semana errada —
+  // então o botão libera e quem barra por cota é o servidor.
+  const metaSemanalTrava =
+    Boolean(weeklyState?.targetReached) && !backfillDeOutraSemana;
   const hasWeekendBonus = hasWeekendXpSchedule(mission);
 
   // Get all attributes for this mission
@@ -1189,7 +1278,9 @@ function MissionCard({
 
   const handleUndo = async () => {
     try {
-      await undoMission.mutateAsync(mission.id);
+      // Desfaz o dia que está na tela. Mandar sempre hoje apagava a conclusão
+      // errada quando a pessoa estava revendo ontem.
+      await undoMission.mutateAsync({ missionId: mission.id, date: focusDate });
     } catch (error) {
       console.error('Erro ao desfazer:', error);
     }
@@ -1251,18 +1342,19 @@ function MissionCard({
                 <Check className="w-3 h-3" />
                 Concluída hoje
               </p>
-              {!weeklyState && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleUndo}
-                  disabled={undoMission.isPending}
-                  className="h-6 w-6 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
-                  title="Desfazer conclusão"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </Button>
-              )}
+              {/* Semanal também desfaz: undo_mission devolve XP, ouro e a vaga
+                  da cota da semana. Esconder o botão aqui deixava a única porta
+                  do desfazer semanal fechada. */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleUndo}
+                disabled={undoMission.isPending}
+                className="h-6 w-6 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
+                title="Desfazer conclusão"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </Button>
             </div>
             {proximoDia && (
               <p className="text-xs text-yellow-400/70">
@@ -1364,10 +1456,10 @@ function MissionCard({
                 completing
                 || isCompletedToday
                 || isFutureMission
-                || Boolean(weeklyState?.targetReached)
+                || metaSemanalTrava
               }
               className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-all ${
-                weeklyState?.targetReached
+                metaSemanalTrava
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : isCompletedToday
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
@@ -1376,7 +1468,7 @@ function MissionCard({
                   : 'bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30'
               }`}
               title={
-                weeklyState?.targetReached
+                metaSemanalTrava
                   ? 'Meta semanal atingida'
                   : isCompletedToday
                     ? t('app.missions.tooltip_completed')
@@ -1385,7 +1477,7 @@ function MissionCard({
                       : t('app.missions.tooltip_complete')
               }
             >
-              {weeklyState?.targetReached ? (
+              {metaSemanalTrava ? (
                 <>
                   <Lock className="w-4 h-4 mr-1" /> Meta atingida
                 </>

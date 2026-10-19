@@ -20,6 +20,7 @@ export type Database = {
           condition_value: number
           created_at: string
           description: string
+          fragment_reward: number
           gold_reward: number
           icon: string
           id: string
@@ -3008,6 +3009,7 @@ export type Database = {
       claim_achievement: {
         Args: { p_user_achievement_id: string }
         Returns: {
+          fragment_reward: number
           gold_reward: number
           xp_reward: number
         }[]
@@ -3024,7 +3026,7 @@ export type Database = {
         Returns: undefined
       }
       complete_mission: {
-        Args: { p_mission_id: string }
+        Args: { p_date?: string; p_mission_id: string }
         Returns: Json
       }
       complete_portal_run:

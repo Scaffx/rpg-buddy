@@ -113,10 +113,42 @@ export function isWeeklyFocusCandidate(
   return isWeeklyMission(mission) && getWeeklyListBucket(mission, now) === 'today';
 }
 
+export type WeeklyFocusContext = {
+  /** O dia em foco é ontem (marcação retroativa) em vez de hoje. */
+  isBackfilling: boolean;
+  /** Aquele dia específico já está em `daily_status` como concluído. */
+  completedOnFocusDate: boolean;
+  /**
+   * O dia em foco caiu na semana anterior — só acontece com domingo, visto de
+   * segunda. A cota que vale é a daquela semana, e o contador carregado aqui é
+   * o da semana corrente; nesse caso quem barra por cota é o servidor.
+   */
+  focusDateInPreviousWeek: boolean;
+};
+
+/**
+ * A semanal aceita registro no dia em foco?
+ *
+ * Perguntar só por hoje mandava a missão já marcada hoje para "Próximos dias"
+ * mesmo na visão de ontem, e aí o dia esquecido não tinha como ser registrado —
+ * que é exatamente o que a janela D-1 existe para destravar.
+ */
+export function isWeeklyRegistrableOnFocusDate(
+  mission: WeeklyMissionLike,
+  context: WeeklyFocusContext,
+  now: Date = new Date(),
+): boolean {
+  if (!context.isBackfilling) return getWeeklyListBucket(mission, now) === 'today';
+  if (context.completedOnFocusDate) return false;
+  if (context.focusDateInPreviousWeek) return true;
+  return !getWeeklyMissionState(mission, now)?.targetReached;
+}
+
 export type WeeklyMissionErrorCode =
   | 'ALREADY_COMPLETED_TODAY'
   | 'WEEKLY_CAP_REACHED'
   | 'INVALID_WEEKLY_CONFIGURATION'
+  | 'DATE_OUT_OF_WINDOW'
   | null;
 
 export function getWeeklyMissionErrorCode(error: unknown): WeeklyMissionErrorCode {
@@ -133,6 +165,7 @@ export function getWeeklyMissionErrorCode(error: unknown): WeeklyMissionErrorCod
   if (text.includes('INVALID_WEEKLY_CONFIGURATION')) {
     return 'INVALID_WEEKLY_CONFIGURATION';
   }
+  if (text.includes('DATE_OUT_OF_WINDOW')) return 'DATE_OUT_OF_WINDOW';
   return null;
 }
 
@@ -145,6 +178,9 @@ export function getWeeklyMissionErrorMessage(code: WeeklyMissionErrorCode): stri
   }
   if (code === 'INVALID_WEEKLY_CONFIGURATION') {
     return 'Esta missão semanal está com uma configuração inválida.';
+  }
+  if (code === 'DATE_OUT_OF_WINDOW') {
+    return 'Só dá para registrar hoje ou ontem. Se o dia já passou disso, ele fica como estava.';
   }
   return null;
 }

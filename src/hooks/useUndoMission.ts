@@ -10,11 +10,14 @@ export function useUndoMission() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (missionId: string) => {
+    mutationFn: async ({ missionId, date }: { missionId: string; date?: string }) => {
       // 🔒 Reversão server-side: o RPC undo_mission lê os valores reais
       // creditados e reverte XP/ouro/atributos/chaves atomicamente. Fecha o
       // farm via loop completar/desfazer (secundários -12, chave revertida).
-      const today = new Date().toLocaleDateString('en-CA');
+      // O dia desfeito é o que a pessoa está olhando, não sempre hoje: com a
+      // janela D-1, desfazer na visão de ontem apagava a conclusão de hoje.
+      // A janela continua sendo validada no servidor.
+      const today = date ?? new Date().toLocaleDateString('en-CA');
       const { data, error } = await supabase.rpc('undo_mission', {
         p_mission_id: missionId,
         p_today: today,

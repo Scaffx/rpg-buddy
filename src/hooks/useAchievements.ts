@@ -12,9 +12,32 @@ export type Achievement = {
   icon: string;
   xp_reward: number;
   gold_reward: number;
+  /**
+   * Fragmentos de portal. Conquista que NÃO exige rotina cumprida paga por
+   * aqui, com xp_reward e gold_reward zerados — combate, social e equipamento
+   * são ralos e não podem alimentar a torneira.
+   */
+  fragment_reward: number;
   condition_type: string;
   condition_value: number;
 };
+
+/** Monta "+30 XP e +20 🪙" ou "+2 fragmentos de portal", omitindo o que vale zero. */
+export function formatAchievementReward(a: {
+  xp_reward?: number;
+  gold_reward?: number;
+  fragment_reward?: number;
+}): string {
+  const partes: string[] = [];
+  if ((a.xp_reward ?? 0) > 0) partes.push(`+${a.xp_reward} XP`);
+  if ((a.gold_reward ?? 0) > 0) partes.push(`+${a.gold_reward} 🪙`);
+  if ((a.fragment_reward ?? 0) > 0) {
+    partes.push(
+      `+${a.fragment_reward} fragmento${a.fragment_reward > 1 ? 's' : ''} de portal`,
+    );
+  }
+  return partes.join(' e ');
+}
 
 export type UserAchievement = {
   id: string;
@@ -121,7 +144,7 @@ export function useCheckAchievements() {
         qc.invalidateQueries({ queryKey: ['user_achievements', user?.id] });
         unlocked.forEach((a) => {
           toast.success(`🏆 Conquista desbloqueada: ${a.title}!`, {
-            description: `Vá em Conquistas para resgatar +${a.xp_reward} XP e +${a.gold_reward} ouro!`,
+            description: `Vá em Conquistas para resgatar ${formatAchievementReward(a)}!`,
             duration: 6000,
           });
         });
@@ -142,12 +165,16 @@ export function useClaimAchievement() {
 
       // RPC atômica: lock da linha + verificação claimed_at + grant XP/ouro
       // Previne double-claim por race condition ou cache stale
-      const { error } = await supabase.rpc('claim_achievement', {
+      const { data, error } = await supabase.rpc('claim_achievement', {
         p_user_achievement_id: userAchievement.id,
       });
       if (error) throw new Error(error.message || 'Erro ao resgatar');
 
-      return userAchievement.achievement;
+      // §2.5: o front é espelho, não fonte. Quem diz o que foi creditado é o
+      // retorno da RPC — a linha em cache pode ser anterior à migration que
+      // trocou XP/ouro por fragmento e faria o toast anunciar o que não caiu.
+      const creditado = Array.isArray(data) ? data[0] : data;
+      return creditado ?? userAchievement.achievement;
     },
     onMutate: async (userAchievement) => {
       // Optimistic update: marca como resgatada imediatamente na cache
@@ -174,8 +201,9 @@ export function useClaimAchievement() {
       qc.invalidateQueries({ queryKey: ['user_achievements', user?.id] });
       qc.invalidateQueries({ queryKey: ['profile', user?.id] });
       qc.invalidateQueries({ queryKey: ['gold-balance', user?.id] });
+      qc.invalidateQueries({ queryKey: ['my-fragments'] });
       toast.success(`🎁 Recompensa resgatada!`, {
-        description: `+${ach.xp_reward} XP  +${ach.gold_reward} 🪙`,
+        description: formatAchievementReward(ach),
         duration: 5000,
       });
     },

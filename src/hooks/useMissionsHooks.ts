@@ -59,22 +59,35 @@ export const useCompleteMission = () => {
       missionId, 
       attributeId, 
       xpReward, 
-      secondaryAttributeIds = [] 
+      secondaryAttributeIds = [],
+      targetDate,
     }: {
-      missionId: string; 
-      attributeId: string; 
-      xpReward: number; 
+      missionId: string;
+      attributeId: string;
+      xpReward: number;
       secondaryAttributeIds?: string[];
+      /**
+       * Dia que a pessoa está registrando (YYYY-MM-DD). Ausente = hoje.
+       * Vale hoje ou ontem — mas quem decide se a data é aceitável é o
+       * servidor, não esta linha. Aqui trafega só a intenção.
+       */
+      targetDate?: string;
     }) => {
       // 🔒 Economia server-side: toda a lógica de recompensa (XP escalado,
       // ouro por streak/checklist/talento, level, chaves de boss, efeitos de
       // talento, inspiração) roda no RPC transacional `complete_mission`.
-      // O RPC recebe somente mission_id — o servidor resolve data, hora,
-      // contadores e multiplicadores, então
-      // não é possível forjar XP/ouro/level pelo navegador.
-      const { data, error } = await supabase.rpc('complete_mission', {
-        p_mission_id: missionId,
-      });
+      // O cliente PROPÕE o dia; o servidor valida a janela (hoje ou ontem),
+      // resolve hora, contadores e multiplicadores — então continua não sendo
+      // possível forjar XP/ouro/level pelo navegador.
+      // O payload só carrega p_date quando há dia proposto. PostgREST escolhe
+      // a overload pelo conjunto de nomes de argumento: mandar p_date sempre
+      // faria a conclusão falhar com PGRST202 em qualquer ambiente onde a
+      // migration da janela D-1 ainda não subiu — inclusive na janela entre o
+      // deploy do front e a aplicação manual da migration em produção.
+      const args = targetDate
+        ? { p_mission_id: missionId, p_date: targetDate }
+        : { p_mission_id: missionId };
+      const { data, error } = await supabase.rpc('complete_mission', args);
       if (error) throw error;
 
       const result = (data || {}) as {
@@ -93,6 +106,8 @@ export const useCompleteMission = () => {
         execution_xp?: number;
         milestone_xp?: number;
         weekend_bonus?: boolean;
+        completed_date?: string;
+        is_backfill?: boolean;
       };
       return {
         success: true,
@@ -111,12 +126,16 @@ export const useCompleteMission = () => {
         executionXp: result.execution_xp ?? result.xp_gained ?? 0,
         milestoneXp: result.milestone_xp ?? 0,
         weekendBonus: !!result.weekend_bonus,
+        // Dia que o servidor de fato creditou — é ele que manda, não o que o
+        // cliente propôs.
+        completedDate: result.completed_date ?? getSaoPauloDateString(),
+        isBackfill: !!result.is_backfill,
       };
     },
 
     // ⚡ OPTIMISTIC UPDATE: marca a missão como concluída na UI antes do servidor responder.
-    onMutate: async ({ missionId, attributeId, xpReward, secondaryAttributeIds = [] }) => {
-      const today = getSaoPauloDateString();
+    onMutate: async ({ missionId, attributeId, xpReward, secondaryAttributeIds = [], targetDate }) => {
+      const today = targetDate ?? getSaoPauloDateString();
       await queryClient.cancelQueries({ queryKey: ['missions'] });
 
       const previousMissions = queryClient.getQueriesData({ queryKey: ['missions'] });
@@ -133,7 +152,12 @@ export const useCompleteMission = () => {
             return {
               ...m,
               weekly_current_count: Number(m.weekly_current_count || 0) + 1,
-              weekly_last_completed_date: today,
+              // O servidor grava daily_status também na semanal, e é por ele que
+              // a lista pergunta "este dia foi marcado?". Sem espelhar aqui, o
+              // card só sairia da lista no refetch.
+              daily_status: { ...(m.daily_status || {}), [today]: 'completed' },
+              weekly_last_completed_date:
+                [m.weekly_last_completed_date, today].filter(Boolean).sort().pop() ?? today,
             };
           }
           const days: string[] = m.days_of_week || [];
@@ -207,7 +231,14 @@ export const useCompleteMission = () => {
               ? {
                   ...mission,
                   weekly_current_count: data.weeklyCount,
-                  weekly_last_completed_date: getSaoPauloDateString(),
+                  // Registrar ontem não pode fazer este campo andar pra trás:
+                  // ele responde "qual foi a última execução", e a de ontem não
+                  // é mais recente que a de hoje que já estava lá.
+                  weekly_last_completed_date:
+                    [mission.weekly_last_completed_date, data.completedDate]
+                      .filter(Boolean)
+                      .sort()
+                      .pop() ?? data.completedDate,
                   weekly_milestone_paid:
                     mission.weekly_milestone_paid || data.milestoneReached,
                 }

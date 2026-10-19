@@ -4,8 +4,10 @@ import {
   getSaoPauloWeekStart,
   getWeeklyListBucket,
   getWeeklyMissionErrorCode,
+  getWeeklyMissionErrorMessage,
   getWeeklyMissionState,
   isWeeklyFocusCandidate,
+  isWeeklyRegistrableOnFocusDate,
 } from '@/lib/weeklyMissions';
 
 describe('weekly missions', () => {
@@ -133,5 +135,93 @@ describe('weekly missions', () => {
     expect(
       getWeeklyMissionErrorCode({ details: 'WEEKLY_CAP_REACHED' }),
     ).toBe('WEEKLY_CAP_REACHED');
+  });
+
+  it('mantém a semanal já concluída hoje registrável na visão de ontem', () => {
+    // "Treinar 4x por semana": feita hoje, esquecida ontem. Perguntando só por
+    // hoje, o card ia para "Próximos dias" com o botão travado — e não havia
+    // como registrar ontem, que é o caso que motivou a janela D-1.
+    const mission = {
+      frequency_type: 'weekly' as const,
+      target_count: 4,
+      max_count: 4,
+      weekly_current_count: 1,
+      weekly_last_completed_date: '2026-07-23',
+    };
+    const now = new Date('2026-07-23T15:00:00.000Z');
+
+    // Hoje: já marcada, some da lista.
+    expect(getWeeklyListBucket(mission, now)).toBe('later');
+    expect(
+      isWeeklyRegistrableOnFocusDate(
+        mission,
+        { isBackfilling: false, completedOnFocusDate: true, focusDateInPreviousWeek: false },
+        now,
+      ),
+    ).toBe(false);
+
+    // Ontem: aquele dia não foi marcado e a cota ainda cabe → registrável.
+    expect(
+      isWeeklyRegistrableOnFocusDate(
+        mission,
+        { isBackfilling: true, completedOnFocusDate: false, focusDateInPreviousWeek: false },
+        now,
+      ),
+    ).toBe(true);
+  });
+
+  it('não oferece de novo um dia que já foi registrado', () => {
+    const mission = {
+      frequency_type: 'weekly' as const,
+      target_count: 4,
+      max_count: 4,
+      weekly_current_count: 2,
+    };
+
+    expect(
+      isWeeklyRegistrableOnFocusDate(mission, {
+        isBackfilling: true,
+        completedOnFocusDate: true,
+        focusDateInPreviousWeek: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('deixa a cota da semana fechada para o servidor decidir', () => {
+    // Meta 1x/semana já batida na semana corrente. Registrar o domingo (semana
+    // anterior) é legítimo, e o contador carregado aqui é o da semana errada.
+    const mission = {
+      frequency_type: 'weekly' as const,
+      target_count: 1,
+      max_count: 1,
+      weekly_current_count: 1,
+    };
+
+    expect(
+      isWeeklyRegistrableOnFocusDate(mission, {
+        isBackfilling: true,
+        completedOnFocusDate: false,
+        focusDateInPreviousWeek: false,
+      }),
+    ).toBe(false);
+
+    expect(
+      isWeeklyRegistrableOnFocusDate(mission, {
+        isBackfilling: true,
+        completedOnFocusDate: false,
+        focusDateInPreviousWeek: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('reports a date rejected by the server backfill window', () => {
+    // O servidor recusa qualquer dia fora de [ontem, hoje]. A UI precisa saber
+    // traduzir isso, senão a recusa vira um "Erro" genérico que não ensina nada.
+    expect(
+      getWeeklyMissionErrorCode({ message: 'DATE_OUT_OF_WINDOW' }),
+    ).toBe('DATE_OUT_OF_WINDOW');
+    expect(getWeeklyMissionErrorMessage('DATE_OUT_OF_WINDOW')).toMatch(
+      /hoje ou ontem/i,
+    );
   });
 });

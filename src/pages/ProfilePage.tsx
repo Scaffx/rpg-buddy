@@ -2597,12 +2597,23 @@ export default function ProfilePage() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">{ach.description}</p>
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-xp/20 text-primary border border-primary/20 font-bold">
-                          +{ach.xp_reward} XP
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">
-                          +{ach.gold_reward} 🪙
-                        </span>
+                        {/* Conquista que não exige rotina paga fragmento, e aí XP e
+                            ouro são zero — mostrar "+0 XP" prometeria o que ela não dá. */}
+                        {(ach.xp_reward ?? 0) > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-xp/20 text-primary border border-primary/20 font-bold">
+                            +{ach.xp_reward} XP
+                          </span>
+                        )}
+                        {(ach.gold_reward ?? 0) > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">
+                            +{ach.gold_reward} 🪙
+                          </span>
+                        )}
+                        {((ach as any).fragment_reward ?? 0) > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/20 font-bold">
+                            +{(ach as any).fragment_reward} 🔮 fragmento{(ach as any).fragment_reward > 1 ? 's' : ''}
+                          </span>
+                        )}
                         {claimed && (
                           <span className="text-[10px] text-emerald-400 font-semibold">✓ Resgatada</span>
                         )}

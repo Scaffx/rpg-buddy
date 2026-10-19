@@ -5,7 +5,7 @@
     "language": "Idioma"
   },
   "hero": {
-    "badge": "v2.0 disponível · Assine agora",
+    "badge": "v1.9 disponível · Assine agora",
     "title_part1": "Transforme cada hábito em",
     "title_highlight": "XP real",
     "subtitle_main": "Beba água, treine, estude, durma cedo, e veja seu personagem evoluir, dropar loot e enfrentar bosses.",
@@ -13,7 +13,7 @@
     "cta_signup": "Começar agora",
     "cta_login": "Já tenho conta",
     "perk_trial": "7 dias grátis",
-    "perk_apk": "Disponível na Play Store",
+    "perk_apk": "Funciona no navegador",
     "perk_bosses": "60 bosses"
   },
   "what": {
@@ -24,34 +24,34 @@
       "attrs_title": "11 atributos vivos",
       "attrs_text": "Força, Mente, Carisma, Disciplina e mais. Cada missão alimenta os atributos certos. Você vê onde está forte e onde precisa treinar.",
       "missions_title": "Missões diárias reais",
-      "missions_text": "Configure hábitos por dia da semana. Falhou ontem? O sistema marca e cobra XP automaticamente. Nada escapa.",
+      "missions_text": "Configure hábitos por dia da semana, ou metas do tipo '4x por semana'. Esqueceu de marcar? Dá pra registrar o dia anterior — o app sabe a diferença entre não ter feito e não ter anotado.",
       "bosses_title": "60 bosses temáticos",
       "bosses_text": "Do Nível 1 ao 60. Cada chefe consome 'Chaves de Boss' que você ganha cumprindo missões. Disciplina vira poder de combate.",
       "streak_title": "Don't Break the Chain",
       "streak_text": "Calendário de chamas: cada dia com 60%+ de missões cumpridas vira streak. Quebrar dói, manter vicia.",
       "hp_title": "HP, MP, Fadiga e Fome",
-      "hp_text": "Seu personagem reflete sua saúde. Beba água, coma direito, durma. O herói desmaia se você se descuidar.",
+      "hp_text": "Seu personagem reflete sua saúde. Ligando as âncoras de saúde, água e refeição passam a contar no seu HP e MP — e o herói sente quando você se descuida.",
       "rank_title": "Ranking mundial",
       "rank_text": "Compare seu Power Level com aventureiros do Brasil e do mundo. Suba de posição cumprindo o que prometeu."
     }
   },
   "diff": {
     "eyebrow": "Por que somos diferentes",
-    "title": "A maioria dos apps de hábito te recompensa por marcar caixinhas. O LifeOnRPG te cobra.",
-    "subtitle": "A diferença está nas consequências. Aqui, ignorar a missão dói no personagem, e isso muda tudo.",
+    "title": "A maioria dos apps de hábito te premia por marcar caixinhas. Aqui, o que você faz vira poder.",
+    "subtitle": "A diferença está na fonte. Sua rotina é a única coisa que te deixa forte — todo o resto do jogo gasta essa força.",
     "rows": {
-      "punish_title": "Punição retroativa",
-      "punish_text": "Esqueceu de marcar 'beber água' ontem? O sistema desconta XP automaticamente. Sem desculpa, sem editar a história.",
-      "gold_title": "Economia de Ouro real",
-      "gold_text": "Boss derrotado dá Ouro. Ouro compra buffs temporários na Loja do Tempo. Recompensa não é cosmética, afeta seu próximo dia.",
+      "punish_title": "O que está em jogo é a sequência",
+      "punish_text": "Falhar não apaga o XP que você já conquistou — interrompe a sua sequência, e é isso que pesa. Você tem 2 proteções de streak por semana, porque um dia ruim não pode virar motivo pra desistir.",
+      "gold_title": "Só a rotina gera poder",
+      "gold_text": "XP, nível, atributos e ouro nascem de um lugar só: as missões que você cumpre. Bosses, portais e loja gastam esse poder e devolvem variedade — nunca progressão.",
       "attrs_title": "Atributos que importam",
       "attrs_text": "Cada missão vincula a 1 atributo principal e até 2 secundários. Você cresce de forma equilibrada, ou aprende onde está negligente.",
       "talk_title": "O herói fala com você",
-      "talk_text": "Notificações contextuais: 'Você não bebeu água há 4h', 'Streak em risco esta noite', 'Boss desbloqueado'. Não é spam, é o personagem te chamando.",
+      "talk_text": "Notificações contextuais: 'você não bebeu água há 4h', 'streak em risco esta noite'. No máximo 3 por dia, e silenciadas no seu horário de dormir. É o personagem te chamando, não o app te perseguindo.",
       "class_title": "Classes que evoluem",
-      "class_text": "55 classes em 6 tiers. Sua próxima classe depende do que você priorizou. Guerreiro vira Paladino só se você cuidou da Mente também.",
+      "class_text": "São 32 classes em 5 faixas de nível, do 1 ao 50. Sua próxima classe depende do que você priorizou: quem treinou um atributo só chega a menos caminhos.",
       "focus_title": "Sem conteúdo infinito",
-      "focus_text": "Não tem feed pra rolar, não tem notificação social. O app abre, você cumpre suas missões, e fecha. Foco no que importa."
+      "focus_text": "Não tem feed pra rolar. O app abre, você cumpre suas missões, e fecha. Foco no que importa."
     }
   },
   "security": {
@@ -65,8 +65,8 @@
       "rls_text": "Cada usuário só vê seus próprios dados. Garantido por políticas no banco, não dá pra burlar pelo cliente.",
       "track_title": "Zero rastreamento de comportamento",
       "track_text": "Sem pixels de Facebook, sem analytics invasivo. Só métricas anônimas de erro pra manter o app estável.",
-      "backup_title": "Backups diários",
-      "backup_text": "Seu progresso é replicado e versionado. Nada se perde, nem por bug nosso, nem por troca de celular."
+      "backup_title": "Seus dados saem quando você quiser",
+      "backup_text": "Você pode excluir sua conta a qualquer momento. A exclusão apaga tudo, inclusive as fotos guardadas no storage."
     }
   },
   "roadmap": {
@@ -82,16 +82,16 @@
       "party_title": "Dungeons em Party",
       "party_text": "Forme grupo com amigos. Todos precisam cumprir pra avançar.",
       "loot_title": "Itens Lendários",
-      "loot_text": "Sistema expandido de loot, crafting e armas com bônus reais aos atributos."
+      "loot_text": "Sistema expandido de loot e armas, com efeitos próprios no combate."
     }
   },
   "whats_new": {
-    "eyebrow": "Novidades v2.0",
+    "eyebrow": "Novidades v1.9",
     "title": "O que chegou nesta versão.",
     "subtitle": "Atualizações que transformam sua experiência no LifeOnRPG — já disponíveis na sua conta.",
     "items": {
       "premium_title": "Premium ao vivo",
-      "premium_text": "Assine agora pelo próprio app. Plano mensal ou anual via Paddle — pagamento seguro em moeda local.",
+      "premium_text": "Assine pelo próprio app. Plano mensal ou anual, com pagamento seguro em moeda local.",
       "gift_title": "Chave de presente",
       "gift_text": "Quem assina o plano anual recebe 2 meses de presente para dar a um amigo. Resgate no seu perfil.",
       "battle_title": "Histórico de batalha",
@@ -108,7 +108,7 @@
     "cta_download": "Baixar APK",
     "cta_preparing": "APK em preparação",
     "cta_browser": "Jogar no navegador",
-    "cta_playstore": "Baixar na Play Store",
+    "cta_playstore": "Em breve na Play Store",
     "footnote_beta": "Build Beta · ",
     "footnote": "Funciona em qualquer navegador moderno · iOS via Safari (Adicionar à tela de início)"
   },
@@ -1053,6 +1053,12 @@
       "weekend_bonus_badge": "🔥 +25% no fim de semana",
       "weekend_bonus_toast_title": "🔥 Bônus de fim de semana aplicado!",
       "weekend_bonus_toast_desc": "+{{xp}} XP com o bônus de 25%! Próxima: {{next}}",
+      "focus_today": "Hoje",
+      "focus_yesterday": "Ontem",
+      "backfill_banner_title": "📅 Registrando ontem",
+      "backfill_banner_desc": "O que você marcar aqui conta como feito ontem, com XP e ouro cheios. Não dá pra voltar mais que um dia — depois disso a memória já não é confiável.",
+      "backfill_toast_title": "📅 Registrado em ontem",
+      "backfill_toast_desc": "+{{xp}} XP e +{{gold}} ouro. O dia de ontem conta igual — só o registro atrasou.",
       "none": "—",
       "mission_deleted": "Missão excluída",
       "mission_archived": "Missão arquivada",

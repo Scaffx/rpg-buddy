@@ -143,9 +143,13 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
     } as any)
     .eq('user_id', userId);
 
-  // Processar do mais antigo (30) ao mais recente (1) para que D+2+ sejam
-  // auto-penalizados antes de D+1 aparecer no diálogo
-  for (let daysBack = 30; daysBack >= 1; daysBack--) {
+  // Ontem ainda é registrável (janela D-1, §1.3): adjudicar o dia enquanto ele
+  // cabe na janela transforma falha de REGISTRO em falha de HÁBITO — queima
+  // graça/protetor e reinicia a sequência de alguém que só não marcou ainda.
+  // Por isso a varredura para em anteontem; o dia mais recente adjudicável é o
+  // que aparece no diálogo, e os mais antigos são fechados em silêncio.
+  const PRIMEIRO_DIA_ADJUDICAVEL = 2;
+  for (let daysBack = 30; daysBack >= PRIMEIRO_DIA_ADJUDICAVEL; daysBack--) {
     const pastDate = new Date(startOfToday);
     pastDate.setDate(pastDate.getDate() - daysBack);
     const pastDateStr = getLocalDateString(pastDate);
@@ -164,8 +168,8 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
       const createdAt = (m as any).created_at?.split('T')[0];
       if (createdAt && createdAt > pastDateStr) continue;
 
-      // Se D+1 e a missão já foi marcada como is_failed nesta execução, pular
-      if (daysBack === 1 && setFailedThisRun.has(m.id)) continue;
+      // Se já marcada como is_failed nesta execução, pular
+      if (daysBack === PRIMEIRO_DIA_ADJUDICAVEL && setFailedThisRun.has(m.id)) continue;
 
       // Inicializar cache in-memory de daily_status para esta missão
       if (!dailyStatusCache[m.id]) {
@@ -248,8 +252,9 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
         .update({ streak_current_days: 0 } as any)
         .eq('user_id', userId);
 
-      if (daysBack === 1) {
-        // D+1 (ontem): aparece no diálogo, pra a falta ficar visível e recuperável.
+      if (daysBack === PRIMEIRO_DIA_ADJUDICAVEL) {
+        // Dia mais recente já fora da janela: aparece no diálogo, pra a falta
+        // ficar visível e recuperável.
         setFailedThisRun.add(m.id);
         await supabase
           .from('missions')
@@ -260,7 +265,7 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
           } as any)
           .eq('id', m.id);
       } else {
-        // D+2+: marca silenciosamente como não-concluída (sai de pendente).
+        // Mais antigos: marca silenciosamente como não-concluída (sai de pendente).
         await supabase
           .from('missions')
           .update({ daily_status: effectiveStatus } as any)
@@ -270,15 +275,33 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
   }
 
   // Missões únicas (one-shot) com due_date vencido devem sair de "pendente"
-  // e ser marcadas como fracassadas, igual ao fluxo recorrente.
-  const todayStr = getLocalDateString();
+  // e ser marcadas como fracassadas, igual ao fluxo recorrente — inclusive na
+  // janela D-1 (§1.3): ontem ainda é registrável, então ainda não é julgado.
+  // Adjudicar a avulsa de ontem a esconde da aba "Ontem" (Missions.tsx filtra
+  // is_failed) e mata a marcação retroativa que o servidor aceitaria, sobrando
+  // só "Fiz", que por §1.6 não paga XP nem ouro.
+  const primeiroDiaAdjudicavel = new Date(startOfToday);
+  primeiroDiaAdjudicavel.setDate(primeiroDiaAdjudicavel.getDate() - PRIMEIRO_DIA_ADJUDICAVEL);
+  const primeiroDiaAdjudicavelStr = getLocalDateString(primeiroDiaAdjudicavel);
   for (const m of missions) {
     if (m.frequency_type === 'weekly') continue;
     const days = (m.days_of_week as string[]) || [];
     if (days.length > 0) continue; // recorrentes já tratadas acima
     const dueDate = (m as any).due_date as string | null | undefined;
     if (!dueDate) continue;
-    if (dueDate >= todayStr) continue; // ainda no prazo
+    if (dueDate > primeiroDiaAdjudicavelStr) continue; // no prazo ou ainda na janela D-1
+
+    // Estado final do dia já resolvido (mesmas guardas do laço recorrente):
+    // "Dispensar" grava failed_accepted, "Fiz" grava completed e o protetor grava
+    // protected. Sem ler isso, a varredura re-julgava a mesma data a cada
+    // carregamento — o card voltava, o protetor queimava de novo e a sequência
+    // zerava de novo, e nada do que o usuário decidiu grudava.
+    const dailyStatus: Record<string, string> = { ...(((m as any).daily_status) || {}) };
+    const statusDoDia = dailyStatus[dueDate];
+    if (statusDoDia === 'completed') continue;
+    if (statusDoDia === 'failed_accepted') continue;
+    if (statusDoDia === 'protected') continue;
+    if (statusDoDia === 'grace') continue;
 
     // Tenta usar protetor de streak (mesma lógica das recorrentes)
     if (availableProtectors > 0) {
@@ -287,7 +310,7 @@ async function checkAndMarkFailed(userId: string, queryClient: any) {
         .from('profiles')
         .update({ streak_protector_charges: availableProtectors, streak_protector_week: currentWeek } as any)
         .eq('user_id', userId);
-      const dailyStatus = { ...(((m as any).daily_status) || {}), [dueDate]: 'protected' };
+      dailyStatus[dueDate] = 'protected';
       await supabase
         .from('missions')
         .update({ daily_status: dailyStatus } as any)
@@ -403,50 +426,87 @@ export function useFailedMissions() {
 // que restaura XP (gold→XP) — um escritor de XP fora do complete_mission. A RPC
 // segue definida no banco (sem migration), mas não é mais chamada em lugar nenhum.
 
+/**
+ * Dispensa uma ou várias missões fracassadas.
+ *
+ * "Dispensar todas" precisa dispensar **todas**. Antes, um erro em qualquer
+ * missão abortava o laço com `throw`: as anteriores já tinham sido gravadas, as
+ * seguintes nem eram tentadas, e o usuário via um erro genérico sem saber quais
+ * das duas coisas aconteceu. Agora cada missão é tentada de forma independente e
+ * os erros são acumulados — só no fim, se sobrou alguma, o erro é levantado
+ * dizendo quantas passaram e quantas não.
+ */
+export async function dismissFailedMissions(
+  userId: string,
+  missions: any | any[],
+): Promise<{ dispensadas: number; falharam: string[] }> {
+  const missionList = Array.isArray(missions) ? missions : [missions];
+  const falharam: string[] = [];
+  let dispensadas = 0;
+
+  for (const mission of missionList) {
+    try {
+      if (mission.frequency_type === 'weekly') {
+        const { error } = await supabase.rpc('resolve_weekly_mission_failure', {
+          p_mission_id: mission.id,
+          p_resolution: 'dismissed',
+        });
+        if (error) throw error;
+        dispensadas += 1;
+        continue;
+      }
+
+      // Marca o dia do fracasso como aceito para evitar re-avaliação
+      const { data: missionData } = await supabase
+        .from('missions')
+        .select('daily_status')
+        .eq('id', mission.id)
+        .single();
+      const dailyStatus = (missionData as any)?.daily_status || {};
+      if (mission.failed_date) {
+        dailyStatus[mission.failed_date] = 'failed_accepted';
+      }
+
+      const { error: updateError } = await supabase
+        .from('missions')
+        .update({ is_failed: false, failed_date: null, daily_status: dailyStatus } as any)
+        .eq('id', mission.id);
+      if (updateError) throw updateError;
+
+      await supabase.from('activity_log').insert({
+        user_id: userId,
+        action: 'mission_dismissed',
+        description: `Dispensou a missão não concluída: ${mission.title} (${mission.failed_date || 'hoje'})`,
+        xp_gained: 0,
+      });
+      dispensadas += 1;
+    } catch {
+      falharam.push(String(mission.title || mission.id));
+    }
+  }
+
+  if (falharam.length > 0) {
+    throw new Error(
+      dispensadas > 0
+        ? `Dispensei ${dispensadas}, mas ${falharam.length} não deu: ${falharam.join(', ')}. Tente de novo nessas.`
+        : `Não consegui dispensar: ${falharam.join(', ')}.`,
+    );
+  }
+
+  return { dispensadas, falharam };
+}
+
 export function useAcceptPenalty() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (missions: any | any[]) => {
       if (!user) throw new Error('Não autenticado');
-      
-      const missionList = Array.isArray(missions) ? missions : [missions];
-      
-      for (const mission of missionList) {
-        if (mission.frequency_type === 'weekly') {
-          const { error } = await supabase.rpc('resolve_weekly_mission_failure', {
-            p_mission_id: mission.id,
-            p_resolution: 'dismissed',
-          });
-          if (error) throw error;
-          continue;
-        }
-
-        // Marca o dia do fracasso como aceito para evitar re-avaliação
-        const { data: missionData } = await supabase
-          .from('missions')
-          .select('daily_status')
-          .eq('id', mission.id)
-          .single();
-        const dailyStatus = (missionData as any)?.daily_status || {};
-        if (mission.failed_date) {
-          dailyStatus[mission.failed_date] = 'failed_accepted';
-        }
-
-        await supabase
-          .from('missions')
-          .update({ is_failed: false, failed_date: null, daily_status: dailyStatus } as any)
-          .eq('id', mission.id);
-
-        await supabase.from('activity_log').insert({
-          user_id: user.id,
-          action: 'mission_dismissed',
-          description: `Dispensou a missão não concluída: ${mission.title} (${mission.failed_date || 'hoje'})`,
-          xp_gained: 0,
-        });
-      }
+      return dismissFailedMissions(user.id, missions);
     },
-    onSuccess: () => {
+    // Roda no sucesso E no erro: numa dispensa parcial, as que passaram já estão
+    // gravadas e a lista precisa refletir isso.
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['failed-missions'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['missions'] });

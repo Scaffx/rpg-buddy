@@ -5,7 +5,7 @@
     "language": "Language"
   },
   "hero": {
-    "badge": "v2.0 available · Subscribe now",
+    "badge": "v1.9 available · Subscribe now",
     "title_part1": "Turn every habit into",
     "title_highlight": "real XP",
     "subtitle_main": "Drink water, train, study, sleep early, and watch your character evolve, drop loot and face bosses.",
@@ -13,7 +13,7 @@
     "cta_signup": "Get started",
     "cta_login": "I have an account",
     "perk_trial": "7 days free",
-    "perk_apk": "Available on Play Store",
+    "perk_apk": "Runs in your browser",
     "perk_bosses": "60 bosses"
   },
   "what": {
@@ -24,34 +24,34 @@
       "attrs_title": "11 living attributes",
       "attrs_text": "Strength, Mind, Charisma, Discipline and more. Every quest feeds the right attributes. See where you're strong and where you need training.",
       "missions_title": "Real daily quests",
-      "missions_text": "Set habits by day of the week. Skipped yesterday? The system tracks and deducts XP automatically. Nothing escapes.",
+      "missions_text": "Set habits by day of the week, or goals like '4x per week'. Forgot to check one off? You can still log yesterday — the app knows the difference between not doing it and not writing it down.",
       "bosses_title": "60 themed bosses",
       "bosses_text": "From Level 1 to 60. Each boss costs 'Boss Keys' you earn by completing quests. Discipline becomes combat power.",
       "streak_title": "Don't Break the Chain",
       "streak_text": "Flame calendar: each day with 60%+ quests done becomes a streak. Breaking hurts, keeping it is addictive.",
       "hp_title": "HP, MP, Fatigue and Hunger",
-      "hp_text": "Your character mirrors your health. Drink, eat right, sleep. The hero faints if you neglect yourself.",
+      "hp_text": "Your character mirrors your health. Turn on health anchors and water and meals start counting toward your HP and MP — the hero feels it when you neglect yourself.",
       "rank_title": "World ranking",
       "rank_text": "Compare your Power Level with adventurers worldwide. Climb by keeping your word."
     }
   },
   "diff": {
     "eyebrow": "Why we're different",
-    "title": "Most habit apps reward you for ticking boxes. LifeOnRPG charges you.",
-    "subtitle": "The difference is consequence. Here, ignoring a quest hurts the character, and that changes everything.",
+    "title": "Most habit apps reward you for ticking boxes. Here, what you do becomes power.",
+    "subtitle": "The difference is the source. Your routine is the only thing that makes you strong — everything else in the game spends that strength.",
     "rows": {
-      "punish_title": "Retroactive penalty",
-      "punish_text": "Forgot to log 'drink water' yesterday? The system deducts XP automatically. No excuses, no rewriting history.",
-      "gold_title": "Real Gold economy",
-      "gold_text": "Bosses drop Gold. Gold buys temporary buffs at the Time Shop. Rewards aren't cosmetic, they shape your next day.",
+      "punish_title": "Your streak is what is at stake",
+      "punish_text": "Failing never erases XP you already earned — it breaks your streak, and that is what stings. You get 2 streak protectors a week, because one bad day must not become a reason to quit.",
+      "gold_title": "Only your routine creates power",
+      "gold_text": "XP, levels, attributes and gold come from exactly one place: the missions you complete. Bosses, portals and the shop spend that power and give back variety — never progression.",
       "attrs_title": "Attributes that matter",
       "attrs_text": "Every quest links to 1 main attribute and up to 2 secondary. You grow balanced, or learn where you're slacking.",
       "talk_title": "The hero talks to you",
-      "talk_text": "Contextual notifications: 'You haven't drunk water for 4h', 'Streak at risk tonight', 'Boss unlocked'. Not spam, it's the character calling.",
+      "talk_text": "Contextual notifications: 'you haven't had water in 4h', 'your streak is at risk tonight'. Three a day at most, silenced during your sleep hours. It's the character calling you, not the app chasing you.",
       "class_title": "Classes that evolve",
-      "class_text": "55 classes across 6 tiers. Your next class depends on what you prioritized. Warrior becomes Paladin only if you trained the Mind too.",
+      "class_text": "32 classes across 5 level bands, from 1 to 50. Your next class depends on what you prioritized: train a single attribute and fewer paths open up.",
       "focus_title": "No infinite content",
-      "focus_text": "No feed to scroll, no social notifications. Open the app, do your quests, close. Focus on what matters."
+      "focus_text": "No feed to scroll. The app opens, you complete your missions, and it closes. Focus on what matters."
     }
   },
   "security": {
@@ -65,8 +65,8 @@
       "rls_text": "Each user only sees their own data. Enforced by database policies, no client-side bypass possible.",
       "track_title": "Zero behavior tracking",
       "track_text": "No Facebook pixels, no invasive analytics. Only anonymous error metrics to keep the app stable.",
-      "backup_title": "Daily backups",
-      "backup_text": "Your progress is replicated and versioned. Nothing is lost, not by our bugs, not by changing phones."
+      "backup_title": "Your data leaves whenever you want",
+      "backup_text": "You can delete your account at any time. Deletion wipes everything, including photos held in storage."
     }
   },
   "roadmap": {
@@ -82,16 +82,16 @@
       "party_title": "Party Dungeons",
       "party_text": "Form a group with friends. Everyone must deliver to progress.",
       "loot_title": "Legendary Items",
-      "loot_text": "Expanded loot, crafting and weapons system with real attribute bonuses."
+      "loot_text": "Expanded loot and weapon system, with effects of their own in combat."
     }
   },
   "whats_new": {
-    "eyebrow": "What's new in v2.0",
+    "eyebrow": "What's new in v1.9",
     "title": "What arrived in this version.",
     "subtitle": "Updates that transform your LifeOnRPG experience — already available in your account.",
     "items": {
       "premium_title": "Premium is live",
-      "premium_text": "Subscribe right from the app. Monthly or annual plan via Paddle — secure payment in local currency.",
+      "premium_text": "Subscribe from inside the app. Monthly or annual plan, with secure payment in your local currency.",
       "gift_title": "Gift key",
       "gift_text": "Annual subscribers receive a 2-month gift key to give to a friend. Redeem from your profile.",
       "battle_title": "Battle history",
@@ -108,7 +108,7 @@
     "cta_download": "Download APK",
     "cta_preparing": "APK in preparation",
     "cta_browser": "Play in browser",
-    "cta_playstore": "Get it on Play Store",
+    "cta_playstore": "Coming soon to Play Store",
     "footnote_beta": "Beta build · ",
     "footnote": "Works in any modern browser · iOS via Safari (Add to Home Screen)"
   },
@@ -1053,6 +1053,12 @@
       "weekend_bonus_badge": "🔥 +25% on weekends",
       "weekend_bonus_toast_title": "🔥 Weekend bonus applied!",
       "weekend_bonus_toast_desc": "+{{xp}} XP with the 25% bonus! Next: {{next}}",
+      "focus_today": "Today",
+      "focus_yesterday": "Yesterday",
+      "backfill_banner_title": "📅 Logging yesterday",
+      "backfill_banner_desc": "Anything you tick here counts as done yesterday, with full XP and gold. You cannot go back more than one day — past that, memory is no longer reliable.",
+      "backfill_toast_title": "📅 Logged for yesterday",
+      "backfill_toast_desc": "+{{xp}} XP and +{{gold}} gold. Yesterday counts just the same — only the logging was late.",
       "none": "—",
       "mission_deleted": "Mission deleted",
       "mission_archived": "Mission archived",

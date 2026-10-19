@@ -64,14 +64,18 @@ nunca preenche a coluna. A prioridade é o que diferencia uma missão da outra:
 
 > O cap existe para evitar inflação de XP em níveis altos. Antes, no Lv 60 o multiplier era 7× e, combinado com buffs multiplicativos, podia chegar a ~20× em uma única missão.
 
-### Bônus de streak (aditivo no `buffBonus`)
+### Bônus de streak (aditivo no `buffBonus`, como `streakMultiplier − 1`)
 
-| Streak (dias) | Bônus     |
-|---------------|-----------|
-| 3–6           | +10%      |
-| 7–13          | +25%      |
-| 14–29         | +50%      |
-| 30+           | +100%     |
+| Streak (dias) | Multiplicador | Bônus     |
+|---------------|---------------|-----------|
+| 3–6           | 1.1×          | +10%      |
+| 7–13          | 1.3×          | +30%      |
+| 14–20         | 1.5×          | +50%      |
+| 21+           | **1.75× (teto)** | +75%   |
+
+> O teto é em **21 dias** (janela de formação de hábito), não em 30. Fonte: `v_streak_mult` em
+> `supabase/migrations/20260821120000_marcacao_retroativa_d1.sql`, espelhado por
+> `getStreakXpMultiplier` / `getStreakXpBonusLabel` em `src/hooks/useProfile.tsx`.
 
 ### Bônus de checklist
 
@@ -220,10 +224,14 @@ goldReward = max(10, boss.gold_reward || nível × 15 + 10)
 
 ## ⚠️ Penalidades por Missão Falhada
 
-- **Custo**: 10 🪙 para "pagar a penalidade" (constante `MISSION_FAILURE_PENALTY_GOLD`).
-- **Recuperação**: restaura o XP que seria ganho.
+- **Custo**: nenhum. Pagar 10 🪙 para restaurar XP foi **removido** — era um escritor de XP fora
+  do `complete_mission`. `MISSION_FAILURE_PENALTY_GOLD` e a RPC `pay_mission_penalty` seguem no
+  repositório sem chamador; ver `src/hooks/useFailedMissions.tsx` (`usePayPenalty REMOVIDO`).
+- **Recuperação**: reabilita o dia para a sequência e **não concede XP nem ouro**. Teto de
+  **2 recuperações por dia**.
 - Streak: não é penalizada automaticamente se recuperada.
-- **Streak Protector**: até 3 cargas/semana (constante `STREAK_PROTECTOR_MAX_CHARGES`).
+- **Streak Protector**: **2 cargas/semana** no reset; a 3ª só comprando na loja.
+  `STREAK_PROTECTOR_MAX_CHARGES = 3` é o **teto**, não a concessão semanal.
 
 ---
 
@@ -273,7 +281,7 @@ Fórmula incremental: `incremento(N) = 300·N + 20·N²`.
 | Item                  | Antes (bugado/quebrado)      | Agora                                       |
 |-----------------------|------------------------------|---------------------------------------------|
 | XP multiplier (Lv 60) | 7× sem cap                   | 3.5× cap                                    |
-| Combo buffs XP máx    | ~20× (multiplicativo)        | ~9.45× (aditivo + cap, com streak 30d)      |
+| Combo buffs XP máx    | ~20× (multiplicativo)        | ~9.98× = 3.5 × (1 + 0.5 + 0.2 + 0.15 + 0.25 + 0.75), streak no teto de 21d |
 | Daily Bonus           | 15 XP / 5 🪙 fixo            | Escala com nível (15→102 XP, 5→10 🪙)        |
 | Checklist             | +XP apenas                   | +XP **e** +1 🪙 a cada 3 itens (até 3 🪙)    |
 | Boss level on win     | `floor(xp/200) + 1` (bug)    | `getLevelFromXp(xp)` (tabela oficial)       |
