@@ -1,6 +1,7 @@
 -- Reduced local fixture overlay for real derived-effect behavior.
 -- Sources: read-only captures live-health-functions.json (observed 2026-10-19
--- 22:03 UTC) and live-talent-level-trigger.json. These function definitions
+-- 22:03 UTC), live-perfect-day-functions.json, live-level-functions.json and
+-- live-talent-level-trigger.json. These function definitions
 -- mirror pg_get_functiondef; this is not a full remote schema or a migration.
 -- The live sync_health_on_profile_level_change function has no attached trigger
 -- in live-health-triggers.json, so no health-on-level trigger is fabricated here.
