@@ -40,6 +40,7 @@ function rewardLabel(mission: OnboardingMission, t: TFunction) {
   if (mission.reward_kind === 'starter_kit') {
     return t('app.onboardingMissions.starterKitReward');
   }
+  if (mission.xp_reward <= 0) return null;
   return t('app.onboardingMissions.xpReward', { xp: mission.xp_reward });
 }
 
@@ -69,12 +70,17 @@ export function OnboardingMissionsCard() {
   const handleClaim = (mission: OnboardingMission) => {
     claimMission.mutate(mission.code, {
       onSuccess: (result) => {
-        toast.success(t('app.onboardingMissions.claimedToast'), {
-          description:
-            result.reward_kind === 'starter_kit'
-              ? t('app.onboardingMissions.starterKitClaimed')
-              : t('app.onboardingMissions.xpClaimed', { xp: result.xp_reward }),
-        });
+        if (result.reward_kind === 'starter_kit') {
+          toast.success(t('app.onboardingMissions.claimedToast'), {
+            description: t('app.onboardingMissions.starterKitClaimed'),
+          });
+        } else if (result.xp_reward > 0) {
+          toast.success(t('app.onboardingMissions.claimedToast'), {
+            description: t('app.onboardingMissions.xpClaimed', { xp: result.xp_reward }),
+          });
+        } else {
+          toast.success(t(`app.onboardingMissions.missions.${mission.code}.title`));
+        }
       },
       onError: (error: Error) => {
         toast.error(t('app.onboardingMissions.claimError'), {
@@ -140,9 +146,11 @@ export function OnboardingMissionsCard() {
               </div>
 
               <div className="mt-3 flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-amber-300">
-                  {rewardLabel(mission, t)}
-                </span>
+                {rewardLabel(mission, t) && (
+                  <span className="text-[11px] font-bold text-amber-300">
+                    {rewardLabel(mission, t)}
+                  </span>
+                )}
 
                 {mission.claimed ? (
                   <span className="text-[11px] font-semibold text-emerald-400">

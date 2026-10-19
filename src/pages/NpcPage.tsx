@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Zap, Loader2, Coins, Gift, MessageCircle, Send, TrendingUp, Lock } from 'lucide-react';
+import { Users, Dumbbell, Brain, Heart, Palette, Trophy, Sparkles, Loader2, Coins, Gift, MessageCircle, Send, TrendingUp, Lock } from 'lucide-react';
 
 /**
  * Porta das Missões de NPC.
@@ -166,7 +166,7 @@ function normalizeChallenge(value: unknown): NpcChallenge | null {
 }
 
 function buildRewardText(challenge: NpcChallenge) {
-  const parts = [`+${challenge.xp_reward} XP`, `+${challenge.gold_reward} 🪙`];
+  const parts = [`+${challenge.gold_reward} 🪙`];
 
   if (challenge.reward_item && challenge.reward_item_quantity > 0) {
     parts.push(`+${challenge.reward_item_quantity}x ${challenge.reward_item.icon ?? '🎁'} ${challenge.reward_item.name}`);
@@ -314,7 +314,7 @@ export default function NpcPage() {
       const alreadyDone = completedSet.has(key);
 
       if (alreadyDone) {
-        // 🔒 Server-side: apaga a conclusão e reverte XP/ouro exatos creditados.
+        // Reverte os valores registrados; conclusões antigas ainda podem ter XP.
         const { error } = await supabase.rpc('undo_npc_challenge', {
           p_npc_id: challenge.npc_id,
           p_challenge_id: challenge.challenge_id,
@@ -354,7 +354,7 @@ export default function NpcPage() {
             npc_id: challenge.npc_id,
             challenge_id: challenge.challenge_id,
             week_token: weekToken,
-            xp_earned: challenge.xp_reward,
+            xp_earned: 0,
             gold_earned: challenge.gold_reward,
           });
         if (error) {
@@ -362,7 +362,6 @@ export default function NpcPage() {
           throw error;
         }
 
-        await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: challenge.xp_reward });
         await supabase.rpc('add_gold_to_user', { p_user_id: user.id, p_gold: challenge.gold_reward });
 
         if (challenge.reward_item_id && challenge.reward_item_quantity > 0) {
@@ -785,9 +784,6 @@ export default function NpcPage() {
                           {challenge.description}
                         </span>
                         <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                          <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-primary">
-                            <Zap className="h-3 w-3" /> {challenge.xp_reward} XP
-                          </span>
                           <span className="inline-flex items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-1 text-yellow-300">
                             <Coins className="h-3 w-3" /> {challenge.gold_reward} 🪙
                           </span>
