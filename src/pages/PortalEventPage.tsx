@@ -193,18 +193,9 @@ function DailyPortalCard({
 
         <AnimatePresence>
           {colorRevealed && meta && (
-            <motion.div key="rewards" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Espólio', value: '🎒 Loot', color: 'text-sky-300', bg: 'bg-sky-500/10 border-sky-500/20' },
-                { label: 'Acesso', value: '🔮 Dungeon', color: 'text-yellow-300', bg: 'bg-yellow-500/10 border-yellow-500/20' },
-                { label: t('app.portal.reward_frag'), value: `${meta.fragmentChance}%`, color: meta.colorClass, bg: 'bg-purple-500/10 border-purple-500/20' },
-              ].map(r => (
-                <div key={r.label} className={`${r.bg} border rounded-xl py-2 text-center`}>
-                  <p className={`text-sm font-bold ${r.color}`}>{r.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{r.label}</p>
-                </div>
-              ))}
-            </motion.div>
+            <motion.p key="reward-policy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs text-muted-foreground">
+              {t('app.portal.no_declared_rewards')}
+            </motion.p>
           )}
         </AnimatePresence>
 

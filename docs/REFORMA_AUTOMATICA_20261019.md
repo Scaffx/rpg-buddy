@@ -13,6 +13,14 @@ Esta reforma foi autorizada pelo usuário em 19/10/2026. As decisões abaixo sub
 
 ## Critérios técnicos compartilhados
 
+### Calibração da preparação local
+
+- A base da missão é 25 XP antes dos bônus. Prioridade alta usa multiplicador 2,0 (50 XP base), média 1,0 (25 XP base) e baixa 0,2 (5 XP base). São valores iniciais escolhidos pela coordenação para esta calibração, não números pedidos pelo usuário. Bônus de sequência, nível e meta semanal entram depois; a confirmação do servidor prevalece sobre a prévia.
+- O ouro já creditado por missões continua no contrato de conclusão. Alterar a prioridade não apaga ouro histórico nem o pagamento de ouro de missão.
+- A aventura reconcilia um confronto a cada 30 minutos, no máximo 24 horas ou 48 confrontos por sincronização, com teto de 120 ouro e 2 itens por dia de São Paulo. Ouro e itens dependem do resultado confirmado pelo servidor. XP, nível e atributos permanentes só evoluem por rotina concluída.
+- Os pets anteriores ao corte continuam elegíveis por um registro de transição de identidade, tipo e origem. Esse registro preserva o direito de uso, sem atestar compra ou vitória histórica.
+- Resultados declarados por cliente em modos coletivo, portal e dungeon não constituem recibo de XP, ouro, itens ou fragmentos. A interface só deve anunciar crédito que tenha sido confirmado por uma RPC autoritativa.
+
 - Servidor valida identidade, agenda, relógio, recompensas e limite. Valores econômicos enviados pelo cliente não são autoridade.
 - Data de rotina permanece America/Sao_Paulo. Completar não deve liberar imediatamente uma vaga para criar e completar outra alta no mesmo dia e contornar o teto.
 - Limites consideram criação, edição de prioridade/agenda e reativação. Semana flexível precisa ter semântica explícita; únicas em datas distintas não conflitam só por cair no mesmo dia da semana. Dados antigos acima do teto não são apagados nem rebaixados silenciosamente.

@@ -1,6 +1,7 @@
 ﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { requireRpcObject } from '@/lib/rpcPayload';
 
 export type CompanionRole = 'none' | 'physical' | 'magic' | 'support';
 
@@ -229,12 +230,16 @@ export function useCreateCompanion() {
   return useMutation({
     mutationFn: async ({ type, name }: { type: string; name: string }) => {
       if (!user) throw new Error('Não autenticado');
-      const { data, error } = await (supabase as any).rpc('choose_level3_companion', {
+      const { data, error } = await supabase.rpc('choose_level3_companion', {
         p_type: type,
         p_name: name,
       });
       if (error) throw error;
-      return data as CompanionRow;
+      const result = requireRpcObject(data, 'choose_level3_companion');
+      if (typeof result.id !== 'string' || result.user_id !== user.id || typeof result.companion_type !== 'string' || typeof result.name !== 'string') {
+        throw new Error('Companheiro não confirmado pelo servidor.');
+      }
+      return result as unknown as CompanionRow;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
   });
@@ -258,8 +263,10 @@ export type ShopPet = {
  * verdade vive no buy_pet — isto aqui é só o que a loja mostra.
  */
 export function useShopPets() {
+  const { user } = useAuth();
   return useQuery<ShopPet[]>({
-    queryKey: ['pet_catalog'],
+    queryKey: ['pet_catalog', user?.id],
+    enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_pet_catalog' as never);
       if (error) throw error;
@@ -282,6 +289,7 @@ export function useBuyPet() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['companions_all', user?.id] });
       qc.invalidateQueries({ queryKey: ['gold-balance'] });
+      qc.invalidateQueries({ queryKey: ['pet_catalog', user?.id] });
     },
   });
 }

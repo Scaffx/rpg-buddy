@@ -99,7 +99,7 @@ INSERT INTO public.companions(user_id,companion_type,origin,name)
 VALUES(auth.uid(),'mini_demonio_fome','shop','Legado');
 RESET ROLE;
 
-\ir ../migrations/20261019190000_inventory_authorship.sql
+\ir ../migrations/20261019210026_inventory_authorship.sql
 
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';

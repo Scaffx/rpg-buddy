@@ -145,7 +145,7 @@
       "priority": "Приоритет",
       "progress": "Прогресс",
       "virtues": "Добродетели",
-      "boss_arena": "Арена Боссов",
+      "boss_arena": "Приключение",
       "portal_event": "Событие Портал",
       "leaderboard": "Рейтинг",
       "companheiro": "Компаньон",
@@ -153,6 +153,11 @@
       "system_info": "Инфо системы",
       "logout": "Выйти"
     },
+    "missions": {"priority_limit_title":"Дневной лимит приоритета","priority_limit_description":"{{priority}}: {{count}}/{{max}} на {{day}}. Измените день или приоритет; существующие задания не изменены.","priority_limit_api":"Лимит {{priority}} на {{day}} достигнут ({{max}}). Измените дату или приоритет.","priority_schedule_invalid":"Выберите допустимую дату или дни задания.","priority_high_hint":"Красные: до 4 в день · 50 базового XP (база 25).","priority_medium_hint":"Жёлтые: до 8 в день · 25 базового XP (база 25).","priority_low_hint":"Зелёные: без лимита · 5 базового XP (база 25).","priority_slots_used":"{{day}}: занято {{count}}/{{max}} мест","priority_select_days":"Выберите дни, чтобы увидеть занятые места.","priority_weekly_reservation":"Приоритетное место зарезервировано на все семь дней.","priority_base_xp":"База: {{xp}} XP","priority_preview_note":"Бонусы серии, уровня и недельной цели входят в подтверждённый итог после выполнения.","priority_weekly_total":"Выполнение +{{executionXp}} XP · цель +{{milestoneXp}} XP · всего +{{xp}} XP и +{{gold}} золота.","priority_checklist_on_completion":"+{{xp}} XP после выполнения задания","priority_save_failed_title":"Не удалось сохранить","priority_save_failed_generic":"Проверьте данные и повторите попытку.","priority_weekly_completed":"Недельная цель выполнена!","priority_weekly_in_progress":"Недельное задание записано","priority_weekly_progress":"Прогресс: {{count}}/{{target}} · +{{xp}} XP · +{{gold}} золота","priority_server_confirms":"Сервер подтверждает свободные места при сохранении и может учитывать прошлые выполнения.","card_weekly_goal_reached":"Недельная цель достигнута","card_goal_reached":"Цель достигнута","card_locked":"Заблокировано","card_pause":"Пауза","card_resume":"Продолжить","card_pause_named":"Приостановить {{title}}","card_resume_named":"Продолжить {{title}}","card_collapse_named":"Свернуть подробности {{title}}","card_expand_named":"Развернуть подробности {{title}}","card_hide_details":"Скрыть подробности","card_view_details":"Показать подробности"},
+    "health": {"notice_body":"Этот раздел помогает следить за здоровьем и не заменяет консультацию врача. XP и характеристики растут только за выполненные привычки."},
+    "onboardingMissions": {"description":"Выполните первые шаги и получите стартовый набор.","xpReward":"+{{xp}} XP","xpClaimed":"Сервер начислил +{{xp}} XP."},
+    "boss": {"page_title":"Приключение","tab_solo":"Приключение","tour_1_desc":"Приключение развивается автоматически. XP и характеристики приходят за привычки.","tour_2_desc":"Приключение, совместная игра и рейтинг.","coop_explainer":"⚔️ Совместные подземелья рассчитаны на 2–4 игроков. Заявленный результат не начисляет XP, золото или предметы."},
+    "portal": {"subtitle":"Исследуйте порталы и сражения. Заявленный результат не начисляет XP, золото или фрагменты.","no_declared_rewards":"Это сражение не начисляет XP, золото, предметы или фрагменты по заявленному результату."},
     "rank": {
       "legendary": "Легендарный",
       "master": "Мастер",

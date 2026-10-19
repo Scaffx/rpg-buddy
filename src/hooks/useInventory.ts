@@ -3,8 +3,8 @@ import { useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
+import { requireRpcObject } from '@/lib/rpcPayload';
 
-const db = supabase as any;
 
 function toFiniteNumber(value: unknown, fallback: number): number {
   const n = Number(value);
@@ -68,7 +68,7 @@ export function useInventory() {
   return useQuery({
     queryKey: ['inventory', user?.id],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('user_inventory')
         .select('*, game_items(*)')
         .eq('user_id', user!.id);
@@ -90,9 +90,11 @@ export function useUseScroll() {
   return useMutation({
     mutationFn: async (scrollItemId: string) => {
       if (!user) throw new Error('Não autenticado');
-      const { data, error } = await db.rpc('use_scroll', { p_scroll_item_id: scrollItemId });
+      const { data, error } = await supabase.rpc('use_scroll', { p_scroll_item_id: scrollItemId });
       if (error) throw error;
-      return data as { ok: boolean; learned_node: string };
+      const result = requireRpcObject(data, 'use_scroll');
+      if (result.ok !== true || typeof result.learned_node !== 'string') throw new Error('Resposta inválida de use_scroll.');
+      return { ok: true, learned_node: result.learned_node };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
@@ -136,7 +138,7 @@ export function useGameItems(category?: string) {
   return useQuery({
     queryKey: ['game-items', category],
     queryFn: async () => {
-      let q = db.from('game_items').select('*');
+      let q = supabase.from('game_items').select('*');
       if (category) q = q.eq('category', category);
       const { data, error } = await q;
       if (error) throw error;
@@ -157,7 +159,7 @@ export function useShopItems() {
   return useQuery({
     queryKey: ['shop-game-items'],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('game_items')
         .select('*')
         .gt('shop_price', 0)
@@ -189,11 +191,12 @@ export function useBuyEquipment() {
 
       const requestId = pendingRequests.current.get(item.id) ?? crypto.randomUUID();
       pendingRequests.current.set(item.id, requestId);
-      const { error } = await db.rpc('purchase_game_item', {
+      const { data, error } = await supabase.rpc('purchase_game_item', {
         p_item_id: item.id,
         p_request_id: requestId,
       });
       if (error) throw error;
+      if (requireRpcObject(data, 'purchase_game_item').ok !== true) throw new Error('Compra não confirmada pelo servidor.');
       return item.id;
     },
     onSuccess: (itemId) => {
@@ -213,7 +216,7 @@ export function useToggleEquip() {
     mutationFn: async ({ inventoryId, equipped }: { inventoryId: string; equipped: boolean }) => {
       if (!user) throw new Error('Não autenticado');
 
-      const { error } = await db.rpc('set_inventory_equipped', {
+      const { error } = await supabase.rpc('set_inventory_equipped', {
         p_inventory_id: inventoryId,
         p_equipped: equipped,
         p_replace_weapon: false,
@@ -234,7 +237,7 @@ export function useToggleAttunement() {
     mutationFn: async ({ inventoryId, sintonizado }: { inventoryId: string; sintonizado: boolean }) => {
       if (!user) throw new Error('Não autenticado');
 
-      const { error } = await db.rpc('set_inventory_attunement', {
+      const { error } = await supabase.rpc('set_inventory_attunement', {
         p_inventory_id: inventoryId,
         p_attuned: !sintonizado,
       });
@@ -254,7 +257,7 @@ export function useConsumeItem() {
     mutationFn: async ({ inventoryId }: { inventoryId: string; quantity: number }) => {
       if (!user) throw new Error('Não autenticado');
 
-      const { data: inventoryRow, error: inventoryError } = await db
+      const { data: inventoryRow, error: inventoryError } = await supabase
         .from('user_inventory')
         .select('id, item_id, quantity, game_items(name, effect, is_consumable)')
         .eq('id', inventoryId)
@@ -271,19 +274,21 @@ export function useConsumeItem() {
 
       // Claim the charge before applying its effect; the server validates ownership,
       // quantity and the Alquimista Amador chance under a row lock.
-      const { data: consumption, error: consumeError } = await db.rpc('consume_inventory_item', {
+      const { data: consumption, error: consumeError } = await supabase.rpc('consume_inventory_item', {
         p_inventory_id: inventoryId,
       });
       if (consumeError) throw consumeError;
-      const preserveCharge = Boolean(consumption?.preserved);
+      const consumed = requireRpcObject(consumption, 'consume_inventory_item');
+      if (consumed.ok !== true || typeof consumed.preserved !== 'boolean') throw new Error('Consumo não confirmado pelo servidor.');
+      const preserveCharge = consumed.preserved;
 
       if (isConsumable && itemEffect) {
         const [{ data: profile }, { data: attrs }] = await Promise.all([
-          db.from('profiles').select('level').eq('user_id', user.id).maybeSingle(),
-          db.from('attributes').select('name, level').eq('user_id', user.id),
+          supabase.from('profiles').select('level').eq('user_id', user.id).maybeSingle(),
+          supabase.from('attributes').select('name, level').eq('user_id', user.id),
         ]);
 
-        const { data: healthStats, error: healthError } = await db
+        const { data: healthStats, error: healthError } = await supabase
           .from('user_health_stats')
           .select('max_hp, current_hp, max_mp, current_mp, fatigue')
           .eq('user_id', user.id)
@@ -337,13 +342,13 @@ export function useConsumeItem() {
               max_hp: baseStats.max_hp,
               max_mp: baseStats.max_mp,
             };
-            const { error: updateHealthError } = await db
+            const { error: updateHealthError } = await supabase
               .from('user_health_stats')
               .update(payload)
               .eq('user_id', user.id);
             if (updateHealthError) throw updateHealthError;
           } else {
-            const { error: insertHealthError } = await db.from('user_health_stats').insert({
+            const { error: insertHealthError } = await supabase.from('user_health_stats').insert({
               user_id: user.id,
               max_hp: baseStats.max_hp,
               current_hp: Number(updates.current_hp ?? baseStats.current_hp),
@@ -382,9 +387,11 @@ function useClaimKit(kind: 'starter' | 'class') {
   return useMutation({
     mutationFn: async (_starterClass?: string) => {
       if (!user) throw new Error('Não autenticado');
-      const { data, error } = await db.rpc('claim_inventory_kit', { p_kind: kind });
+      const { data, error } = await supabase.rpc('claim_inventory_kit', { p_kind: kind });
       if (error) throw error;
-      return data;
+      const result = requireRpcObject(data, 'claim_inventory_kit');
+      if (result.ok !== true || typeof result.already_claimed !== 'boolean') throw new Error('Kit não confirmado pelo servidor.');
+      return { ok: true, already_claimed: result.already_claimed };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });

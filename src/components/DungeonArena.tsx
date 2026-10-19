@@ -752,8 +752,8 @@ export default function DungeonArena({
 
     // DB: server validates and decrements the owned charge.
     if (user) {
-      void (supabase as any).rpc('consume_inventory_item', { p_inventory_id: potion.invId })
-        .then(({ error }: any) => {
+      void supabase.rpc('consume_inventory_item', { p_inventory_id: potion.invId })
+        .then(({ error }) => {
           if (error) toast({ title: 'Poção não consumida', description: error.message, variant: 'destructive' });
         });
     }
@@ -1134,7 +1134,7 @@ export default function DungeonArena({
     } finally {
       setIsGranting(false);
     }
-  }, [user, isGranting, rescued, allLoot, dungeonName, queryClient, toast, recordPartnership, sessionPlayers]);
+  }, [user, isGranting, rescued, dungeonName, queryClient, toast, recordPartnership, sessionPlayers]);
 
   useEffect(() => {
     if (phase === 'victory') {

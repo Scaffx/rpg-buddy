@@ -6,8 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useAllCompanions } from './useCompanion';
 import { getActivePetType, isForagePet } from '@/lib/pets';
+import { requireRpcObject } from '@/lib/rpcPayload';
 
-const db = supabase as any;
 
 /** One server-validated forage claim per user and São Paulo day. */
 export function useForrageio() {
@@ -30,15 +30,17 @@ export function useForrageio() {
 
     void (async () => {
       try {
-        const { data, error } = await db.rpc('forage_inventory', { p_companion_id: pet.id });
+        const { data, error } = await supabase.rpc('forage_inventory', { p_companion_id: pet.id });
         if (error) throw error;
+        const result = requireRpcObject(data, 'forage_inventory');
+        if (result.ok !== true || typeof result.replayed !== 'boolean') throw new Error('Forrageio não confirmado pelo servidor.');
         qc.invalidateQueries({ queryKey: ['companions_all', user.id] });
-        if (data?.item_id && !data?.replayed) {
+        if (typeof result.item_id === 'string' && !result.replayed) {
           qc.invalidateQueries({ queryKey: ['inventory', user.id] });
           toast.success(t('app.companion.forage_toast_title', {
             name: pet.name,
             defaultValue: `🐾 ${pet.name} forrageou!`,
-          }), { description: `${data.name} · ${data.rarity}` });
+          }), { description: `${typeof result.name === 'string' ? result.name : 'Item'} · ${typeof result.rarity === 'string' ? result.rarity : ''}` });
         }
       } catch (error) {
         ranForDayRef.current = null;

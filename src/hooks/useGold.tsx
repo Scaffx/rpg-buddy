@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { requireRpcObject } from '@/lib/rpcPayload';
 
 export function useGoldBalance() {
   const { user } = useAuth();
@@ -14,7 +15,7 @@ export function useGoldBalance() {
         .maybeSingle();
       if (error) throw error;
       if (!data) {
-        const { error: ensureError } = await (supabase as any).rpc('ensure_user_balance');
+        const { error: ensureError } = await supabase.rpc('ensure_user_balance');
         if (ensureError) throw ensureError;
         const { data: newBalance, error: readError } = await supabase
           .from('user_balance').select('*').eq('user_id', user!.id).single();
@@ -33,9 +34,11 @@ export function useClaimClassGoldReward() {
   return useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
-      const { data, error } = await (supabase as any).rpc('claim_class_gold_reward');
+      const { data, error } = await supabase.rpc('claim_class_gold_reward');
       if (error) throw error;
-      return data as { ok: boolean; already_claimed: boolean };
+      const result = requireRpcObject(data, 'claim_class_gold_reward');
+      if (result.ok !== true || typeof result.already_claimed !== 'boolean') throw new Error('Ouro não confirmado pelo servidor.');
+      return { ok: true, already_claimed: result.already_claimed };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });

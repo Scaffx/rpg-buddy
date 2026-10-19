@@ -190,8 +190,8 @@ export default function BossPage() {
   ], [t]);
 
   const bossTourSteps: TourStep[] = [
-    { target: 'boss-header', title: t('app.boss.tour_1_title'), description: 'A aventura avança automaticamente. Evolução e XP vêm das rotinas.' },
-    { target: 'boss-tabs', title: t('app.boss.tour_2_title'), description: 'Aventura, coletiva e ranking.' },
+    { target: 'boss-header', title: t('app.boss.tour_1_title'), description: t('app.boss.tour_1_desc') },
+    { target: 'boss-tabs', title: t('app.boss.tour_2_title'), description: t('app.boss.tour_2_desc') },
   ];
 
   const handleOpenDungeon = (dungeon: { id: string; name: string }) => {

@@ -39,7 +39,7 @@ export default function CombatEquipSwap({
     mutationFn: async (inv: InventoryItem) => {
       if (!user) throw new Error('Não autenticado');
       // O servidor troca apenas armas possuídas e valida slots em uma transação.
-      const { error } = await (supabase as any).rpc('set_inventory_equipped', {
+      const { error } = await supabase.rpc('set_inventory_equipped', {
         p_inventory_id: inv.id,
         p_equipped: true,
         p_replace_weapon: true,

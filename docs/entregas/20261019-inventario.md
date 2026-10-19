@@ -6,7 +6,7 @@ Base desta worktree: `e1e5ede` (acessibilidade já entregue, sem alterações ne
 
 ## Contrato da migration
 
-`supabase/migrations/20261019190000_inventory_authorship.sql` revoga DML direto de inventário, balanço e histórico de ouro de `anon`/`authenticated`, inclusive grants por coluna, e remove as policies antigas de escrita. Revoga a execução pelo cliente de `charge_for_item`, `grant_starter_items` e `add_gold_to_user`; não altera seus corpos ou os privilégios internos de `postgres`/`service_role`. Mantém leitura permitida e as linhas históricas. Funções novas são `SECURITY DEFINER` com `search_path` fixo e `auth.uid()` como identidade:
+`supabase/migrations/20261019210026_inventory_authorship.sql` revoga DML direto de inventário, balanço e histórico de ouro de `anon`/`authenticated`, inclusive grants por coluna, e remove as policies antigas de escrita. Revoga a execução pelo cliente de `charge_for_item`, `grant_starter_items` e `add_gold_to_user`; não altera seus corpos ou os privilégios internos de `postgres`/`service_role`. Mantém leitura permitida e as linhas históricas. Funções novas são `SECURITY DEFINER` com `search_path` fixo e `auth.uid()` como identidade:
 
 | RPC | Regra do servidor |
 | --- | --- |
