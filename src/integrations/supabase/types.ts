@@ -3047,6 +3047,7 @@ export type Database = {
         Args: { p_item_id: string; p_today: string }
         Returns: Json
       }
+      buy_talent: { Args: { p_talent_id: string }; Returns: Json }
       charge_for_item: { Args: { p_item_id: string }; Returns: number }
       claim_class_gold_reward: { Args: never; Returns: Json }
       claim_inventory_kit: { Args: { p_kind: string }; Returns: Json }
@@ -3081,6 +3082,7 @@ export type Database = {
       purchase_game_item: { Args: { p_item_id: string; p_request_id: string }; Returns: Json }
       set_inventory_attunement: { Args: { p_inventory_id: string; p_attuned: boolean }; Returns: undefined }
       set_inventory_equipped: { Args: { p_inventory_id: string; p_equipped: boolean; p_replace_weapon?: boolean }; Returns: undefined }
+      set_talent_equipped: { Args: { p_talent_row_id: string; p_equipped: boolean }; Returns: Json }
       sync_auto_adventure: { Args: never; Returns: Json }
       complete_portal_run:
         | {
