@@ -7,10 +7,24 @@ DECLARE
 BEGIN
   IF to_regclass('private.mission_effect_receipts') IS NULL
      OR to_regprocedure('public.get_level_from_xp_v2(integer)') IS NULL
+     OR NOT EXISTS (SELECT 1 FROM pg_proc p
+          WHERE p.oid='public.get_level_from_xp_v2(integer)'::regprocedure
+            AND pg_get_userbyid(p.proowner)='postgres'
+            AND has_function_privilege('anon',p.oid,'EXECUTE')
+            AND has_function_privilege('authenticated',p.oid,'EXECUTE'))
+     OR strpos(replace(pg_get_functiondef(
+       'public.get_level_from_xp_v2(integer)'::regprocedure), E'\r\n', E'\n'), chr(13)) > 0
      OR md5(replace(pg_get_functiondef(
        'public.get_level_from_xp_v2(integer)'::regprocedure), E'\r\n', E'\n'))
        <> '94aa330f1f9e444fc96b6ffd6be48f8e'
      OR to_regprocedure('public.sync_talent_points_on_level_change()') IS NULL
+     OR NOT EXISTS (SELECT 1 FROM pg_proc p
+          WHERE p.oid='public.sync_talent_points_on_level_change()'::regprocedure
+            AND pg_get_userbyid(p.proowner)='postgres'
+            AND has_function_privilege('anon',p.oid,'EXECUTE')
+            AND has_function_privilege('authenticated',p.oid,'EXECUTE'))
+     OR strpos(replace(pg_get_functiondef(
+       'public.sync_talent_points_on_level_change()'::regprocedure), E'\r\n', E'\n'), chr(13)) > 0
      OR md5(replace(pg_get_functiondef(
        'public.sync_talent_points_on_level_change()'::regprocedure), E'\r\n', E'\n'))
        <> 'c4481ca3cd7dc1a149443dc4047e0cb8'
@@ -115,14 +129,16 @@ BEGIN
   END IF;
 
   FOR v_record IN SELECT * FROM (VALUES
-    ('public._complete_mission_daily(uuid,date,integer)', 'c3ab6baf14ef20b768d1292b8963b77a'),
-    ('public._complete_mission_with_weekly(uuid,date)', 'cf92b52abf6ab1291d38bb7fabde1139')
-  ) AS expected(signature, body_hash) LOOP
+    ('public._complete_mission_daily(uuid,date,integer)', '8cf3421d9d376fa318e2dfdc66077658'),
+    ('public._complete_mission_with_weekly(uuid,date)', 'd7bbb28aab4a1b59c4620b40baf22373')
+  ) AS expected(signature, definition_hash) LOOP
     IF NOT EXISTS (
       SELECT 1 FROM pg_proc p WHERE p.oid=to_regprocedure(v_record.signature)
-        AND p.prokind='f' AND p.prosecdef
-        AND p.proconfig=ARRAY['search_path=public']::text[]
-        AND md5(replace(p.prosrc,E'\r\n',E'\n'))=v_record.body_hash
+        AND p.prokind='f' AND pg_get_userbyid(p.proowner)='postgres'
+        AND NOT has_function_privilege('anon',p.oid,'EXECUTE')
+        AND NOT has_function_privilege('authenticated',p.oid,'EXECUTE')
+        AND strpos(replace(pg_get_functiondef(p.oid),E'\r\n',E'\n'),chr(13))=0
+        AND md5(replace(pg_get_functiondef(p.oid),E'\r\n',E'\n'))=v_record.definition_hash
     ) THEN
       RAISE EXCEPTION USING ERRCODE='P0001',
         MESSAGE='TALENT_HELPER_SOURCE_DRIFT: ' || v_record.signature;

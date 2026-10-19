@@ -9,27 +9,55 @@ DECLARE
   v_weekly text;
   v_complete text;
   v_undo text;
+  v_proc_oids oid[];
+  v_index integer;
+  v_definition text;
 BEGIN
   IF to_regprocedure('public._complete_mission_daily(uuid,date,integer)') IS NULL
      OR (to_regprocedure('public._complete_mission_with_weekly(uuid)') IS NULL
          AND to_regprocedure('public._complete_mission_with_weekly(uuid,date)') IS NULL)
      OR (to_regprocedure('public.complete_mission(uuid)') IS NULL
          AND to_regprocedure('public.complete_mission(uuid,date)') IS NULL)
-     OR to_regprocedure('public.undo_mission(uuid,date)') IS NULL THEN
+     OR to_regprocedure('public.undo_mission(uuid,date)') IS NULL
+     -- A published one-arg function must not mask an already existing two-arg
+     -- target: CREATE OR REPLACE would retain that target's owner and ACL.
+     OR (to_regprocedure('public._complete_mission_with_weekly(uuid)') IS NULL)
+        = (to_regprocedure('public._complete_mission_with_weekly(uuid,date)') IS NULL)
+     OR (to_regprocedure('public.complete_mission(uuid)') IS NULL)
+        = (to_regprocedure('public.complete_mission(uuid,date)') IS NULL)
+     OR (to_regprocedure('public._complete_mission_with_weekly(uuid)') IS NULL)
+        IS DISTINCT FROM (to_regprocedure('public.complete_mission(uuid)') IS NULL) THEN
     RAISE EXCEPTION 'Unknown progression source signatures';
   END IF;
+  v_proc_oids := ARRAY[
+    'public._complete_mission_daily(uuid,date,integer)'::regprocedure::oid,
+    COALESCE(to_regprocedure('public._complete_mission_with_weekly(uuid)'),
+             to_regprocedure('public._complete_mission_with_weekly(uuid,date)'))::oid,
+    COALESCE(to_regprocedure('public.complete_mission(uuid)'),
+             to_regprocedure('public.complete_mission(uuid,date)'))::oid,
+    'public.undo_mission(uuid,date)'::regprocedure::oid
+  ];
+  -- pg_get_functiondef includes arguments, defaults, result, security and
+  -- configuration, but excludes the owner and ACL. Check both separately.
+  FOR v_index IN 1..4 LOOP
+    v_definition := pg_get_functiondef(v_proc_oids[v_index]);
+    IF strpos(replace(v_definition, E'\r\n', E'\n'), chr(13)) > 0
+       OR NOT EXISTS (
+         SELECT 1 FROM pg_proc p WHERE p.oid = v_proc_oids[v_index]
+           AND pg_get_userbyid(p.proowner) = 'postgres'
+           AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
+           AND has_function_privilege('authenticated', p.oid, 'EXECUTE') = (v_index > 2)
+       ) THEN
+      RAISE EXCEPTION 'Progression source metadata or authority changed: %',
+        v_proc_oids[v_index]::regprocedure;
+    END IF;
+  END LOOP;
   -- Hashes do corpo completo, normalizados para UTF8/LF: publicado, D-1,
   -- ou D-1 + undo semanal. Mudanca remota posterior exige nova reconciliacao.
-  v_daily := md5(convert_to(replace(pg_get_functiondef(
-    'public._complete_mission_daily(uuid,date,integer)'::regprocedure), chr(13), ''), 'UTF8'));
-  v_weekly := md5(convert_to(replace(pg_get_functiondef(COALESCE(
-    to_regprocedure('public._complete_mission_with_weekly(uuid)'),
-    to_regprocedure('public._complete_mission_with_weekly(uuid,date)'))), chr(13), ''), 'UTF8'));
-  v_complete := md5(convert_to(replace(pg_get_functiondef(COALESCE(
-    to_regprocedure('public.complete_mission(uuid)'),
-    to_regprocedure('public.complete_mission(uuid,date)'))), chr(13), ''), 'UTF8'));
-  v_undo := md5(convert_to(replace(pg_get_functiondef(
-    'public.undo_mission(uuid,date)'::regprocedure), chr(13), ''), 'UTF8'));
+  v_daily := md5(convert_to(replace(pg_get_functiondef(v_proc_oids[1]), E'\r\n', E'\n'), 'UTF8'));
+  v_weekly := md5(convert_to(replace(pg_get_functiondef(v_proc_oids[2]), E'\r\n', E'\n'), 'UTF8'));
+  v_complete := md5(convert_to(replace(pg_get_functiondef(v_proc_oids[3]), E'\r\n', E'\n'), 'UTF8'));
+  v_undo := md5(convert_to(replace(pg_get_functiondef(v_proc_oids[4]), E'\r\n', E'\n'), 'UTF8'));
   IF (v_daily, v_weekly, v_complete, v_undo) NOT IN (
     ('7f11e3a31afc2cf0be9ac94aafab8b87','674f157fc9729832831c45c0092dfde3',
      '21cdfe0c120c50ab38f95687ddb70a9b','923ccdffc8a3b16aff4241a4366c4791'),

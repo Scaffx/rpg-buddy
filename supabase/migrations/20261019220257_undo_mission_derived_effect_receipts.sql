@@ -7,34 +7,52 @@ DECLARE
     'public._complete_mission_with_weekly(uuid,date)',
     'public.complete_mission(uuid,date)',
     'public.undo_mission(uuid,date)'];
+  -- Hash the reconstructed definition, including args/defaults/result and
+  -- attributes. CREATE OR REPLACE preserves owner and ACL, checked below.
   v_hashes text[] := ARRAY[
-    '38daea9a87fbbc6624558f7f6ec6854e',
-    'e54f3a202d324d8a532af8ae64f77b7b',
-    '2382dc23f38614791ac3d5097043e805',
-    '3fcc37484f12b57956f49507e31e0160'];
+    '688c84e25262cfb6d34e295154712cc7',
+    '0fc8c33d54d2f6f12454e67330ecdf17',
+    '7f1badc494d60fb6591f14976e48bcbd',
+    '912761cdf0b20d2a3f9d1e5c460d7584'];
   v_index integer;
   v_proc pg_proc%ROWTYPE;
+  v_helper record;
+  v_definition text;
 BEGIN
   FOR v_index IN 1..4 LOOP
     SELECT * INTO v_proc FROM pg_proc
      WHERE oid = to_regprocedure(v_expected[v_index]);
-    IF NOT FOUND OR v_proc.prokind <> 'f' OR NOT v_proc.prosecdef
-       OR v_proc.proconfig IS DISTINCT FROM ARRAY['search_path=public']::text[]
-       OR md5(replace(v_proc.prosrc, E'\r\n', E'\n')) <> v_hashes[v_index] THEN
+    v_definition := pg_get_functiondef(v_proc.oid);
+    IF NOT FOUND OR v_proc.prokind <> 'f'
+       OR pg_get_userbyid(v_proc.proowner) <> 'postgres'
+       OR has_function_privilege('anon', v_proc.oid, 'EXECUTE')
+       OR has_function_privilege('authenticated', v_proc.oid, 'EXECUTE') <> (v_index > 2)
+       OR strpos(replace(v_definition, E'\r\n', E'\n'), chr(13)) > 0
+       OR md5(replace(v_definition, E'\r\n', E'\n')) <> v_hashes[v_index] THEN
       RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='DERIVED_EFFECT_RPC_DRIFT: ' || v_expected[v_index];
     END IF;
   END LOOP;
-  IF to_regprocedure('private.undo_mission_attribute_awards(uuid,date,uuid,boolean,date)') IS NULL
-     OR to_regprocedure('public._grant_flow_xp_buff(uuid)') IS NULL
-     OR to_regprocedure('public._apply_mission_health_effects(uuid,numeric,integer,integer)') IS NULL
-     OR has_function_privilege('authenticated','public._grant_flow_xp_buff(uuid)','EXECUTE')
-     OR md5(replace(pg_get_functiondef(
-          'public._grant_flow_xp_buff(uuid)'::regprocedure),E'\r\n',E'\n'))
-        <> '97780c88457be4637d52124a86f6b701'
-     OR md5(replace(pg_get_functiondef(
-          'public._apply_mission_health_effects(uuid,numeric,integer,integer)'::regprocedure),E'\r\n',E'\n'))
-        <> 'ec7b2cbdc6035c3b129ef400c6f20bb9'
-     OR EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid='public.profiles'::regclass
+  FOR v_helper IN SELECT * FROM (VALUES
+    ('private.undo_mission_attribute_awards(uuid,date,uuid,boolean,date)',
+     'eb19f8ebb63fd6fb1e7beb268dea0038'),
+    ('public._grant_flow_xp_buff(uuid)', '97780c88457be4637d52124a86f6b701'),
+    ('public._apply_mission_health_effects(uuid,numeric,integer,integer)',
+     'ec7b2cbdc6035c3b129ef400c6f20bb9')
+  ) AS expected(signature, definition_hash) LOOP
+    SELECT * INTO v_proc FROM pg_proc
+     WHERE oid = to_regprocedure(v_helper.signature);
+    v_definition := pg_get_functiondef(v_proc.oid);
+    IF NOT FOUND OR v_proc.prokind <> 'f'
+       OR pg_get_userbyid(v_proc.proowner) <> 'postgres'
+       OR has_function_privilege('anon', v_proc.oid, 'EXECUTE')
+       OR has_function_privilege('authenticated', v_proc.oid, 'EXECUTE')
+       OR strpos(replace(v_definition, E'\r\n', E'\n'), chr(13)) > 0
+       OR md5(replace(v_definition, E'\r\n', E'\n')) <> v_helper.definition_hash THEN
+      RAISE EXCEPTION USING ERRCODE='P0001',
+        MESSAGE='DERIVED_EFFECT_HELPER_DRIFT: ' || v_helper.signature;
+    END IF;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid='public.profiles'::regclass
           AND tgname='sync_health_on_profile_level_change_trigger' AND NOT tgisinternal)
      OR to_regclass('private.mission_attribute_receipts') IS NULL
      OR to_regclass('public.user_health_stats') IS NULL
