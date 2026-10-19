@@ -177,6 +177,18 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
   const featText = (efeito: string, field: 'title' | 'synergy' | 'desc', fallback: string) =>
     t(`app.feats.talent_${efeito}_${field}`, { defaultValue: fallback });
 
+  const describeTalentFailure = (error: unknown, fallbackKey: string) => {
+    const detail = error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+      ? error.message : '';
+    const description = detail.startsWith('TALENT_POINTS_INSUFFICIENT')
+      ? t('app.talentErrors.pointsInsufficient')
+      : detail.startsWith('TALENT_EQUIP_LIMIT')
+        ? t('app.talentErrors.equipLimit')
+        : detail || t(fallbackKey);
+    if (detail && description !== detail) console.error('Talent RPC rejected:', error);
+    return description;
+  };
+
   const handleBuy = (talento: Talent) => {
     if (talento.id.startsWith('mock-')) {
       toast.error(t('app.feats.toast_mock'));
@@ -185,7 +197,7 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
 
     buyTalent.mutate(talento, {
       onSuccess: () => toast.success(t('app.feats.talent_unlocked', { name: talento.nome })),
-      onError: (err: any) => toast.error(err?.message || t('app.feats.error_buy')),
+      onError: (err) => toast.error(describeTalentFailure(err, 'app.feats.error_buy')),
     });
   };
 
@@ -194,7 +206,7 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
     if (!row) return;
     toggleEquip.mutate(
       { rowId: row.rowId, currentlyEquipped: row.equipped, equippedCount },
-      { onError: (err: any) => toast.error(err?.message || t('app.feats.error_equip')) },
+      { onError: (err) => toast.error(describeTalentFailure(err, 'app.feats.error_equip')) },
     );
   };
 

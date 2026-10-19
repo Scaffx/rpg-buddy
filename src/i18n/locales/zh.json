@@ -164,6 +164,10 @@
       "unverifiedCredit": "无法确认这条完成记录的奖励。没有任何变更；该记录需要核查。",
       "spentTalentPoint": "这项日常任务获得的天赋点已经花费。没有任何变更；请先核查记录。"
     },
+    "talentErrors": {
+      "pointsInsufficient": "可用天赋点不足，无法购买。没有任何变更。",
+      "equipLimit": "已装备五项天赋。请先腾出位置再装备其他天赋；没有任何变更。"
+    },
     "sidebar": {
       "nav_title": "导航菜单",
       "nav_description": "访问 LifeonRPG 的各个页面、帮助和退出登录选项。",

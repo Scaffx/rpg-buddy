@@ -18,14 +18,18 @@ const migrations = [
   '20261019211310_auto_adventure_reachable_catalog.sql',
   '20261019212523_restore_unpaid_weekly_milestone_after_target_edit.sql',
   '20261019220257_undo_mission_derived_effect_receipts.sql',
+  '20261019222715_talent_points_atomic_purchase_equip.sql',
 ];
 
 const database = process.argv[2];
 const port = process.argv[3];
-const stopBeforeA6 = process.argv[4] === '--stop-before-a6';
+const stopBefore = {
+  '--stop-before-a6': '20261019212523_restore_unpaid_weekly_milestone_after_target_edit.sql',
+  '--stop-before-p13': '20261019222715_talent_points_atomic_purchase_equip.sql',
+}[process.argv[4]];
 if (!database?.startsWith('integration_') || !/^\d{2,5}$/.test(port ?? '') ||
-    (process.argv[4] && !stopBeforeA6)) {
-  console.error('Usage: node scripts/replay_reforma_sql_local.mjs integration_<db> <local-port> [--stop-before-a6]');
+    (process.argv[4] && !stopBefore)) {
+  console.error('Usage: node scripts/replay_reforma_sql_local.mjs integration_<db> <local-port> [--stop-before-a6|--stop-before-p13]');
   process.exit(2);
 }
 
@@ -33,8 +37,8 @@ const psql = process.env.PSQL17 ?? (process.platform === 'win32'
   ? 'C:/Program Files/PostgreSQL/17/bin/psql.exe'
   : 'psql');
 
-for (const name of stopBeforeA6
-  ? migrations.slice(0, migrations.indexOf('20261019212523_restore_unpaid_weekly_milestone_after_target_edit.sql'))
+for (const name of stopBefore
+  ? migrations.slice(0, migrations.indexOf(stopBefore))
   : migrations) {
   const path = resolve('supabase/migrations', name);
   const sql = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');

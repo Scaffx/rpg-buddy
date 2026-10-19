@@ -108,6 +108,16 @@ conclusão a desfazer, a RPC recusa o undo inteiro. Uma compra já concluída n�
 gera saldo negativo. Ouro legítimo posterior, inclusive da aventura, pode recompor o saldo;
 undo e nova conclusão seguem os recibos normais, sem criar prêmio adicional.
 
+Pontos de talento seguem o delta canônico de faixas de cinco níveis:
+`floor(nível_novo/5) - floor(nível_antigo/5)`. Se outra rotina ainda sustenta a faixa,
+desfazer a primeira mantém o ponto. Se uma queda retiraria um ponto já gasto em talento,
+o undo recusa atomicamente; não cria saldo negativo, não apaga a compra nem concede
+respec/refund. Compra e equipamento de talento são RPCs transacionais do servidor;
+só talentos realmente equipados ativam os efeitos de rotina. Até cinco novas equipagens
+podem estar ativas. Contas legadas com mais de cinco equipados não são apagadas ou
+reordenadas automaticamente; novas compras não ganham equipagem extra e novas
+equipagens exigem liberar vaga. XP já pago sob efeito antigo não é recalculado.
+
 ### 1.4 Checklist
 
 Item marcado não paga isoladamente. Na conclusão da missão, itens completos compõem o total

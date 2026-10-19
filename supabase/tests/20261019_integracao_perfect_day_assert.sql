@@ -1,6 +1,7 @@
 -- Composition variant of A12's 20261019_effect_undo_inspiration_sources.sql.
--- Only its first mission gains is_anchor=true: the captured live helper
--- requires an eligible anchor, unlike the historical author fixture helper.
+-- Its first mission gains is_anchor=true for the captured live helper. The
+-- catalog row gains required live columns, and the learned talent is explicitly
+-- equipped so the post-P13 dispatcher exercises the active effect.
 -- A prior perfect-day inspiration, an already consumed charge and a later
 -- unrelated charge must all survive undo of another mission's own grant.
 BEGIN;
@@ -23,10 +24,11 @@ BEGIN
 END;
 $perfect$;
 RESET ROLE;
-INSERT INTO public.talentos_disponiveis(id,efeito) VALUES
- ('c7200000-0000-0000-0000-000000000011','presenca_inspiradora');
-INSERT INTO public.talentos_jogador(personagem_id,talento_id) VALUES
- ('c7200000-0000-0000-0000-000000000001','c7200000-0000-0000-0000-000000000011');
+INSERT INTO public.talentos_disponiveis(id,nome,descricao,efeito) VALUES
+ ('c7200000-0000-0000-0000-000000000011','Inspiração local',
+  'Catálogo reduzido de composição','presenca_inspiradora');
+INSERT INTO public.talentos_jogador(personagem_id,talento_id,equipped) VALUES
+ ('c7200000-0000-0000-0000-000000000001','c7200000-0000-0000-0000-000000000011',true);
 INSERT INTO public.missions(id,user_id,title,attribute_id,priority,frequency_type,days_of_week,mission_category)
 SELECT 'c7200000-0000-0000-0000-000000000102',a.user_id,'Social later routine',
        a.id,'media','daily','["Dom","Seg","Ter","Qua","Qui","Sex","Sab"]'::jsonb,'social'

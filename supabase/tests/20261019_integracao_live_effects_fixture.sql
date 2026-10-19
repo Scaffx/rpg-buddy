@@ -11,7 +11,7 @@
 ALTER TABLE public.user_health_stats
   ADD COLUMN max_mp integer DEFAULT 10,
   ADD COLUMN current_mp integer DEFAULT 10;
-ALTER TABLE public.profiles ADD COLUMN pontos_talento integer DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN pontos_talento integer NOT NULL DEFAULT 0;
 ALTER TABLE public.missions ADD COLUMN is_anchor boolean NOT NULL DEFAULT false;
 
 -- Read policies are fixture grants for authenticated RPC assertions, not an

@@ -148,6 +148,10 @@
       "unverifiedCredit": "This completion's credit cannot be verified. Nothing changed; this record needs review.",
       "spentTalentPoint": "A talent point earned through this routine has already been spent. Nothing changed; review this record before trying again."
     },
+    "talentErrors": {
+      "pointsInsufficient": "You do not have enough available talent points for this purchase. Nothing changed.",
+      "equipLimit": "Five talents are already equipped. Free a slot before equipping another; nothing changed."
+    },
     "sidebar": {
       "nav_title": "Navigation menu",
       "nav_description": "Access LifeonRPG areas, help, and sign out.",

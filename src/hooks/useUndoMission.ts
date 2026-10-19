@@ -67,7 +67,9 @@ export function useUndoMission() {
       // Keep the RPC diagnostic for investigation; the toast explains what
       // the person can do without exposing a receipt or migration code.
       const detail = error.message;
-      const description = detail.includes('Saldo de ouro insuficiente para desfazer')
+      const description = detail.startsWith('TALENT_POINTS_SPENT')
+        ? t('app.undoMessages.spentTalentPoint')
+        : detail.includes('Saldo de ouro insuficiente para desfazer')
         ? t('app.undoMessages.goldUnavailable')
         : /DERIVED_EFFECT_RECEIPT_MISSING|ATTRIBUTE_AWARD_RECEIPT_INCOMPLETE|ATTRIBUTE_MILESTONE_RECEIPT_MISSING|REVERSAL_LEDGER_INVALID|não está comprovado|requer conciliação/i.test(detail)
           ? t('app.undoMessages.unverifiedCredit')

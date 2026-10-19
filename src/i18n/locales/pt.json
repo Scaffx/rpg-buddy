@@ -148,6 +148,10 @@
       "unverifiedCredit": "O crédito deste registro não pode ser confirmado. Nada foi alterado; o registro precisa de revisão.",
       "spentTalentPoint": "Um ponto de talento obtido com esta rotina já foi gasto. Nada foi alterado; revise o registro antes de tentar novamente."
     },
+    "talentErrors": {
+      "pointsInsufficient": "Você não tem pontos de talento disponíveis para esta compra. Nada foi alterado.",
+      "equipLimit": "O limite de cinco talentos equipados foi atingido. Libere uma vaga antes de equipar outro; nada foi alterado."
+    },
     "sidebar": {
       "nav_title": "Menu de navegação",
       "nav_description": "Acesse as áreas do LifeonRPG, ajuda e a opção de sair.",
