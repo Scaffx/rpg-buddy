@@ -91,6 +91,23 @@ Esquecer de marcar é falha de registro, não falha de hábito. O sistema distin
   recusado: devolver zero liberaria o bônus para ser pago de novo, e confiscar um valor
   desconhecido é pior.
 
+**Efeitos derivados da conclusão:** a concessão nova deixa recibo privado por missão e data,
+além dos recibos de XP/atributo. Ao desfazer, inspiração concedida pela própria execução é
+retirada apenas se ainda for a carga visível; uma carga consumida ou concedida depois permanece
+como ocorreu. Buff de Flow é identificado por seu ID: desfazer desativa o buff próprio ainda
+ativo e intacto, sem reativar o consumido nem recalcular XP já pago a outra rotina que o usou.
+Ganhos de HP/MP máximos são revertidos pelo delta efetivamente concedido, com respeito ao teto
+e a mudanças posteriores; HP/MP atuais só voltam ao valor anterior quando o estado pós-conclusão
+ainda é reconhecível. Um máximo sobrescrito por outra origem não é debitado por estimativa.
+Conclusão antiga sem recibo de efeitos não pode ser desfeita por esse caminho: a RPC recusa
+atomicamente. Esta política preserva fatos posteriores, mas não desfaz retroativamente todo o
+impacto de um efeito que já foi usado.
+
+O estorno do ouro é conservador: se o saldo disponível não cobre o ouro creditado pela
+conclusão a desfazer, a RPC recusa o undo inteiro. Uma compra já concluída não é revertida nem
+gera saldo negativo. Ouro legítimo posterior, inclusive da aventura, pode recompor o saldo;
+undo e nova conclusão seguem os recibos normais, sem criar prêmio adicional.
+
 ### 1.4 Checklist
 
 Item marcado não paga isoladamente. Na conclusão da missão, itens completos compõem o total

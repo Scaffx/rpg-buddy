@@ -62,6 +62,7 @@ const buildSteps = (t: (key: string) => string): Step[] => [
     bullets: [
       t('app.helpTutorial.goldAdventure'),
       t('app.helpTutorial.goldShop'),
+      t('app.helpTutorial.goldUndo'),
       'Item de respec de classe',
     ],
   },
@@ -82,6 +83,7 @@ const buildSteps = (t: (key: string) => string): Step[] => [
     bullets: [
       'Mude de classe na página "Classes"',
       'Habilidades desbloqueiam ao subir de nível',
+      t('app.helpTutorial.pointsUndo'),
       t('app.helpTutorial.classesPower'),
     ],
   },

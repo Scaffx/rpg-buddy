@@ -2,6 +2,7 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { VariantProps, cva } from "class-variance-authority";
 import { PanelLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -147,6 +148,7 @@ const Sidebar = React.forwardRef<
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
   const { isMobile, state, openMobile, setOpenMobile, mobileOpener } = useSidebar();
+  const { t } = useTranslation();
 
   if (collapsible === "none") {
     return (
@@ -166,6 +168,7 @@ const Sidebar = React.forwardRef<
         <SheetContent
           data-sidebar="sidebar"
           data-mobile="true"
+          closeLabel={t('app.sidebar.close_menu')}
           className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground"
           style={
             {
@@ -183,9 +186,9 @@ const Sidebar = React.forwardRef<
             }
           }}
         >
-          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+          <SheetTitle className="sr-only">{t('app.sidebar.nav_title')}</SheetTitle>
           <SheetDescription className="sr-only">
-            Acesse as áreas do LifeonRPG, ajuda e a opção de sair.
+            {t('app.sidebar.nav_description')}
           </SheetDescription>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -242,6 +245,7 @@ Sidebar.displayName = "Sidebar";
 const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.ComponentProps<typeof Button>>(
   ({ className, onClick, ...props }, ref) => {
     const { isMobile, open, openMobile, toggleSidebar } = useSidebar();
+    const { t } = useTranslation();
     const isOpen = isMobile ? openMobile : open;
 
     return (
@@ -261,8 +265,8 @@ const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.C
         <PanelLeft />
         <span className="sr-only">
           {isMobile
-            ? isOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"
-            : isOpen ? "Recolher barra lateral" : "Expandir barra lateral"}
+            ? isOpen ? t('app.sidebar.close_menu') : t('app.sidebar.open_menu')
+            : isOpen ? t('app.sidebar.collapse_sidebar') : t('app.sidebar.expand_sidebar')}
         </span>
       </Button>
     );

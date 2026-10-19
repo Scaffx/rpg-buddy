@@ -11,6 +11,7 @@ ALTER TABLE public.user_health_stats
   ADD COLUMN max_mp integer DEFAULT 10,
   ADD COLUMN current_mp integer DEFAULT 10;
 ALTER TABLE public.profiles ADD COLUMN pontos_talento integer DEFAULT 0;
+ALTER TABLE public.missions ADD COLUMN is_anchor boolean NOT NULL DEFAULT false;
 
 -- Read policies are fixture grants for authenticated RPC assertions, not an
 -- assertion that the complete remote RLS catalogue has been reproduced.
@@ -132,5 +133,147 @@ BEGIN
     IF v_xp >= xp_table[i] THEN RETURN i; END IF;
   END LOOP;
   RETURN 1;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public._grant_inspiration_if_perfect_day(p_uid uuid, p_today date)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_days text[] := ARRAY['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+  v_today_short text := v_days[EXTRACT(DOW FROM p_today)::integer + 1];
+  v_required integer := 0;
+  v_done integer := 0;
+  v_checklist_imperfect integer := 0;
+  v_already boolean;
+BEGIN
+  WITH anchor_missions AS (
+    SELECT
+      m.id,
+      CASE
+        WHEN m.frequency_type = 'weekly' THEN true
+        WHEN COALESCE(
+          jsonb_array_length(COALESCE(m.days_of_week, '[]'::jsonb)),
+          0
+        ) > 0 THEN
+          COALESCE(m.daily_status->>p_today::text, '') = 'completed'
+        ELSE COALESCE(m.completed, false)
+      END AS done
+    FROM public.missions m
+    LEFT JOIN public.mission_weekly_progress mwp
+      ON mwp.mission_id = m.id
+     AND mwp.week_start =
+       p_today - (EXTRACT(isodow FROM p_today)::integer - 1)
+    WHERE m.user_id = p_uid
+      AND COALESCE(m.is_anchor, false)
+      AND NOT COALESCE(m.is_failed, false)
+      AND (
+        (
+          m.frequency_type = 'weekly'
+          AND mwp.last_completed_date = p_today
+          AND mwp.current_count <= m.target_count
+        )
+        OR
+        (
+          m.frequency_type = 'daily'
+          AND COALESCE(
+            jsonb_array_length(COALESCE(m.days_of_week, '[]'::jsonb)),
+            0
+          ) > 0
+          AND m.days_of_week ? v_today_short
+        )
+        OR
+        (
+          m.frequency_type = 'daily'
+          AND COALESCE(
+            jsonb_array_length(COALESCE(m.days_of_week, '[]'::jsonb)),
+            0
+          ) = 0
+          AND m.due_date = p_today
+        )
+      )
+  )
+  SELECT count(*), count(*) FILTER (WHERE done)
+    INTO v_required, v_done
+    FROM anchor_missions;
+
+  IF v_required = 0 OR v_done < v_required THEN
+    RETURN false;
+  END IF;
+
+  SELECT count(*)
+    INTO v_checklist_imperfect
+    FROM (
+      SELECT ci.mission_id
+        FROM public.checklist_items ci
+        JOIN public.missions m ON m.id = ci.mission_id
+        LEFT JOIN public.mission_weekly_progress mwp
+          ON mwp.mission_id = m.id
+         AND mwp.week_start =
+           p_today - (EXTRACT(isodow FROM p_today)::integer - 1)
+       WHERE m.user_id = p_uid
+         AND COALESCE(m.is_anchor, false)
+         AND NOT COALESCE(m.is_failed, false)
+         AND (
+           (
+             m.frequency_type = 'weekly'
+             AND mwp.last_completed_date = p_today
+             AND mwp.current_count <= m.target_count
+           )
+           OR
+           (
+             m.frequency_type = 'daily'
+             AND COALESCE(
+               jsonb_array_length(COALESCE(m.days_of_week, '[]'::jsonb)),
+               0
+             ) > 0
+             AND m.days_of_week ? v_today_short
+           )
+           OR
+           (
+             m.frequency_type = 'daily'
+             AND COALESCE(
+               jsonb_array_length(COALESCE(m.days_of_week, '[]'::jsonb)),
+               0
+             ) = 0
+             AND m.due_date = p_today
+           )
+         )
+       GROUP BY ci.mission_id
+      HAVING count(*) <> count(*) FILTER (WHERE ci.completed)
+    ) imperfect;
+
+  IF v_checklist_imperfect > 0 THEN
+    RETURN false;
+  END IF;
+
+  SELECT COALESCE(inspired_available, false)
+    INTO v_already
+    FROM public.profiles
+   WHERE user_id = p_uid;
+
+  IF v_already THEN
+    RETURN false;
+  END IF;
+
+  UPDATE public.profiles
+     SET inspired_available = true,
+         inspired_earned_at = now()
+   WHERE user_id = p_uid;
+
+  INSERT INTO public.activity_log (
+    user_id, action, description, xp_gained
+  )
+  VALUES (
+    p_uid,
+    'day_perfect_inspiration',
+    'Dia Perfeito concluido! Voce ganhou Inspiracao para o proximo boss.',
+    0
+  );
+
+  RETURN true;
 END;
 $function$;

@@ -285,6 +285,9 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
               <span className="text-muted-foreground">{t('app.feats.available_points')}</span>
               <span className="ml-2 align-middle text-2xl font-bold text-primary">{pontos}</span>
             </p>
+            <p className="mt-1 max-w-md text-xs text-muted-foreground" role="note">
+              {t('app.feats.undo_points_note')}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">

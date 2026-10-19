@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import i18n from '@/i18n';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -17,7 +18,10 @@ vi.mock('@/hooks/useSubscription', () => ({ useSubscription: () => ({ isTrial: f
 vi.mock('@/components/ActiveTalentsBadge', () => ({ default: () => null }));
 vi.mock('@/components/HelpTutorialModal', () => ({ default: () => null }));
 vi.mock('@/components/branding/LifeonRPGLogo', () => ({ LifeonRPGEmblem: () => null }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+
+beforeEach(async () => {
+  await i18n.changeLanguage('pt');
+});
 
 let root: Root | undefined;
 let container: HTMLDivElement | undefined;
@@ -64,18 +68,65 @@ describe('sidebar móvel', () => {
       expect(title?.textContent).toBe('Menu de navegação');
       expect(title?.classList.contains('sr-only')).toBe(true);
       expect(description?.textContent).toBe('Acesse as áreas do LifeonRPG, ajuda e a opção de sair.');
-      expect(dialog?.querySelector('a[href="/profile"]')?.textContent).toContain('app.sidebar.profile');
+      expect(dialog?.querySelector('a[href="/profile"]')?.textContent).toContain('Meu Perfil');
       expect([...dialog?.querySelectorAll('button') ?? []].some((button) => button.textContent?.includes('Ajuda & Tutorial'))).toBe(true);
-      expect([...dialog?.querySelectorAll('button') ?? []].some((button) => button.textContent?.includes('app.sidebar.logout'))).toBe(true);
+      expect([...dialog?.querySelectorAll('button') ?? []].some((button) => button.textContent?.includes('Sair'))).toBe(true);
       expect([...dialog?.querySelectorAll('button') ?? []].find((button) => button.textContent?.includes('Ajuda & Tutorial'))?.getAttribute('aria-label')).toBe('Ajuda & Tutorial');
-      expect([...dialog?.querySelectorAll('button') ?? []].find((button) => button.textContent?.includes('app.sidebar.logout'))?.getAttribute('aria-label')).toBe('app.sidebar.logout');
+      expect([...dialog?.querySelectorAll('button') ?? []].find((button) => button.textContent?.includes('Sair'))?.getAttribute('aria-label')).toBe('Sair');
       expect([...errors.mock.calls, ...warnings.mock.calls].flat().join(' ')).not.toMatch(/DialogTitle|Missing `Description`/);
 
-      const closeButton = [...dialog?.querySelectorAll('button') ?? []].find((button) => button.textContent?.includes('Close'));
+      const closeButton = [...dialog?.querySelectorAll('button') ?? []].find((button) => button.textContent?.includes('Fechar menu de navegação'));
       expect(closeButton).toBeDefined();
       await act(async () => closeButton?.click());
       expect(document.querySelector('[role="dialog"]')).toBeNull();
       expect(document.activeElement).toBe(trigger);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    }
+  });
+
+  it('atualiza o nome acessível do diálogo, acionador e fechamento nos cinco idiomas reais', async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    try {
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      root = createRoot(container);
+      await act(async () => root?.render(
+        <MemoryRouter>
+          <SidebarProvider>
+            <SidebarTrigger />
+            <AppSidebar />
+          </SidebarProvider>
+        </MemoryRouter>,
+      ));
+
+      const trigger = container.querySelector<HTMLButtonElement>('[data-sidebar="trigger"]');
+      expect(trigger).not.toBeNull();
+      for (const [language, title] of [
+        ['pt', 'Menu de navegação'],
+        ['en', 'Navigation menu'],
+        ['es', 'Menú de navegación'],
+        ['ru', 'Меню навигации'],
+        ['zh', '导航菜单'],
+      ]) {
+        await act(async () => { await i18n.changeLanguage(language); });
+        expect(trigger?.textContent).toContain(i18n.t('app.sidebar.open_menu'));
+        await act(async () => trigger?.click());
+        const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+        expect(dialog).not.toBeNull();
+        const labelledBy = dialog?.getAttribute('aria-labelledby') ?? '';
+        const describedBy = dialog?.getAttribute('aria-describedby') ?? '';
+        expect(document.getElementById(labelledBy)?.textContent).toBe(title);
+        expect(document.getElementById(describedBy)?.textContent).toBe(i18n.t('app.sidebar.nav_description'));
+        expect(trigger?.textContent).toContain(i18n.t('app.sidebar.close_menu'));
+        const closeButton = [...dialog?.querySelectorAll('button') ?? []]
+          .find((button) => button.textContent?.includes(i18n.t('app.sidebar.close_menu')));
+        expect(closeButton).toBeDefined();
+        await act(async () => closeButton?.click());
+        expect(document.querySelector('[role="dialog"]')).toBeNull();
+        expect(document.activeElement).toBe(trigger);
+      }
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
     }
@@ -133,9 +184,9 @@ describe('sidebar móvel', () => {
       const trigger = container.querySelector<HTMLButtonElement>('[data-sidebar="trigger"]');
       expect(trigger?.textContent).toContain('Expandir barra lateral');
       expect(trigger?.getAttribute('aria-expanded')).toBe('false');
-      expect(container.querySelector('a[href="/profile"]')?.getAttribute('aria-label')).toBe('app.sidebar.profile');
+      expect(container.querySelector('a[href="/profile"]')?.getAttribute('aria-label')).toBe('Meu Perfil');
       expect([...container.querySelectorAll('button')].some((button) => button.getAttribute('aria-label') === 'Ajuda & Tutorial')).toBe(true);
-      expect([...container.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === 'app.sidebar.logout')).toBeDefined();
+      expect([...container.querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === 'Sair')).toBeDefined();
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
     }
