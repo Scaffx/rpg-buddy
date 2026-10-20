@@ -205,8 +205,9 @@ multiplicadores.
 
 Composição: fácil `[1]`, média `[1,1]`, difícil `[1,2]`, lendária `[2,1]`.
 Os números representam chefes simultâneos em cada encontro. Ultra lendária
-`[2,2,1]` e níveis mínimos `1/10/25/50/75` são calibrações iniciais da equipe,
-ajustáveis pela configuração; o usuário ainda não definiu esses valores.
+`[2,2,1]` é uma calibração inicial da equipe. Níveis mínimos
+`1/20/30/40/50` preservam os requisitos das dungeons existentes, com fácil
+disponível no nível 1; são ajustáveis pela configuração.
 Nenhuma alegação de vitória, dano, nível ou prêmio enviada pelo cliente autoriza
 recompensa. XP e atributos continuam exclusivos das rotinas.
 
