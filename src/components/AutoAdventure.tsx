@@ -169,7 +169,7 @@ export default function AutoAdventure() {
 
   return <section className="min-w-0 space-y-4" aria-label="Aventura automática">
     {shownSummary && shownSummary.battles > 0 && <div className="rpg-card border-primary/30 text-sm" role="status">
-      <strong>{shownSummary.pending ? 'Atualizando sua aventura...' : 'Enquanto você esteve fora'}</strong>
+      <strong>{shownSummary.pending ? 'Atualizando sua aventura...' : 'Resumo da aventura'}</strong>
       {shownSummary.from_stage != null && shownSummary.to_stage != null && <p>{shownSummary.from_stage === shownSummary.to_stage ? `Etapa ${shownSummary.from_stage}` : shownSummary.to_stage < shownSummary.from_stage ? `Da etapa ${shownSummary.from_stage} para a ${shownSummary.to_stage}` : `Etapas ${shownSummary.from_stage} a ${shownSummary.to_stage}`}</p>}
       <p>{shownSummary.battles} {shownSummary.battles === 1 ? 'combate' : 'combates'} · {shownSummary.wins} {shownSummary.wins === 1 ? 'vitória' : 'vitórias'} · +{shownSummary.gold} ouro · {shownSummary.items.length} {shownSummary.items.length === 1 ? 'item' : 'itens'}.</p>
       {shownSummary.defeated && <p>{shownSummary.retreats ? `${shownSummary.retreats} ${shownSummary.retreats === 1 ? 'recuo' : 'recuos'}. ` : ''}Após a derrota, seu herói recuou e continuou explorando.</p>}
