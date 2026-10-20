@@ -174,16 +174,41 @@ de 35 XP que não exigia conclusão da rotina.
 
 ## 👹 Aventura automática e bosses
 
-A rota `/boss` exibe a aventura automática. Cada 30 minutos de tempo devido, a RPC
-`sync_auto_adventure()` reconcilia um confronto; ao voltar, considera no máximo 24 horas ou
-48 ticks. Não há cron de lutas com o app fechado. Etapas 10, 20, 30 etc. são chefes do
-catálogo regular em ordem `(level,id)`, com ciclo após o último. Etapa não equivale a nível.
+A rota `/boss` exibe uma cena 2D de aventura automática. O servidor define cada
+sequência de ataques, habilidades, HP e resultado; a interface reproduz essa
+sequência pelo relógio recebido. O jogador não precisa comandar os golpes.
+Etapas 10, 20, 30 etc. são chefes do catálogo regular em ordem `(level,id)`, com
+ciclo após o último. Etapa não equivale a nível.
 Poder inimigo normal `min(380,20+floor(1.5*etapa))`; chefe
 `min(400,30+floor(1.5*etapa))`. Estes são tetos da calibração inicial local.
 
 Vitória paga até 4 ouro normal ou 12 ouro de chefe, sujeita ao teto de 120 ouro e
 2 itens por dia em São Paulo. Derrota não retira XP/atributos. Combate jamais paga XP,
 nível ou atributos permanentes. Ouro de missões continua.
+
+A aventura considera o tempo fora do aplicativo e apresenta um resumo no retorno,
+limitado à janela de 24 horas. A conciliação ocorre em lotes e para na primeira
+derrota. O jogador então escolhe repetir a etapa ou recuar uma etapa (mínimo 1).
+Escolhas se referem à batalha atual e não podem reaproveitar um identificador
+antigo para receber outra recompensa. Repetir uma etapa já vencida não paga de novo.
+Pausar as animações não pausa o personagem nem altera o tempo elegível. Movimento
+reduzido mantém o estado da luta legível sem obrigar o usuário a acompanhar efeitos.
+
+### Portais cooperativos
+
+Portais exigem de 2 a 4 jogadores e nível mínimo conferido pelo servidor para
+todos os integrantes. O grupo é fixado ao iniciar a expedição. Os chefes são
+sorteados do catálogo existente; um encontro com dois chefes mantém ambos em
+combate, em vez de representar duas lutas separadas. Companheiros pertencentes
+aos integrantes podem acompanhar o grupo. Pets não concedem XP, ouro ou
+multiplicadores.
+
+Composição: fácil `[1]`, média `[1,1]`, difícil `[1,2]`, lendária `[2,1]`.
+Os números representam chefes simultâneos em cada encontro. Ultra lendária
+`[2,2,1]` e níveis mínimos `1/10/25/50/75` são calibrações iniciais da equipe,
+ajustáveis pela configuração; o usuário ainda não definiu esses valores.
+Nenhuma alegação de vitória, dano, nível ou prêmio enviada pelo cliente autoriza
+recompensa. XP e atributos continuam exclusivos das rotinas.
 
 ### Fórmulas do combate manual legado
 
