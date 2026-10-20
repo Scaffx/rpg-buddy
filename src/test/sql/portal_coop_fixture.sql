@@ -2,6 +2,7 @@
 DO $$ BEGIN
   IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF;
   IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+  IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF;
 END $$;
 CREATE SCHEMA auth;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
@@ -14,32 +15,52 @@ CREATE TABLE public.profiles(user_id uuid PRIMARY KEY REFERENCES auth.users(id),
   boss_keys integer NOT NULL DEFAULT 0,missions_completed integer NOT NULL DEFAULT 0,
   xp_today integer NOT NULL DEFAULT 0,inspired_available boolean NOT NULL DEFAULT false,
   inspired_earned_at timestamptz);
--- Reproduce the deployed progression guards and trigger bindings, rather than
--- introducing a portal-specific copy of their protection.
-CREATE FUNCTION public._guard_profiles_economy() RETURNS trigger LANGUAGE plpgsql AS $$
+-- Canonical Primary guard definitions captured read-only on 2026-10-20.
+-- Preserve whitespace inside the bodies: the migration pins normalized MD5.
+CREATE OR REPLACE FUNCTION public._guard_profiles_economy()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
 BEGIN
-  IF current_user IN ('authenticated','anon') AND (
-    NEW.total_xp IS DISTINCT FROM OLD.total_xp OR NEW.level IS DISTINCT FROM OLD.level OR
-    NEW.boss_keys IS DISTINCT FROM OLD.boss_keys OR NEW.missions_completed IS DISTINCT FROM OLD.missions_completed OR
-    NEW.xp_today IS DISTINCT FROM OLD.xp_today OR NEW.inspired_available IS DISTINCT FROM OLD.inspired_available OR
-    NEW.inspired_earned_at IS DISTINCT FROM OLD.inspired_earned_at) THEN
+  IF current_user IN ('authenticated', 'anon') AND (
+       NEW.total_xp            IS DISTINCT FROM OLD.total_xp OR
+       NEW.level               IS DISTINCT FROM OLD.level OR
+       NEW.boss_keys           IS DISTINCT FROM OLD.boss_keys OR
+       NEW.missions_completed  IS DISTINCT FROM OLD.missions_completed OR
+       NEW.xp_today            IS DISTINCT FROM OLD.xp_today OR
+       NEW.inspired_available  IS DISTINCT FROM OLD.inspired_available OR
+       NEW.inspired_earned_at  IS DISTINCT FROM OLD.inspired_earned_at
+     ) THEN
     RAISE EXCEPTION 'Colunas de progressão são protegidas — use os RPCs do jogo.';
   END IF;
   RETURN NEW;
-END $$;
+END $function$;
 CREATE TRIGGER guard_profiles_economy BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public._guard_profiles_economy();
-CREATE FUNCTION public._guard_progression_initial_values() RETURNS trigger LANGUAGE plpgsql
-  SET search_path TO public AS $$
-BEGIN
-  IF current_user IN ('anon','authenticated') AND TG_TABLE_NAME='profiles' THEN
-    IF NEW.total_xp<>0 OR NEW.xp_today<>0 OR NEW.level<>1 OR NEW.missions_completed<>0 OR
-       NEW.boss_keys<>0 OR NEW.inspired_available OR NEW.inspired_earned_at IS NOT NULL THEN
-      RAISE EXCEPTION 'Initial progression values must be server defaults';
-    END IF;
-  END IF;
-  RETURN NEW;
-END $$;
+CREATE OR REPLACE FUNCTION public._guard_progression_initial_values()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+    BEGIN
+      IF current_user IN ('anon', 'authenticated') THEN
+        IF TG_TABLE_NAME = 'profiles' THEN
+          IF NEW.total_xp <> 0 OR NEW.xp_today <> 0 OR NEW.level <> 1
+             OR NEW.missions_completed <> 0 OR NEW.boss_keys <> 0
+             OR NEW.inspired_available OR NEW.inspired_earned_at IS NOT NULL THEN
+            RAISE EXCEPTION 'Initial progression values must be server defaults';
+          END IF;
+        ELSIF TG_TABLE_NAME = 'attributes' THEN
+          IF NEW.xp <> 0 OR NEW.level <> 1 THEN
+            RAISE EXCEPTION 'Initial attribute progression must be server defaults';
+          END IF;
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+REVOKE ALL ON FUNCTION public._guard_progression_initial_values() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public._guard_progression_initial_values() TO service_role;
 CREATE TRIGGER guard_profiles_progression_insert BEFORE INSERT ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public._guard_progression_initial_values();
 CREATE TABLE public.companions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id),name text,

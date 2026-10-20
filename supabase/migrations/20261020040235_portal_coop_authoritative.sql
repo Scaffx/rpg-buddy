@@ -3,6 +3,8 @@
 -- Reject a changed live contract before creating objects or revoking legacy access.
 DO $preflight$
 DECLARE v_expected record; v_proc oid; v_row pg_proc%ROWTYPE;
+  v_guard record; v_guard_oid oid; v_guard_function pg_proc%ROWTYPE;
+  v_trigger pg_trigger%ROWTYPE; v_public_exec boolean;
 BEGIN
   IF (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
       WHERE n.nspname='public' AND p.proname IN
@@ -27,11 +29,59 @@ BEGIN
       RAISE EXCEPTION 'Portal legacy definition or ACL drifted: %',v_expected.signature;
     END IF;
   END LOOP;
-  IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.profiles'::regclass
-      AND tgname='guard_profiles_economy' AND tgenabled='O') OR
-     NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.profiles'::regclass
-      AND tgname='guard_profiles_progression_insert' AND tgenabled='O') THEN
-    RAISE EXCEPTION 'Existing profile progression guards missing or disabled';
+  -- Profile level is a portal admission input. Both deployed guards must still
+  -- have their real bodies and fire for every matching row and column.
+  FOR v_guard IN SELECT * FROM (VALUES
+    ('public._guard_profiles_economy()','guard_profiles_economy',
+     'cb1f62ea7e13d6fcdbadb83a62c1c669',NULL::text[],true,true,true,true,19),
+    ('public._guard_progression_initial_values()','guard_profiles_progression_insert',
+     'c04283b05e56ac30f0699ee13bb24b8c',ARRAY['search_path=public']::text[],false,false,true,false,7)
+  ) AS e(signature,trigger_name,definition_md5,expected_config,auth_exec,anon_exec,service_exec,public_exec,trigger_type) LOOP
+    v_guard_oid:=to_regprocedure(v_guard.signature);
+    IF v_guard_oid IS NULL THEN
+      RAISE EXCEPTION 'Profile guard function missing: %',v_guard.signature;
+    END IF;
+    SELECT * INTO v_guard_function FROM pg_proc WHERE oid=v_guard_oid;
+    SELECT coalesce(bool_or(a.grantee=0 AND a.privilege_type='EXECUTE'),false)
+      INTO v_public_exec
+      FROM aclexplode(coalesce(v_guard_function.proacl,
+        acldefault('f',v_guard_function.proowner))) a;
+    IF pg_get_userbyid(v_guard_function.proowner)<>'postgres' OR
+       v_guard_function.prorettype<>'pg_catalog.trigger'::regtype OR
+       v_guard_function.prolang<>(SELECT oid FROM pg_language WHERE lanname='plpgsql') OR
+       v_guard_function.pronargs<>0 OR v_guard_function.prosecdef OR
+       v_guard_function.provolatile<>'v' OR v_guard_function.proisstrict OR
+       v_guard_function.proleakproof OR v_guard_function.proparallel<>'u' OR
+       v_guard_function.proconfig IS DISTINCT FROM v_guard.expected_config OR
+       md5(replace(pg_get_functiondef(v_guard_oid),chr(13),''))<>v_guard.definition_md5 OR
+       has_function_privilege('authenticated',v_guard_oid,'EXECUTE')<>v_guard.auth_exec OR
+       has_function_privilege('anon',v_guard_oid,'EXECUTE')<>v_guard.anon_exec OR
+       has_function_privilege('service_role',v_guard_oid,'EXECUTE')<>v_guard.service_exec OR
+       v_public_exec<>v_guard.public_exec THEN
+      RAISE EXCEPTION 'Profile guard definition or ACL drifted: %',v_guard.signature;
+    END IF;
+    SELECT * INTO v_trigger FROM pg_trigger WHERE tgrelid='public.profiles'::regclass
+      AND tgname=v_guard.trigger_name;
+    IF NOT FOUND OR v_trigger.tgfoid<>v_guard_oid OR
+       v_trigger.tgtype<>v_guard.trigger_type OR
+       v_trigger.tgattr::text<>'' OR v_trigger.tgenabled NOT IN ('O','A') OR
+       v_trigger.tgisinternal OR v_trigger.tgconstraint<>0 OR v_trigger.tgqual IS NOT NULL THEN
+      RAISE EXCEPTION 'Profile guard binding or event drifted: %',v_guard.trigger_name;
+    END IF;
+  END LOOP;
+  -- A SET ROLE path away from anon/authenticated would evade their current_user
+  -- branches even if the trigger bodies were intact.
+  IF pg_get_userbyid((SELECT relowner FROM pg_class
+       WHERE oid='public.profiles'::regclass))<>'postgres' OR
+     NOT has_schema_privilege('authenticated','public','USAGE') OR
+     NOT has_schema_privilege('anon','public','USAGE') OR
+     has_parameter_privilege('authenticated','session_replication_role','SET') OR
+     has_parameter_privilege('anon','session_replication_role','SET') OR
+     EXISTS(SELECT 1 FROM pg_roles source_role CROSS JOIN pg_roles target_role
+       WHERE source_role.rolname IN ('authenticated','anon')
+         AND source_role.oid<>target_role.oid
+         AND pg_has_role(source_role.oid,target_role.oid,'SET')) THEN
+    RAISE EXCEPTION 'Profile guard caller authority drifted';
   END IF;
 END $preflight$;
 
