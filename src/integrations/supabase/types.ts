@@ -3084,6 +3084,7 @@ export type Database = {
       set_inventory_equipped: { Args: { p_inventory_id: string; p_equipped: boolean; p_replace_weapon?: boolean }; Returns: undefined }
       set_talent_equipped: { Args: { p_talent_row_id: string; p_equipped: boolean }; Returns: Json }
       sync_auto_adventure: { Args: never; Returns: Json }
+      advance_auto_adventure: { Args: { p_battle_id: string }; Returns: Json }
       complete_portal_run:
         | {
             Args: {
