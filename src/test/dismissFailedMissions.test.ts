@@ -1,37 +1,59 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+let mountedRoots: Root[] = [];
+afterEach(() => {
+  for (const root of mountedRoots) act(() => root.unmount());
+  mountedRoots = [];
+});
 
 // Estado observável do mock, por teste.
 const rpcSpy = vi.fn();
 let updatedIds: string[] = [];
 let insertedActivity: any[] = [];
+let updatePayloads: Array<{ id: string; payload: any }> = [];
+let statusById: Record<string, string | null> = {};
 /** ids cujo UPDATE deve devolver erro, para simular falha parcial. */
 let failUpdateFor: string[] = [];
+let noRowFor: string[] = [];
 
 function makeBuilder(table: string) {
   // A cadeia real é `.update(payload).eq('id', x)` — o filtro chega DEPOIS do
   // update, então o id só é conhecido quando a promise é resolvida.
   let currentId = '';
-  let pendingUpdate = false;
+  let pendingUpdate: any = null;
 
   const resolver = () => {
     if (pendingUpdate && table === 'missions') {
       if (failUpdateFor.includes(currentId)) {
         return { data: null, error: { message: 'RLS' } };
       }
+      if (noRowFor.includes(currentId)) return { data: null, error: null };
       updatedIds.push(currentId);
+      updatePayloads.push({ id: currentId, payload: pendingUpdate });
+      return { data: { id: currentId }, error: null };
     }
-    return { data: null, error: null };
+    return { data: table === 'activity_log' ? [] : null, error: null };
   };
 
   const builder: any = {
     select: () => builder,
-    eq: (_col: string, val: string) => {
-      currentId = val;
+    eq: (col: string, val: string) => {
+      if (col === 'id') currentId = val;
       return builder;
     },
-    single: () => Promise.resolve({ data: { daily_status: {} }, error: null }),
-    update: () => {
-      pendingUpdate = true;
+    is: () => builder,
+    gte: () => builder,
+    single: () => Promise.resolve({
+      data: { status: statusById[currentId] ?? null, daily_status: {} },
+      error: null,
+    }),
+    maybeSingle: () => Promise.resolve(resolver()),
+    update: (payload: any) => {
+      pendingUpdate = payload;
       return builder;
     },
     insert: (payload: any) => {
@@ -52,8 +74,9 @@ vi.mock('@/integrations/supabase/client', () => ({
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { warning: vi.fn(), error: vi.fn(), success: vi.fn() }),
 }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-1' } }) }));
 
-import { dismissFailedMissions } from '@/hooks/useFailedMissions';
+import { dismissFailedMissions, useMarkFailedAsDone } from '@/hooks/useFailedMissions';
 
 const diaria = (id: string) => ({
   id,
@@ -68,7 +91,10 @@ describe('dispensar missões fracassadas', () => {
     rpcSpy.mockResolvedValue({ data: null, error: null });
     updatedIds = [];
     insertedActivity = [];
+    updatePayloads = [];
+    statusById = {};
     failUpdateFor = [];
+    noRowFor = [];
   });
 
   it('dispensa todas as missões da lista, não só a primeira', async () => {
@@ -84,6 +110,19 @@ describe('dispensar missões fracassadas', () => {
 
     expect(r.dispensadas).toBe(1);
     expect(updatedIds).toEqual(['unica']);
+    expect(updatePayloads[0].payload).toMatchObject({
+      status: 'pendente', is_failed: false,
+      daily_status: { '2026-08-20': 'failed_accepted' },
+    });
+    expect(insertedActivity[0].xp_gained).toBe(0);
+  });
+
+  it('preserva status arquivado ou pausado ao dispensar', async () => {
+    statusById = { a: 'arquivada', b: 'pausada' };
+    await dismissFailedMissions('user-1', [diaria('a'), diaria('b')]);
+    expect(updatedIds).toEqual(['a', 'b']);
+    expect(updatePayloads.every(({ payload }) => !('status' in payload))).toBe(true);
+    expect(insertedActivity.every((entry) => entry.xp_gained === 0)).toBe(true);
   });
 
   it('não para no meio quando uma missão falha', async () => {
@@ -105,6 +144,13 @@ describe('dispensar missões fracassadas', () => {
     await expect(
       dismissFailedMissions('user-1', [diaria('a'), diaria('b')]),
     ).rejects.toThrow(/Dispensei 1/);
+  });
+
+  it('não anuncia dispensa quando o UPDATE retorna zero linhas', async () => {
+    noRowFor = ['a'];
+    await expect(dismissFailedMissions('user-1', diaria('a')))
+      .rejects.toThrow(/Não consegui dispensar/);
+    expect(insertedActivity).toEqual([]);
   });
 
   it('manda a semanal pela RPC e a diária pela tabela', async () => {
@@ -130,5 +176,66 @@ describe('dispensar missões fracassadas', () => {
     ).rejects.toThrow(/Treinar/);
 
     expect(updatedIds).toEqual(['d1']);
+  });
+});
+
+describe('recuperar missão fracassada', () => {
+  beforeEach(() => {
+    rpcSpy.mockReset();
+    rpcSpy.mockResolvedValue({ data: null, error: null });
+    updatedIds = [];
+    insertedActivity = [];
+    updatePayloads = [];
+    statusById = {};
+    failUpdateFor = [];
+    noRowFor = [];
+  });
+
+  function mountRecovery() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const ref: { current: ReturnType<typeof useMarkFailedAsDone> | null } = { current: null };
+    function Harness() {
+      ref.current = useMarkFailedAsDone();
+      return null;
+    }
+    const root = createRoot(document.createElement('div'));
+    mountedRoots.push(root);
+    act(() => {
+      root.render(createElement(QueryClientProvider, { client }, createElement(Harness)));
+    });
+    return ref;
+  }
+
+  it('declara pendente apenas no legado NULL e não paga XP', async () => {
+    const hook = mountRecovery();
+    await act(async () => { await hook.current!.mutateAsync(diaria('a')); });
+    expect(updatePayloads[0].payload).toMatchObject({
+      status: 'pendente', is_failed: false,
+      daily_status: { '2026-08-20': 'completed' },
+    });
+    expect(updatePayloads[0].payload).not.toHaveProperty('xp_reward');
+    expect(insertedActivity).toMatchObject([{ action: 'mission_failed_recovered', xp_gained: 0 }]);
+  });
+
+  it('não reabre status arquivado ou pausado', async () => {
+    statusById = { a: 'arquivada', b: 'pausada' };
+    const hook = mountRecovery();
+    await act(async () => { await hook.current!.mutateAsync(diaria('a')); });
+    await act(async () => { await hook.current!.mutateAsync(diaria('b')); });
+    expect(updatePayloads.every(({ payload }) => !('status' in payload))).toBe(true);
+    expect(insertedActivity.every((entry) => entry.xp_gained === 0)).toBe(true);
+  });
+
+  it('propaga erro ou zero linha do UPDATE sem registrar sucesso', async () => {
+    failUpdateFor = ['a'];
+    noRowFor = ['b'];
+    const hook = mountRecovery();
+    await act(async () => {
+      await expect(hook.current!.mutateAsync(diaria('a'))).rejects.toMatchObject({ message: 'RLS' });
+    });
+    await act(async () => {
+      await expect(hook.current!.mutateAsync(diaria('b'))).rejects.toThrow('MISSION_RESOLUTION_NOT_APPLIED');
+    });
+    expect(insertedActivity).toEqual([]);
   });
 });

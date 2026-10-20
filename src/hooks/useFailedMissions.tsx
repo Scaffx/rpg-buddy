@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database, Json } from '@/integrations/supabase/types';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
@@ -422,6 +423,51 @@ export function useFailedMissions() {
   });
 }
 
+async function clearFailedMissionState(
+  userId: string,
+  mission: Pick<Database['public']['Tables']['missions']['Row'], 'id' | 'failed_date'>,
+  dayStatus: 'failed_accepted' | 'completed',
+) {
+  const { data: missionData, error: readError } = await supabase
+    .from('missions')
+    .select('status,daily_status')
+    .eq('id', mission.id)
+    .eq('user_id', userId)
+    .single();
+  if (readError) throw readError;
+  if (!missionData) throw new Error('MISSION_NOT_FOUND');
+
+  const currentStatus = missionData.status;
+  const storedDailyStatus = missionData.daily_status;
+  const dailyStatus: Record<string, Json | undefined> =
+    storedDailyStatus && typeof storedDailyStatus === 'object' && !Array.isArray(storedDailyStatus)
+      ? { ...storedDailyStatus }
+      : {};
+  if (mission.failed_date) dailyStatus[mission.failed_date] = dayStatus;
+
+  // Only a legacy NULL receives an explicit active status. Archive/pause stay
+  // as stored, and the status predicate prevents overwriting a concurrent edit.
+  const update = supabase
+    .from('missions')
+    .update({
+      is_failed: false,
+      failed_date: null,
+      daily_status: dailyStatus,
+      ...(currentStatus === null ? { status: 'pendente' } : {}),
+    })
+    .eq('id', mission.id)
+    .eq('user_id', userId)
+    .eq('is_failed', true);
+  const guardedUpdate = currentStatus === null
+    ? update.is('status', null)
+    : update.eq('status', currentStatus);
+  const { data: updatedMission, error: updateError } = await guardedUpdate
+    .select('id')
+    .maybeSingle();
+  if (updateError) throw updateError;
+  if (!updatedMission) throw new Error('MISSION_RESOLUTION_NOT_APPLIED');
+}
+
 // usePayPenalty REMOVIDO (§4/§5 + torneira única): chamava pay_mission_penalty,
 // que restaura XP (gold→XP) — um escritor de XP fora do complete_mission. A RPC
 // segue definida no banco (sem migration), mas não é mais chamada em lugar nenhum.
@@ -456,22 +502,8 @@ export async function dismissFailedMissions(
         continue;
       }
 
-      // Marca o dia do fracasso como aceito para evitar re-avaliação
-      const { data: missionData } = await supabase
-        .from('missions')
-        .select('daily_status')
-        .eq('id', mission.id)
-        .single();
-      const dailyStatus = (missionData as any)?.daily_status || {};
-      if (mission.failed_date) {
-        dailyStatus[mission.failed_date] = 'failed_accepted';
-      }
-
-      const { error: updateError } = await supabase
-        .from('missions')
-        .update({ is_failed: false, failed_date: null, daily_status: dailyStatus } as any)
-        .eq('id', mission.id);
-      if (updateError) throw updateError;
+      // Marca o fracasso como aceito sem pagar XP ou reabrir arquivadas/pausadas.
+      await clearFailedMissionState(userId, mission, 'failed_accepted');
 
       await supabase.from('activity_log').insert({
         user_id: userId,
@@ -545,22 +577,8 @@ export function useMarkFailedAsDone() {
         return;
       }
 
-      // Atualizar daily_status para marcar o dia do fracasso como concluído
-      const { data: missionData } = await supabase
-        .from('missions')
-        .select('daily_status')
-        .eq('id', mission.id)
-        .single();
-      const dailyStatus = (missionData as any)?.daily_status || {};
-      if (mission.failed_date) {
-        dailyStatus[mission.failed_date] = 'completed';
-      }
-
-      // Limpar estado de falha + marcar o dia como feito (volta a contar pra sequência).
-      await supabase
-        .from('missions')
-        .update({ is_failed: false, failed_date: null, daily_status: dailyStatus } as any)
-        .eq('id', mission.id);
+      // Limpar a falha + marcar o dia, com status explicito apenas no legado NULL.
+      await clearFailedMissionState(user.id, mission, 'completed');
 
       // SUB-DECISÃO (flag no PR p/ Murillo): recuperar NÃO concede XP. A torneira
       // única é só o complete_mission — aqui não há restore bespoke. Apenas reabilita

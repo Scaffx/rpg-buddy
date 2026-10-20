@@ -29,7 +29,7 @@ import {
 } from '@/lib/weeklyMissions';
 import { isMissionAvailableOnDashboardToday } from '@/lib/dashboardMissions';
 import { groupByPriority, normalizePriority, PRIORITY_RANK, type PriorityKey } from '@/lib/missionPriority';
-import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY } from '@/lib/constants';
+import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY, PRIORITY_XP_MULT } from '@/lib/constants';
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -92,32 +92,29 @@ function getMissionStateForDate(mission: DashboardMission, dateStr: string): str
 // Importado de @/lib/attributes
 
 // Mesmos ícones e cores do formulário de missão (Missions.tsx), pra prioridade
-// ser lida igual nos dois lugares. multLabel deixa o custo/benefício explícito:
-// o jogador precisa ver que alta paga mais, senão a divisão vira só enfeite.
+// ser lida igual nos dois lugares. O multiplicador exibido vem da mesma fonte
+// do XP base, para o custo/benefício visível acompanhar a regra de crédito.
 const PRIORITY_GROUP_STYLE: Record<
   PriorityKey,
-  { icon: typeof Flame; labelKey: string; text: string; border: string; multLabel: string }
+  { icon: typeof Flame; labelKey: string; text: string; border: string }
 > = {
   alta: {
     icon: Flame,
     labelKey: 'app.missions.priority_high',
     text: 'text-destructive',
     border: 'border-destructive/50',
-    multLabel: '1.5×',
   },
   media: {
     icon: Shield,
     labelKey: 'app.missions.priority_medium',
     text: 'text-yellow-400',
     border: 'border-yellow-400/50',
-    multLabel: '1×',
   },
   baixa: {
     icon: Beer,
     labelKey: 'app.missions.priority_low',
     text: 'text-success',
     border: 'border-success/50',
-    multLabel: '0.7×',
   },
 };
 
@@ -619,7 +616,7 @@ export default function Dashboard() {
                         {missions.length}
                       </span>
                       <span className={`ml-auto text-[10px] ${style.text} opacity-70`}>
-                        {style.multLabel}
+                        {PRIORITY_XP_MULT[priority]}×
                       </span>
                     </div>
 
