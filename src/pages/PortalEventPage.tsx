@@ -77,7 +77,7 @@ export default function PortalEventPage() {
   return <AppLayout><main className="mx-auto max-w-4xl space-y-6 p-5 text-foreground">
     <header><p className="text-xs uppercase tracking-widest text-purple-300">Portais cooperativos</p>
       <h1 className="text-3xl font-bold">Entre com 2 a 4 jogadores</h1>
-      <p className="text-sm text-muted-foreground">O servidor controla nível, vida, bosses, tempo e resultado. XP, ouro e atributos vêm somente das rotinas.</p></header>
+      <p className="text-sm text-muted-foreground">Enfrente os bosses com seu grupo. XP e atributos vêm das rotinas; ouro e itens vêm da aventura automática.</p></header>
     {session ? <section className="space-y-4 rounded-2xl border border-purple-500/30 bg-purple-950/20 p-5">
       <div className="flex justify-between gap-3"><div><h2 className="text-xl font-bold">{difficulties[session.difficulty].name} · {session.status === 'active' ? `Encontro ${session.wave}` : session.status}</h2>
         <p className="text-sm text-muted-foreground">{difficulties[session.difficulty].waves}</p></div>
@@ -104,12 +104,12 @@ export default function PortalEventPage() {
       {!!sessions?.length && <section className="space-y-2"><h2 className="font-bold">Suas salas</h2>{sessions.map(s => <button key={s.session_id} onClick={() => setSessionId(s.session_id)}
         className="mr-2 rounded-lg border border-purple-500/30 px-3 py-2 text-sm">{difficulties[s.difficulty].name} · {s.status}</button>)}</section>}
       <section className="space-y-2 rounded-xl border border-white/10 p-4"><h2 className="font-bold">Entrar por convite</h2>
-        <div className="flex gap-2"><input value={code} onChange={e => setCode(e.target.value.toUpperCase())} maxLength={8} placeholder="Código de 8 caracteres"
+        <div className="flex gap-2"><input aria-label="Código de convite do portal" value={code} onChange={e => setCode(e.target.value.toUpperCase())} maxLength={8} placeholder="Código de 8 caracteres"
           className="min-w-0 flex-1 rounded-lg border border-white/20 bg-black/20 px-3 py-2 font-mono" />
           <button disabled={code.trim().length !== 8 || join.isPending} onClick={() => void enter()} className="rounded-lg bg-purple-700 px-4 py-2 disabled:opacity-40">Entrar</button></div></section>
       <section className="space-y-2 rounded-xl border border-white/10 p-4"><h2 className="font-bold">Companheiro real</h2>
         <p className="text-xs text-muted-foreground">Opcional. Só companheiros de combate da sua coleção podem acompanhar o grupo. Pets não alteram XP ou ouro.</p>
-        <select value={companionId ?? ''} onChange={e => setCompanionId(e.target.value || null)} className="w-full rounded-lg border border-white/20 bg-background p-2 text-sm">
+        <select aria-label="Companheiro para o portal" value={companionId ?? ''} onChange={e => setCompanionId(e.target.value || null)} className="w-full rounded-lg border border-white/20 bg-background p-2 text-sm">
           <option value="">Sem companheiro</option>{combatCompanions.map(c => <option key={c.id} value={c.id}>{c.name} · Lv. {c.level}</option>)}</select></section>
       <section className="space-y-2 rounded-xl border border-sky-500/30 p-4"><h2 className="font-bold">Portal diário</h2>
         {event ? <><p className="text-sm">{event.portal_color ? `${difficulties[dailyDifficulty[event.portal_color]].name} · Lv. ${difficulties[dailyDifficulty[event.portal_color]].min}+` : 'Dificuldade oculta até entrar'}</p>
