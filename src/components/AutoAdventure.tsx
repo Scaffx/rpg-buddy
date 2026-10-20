@@ -135,7 +135,9 @@ export default function AutoAdventure() {
   const isBoss = battle ? battle.kind === 'boss' : data.stage % 10 === 0;
   const stage = battle?.stage ?? data.stage;
   const holdingStage = data.stage;
-  const canRequestAdvance = mode === 'holding' && currentBattle?.status === 'fighting' && currentBattle.stage === holdingStage;
+  const canRequestAdvance = mode === 'holding' && !data.catchup?.pending &&
+    currentBattle?.status === 'fighting' && currentBattle.stage === holdingStage &&
+    Date.parse(currentBattle.ends_at) > serverTime;
   const enemyName = battle?.enemy_name || (isBoss ? data.boss?.name || `Chefe da etapa ${stage}` : `Inimigo da etapa ${stage}`);
   const heroName = profile?.display_name || 'Aventureiro';
   const heroClassName = battle?.hero_class ? starterClassDisplayName(battle.hero_class) : currentClassName || starterClassDisplayName(starterClass);

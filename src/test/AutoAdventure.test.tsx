@@ -20,6 +20,10 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
+function liveBattleTimes() {
+  return { started_at: new Date().toISOString(), ends_at: new Date(Date.now() + 60_000).toISOString() };
+}
+
 function renderAdventure() {
   if (!container) {
     container = document.createElement('div');
@@ -152,7 +156,7 @@ describe('AutoAdventure', () => {
         encounters: [{ stage: 9, attempt: 2, kind: 'normal', won: true, gold: 0, item_id: null }, { stage: 9, attempt: 1, kind: 'normal', won: true, gold: 0, item_id: null }, { stage: 10, attempt: 0, kind: 'boss', won: false, gold: 0, item_id: null }],
         gold_today: 0, loot_today: 0,
         limits: { gold_per_day: 120, items_per_day: 2 },
-        battle: { id: 'battle-9', stage: 9, attempt: 3, kind: 'normal', status: 'fighting', enemy_name: 'Lobo', enemy_icon: null, boss_id: null, hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 100, events: [] },
+        battle: { ...liveBattleTimes(), id: 'battle-9', stage: 9, attempt: 3, kind: 'normal', status: 'fighting', enemy_name: 'Lobo', enemy_icon: null, boss_id: null, hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 100, events: [] },
         last_battle: { id: 'battle-10-lost', stage: 10, attempt: 0, kind: 'boss', status: 'defeated', enemy_name: 'Chefe', enemy_icon: null, boss_id: 'boss', hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 0, enemy_hp: 50, events: [] },
       },
       isLoading: false, isFetching: false, error: null, refetch,
@@ -194,7 +198,7 @@ describe('AutoAdventure', () => {
         stage: 1, mode: 'holding', advance_pending: false, server_now: new Date().toISOString(), next_at: new Date().toISOString(),
         boss: { stage: 10, id: 'boss', name: 'Chefe', icon: null }, encounters: [], gold_today: 0, loot_today: 0,
         limits: { gold_per_day: 120, items_per_day: 2 },
-        battle: { id: 'battle-1', stage: 1, attempt: 1, kind: 'normal', status: 'fighting', enemy_name: 'Lobo', enemy_icon: null, boss_id: null, hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 100, events: [] },
+        battle: { ...liveBattleTimes(), id: 'battle-1', stage: 1, attempt: 1, kind: 'normal', status: 'fighting', enemy_name: 'Lobo', enemy_icon: null, boss_id: null, hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 100, events: [] },
       },
       isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
     };
@@ -230,13 +234,35 @@ describe('AutoAdventure', () => {
     expect(page.textContent).not.toContain('Tentar de novo');
   });
 
+  it.each([true, false])('não avança uma batalha expirada enquanto pending=%s', pending => {
+    const now = Date.now();
+    mocked.value = {
+      data: {
+        stage: 9, mode: 'holding', advance_pending: false,
+        server_now: new Date(now).toISOString(), next_at: new Date(now).toISOString(),
+        boss: { stage: 10, id: 'boss', name: 'Chefe', icon: null },
+        encounters: [], gold_today: 0, loot_today: 0,
+        limits: { gold_per_day: 120, items_per_day: 2 },
+        catchup: { battles: 24, wins: 24, gold: 0, items: [], pending },
+        battle: { id: 'historical-battle', stage: 9, attempt: 4, kind: 'normal', status: 'fighting',
+          started_at: new Date(now - 120_000).toISOString(), ends_at: new Date(now - 100_000).toISOString(),
+          enemy_name: 'Lobo', hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 100, events: [] },
+      },
+      dataUpdatedAt: now, isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
+    };
+    const page = renderAdventure();
+    expect(page.textContent).toContain('Permanecendo na etapa 9');
+    expect(page.textContent).not.toContain('Avançar para etapa 10');
+    expect(mutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
   it('reconhece avanço pendente confirmado pelo servidor após remontagem', () => {
     mocked.value = {
       data: {
         stage: 9, mode: 'holding', advance_pending: true, server_now: new Date().toISOString(), next_at: new Date().toISOString(),
         boss: { stage: 10, id: 'boss', name: 'Chefe', icon: null }, encounters: [], gold_today: 0, loot_today: 0,
         limits: { gold_per_day: 120, items_per_day: 2 },
-        battle: { id: 'battle-9', stage: 9, attempt: 2, kind: 'normal', status: 'fighting', enemy_name: 'Lobo', enemy_icon: null, boss_id: null, hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 100, events: [] },
+        battle: { ...liveBattleTimes(), id: 'battle-9', stage: 9, attempt: 2, kind: 'normal', status: 'fighting', enemy_name: 'Lobo', enemy_icon: null, boss_id: null, hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 100, events: [] },
       },
       isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
     };
