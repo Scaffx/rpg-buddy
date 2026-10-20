@@ -1,861 +1,130 @@
-import { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useQueryClient } from '@tanstack/react-query';
-import {
-  Shield, Users, Globe, Lock, Copy, CheckCheck, Zap, Clock,
-  Search, AlertTriangle, Sparkles, Timer, Gem,
-  Swords, ArrowRight, PawPrint,
-} from 'lucide-react';
-
+import { useState } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
+import { useAllCompanions, isCombatCompanion } from '@/hooks/useCompanion';
+import { usePortalEvent, useMyFragments, useScanPortal } from '@/hooks/usePortalEvent';
+import { useInventory } from '@/hooks/useInventory';
 import { useGoldBalance } from '@/hooks/useGold';
 import DungeonRevealCard from '@/components/DungeonRevealCard';
-import { getActivePetType, getPetBonus, applyPetBonus, petBonusLabel } from '@/lib/pets';
-import { useProfile, useAttributes, useHealthStats } from '@/hooks/useProfile';
-import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
+import { useCoopActions, useCoopSessions, useCoopState, type CoopDifficulty } from '@/hooks/useCoopPortal';
 import { useToast } from '@/hooks/use-toast';
-import { getPlayerCombatStats, getAttributeLevels } from '@/lib/combat';
-import { supabase } from '@/integrations/supabase/client';
 
-import AppLayout from '@/components/AppLayout';
-import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
-import DungeonArena, { type SessionPlayer, type PotionItem } from '@/components/DungeonArena';
-import FragmentDungeonArena, { type FragmentVictoryResult } from '@/components/FragmentDungeonArena';
-import {
-  usePortalEvent,
-  useMyFragments,
-  useCompletePortalRun,
-  useScanPortal,
-  useClaimPendingDungeon,
-  usePublicFragmentDungeons,
-  useCreateFragmentDungeon,
-  useJoinFragmentDungeon,
-  PORTAL_COLORS,
-  FRAGMENT_TIERS,
-  FRAGMENT_COST,
-  type PortalColor,
-  type FragmentTier,
-} from '@/hooks/usePortalEvent';
-
-// ── helpers ───────────────────────────────────────────────────────────────
-function formatTimeLeft(endsAt: string, t: (k: string) => string): string {
-  const ms = new Date(endsAt).getTime() - Date.now();
-  if (ms <= 0) return t('app.portal.time_ended');
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
-  return `${h}h ${m}m`;
-}
-
-function formatDungeonExpiry(expiresAt: string, t: (k: string) => string): string {
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return t('app.portal.time_expired');
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  const prefix = t('app.portal.expires_prefix');
-  if (h > 0) return `${prefix} ${h}h ${m}m`;
-  return `${prefix} ${m}m`;
-}
-
-// ── Animated portal glyph ─────────────────────────────────────────────────
-function PortalGlyph({ color, size = 'md' }: { color?: PortalColor | null; size?: 'sm' | 'md' | 'lg' }) {
-  const hexColors: Record<string, string> = {
-    blue: '#38bdf8', yellow: '#facc15', red: '#f87171', legendary: '#a78bfa', unknown: '#818cf8',
-  };
-  const ringColor = color ? hexColors[color] : hexColors.unknown;
-  const sizeMap = { sm: 48, md: 72, lg: 96 };
-  const s = sizeMap[size];
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: s, height: s }}>
-      <motion.div
-        className="absolute inset-0 rounded-full border-2 opacity-30"
-        style={{ borderColor: ringColor }}
-        animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.1, 0.3] }}
-        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute rounded-full border"
-        style={{ inset: s * 0.12, borderColor: ringColor, opacity: 0.6 }}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-      />
-      <motion.div
-        className="absolute rounded-full"
-        style={{ inset: s * 0.25, background: `radial-gradient(circle, ${ringColor}40 0%, ${ringColor}10 70%)` }}
-        animate={{ scale: [1, 1.1, 1] }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.span
-        className="relative z-10 select-none"
-        style={{ fontSize: s * 0.38 }}
-        animate={!color ? { rotate: [0, 8, -8, 0] } : {}}
-        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        {color ? PORTAL_COLORS[color].emoji : '🌀'}
-      </motion.span>
-    </div>
-  );
-}
-
-// ── Fragment bar ──────────────────────────────────────────────────────────
-function FragmentBar({ count }: { count: number }) {
-  const { t } = useTranslation();
-  const filled = Math.min(count, FRAGMENT_COST);
-  const segments = Array.from({ length: FRAGMENT_COST }, (_, i) => i < filled);
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-          <Gem className="w-3 h-3 text-purple-400" /> {t('app.portal.frag_bar_title')}
-        </span>
-        <span className="text-sm font-bold text-purple-300">{filled} / {FRAGMENT_COST}</span>
-      </div>
-      <div className="flex gap-1">
-        {segments.map((active, i) => (
-          <motion.div
-            key={i}
-            className="flex-1 h-3 rounded-sm"
-            style={{ background: active ? 'linear-gradient(90deg,#7c3aed,#a78bfa)' : 'rgba(255,255,255,0.07)' }}
-            animate={active ? { opacity: [0.8, 1, 0.8] } : { opacity: 1 }}
-            transition={active ? { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.1 } : {}}
-          />
-        ))}
-      </div>
-      {filled < FRAGMENT_COST ? (
-        <p className="text-xs text-muted-foreground text-right">{t('app.portal.frag_bar_remaining', { n: FRAGMENT_COST - filled })}</p>
-      ) : (
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-center font-semibold text-purple-300 bg-purple-500/10 rounded-lg py-1">
-          ✨ {t('app.portal.frag_bar_ready')}
-        </motion.p>
-      )}
-    </div>
-  );
-}
-
-// Mapeia cor do portal → chave i18n da dificuldade.
-const COLOR_DIFF_KEY: Record<PortalColor, string> = {
-  blue: 'diff_facil', yellow: 'diff_medio', red: 'diff_dificil', legendary: 'diff_lendario',
+const difficulties: Record<CoopDifficulty, { name: string; min: number; waves: string }> = {
+  easy: { name: 'Fácil', min: 1, waves: '1 boss' },
+  medium: { name: 'Médio', min: 20, waves: '1 + 1' },
+  hard: { name: 'Difícil', min: 30, waves: '1 + 2 juntos' },
+  legendary: { name: 'Lendário', min: 40, waves: '2 juntos + 1' },
+  ultra: { name: 'Ultralendário', min: 50, waves: '2 + 2 + 1' },
 };
+const dailyDifficulty: Record<string, CoopDifficulty> = { blue: 'easy', yellow: 'medium', red: 'hard', legendary: 'legendary' };
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Ação recusada pelo servidor.';
 
-// ── Daily portal card ─────────────────────────────────────────────────────
-function DailyPortalCard({
-  portalColor, colorRevealed, alreadyCompleted, participantCount,
-  hasScannerItem, isScanning, onScan, onEnter,
-}: {
-  portalColor: PortalColor | null; colorRevealed: boolean; alreadyCompleted: boolean;
-  participantCount: number; hasScannerItem: boolean; isScanning: boolean;
-  onScan: () => void; onEnter: () => void;
-}) {
-  const { t } = useTranslation();
-  const meta = portalColor ? PORTAL_COLORS[portalColor] : null;
-  const label = portalColor ? t(`app.portal.color_${portalColor}_label`) : null;
-  const difficulty = portalColor ? t(`app.portal.${COLOR_DIFF_KEY[portalColor]}`) : '';
-  const diffColor: Record<string, string> = { blue: 'text-emerald-400', yellow: 'text-yellow-400', red: 'text-red-400', legendary: 'text-purple-300' };
-  const glowHex: Record<string, string> = { blue: '#38bdf8', yellow: '#facc15', red: '#f87171', legendary: '#a78bfa' };
-  const glow = portalColor ? glowHex[portalColor] : '#7c3aed';
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl border border-white/[0.1] bg-black/40 backdrop-blur-sm"
-    >
-      <div className="absolute inset-0 opacity-10 pointer-events-none"
-        style={{ background: `radial-gradient(ellipse at 50% 0%, ${glow} 0%, transparent 70%)` }}
-      />
-      <div className="relative p-5 space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <PortalGlyph color={portalColor} size="md" />
-            <div>
-              <p className={`font-bold text-xl ${meta ? meta.colorClass : 'text-purple-300'}`}>
-                {meta ? label : t('app.portal.portal_dimensional')}
-              </p>
-              {meta && portalColor ? (
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`text-xs font-semibold ${diffColor[portalColor] ?? 'text-muted-foreground'}`}>{difficulty}</span>
-                  <span className="text-muted-foreground text-xs">·</span>
-                  <span className="text-xs text-muted-foreground">{meta.levelRange}</span>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">{t('app.portal.rarity_unknown')}</p>
-              )}
-            </div>
-          </div>
-          {alreadyCompleted && (
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-              className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-full px-3 py-1"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-xs font-semibold text-emerald-400">{t('app.portal.completed_badge')}</span>
-            </motion.div>
-          )}
-        </div>
-
-        <AnimatePresence>
-          {colorRevealed && meta && (
-            <motion.p key="reward-policy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xs text-muted-foreground">
-              {t('app.portal.no_declared_rewards')}
-            </motion.p>
-          )}
-        </AnimatePresence>
-
-        {participantCount > 0 && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Users className="w-3.5 h-3.5" />
-            <span>{t(participantCount !== 1 ? 'app.portal.participants_plural' : 'app.portal.participants', { n: participantCount })}</span>
-          </div>
-        )}
-
-        {!alreadyCompleted && (
-          <div className="flex gap-2 pt-1">
-            {!colorRevealed && (
-              <button onClick={onScan} disabled={!hasScannerItem || isScanning}
-                title={!hasScannerItem ? t('app.portal.scanner_tooltip') : ''}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-purple-500/40 text-purple-300 hover:bg-purple-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                <Search className="w-4 h-4" />
-                {isScanning ? t('app.portal.scanning') : t('app.portal.scan_button')}
-              </button>
-            )}
-            <button onClick={onEnter}
-              className={`flex-1 py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all shadow-lg ${meta ? meta.btnClass : 'bg-purple-600 hover:bg-purple-700'}`}
-            >
-              <Zap className="w-4 h-4" />
-              {colorRevealed && meta ? t('app.portal.enter_portal', { label }) : t('app.portal.enter_blind')}
-              <ArrowRight className="w-3.5 h-3.5 opacity-70" />
-            </button>
-          </div>
-        )}
-        {!colorRevealed && !alreadyCompleted && (
-          <p className="text-xs text-center text-muted-foreground/70">{t('app.portal.no_scanner_hint')}</p>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-// ── Pending dungeon card ───────────────────────────────────────────────────
-function PendingDungeonCard({
-  tier, expiresAt, fragmentCount, onClaim, isClaiming,
-}: {
-  tier: FragmentTier; expiresAt: string; fragmentCount: number; onClaim: () => void; isClaiming: boolean;
-}) {
-  const { t } = useTranslation();
-  const meta = FRAGMENT_TIERS[tier];
-  const canAfford = fragmentCount >= FRAGMENT_COST;
-  const [timeStr, setTimeStr] = useState(() => formatDungeonExpiry(expiresAt, t));
-  useEffect(() => {
-    const id = setInterval(() => setTimeStr(formatDungeonExpiry(expiresAt, t)), 60_000);
-    return () => clearInterval(id);
-  }, [expiresAt]);
-
-  return (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-      className={`relative overflow-hidden rounded-2xl border ${meta.bg} p-5 space-y-4`}
-    >
-      <motion.div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl bg-current opacity-60"
-        animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 2, repeat: Infinity }}
-      />
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">{meta.emoji}</span>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">{t('app.portal.dungeon_drawn')}</p>
-            <p className={`font-bold text-lg ${meta.colorClass}`}>{t(`app.portal.tier_${tier}_label`)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{meta.recommendedLevel}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground bg-black/30 rounded-lg px-2.5 py-1.5 shrink-0">
-          <Timer className="w-3.5 h-3.5" /> <span>{timeStr}</span>
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground">{t(`app.portal.tier_${tier}_desc`)}</p>
-      {!canAfford && (
-        <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 text-xs text-amber-300">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span>{t('app.portal.need_fragments', { cost: FRAGMENT_COST, have: fragmentCount })}</span>
-        </div>
-      )}
-      <button onClick={onClaim} disabled={!canAfford || isClaiming}
-        className={`w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all ${meta.btnClass} disabled:opacity-40 disabled:cursor-not-allowed shadow-lg`}
-      >
-        <Gem className="w-4 h-4" />
-        {isClaiming ? t('app.portal.confirming') : t('app.portal.confirm_entry', { cost: FRAGMENT_COST })}
-      </button>
-    </motion.div>
-  );
-}
-
-// ── Weekly history ─────────────────────────────────────────────────────────
-function WeeklyHistory({ runs }: { runs: Array<{ color: PortalColor; fragments_received: number }> }) {
-  const { t } = useTranslation();
-  if (runs.length === 0) return null;
-  return (
-    <div className="space-y-2">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-        {t('app.portal.weekly_history')}
-      </h3>
-      <div className="flex flex-col gap-1.5">
-        {runs.map((run, i) => {
-          const m = PORTAL_COLORS[run.color];
-          return (
-            <div key={i} className="flex items-center justify-between bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{m.emoji}</span>
-                <span className={`text-sm font-medium ${m.colorClass}`}>{t(`app.portal.color_${run.color}_label`)}</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                {run.fragments_received > 0 && <span className="text-purple-300 font-semibold">+{run.fragments_received} ⬡</span>}
-                {run.fragments_received === 0 && <span className="text-muted-foreground">Confronto registrado</span>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── Fragment tier card ─────────────────────────────────────────────────────
-function FragmentTierCard({ tier, canInvoke, onInvoke }: { tier: FragmentTier; canInvoke: boolean; onInvoke: (t: FragmentTier) => void }) {
-  const { t } = useTranslation();
-  const meta = FRAGMENT_TIERS[tier];
-  return (
-    <motion.div whileHover={{ scale: canInvoke ? 1.01 : 1, y: canInvoke ? -1 : 0 }}
-      className={`relative overflow-hidden rounded-2xl border ${meta.bg} p-4 transition-shadow ${canInvoke ? 'hover:shadow-lg' : 'opacity-60'}`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{meta.emoji}</span>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className={`font-bold ${meta.colorClass}`}>{t(`app.portal.tier_${tier}_label`)}</p>
-              <span className="text-xs text-muted-foreground bg-black/30 rounded-md px-1.5 py-0.5">{meta.recommendedLevel}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{t(`app.portal.tier_${tier}_desc`)}</p>
-          </div>
-        </div>
-        <button disabled={!canInvoke} onClick={() => onInvoke(tier)}
-          className={`shrink-0 px-4 py-2 rounded-xl font-semibold text-sm transition-all text-white disabled:opacity-40 disabled:cursor-not-allowed ${meta.btnClass}`}
-        >
-          {canInvoke ? t('app.portal.invoke') : `${FRAGMENT_COST} ⬡`}
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-// ── Lobby dialog ───────────────────────────────────────────────────────────
-type LobbyMode = 'choose' | 'create' | 'join';
-
-function FragmentLobbyDialog({
-  tier, onSessionReady, onClose,
-  playerName, playerLevel, playerAtk, playerDef,
-  playerHp, playerMaxHp, playerMp, playerMaxMp, playerClass,
-}: {
-  tier: FragmentTier; onSessionReady: (sessionId: string, isHost: boolean, players: SessionPlayer[]) => void;
-  onClose: () => void; playerName: string; playerLevel: number; playerAtk: number; playerDef: number;
-  playerHp: number; playerMaxHp: number; playerMp: number; playerMaxMp: number; playerClass: string;
-}) {
-  const { toast } = useToast();
-  const { t } = useTranslation();
-  const [mode, setMode]               = useState<LobbyMode>('choose');
-  const [isPublic, setIsPublic]       = useState(true);
-  const [joinCode, setJoinCode]       = useState('');
-  const [copied, setCopied]           = useState(false);
-  const [createdCode, setCreatedCode] = useState('');
-  const [createdId, setCreatedId]     = useState('');
-  const [players, setPlayers]         = useState<SessionPlayer[]>([]);
-  const channelRef                    = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const { data: publicDungeons = [] }  = usePublicFragmentDungeons();
-  const createDungeon = useCreateFragmentDungeon();
-  const joinDungeon   = useJoinFragmentDungeon();
-  const tm = FRAGMENT_TIERS[tier];
-
-  useEffect(() => {
-    if (!createdId) return;
-    const ch = supabase.channel(`fragment_dungeon:${createdId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fragment_dungeon_players', filter: `session_id=eq.${createdId}` },
-        async () => {
-          const { data } = await supabase.from('fragment_dungeon_players').select('*').eq('session_id', createdId);
-          if (!data) return;
-          setPlayers(data.map(p => ({ userId: p.user_id, displayName: p.display_name, hp: p.hp, maxHp: p.max_hp, level: p.level, atk: p.atk, def: p.def, isHost: p.is_host, isAlive: p.hp > 0 })));
-        })
-      .subscribe();
-    channelRef.current = ch;
-    return () => { ch.unsubscribe(); };
-  }, [createdId]);
-
-  async function handleCreate() {
-    const r = await createDungeon.mutateAsync({ tier, isPublic, displayName: playerName, level: playerLevel, atk: playerAtk, def: playerDef, hp: playerHp, maxHp: playerMaxHp, playerClass });
-    if (r.error) { toast({ title: t('app.portal.toast_error'), description: r.error, variant: 'destructive' }); return; }
-    setCreatedId(r.session_id); setCreatedCode(r.invite_code); setMode('create');
-  }
-
-  async function handleJoinByCode() {
-    const r = await joinDungeon.mutateAsync({ inviteCode: joinCode.toUpperCase(), displayName: playerName, level: playerLevel, atk: playerAtk, def: playerDef, hp: playerHp, maxHp: playerMaxHp, playerClass });
-    if (r.error) { toast({ title: t('app.portal.toast_error'), description: r.error, variant: 'destructive' }); return; }
-    setCreatedId(r.session_id); setMode('join');
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-      <motion.div initial={{ opacity: 0, scale: 0.92, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-        className={`w-full max-w-md rounded-2xl border ${tm.bg} bg-[#0d0d1a] p-5 space-y-4 max-h-[90vh] overflow-y-auto`}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{tm.emoji}</span>
-            <h2 className={`font-bold text-lg ${tm.colorClass}`}>{t(`app.portal.tier_${tier}_label`)}</h2>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-muted-foreground transition-colors">×</button>
-        </div>
-
-        {mode === 'choose' && (
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <button onClick={() => setIsPublic(true)} className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-colors ${isPublic ? `${tm.btnClass} border-transparent text-white` : 'border-border text-muted-foreground hover:bg-white/5'}`}>
-                <Globe className="w-3.5 h-3.5" /> {t('app.portal.lobby_public')}
-              </button>
-              <button onClick={() => setIsPublic(false)} className={`flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-colors ${!isPublic ? `${tm.btnClass} border-transparent text-white` : 'border-border text-muted-foreground hover:bg-white/5'}`}>
-                <Lock className="w-3.5 h-3.5" /> {t('app.portal.lobby_private')}
-              </button>
-            </div>
-            <button onClick={handleCreate} disabled={createDungeon.isPending} className={`w-full py-3 rounded-xl font-semibold text-white flex items-center justify-center gap-2 ${tm.btnClass} disabled:opacity-50`}>
-              <Shield className="w-4 h-4" /> {t('app.portal.lobby_create_room')}
-            </button>
-            <button onClick={() => setMode('join')} className="w-full py-3 rounded-xl font-semibold text-sm text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 flex items-center justify-center gap-2 transition-colors">
-              <Users className="w-4 h-4" /> {t('app.portal.lobby_join_code')}
-            </button>
-            {publicDungeons.filter(d => d.dungeon_tier === tier).map(d => (
-              <div key={d.session_id} className="flex items-center justify-between bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5">
-                <div>
-                  <p className="text-sm font-medium">{d.host_name}</p>
-                  <p className="text-xs text-muted-foreground">{t('app.portal.public_players', { count: d.player_count, max: d.max_players })}</p>
-                </div>
-                <button onClick={async () => { const r = await joinDungeon.mutateAsync({ inviteCode: d.invite_code, displayName: playerName, level: playerLevel, atk: playerAtk, def: playerDef, hp: playerHp, maxHp: playerMaxHp, playerClass }); if (!r.error) { setCreatedId(r.session_id); setMode('join'); } }} className={`text-xs px-3 py-1.5 rounded-lg ${tm.btnClass} text-white`}>{t('app.portal.lobby_enter')}</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {mode === 'join' && !createdId && (
-          <div className="space-y-3">
-            <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} placeholder={t('app.portal.lobby_code_placeholder')}
-              className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-4 py-3 text-center text-lg font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-              maxLength={8}
-            />
-            <button onClick={handleJoinByCode} disabled={joinCode.length < 6 || joinDungeon.isPending} className={`w-full py-3 rounded-xl font-semibold text-white ${tm.btnClass} disabled:opacity-50`}>{t('app.portal.lobby_enter')}</button>
-            <button onClick={() => setMode('choose')} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">← {t('app.portal.lobby_back')}</button>
-          </div>
-        )}
-
-        {createdId && (
-          <div className="space-y-4">
-            {createdCode && (
-              <div className="bg-white/[0.05] border border-white/[0.1] rounded-xl p-4 text-center space-y-2">
-                <p className="text-xs text-muted-foreground">{t('app.portal.lobby_invite_code')}</p>
-                <div className="flex items-center justify-center gap-3">
-                  <span className="text-2xl font-mono font-bold tracking-widest text-white">{createdCode}</span>
-                  <button onClick={() => { navigator.clipboard.writeText(createdCode); }} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-                    <Copy className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('app.portal.lobby_players', { n: players.length })}</p>
-              {players.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4 animate-pulse">{t('app.portal.lobby_waiting')}</p>
-              ) : (
-                players.map(p => (
-                  <div key={p.userId} className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm">
-                    {p.isHost && <span className="text-amber-400">👑</span>}
-                    <span className="flex-1 font-medium">{p.displayName}</span>
-                    <span className="text-xs text-muted-foreground">Lv.{p.level}</span>
-                  </div>
-                ))
-              )}
-            </div>
-            {mode === 'create' && (
-              <button onClick={() => onSessionReady(createdId, true, players)} disabled={players.length < 1}
-                className={`w-full py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2 ${tm.btnClass} disabled:opacity-50`}
-              >
-                <Swords className="w-4 h-4" /> {t('app.portal.lobby_start')} ({players.length})
-              </button>
-            )}
-          </div>
-        )}
-      </motion.div>
-    </div>
-  );
-}
-
-// ── Main page ──────────────────────────────────────────────────────────────
 export default function PortalEventPage() {
-  const { user }      = useAuth();
-  const { toast }     = useToast();
-  const { t }         = useTranslation();
-  const queryClient   = useQueryClient();
-  const { data: profile }     = useProfile();
-  const { data: attributes }  = useAttributes();
-  const { data: healthStats } = useHealthStats();
-  const { data: inventory }   = useInventory();
-  const { data: portalEvent, isLoading: eventLoading } = usePortalEvent();
-  const { data: fragments }   = useMyFragments();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { data: event } = usePortalEvent();
+  const { data: fragments } = useMyFragments();
+  const { data: inventory } = useInventory();
   const { data: goldBalance } = useGoldBalance();
+  const scan = useScanPortal();
+  const { data: companions } = useAllCompanions();
+  const { data: sessions } = useCoopSessions();
+  const { create, join, start, attack } = useCoopActions();
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [companionId, setCompanionId] = useState<string | null>(null);
+  const { data: session } = useCoopState(sessionId);
 
-  const completeRun  = useCompletePortalRun();
-  const scanPortal   = useScanPortal();
-  const claimDungeon = useClaimPendingDungeon();
-
-  const [isEnteringPortal, setIsEnteringPortal]   = useState(false);
-  const [fragmentLobbyTier, setFragmentLobbyTier] = useState<FragmentTier | null>(null);
-  const [activeFragSession, setActiveFragSession] = useState<{ sessionId: string; isHost: boolean; players: SessionPlayer[] } | null>(null);
-  const [activeFragTier, setActiveFragTier]       = useState<FragmentTier | null>(null);
-  const [timeLeft, setTimeLeft]                   = useState('');
-
-  const attrLevels      = getAttributeLevels((attributes as any[]) ?? []);
-  const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
-  const equipBonuses    = getEquipmentBonuses((inventory || []) as InventoryItem[]);
-
-  // Pet ativo (F0.2): o bloqueio de pets no portal era resquício do pet-combatente,
-  // que a spec cortou. Hoje o pet é só bônus passivo de stat, então vale aqui pela
-  // mesma regra do combate solo (useBossCombat). 1 pet por vez.
-  const petBonus = getPetBonus(getActivePetType(user?.id));
-  const rawMaxHp = healthStats?.max_hp != null
-    ? Number(healthStats.max_hp)
-    : (playerStatsBase.hp + equipBonuses.hp) ?? 120;
-  const rawMaxMp = healthStats?.max_mp != null
-    ? Number(healthStats.max_mp)
-    : (playerStatsBase.mp + equipBonuses.mp) ?? 40;
-  const petAdjusted = applyPetBonus(
-    {
-      ataqueBase: playerStatsBase.atk + equipBonuses.atk,
-      defesaBase: playerStatsBase.def + equipBonuses.def,
-      hpMax: rawMaxHp,
-      mpMax: rawMaxMp,
-    },
-    petBonus,
-  );
-
-  const playerStats = {
-    ...playerStatsBase,
-    atk: petAdjusted.ataqueBase,
-    def: petAdjusted.defesaBase,
-    hp:  petAdjusted.hpMax,
-    mp:  petAdjusted.mpMax,
-  };
-  const maxHp = petAdjusted.hpMax;
-  const maxMp = petAdjusted.mpMax;
-  const curHp = healthStats?.current_hp != null ? Number(healthStats.current_hp) : maxHp;
-  const curMp = healthStats?.current_mp != null ? Number(healthStats.current_mp) : maxMp;
-
-  const potions: PotionItem[] = (inventory || [])
-    .filter(inv => inv.game_items?.is_consumable && (
-      String(inv.game_items?.effect || '').startsWith('heal_') ||
-      String(inv.game_items?.effect || '').startsWith('mana_') ||
-      String(inv.game_items?.effect || '') === 'full_rest'
-    ))
-    .map<PotionItem>(inv => ({
-      invId:  inv.id,
-      name:   String(inv.game_items?.name   || 'Poção'),
-      effect: String(inv.game_items?.effect || 'heal_hp_small'),
-      icon:   String(inv.game_items?.icon   || '🧪'),
-      qty:    inv.quantity,
-    }));
-
-  const fragmentCount        = fragments?.fragments ?? 0;
-  const canInvokeFragDungeon = fragmentCount >= FRAGMENT_COST;
-  const hasScannerItem       = (inventory || []).some(inv => inv.game_items?.effect === 'portal_scan');
-  const pendingDungeon       = portalEvent?.pending_dungeon   ?? fragments?.pending_dungeon   ?? null;
-  const dungeonExpiresAt     = portalEvent?.dungeon_expires_at ?? fragments?.dungeon_expires_at ?? null;
-
-  useEffect(() => {
-    if (!portalEvent?.ends_at) return;
-    const update = () => setTimeLeft(formatTimeLeft(portalEvent.ends_at, t));
-    update();
-    const id = setInterval(update, 60_000);
-    return () => clearInterval(id);
-  }, [portalEvent?.ends_at]);
-
-  function handleEnterPortal() {
-    if (!portalEvent) return;
-    setIsEnteringPortal(true);
-  }
-
-  async function handleScanPortal() {
-    if (!portalEvent) return;
-    const result = await scanPortal.mutateAsync(portalEvent.event_id);
-    if ((result as any).error) {
-      toast({ title: t('app.portal.toast_scan_error'), description: (result as any).error, variant: 'destructive' });
-    } else {
-      toast({ title: t('app.portal.toast_scan_ok_title'), description: t('app.portal.toast_scan_ok_desc') });
-    }
-  }
-
-  async function handlePortalVictory() {
-    if (!portalEvent) return;
+  async function make(source: 'daily' | 'fragments', difficulty: CoopDifficulty | null) {
     try {
-      const data = await completeRun.mutateAsync({ eventId: portalEvent.event_id });
-      if (!data || data.error) throw new Error(data?.error || 'Não foi possível registrar o portal.');
-      toast({ title: t('app.portal.toast_portal_done'), description: data.already_claimed
-        ? 'Portal já registrado.'
-        : 'Confronto registrado. Sem XP, ouro ou fragmentos por resultado declarado.' });
-    } catch (error) {
-      toast({ title: 'Erro ao registrar portal', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
-    }
-    setIsEnteringPortal(false);
+      const eventId = source === 'daily' ? event?.event_id ?? null : null;
+      if (source === 'daily' && !eventId) throw new Error('Evento indisponível');
+      const key = `portal-coop:${source}:${difficulty ?? 'hidden'}:${eventId ?? ''}`;
+      let requestId = localStorage.getItem(key);
+      if (!requestId) { requestId = crypto.randomUUID(); localStorage.setItem(key, requestId); }
+      const result = await create.mutateAsync({ source, difficulty, eventId, requestId, companionId });
+      localStorage.removeItem(key);
+      setSessionId(result.session_id);
+    } catch (error) { toast({ title: 'Entrada recusada', description: errorMessage(error), variant: 'destructive' }); }
   }
 
-  /**
-   * Queda no portal (F6). Não é morte: o herói é derrotado e EXPULSO — sai vivo
-   * por um fio e exausto. A cobrança é do corpo e dos fragmentos, nunca do XP:
-   * rotina conquistada não se perde por um dado ruim.
-   *
-   * A primeira queda da vida devolve o portal (não os fragmentos), pela mesma
-   * lógica do "nunca falhe duas vezes" das missões.
-   */
-  async function handlePortalDefeat() {
+  async function enter() {
     try {
-      const { data } = await supabase.rpc('resolve_combat_defeat' as never, { p_context: 'portal' } as never);
-      const r = (Array.isArray(data) ? data[0] : data) as
-        | { grace_used?: boolean; portal_lost?: boolean }
-        | null;
-
-      toast({
-        title: t('app.portal.toast_defeat_title'),
-        description: r?.grace_used
-          ? t('app.portal.toast_defeat_grace')
-          : t('app.portal.toast_defeat_closed'),
-        variant: r?.grace_used ? undefined : 'destructive',
-        duration: 7000,
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['health_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['my-fragments'] });
-      queryClient.invalidateQueries({ queryKey: ['portal-event'] });
-    } catch {
-      /* a derrota nunca pode travar a saída da dungeon */
-    }
-    setIsEnteringPortal(false);
+      const result = await join.mutateAsync({ code: code.trim().toUpperCase(), companionId });
+      setSessionId(result.session_id); setCode('');
+    } catch (error) { toast({ title: 'Convite recusado', description: errorMessage(error), variant: 'destructive' }); }
+  }
+  async function begin() {
+    if (!sessionId) return;
+    try { await start.mutateAsync(sessionId); }
+    catch (error) { toast({ title: 'Início recusado', description: errorMessage(error), variant: 'destructive' }); }
+  }
+  async function hit(slot: number) {
+    if (!sessionId) return;
+    try { await attack.mutateAsync({ sessionId, slot, actionId: crypto.randomUUID() }); }
+    catch (error) { toast({ title: 'Ataque recusado', description: errorMessage(error), variant: 'destructive' }); }
+  }
+  async function scanDaily() {
+    if (!event) return;
+    try {
+      const result = await scan.mutateAsync(event.event_id);
+      if (result.error) throw new Error(result.error);
+    } catch (error) { toast({ title: 'Escaneamento recusado', description: errorMessage(error), variant: 'destructive' }); }
   }
 
-  async function handleClaimDungeon() {
-    const result = await claimDungeon.mutateAsync();
-    if ((result as any).error) { toast({ title: t('app.portal.toast_error'), description: (result as any).error, variant: 'destructive' }); return; }
-    const tier = result.tier as FragmentTier | undefined;
-    if (tier) { setFragmentLobbyTier(tier); toast({ title: `${FRAGMENT_TIERS[tier]?.emoji} ${t('app.portal.toast_dungeon_released_title')}`, description: t('app.portal.toast_dungeon_released_desc') }); }
-  }
-
-  function handleLobbyReady(sessionId: string, isHost: boolean, players: SessionPlayer[]) {
-    setFragmentLobbyTier(null);
-    setActiveFragSession({ sessionId, isHost, players });
-    setActiveFragTier(fragmentLobbyTier);
-  }
-
-  function handleFragmentVictory(_result: FragmentVictoryResult) {
-    toast({ title: t('app.portal.toast_dungeon_done'), description: 'Confronto concluído. XP e ouro só vêm das rotinas.' });
-    setActiveFragSession(null); setActiveFragTier(null);
-  }
-
-  // full-screen: portal dungeon
-  if (isEnteringPortal && portalEvent) {
-    const color = portalEvent.portal_color;
-    const meta  = color ? PORTAL_COLORS[color] : PORTAL_COLORS.blue;
-    return (
-      <div className="p-4">
-        <DungeonArena
-          dungeonId={meta.dungeonId} dungeonName={meta.label}
-          initialPlayerHp={curHp} initialPlayerMaxHp={maxHp}
-          initialPlayerMp={curMp} initialPlayerMaxMp={maxMp}
-          playerLevel={profile?.level || 1} playerAtk={playerStats.atk ?? 15} playerDef={playerStats.def ?? 8}
-          potions={potions} friendCount={0} isPortalDungeon
-          difficultyMult={meta.difficultyMult}
-          onVictory={handlePortalVictory}
-          onDefeat={handlePortalDefeat}
-          onFlee={() => setIsEnteringPortal(false)}
-        />
-      </div>
-    );
-  }
-
-  // full-screen: fragment dungeon
-  if (activeFragSession && activeFragTier) {
-    return (
-      <div className="p-4">
-        <FragmentDungeonArena
-          sessionId={activeFragSession.sessionId} sessionPlayers={activeFragSession.players}
-          dungeonTier={activeFragTier} isHost={activeFragSession.isHost}
-          playerLevel={profile?.level || 1} playerAtk={playerStats.atk ?? 15} playerDef={playerStats.def ?? 8}
-          initialPlayerHp={curHp} initialPlayerMaxHp={maxHp} initialPlayerMp={curMp} initialPlayerMaxMp={maxMp}
-          potions={potions} friendCount={0}
-          onVictory={handleFragmentVictory}
-          onDefeat={() => { void handlePortalDefeat(); setActiveFragSession(null); setActiveFragTier(null); }}
-        />
-      </div>
-    );
-  }
-
-  // portal hub
-  return (
-    <AppLayout>
-    <div className="relative -mx-4 -my-4 md:-mx-6 md:-my-6 min-h-[calc(100vh-3.5rem)] bg-[#08080f]">
-      <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-purple-950/40 to-transparent pointer-events-none" />
-      <div className="relative p-4 space-y-5 max-w-xl mx-auto pb-10">
-
-        {/* header */}
-        <div data-tour="portal-header" className="text-center pt-2 space-y-1">
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            <span className="text-xs font-semibold text-purple-400 uppercase tracking-widest">{t('app.portal.weekly_event')}</span>
-            <Sparkles className="w-4 h-4 text-purple-400" />
-          </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-            className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-300 via-purple-200 to-indigo-300 bg-clip-text text-transparent"
-          >
-            {t('app.portal.title')}
-          </motion.h1>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-sm text-muted-foreground">
-            {t('app.portal.subtitle')}
-          </motion.p>
-        </div>
-
-        {/* event timer */}
-        <div data-tour="portal-event">
-        {eventLoading ? (
-          <div className="h-12 rounded-2xl bg-white/[0.04] animate-pulse" />
-        ) : portalEvent ? (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-3"
-          >
-            <div className="flex items-center gap-2">
-              <motion.div className="w-2 h-2 rounded-full bg-emerald-400" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
-              <span className="text-sm font-semibold text-emerald-400">{t('app.portal.portal_active')}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Clock className="w-3.5 h-3.5" />
-              <span className="tabular-nums">{timeLeft || formatTimeLeft(portalEvent.ends_at, t)}</span>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="rounded-2xl border border-white/[0.07] bg-white/[0.03] text-center py-10 space-y-2"
-          >
-            <p className="text-4xl">🚪</p>
-            <p className="font-semibold text-muted-foreground">{t('app.portal.no_active_title')}</p>
-            <p className="text-sm text-muted-foreground/60">{t('app.portal.no_active_subtitle')}</p>
-          </motion.div>
-        )}
-        </div>
-
-        {/* daily portal */}
-        {portalEvent && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t('app.portal.portal_of_day')}</p>
-            <DailyPortalCard
-              portalColor={portalEvent.portal_color}
-              colorRevealed={portalEvent.color_revealed}
-              alreadyCompleted={portalEvent.already_completed}
-              participantCount={portalEvent.participant_count}
-              hasScannerItem={hasScannerItem}
-              isScanning={scanPortal.isPending}
-              onScan={handleScanPortal}
-              onEnter={handleEnterPortal}
-            />
-          </div>
-        )}
-
-        {/* pending dungeon */}
-        <AnimatePresence>
-          {pendingDungeon && dungeonExpiresAt && (
-            <motion.div key="pending" initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-2">
-              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider px-1 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5" /> {t('app.portal.pending_header')}
-              </p>
-              <PendingDungeonCard tier={pendingDungeon} expiresAt={dungeonExpiresAt} fragmentCount={fragmentCount} onClaim={handleClaimDungeon} isClaiming={claimDungeon.isPending} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* fragments */}
-        <motion.div data-tour="portal-fragments" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4 space-y-3"
-        >
-          <FragmentBar count={fragmentCount} />
-          {(fragments?.lifetime_fragments ?? 0) > 0 && (
-            <p className="text-xs text-muted-foreground/60 text-right">{fragments!.lifetime_fragments} ⬡ coletados no total</p>
-          )}
-        </motion.div>
-
-        {/* weekly history */}
-        {(portalEvent?.runs_this_week?.length ?? 0) > 0 && (
-          <WeeklyHistory runs={portalEvent!.runs_this_week} />
-        )}
-
-        <DungeonRevealCard currentGold={Number((goldBalance as { gold?: number } | undefined)?.gold ?? 0)} />
-
-        {/* fragment dungeons */}
-        <div data-tour="portal-dungeons" className="space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                <Swords className="w-4 h-4 text-purple-400" /> {t('app.portal.frag_dungeons_title')}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('app.portal.frag_dungeons_sub', { n: FRAGMENT_COST })}</p>
-            </div>
-            {!canInvokeFragDungeon && (
-              <span className="text-xs text-muted-foreground bg-white/[0.04] rounded-lg px-2.5 py-1 shrink-0 border border-white/[0.08]">{fragmentCount}/{FRAGMENT_COST} ⬡</span>
-            )}
-          </div>
-
-          <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-xl px-3.5 py-3">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-            <div className="text-xs text-muted-foreground space-y-0.5">
-              <p>{t('app.portal.cooldown_warning', { s: 45 })}</p>
-            </div>
-          </div>
-
-          {petBonus && (
-            <div className="flex items-start gap-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-3.5 py-3">
-              <PawPrint className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-emerald-300 font-semibold">
-                {t('app.portal.pet_bonus_active', { bonus: petBonusLabel(petBonus) })}
-              </p>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2.5">
-            {(Object.keys(FRAGMENT_TIERS) as FragmentTier[]).map(tier => (
-              <FragmentTierCard key={tier} tier={tier} canInvoke={canInvokeFragDungeon} onInvoke={tier => setFragmentLobbyTier(tier)} />
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      <AnimatePresence>
-        {fragmentLobbyTier && (
-          <FragmentLobbyDialog
-            tier={fragmentLobbyTier} onSessionReady={handleLobbyReady} onClose={() => setFragmentLobbyTier(null)}
-            playerName={profile?.display_name || user?.email || 'Herói'} playerLevel={profile?.level || 1}
-            playerAtk={playerStats.atk ?? 15} playerDef={playerStats.def ?? 8}
-            playerHp={curHp} playerMaxHp={maxHp} playerMp={curMp} playerMaxMp={maxMp}
-            playerClass={profile?.class_type || 'guerreiro'}
-          />
-        )}
-      </AnimatePresence>
-      <TranslatedGuidedTour
-        tourKey="portal"
-        targets={[
-          { target: 'portal-header', key: 'overview' },
-          { target: 'portal-event', key: 'event' },
-          { target: 'portal-fragments', key: 'fragments' },
-          { target: 'portal-dungeons', key: 'dungeons' },
-        ]}
-      />
-    </div>
-    </AppLayout>
-  );
+  const player = session?.players.find(p => p.user_id === user?.id);
+  const combatCompanions = (companions ?? []).filter(c => isCombatCompanion(c) && c.current_hp > 0);
+  return <AppLayout><main className="mx-auto max-w-4xl space-y-6 p-5 text-foreground">
+    <header><p className="text-xs uppercase tracking-widest text-purple-300">Portais cooperativos</p>
+      <h1 className="text-3xl font-bold">Entre com 2 a 4 jogadores</h1>
+      <p className="text-sm text-muted-foreground">O servidor controla nível, vida, bosses, tempo e resultado. XP, ouro e atributos vêm somente das rotinas.</p></header>
+    {session ? <section className="space-y-4 rounded-2xl border border-purple-500/30 bg-purple-950/20 p-5">
+      <div className="flex justify-between gap-3"><div><h2 className="text-xl font-bold">{difficulties[session.difficulty].name} · {session.status === 'active' ? `Encontro ${session.wave}` : session.status}</h2>
+        <p className="text-sm text-muted-foreground">{difficulties[session.difficulty].waves}</p></div>
+        <button onClick={() => setSessionId(null)} className="rounded-lg border border-white/20 px-3 py-2 text-sm">Outras salas</button></div>
+      {session.status === 'lobby' && <div className="rounded-xl bg-black/30 p-4">
+        <p className="text-sm">Código de convite: <strong className="font-mono text-xl tracking-widest">{session.invite_code}</strong></p>
+        <button onClick={() => void navigator.clipboard.writeText(session.invite_code)} className="mt-2 rounded-lg bg-purple-700 px-3 py-2 text-sm">Copiar</button>
+        <p className="mt-2 text-xs text-muted-foreground">O host inicia com 2 a 4 jogadores. Todos devem cumprir o nível mínimo.</p></div>}
+      <div className="grid gap-2 sm:grid-cols-2">{session.players.map(p => <div key={p.user_id} className="rounded-xl border border-white/10 p-3 text-sm">
+        <p><strong>{p.name}</strong>{p.user_id === session.host_id ? ' 👑' : ''} · Lv. {p.level}</p>
+        <p className="text-xs text-muted-foreground">HP {p.hp}/{p.max_hp}{p.companion ? ` · ${p.companion}` : ''}</p></div>)}</div>
+      {session.status === 'lobby' && session.host_id === user?.id && <button disabled={session.players.length < 2 || session.players.length > 4 || start.isPending}
+        onClick={() => void begin()} className="rounded-lg bg-purple-600 px-4 py-2 font-bold disabled:opacity-40">Iniciar com {session.players.length}</button>}
+      {session.status === 'active' && <div className="space-y-3"><p className="text-xs text-muted-foreground">Os bosses reagem a cada ataque; o encontro seguinte começa automaticamente.</p>
+        <div className="grid gap-3 sm:grid-cols-2">{session.enemies.map(e => <div key={`${session.wave}:${e.slot}`} className="rounded-xl border border-red-500/30 bg-red-950/20 p-4">
+          <p className="font-bold">{e.icon} {e.name}</p><p className="text-sm">HP {e.hp}/{e.max_hp}</p>
+          <div className="mt-2 h-2 rounded bg-white/10"><div className="h-full rounded bg-red-500" style={{ width: `${Math.max(0, e.hp / e.max_hp * 100)}%` }} /></div>
+          <button disabled={!player?.hp || e.hp <= 0 || attack.isPending} onClick={() => void hit(e.slot)}
+            className="mt-3 rounded-lg bg-red-700 px-4 py-2 text-sm disabled:opacity-40">Atacar</button></div>)}</div>
+        {player?.hp === 0 && <p className="text-sm text-amber-300">Incapacitado. Seus aliados podem continuar.</p>}</div>}
+      <div><h3 className="text-sm font-bold">Linha do tempo</h3><ol className="max-h-52 space-y-1 overflow-auto text-xs text-muted-foreground">
+        {[...session.timeline].reverse().map(item => <li key={item.id}>{item.message}</li>)}</ol></div>
+    </section> : <>
+      {!!sessions?.length && <section className="space-y-2"><h2 className="font-bold">Suas salas</h2>{sessions.map(s => <button key={s.session_id} onClick={() => setSessionId(s.session_id)}
+        className="mr-2 rounded-lg border border-purple-500/30 px-3 py-2 text-sm">{difficulties[s.difficulty].name} · {s.status}</button>)}</section>}
+      <section className="space-y-2 rounded-xl border border-white/10 p-4"><h2 className="font-bold">Entrar por convite</h2>
+        <div className="flex gap-2"><input value={code} onChange={e => setCode(e.target.value.toUpperCase())} maxLength={8} placeholder="Código de 8 caracteres"
+          className="min-w-0 flex-1 rounded-lg border border-white/20 bg-black/20 px-3 py-2 font-mono" />
+          <button disabled={code.trim().length !== 8 || join.isPending} onClick={() => void enter()} className="rounded-lg bg-purple-700 px-4 py-2 disabled:opacity-40">Entrar</button></div></section>
+      <section className="space-y-2 rounded-xl border border-white/10 p-4"><h2 className="font-bold">Companheiro real</h2>
+        <p className="text-xs text-muted-foreground">Opcional. Só companheiros de combate da sua coleção podem acompanhar o grupo. Pets não alteram XP ou ouro.</p>
+        <select value={companionId ?? ''} onChange={e => setCompanionId(e.target.value || null)} className="w-full rounded-lg border border-white/20 bg-background p-2 text-sm">
+          <option value="">Sem companheiro</option>{combatCompanions.map(c => <option key={c.id} value={c.id}>{c.name} · Lv. {c.level}</option>)}</select></section>
+      <section className="space-y-2 rounded-xl border border-sky-500/30 p-4"><h2 className="font-bold">Portal diário</h2>
+        {event ? <><p className="text-sm">{event.portal_color ? `${difficulties[dailyDifficulty[event.portal_color]].name} · Lv. ${difficulties[dailyDifficulty[event.portal_color]].min}+` : 'Dificuldade oculta até entrar'}</p>
+          {!event.color_revealed && <button disabled={scan.isPending || !(inventory ?? []).some(item => item.game_items?.effect === 'portal_scan')}
+            onClick={() => void scanDaily()} className="mr-2 rounded-lg border border-sky-500/40 px-4 py-2 text-sm disabled:opacity-40">Usar scanner</button>}
+          <button disabled={event.already_completed || create.isPending} onClick={() => void make('daily', null)} className="rounded-lg bg-sky-700 px-4 py-2 disabled:opacity-40">
+            {event.already_completed ? 'Concluído' : 'Criar sala diária'}</button></> : <p className="text-sm text-muted-foreground">Nenhum evento ativo.</p>}</section>
+      <section className="space-y-3 rounded-xl border border-amber-500/30 p-4"><h2 className="font-bold">Portais de fragmentos · {fragments?.fragments ?? 0} ⬡</h2>
+        <p className="text-xs text-muted-foreground">Criar custa 10 fragmentos ao host. Seu inventário e dungeons pendentes permanecem registrados.</p>
+        {fragments?.pending_dungeon && <p className="text-xs text-amber-300">Pendente: {difficulties[fragments.pending_dungeon]?.name}</p>}
+        <div className="grid gap-2 sm:grid-cols-2">{(['medium','hard','legendary','ultra'] as CoopDifficulty[]).map(d => <button key={d}
+          disabled={(fragments?.fragments ?? 0) < 10 || create.isPending} onClick={() => void make('fragments', d)}
+          className="rounded-lg border border-amber-500/30 p-3 text-left disabled:opacity-40"><strong>{difficulties[d].name}</strong>
+          <span className="block text-xs text-muted-foreground">Lv. {difficulties[d].min}+ · {difficulties[d].waves}</span></button>)}</div></section>
+      <DungeonRevealCard currentGold={Number((goldBalance as { gold?: number } | undefined)?.gold ?? 0)} />
+    </>}
+  </main></AppLayout>;
 }
