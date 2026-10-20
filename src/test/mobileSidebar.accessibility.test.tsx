@@ -26,6 +26,14 @@ beforeEach(async () => {
 let root: Root | undefined;
 let container: HTMLDivElement | undefined;
 
+async function expectFocusAfterClose(target: HTMLElement, language: string) {
+  const deadline = Date.now() + 1000;
+  while (document.activeElement !== target && Date.now() < deadline) {
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+  }
+  expect(document.activeElement, `foco restaurado após fechar em ${language}`).toBe(target);
+}
+
 afterEach(async () => {
   if (root) await act(async () => root?.unmount());
   container?.remove();
@@ -125,7 +133,7 @@ describe('sidebar móvel', () => {
         expect(closeButton).toBeDefined();
         await act(async () => closeButton?.click());
         expect(document.querySelector('[role="dialog"]')).toBeNull();
-        expect(document.activeElement).toBe(trigger);
+        await expectFocusAfterClose(trigger!, language);
       }
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });

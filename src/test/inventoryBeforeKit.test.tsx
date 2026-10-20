@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import i18n from '@/i18n';
 import type { InventoryItem } from '@/hooks/useInventory';
+
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+
+let root: Root | undefined;
+let container: HTMLDivElement | undefined;
 
 const fixture = vi.hoisted(() => ({
   inventory: [] as InventoryItem[],
@@ -133,34 +139,48 @@ beforeEach(async () => {
   vi.clearAllMocks();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  if (root) await act(async () => root?.unmount());
+  container?.remove();
+  root = undefined;
+  container = undefined;
   localStorage.clear();
 });
 
-function openInventory() {
-  render(<MemoryRouter><ProfilePage /></MemoryRouter>);
-  fireEvent.click(screen.getByRole('button', { name: /Inventário/ }));
+async function openInventory() {
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+  await act(async () => root?.render(<MemoryRouter><ProfilePage /></MemoryRouter>));
+  const tab = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('Inventário'));
+  expect(tab).toBeDefined();
+  await act(async () => tab?.click());
+  return container;
+}
+
+function findButton(container: HTMLElement, label: string) {
+  return [...container.querySelectorAll('button')].find((button) => button.textContent?.trim() === label);
 }
 
 describe('Profile inventory before starter kit', () => {
-  it('shows a purchased item and Equipar while the welcome-kit notice remains available', () => {
+  it('shows a purchased item and Equipar while the welcome-kit notice remains available', async () => {
     fixture.inventory = [boughtStaff];
-    openInventory();
+    const page = await openInventory();
 
-    expect(screen.getByText('Cajado do Andarilho')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Equipar' })).toBeEnabled();
-    expect(screen.getByText('Kit de Novato disponível!')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ir para as missões de boas-vindas' })).toBeEnabled();
+    expect(page.textContent).toContain('Cajado do Andarilho');
+    expect(findButton(page, 'Equipar')?.disabled).toBe(false);
+    expect(page.textContent).toContain('Kit de Novato disponível!');
+    expect(findButton(page, 'Ir para as missões de boas-vindas')?.disabled).toBe(false);
     expect(fixture.equip).not.toHaveBeenCalled();
     expect(fixture.rpc).not.toHaveBeenCalled();
     expect(fixture.from).not.toHaveBeenCalled();
   });
 
-  it('keeps the welcome-kit notice and an empty inventory message when no item exists', () => {
-    openInventory();
+  it('keeps the welcome-kit notice and an empty inventory message when no item exists', async () => {
+    const page = await openInventory();
 
-    expect(screen.getByText('Kit de Novato disponível!')).toBeInTheDocument();
-    expect(screen.getByText('Derrote bosses para conseguir novos itens!')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Equipar' })).not.toBeInTheDocument();
+    expect(page.textContent).toContain('Kit de Novato disponível!');
+    expect(page.textContent).toContain('Derrote bosses para conseguir novos itens!');
+    expect(findButton(page, 'Equipar')).toBeUndefined();
   });
 });
