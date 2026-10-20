@@ -75,15 +75,14 @@ BEGIN
       AND COALESCE(OLD.status, 'pendente') IN
         ('pendente', 'em_progresso', 'em_andamento'))
      OR (current_user = 'postgres' AND OLD.status IS NULL AND OLD.is_failed IS FALSE
-         AND OLD.completed IS TRUE AND NEW.completed IS FALSE)
-     OR (OLD.status IS NULL AND OLD.completed IS FALSE
-         AND OLD.is_failed IS TRUE AND NEW.is_failed IS FALSE) THEN
+         AND OLD.completed IS TRUE AND NEW.completed IS FALSE) THEN
     NEW.status := 'pendente';
     RETURN NEW;
   END IF;
 
-  -- Undo of a completed legacy unique row and explicit failed-state recovery
-  -- above are allowed. An archived/paused row cannot use NULL to reactivate.
+  -- Undo of a completed legacy unique row above is allowed only under its
+  -- SECURITY DEFINER owner. Recovery of failed NULL rows must name 'pendente'
+  -- explicitly; clearing is_failed alone cannot reactivate them.
   RAISE EXCEPTION 'MISSION_STATUS_REQUIRED' USING ERRCODE = '23514';
 END;
 $normalize$;

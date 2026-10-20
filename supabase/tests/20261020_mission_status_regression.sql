@@ -252,13 +252,43 @@ BEGIN
     format('UPDATE public.missions SET completed=false WHERE user_id=%L::uuid AND title=''legacy-completed''',v_uid),
     'MISSION_STATUS_REQUIRED');
   SELECT to_jsonb(p) INTO v_profile_before FROM public.profiles p WHERE user_id=v_uid;
-  UPDATE public.missions SET is_failed=false
+  SELECT xp INTO v_attr_before FROM public.attributes WHERE id=v_attr;
+  SELECT gold INTO v_gold_before FROM public.user_balance WHERE user_id=v_uid;
+  PERFORM pg_temp.expect_bug32_error(
+    format('UPDATE public.missions SET is_failed=false WHERE user_id=%L::uuid AND title=''legacy-failed''',v_uid),
+    'MISSION_STATUS_REQUIRED');
+  IF (SELECT is_failed AND status IS NULL FROM public.missions
+      WHERE user_id=v_uid AND title='legacy-failed') IS NOT TRUE THEN
+    RAISE EXCEPTION 'implicit failed-state cleanup changed row';
+  END IF;
+  UPDATE public.missions SET is_failed=false,status='pendente'
     WHERE user_id=v_uid AND title='legacy-failed';
   IF (SELECT status FROM public.missions WHERE user_id=v_uid
       AND title='legacy-failed') <> 'pendente'
      OR (SELECT to_jsonb(p) FROM public.profiles p WHERE user_id=v_uid)
         IS DISTINCT FROM v_profile_before THEN
-    RAISE EXCEPTION 'legacy failed recovery paid or stayed inactive';
+    RAISE EXCEPTION 'explicit failed recovery paid or stayed inactive';
+  END IF;
+  SELECT id INTO STRICT v_id FROM public.missions
+    WHERE user_id=v_uid AND title='legacy-failed';
+  v_result := public.complete_mission(v_id,v_today);
+  IF (SELECT count(*) FROM public.mission_daily_completions
+      WHERE mission_id=v_id AND completion_date=v_today) <> 1
+     OR (SELECT total_xp FROM public.profiles WHERE user_id=v_uid)
+        <> (v_profile_before->>'total_xp')::integer + (v_result->>'xp_gained')::integer THEN
+    RAISE EXCEPTION 'explicit recovery completion did not pay exactly once';
+  END IF;
+  PERFORM pg_temp.expect_bug32_error(
+    format('SELECT public.complete_mission(%L::uuid,%L::date)',v_id,v_today),
+    'Missão já concluída hoje');
+  PERFORM public.undo_mission(v_id,v_today);
+  IF (SELECT total_xp FROM public.profiles WHERE user_id=v_uid)
+        <> (v_profile_before->>'total_xp')::integer
+     OR (SELECT xp FROM public.attributes WHERE id=v_attr) <> v_attr_before
+     OR (SELECT gold FROM public.user_balance WHERE user_id=v_uid) <> v_gold_before
+     OR EXISTS (SELECT 1 FROM public.mission_daily_completions
+                WHERE mission_id=v_id AND completion_date=v_today) THEN
+    RAISE EXCEPTION 'recovered mission undo left progression';
   END IF;
 
   -- An explicit NULL cannot hide a fifth high or ninth medium scheduled slot.
