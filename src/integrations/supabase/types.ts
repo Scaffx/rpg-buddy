@@ -14,12 +14,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      adventure_encounters: {
+        Row: { user_id: string; stage: number; attempt: number; fought_at: string; kind: string; won: boolean; hero_power: number; enemy_power: number; gold: number; item_id: string | null; boss_id: string | null }
+        Insert: { user_id: string; stage: number; attempt: number; fought_at?: string; kind: string; won: boolean; hero_power: number; enemy_power: number; gold?: number; item_id?: string | null; boss_id?: string | null }
+        Update: { user_id?: string; stage?: number; attempt?: number; fought_at?: string; kind?: string; won?: boolean; hero_power?: number; enemy_power?: number; gold?: number; item_id?: string | null; boss_id?: string | null }
+        Relationships: [{ foreignKeyName: "adventure_encounters_item_id_fkey"; columns: ["item_id"]; isOneToOne: false; referencedRelation: "game_items"; referencedColumns: ["id"] }, { foreignKeyName: "adventure_encounters_boss_id_fkey"; columns: ["boss_id"]; isOneToOne: false; referencedRelation: "bosses"; referencedColumns: ["id"] }]
+      }
+      adventure_state: {
+        Row: { user_id: string; stage: number; attempt: number; last_tick_at: string; reward_day: string; gold_today: number; loot_today: number; last_result: Json | null; updated_at: string }
+        Insert: { user_id: string; stage?: number; attempt?: number; last_tick_at?: string; reward_day?: string; gold_today?: number; loot_today?: number; last_result?: Json | null; updated_at?: string }
+        Update: { user_id?: string; stage?: number; attempt?: number; last_tick_at?: string; reward_day?: string; gold_today?: number; loot_today?: number; last_result?: Json | null; updated_at?: string }
+        Relationships: []
+      }
+      inventory_purchase_requests: {
+        Row: { user_id: string; request_id: string; item_id: string; price: number; created_at: string }
+        Insert: { user_id: string; request_id: string; item_id: string; price: number; created_at?: string }
+        Update: { user_id?: string; request_id?: string; item_id?: string; price?: number; created_at?: string }
+        Relationships: [{ foreignKeyName: "inventory_purchase_requests_item_id_fkey"; columns: ["item_id"]; isOneToOne: false; referencedRelation: "game_items"; referencedColumns: ["id"] }]
+      }
+      inventory_kit_claims: {
+        Row: { user_id: string; kind: string; claimed_at: string }
+        Insert: { user_id: string; kind: string; claimed_at?: string }
+        Update: { user_id?: string; kind?: string; claimed_at?: string }
+        Relationships: []
+      }
+      inventory_class_gold_claims: {
+        Row: { user_id: string; claimed_at: string }
+        Insert: { user_id: string; claimed_at?: string }
+        Update: { user_id?: string; claimed_at?: string }
+        Relationships: []
+      }
+      inventory_forage_eligible: {
+        Row: { companion_id: string; user_id: string; companion_type: string; origin: string; recorded_at: string }
+        Insert: { companion_id: string; user_id: string; companion_type: string; origin: string; recorded_at?: string }
+        Update: { companion_id?: string; user_id?: string; companion_type?: string; origin?: string; recorded_at?: string }
+        Relationships: [{ foreignKeyName: "inventory_forage_eligible_companion_id_fkey"; columns: ["companion_id"]; isOneToOne: true; referencedRelation: "companions"; referencedColumns: ["id"] }]
+      }
+      inventory_forage_claims: {
+        Row: { user_id: string; forage_date: string; companion_id: string; item_id: string | null; created_at: string }
+        Insert: { user_id: string; forage_date: string; companion_id: string; item_id?: string | null; created_at?: string }
+        Update: { user_id?: string; forage_date?: string; companion_id?: string; item_id?: string | null; created_at?: string }
+        Relationships: [{ foreignKeyName: "inventory_forage_claims_item_id_fkey"; columns: ["item_id"]; isOneToOne: false; referencedRelation: "game_items"; referencedColumns: ["id"] }]
+      }
       achievements: {
         Row: {
           condition_type: string
           condition_value: number
           created_at: string
           description: string
+          fragment_reward: number
           gold_reward: number
           icon: string
           id: string
@@ -2999,15 +3042,20 @@ export type Database = {
       allocate_skill_node: { Args: { p_node_id: string }; Returns: Json }
       apply_xp_penalty: { Args: { p_amount: number }; Returns: undefined }
       buy_pet: { Args: { p_pet_type: string }; Returns: Json }
+      get_pet_catalog: { Args: never; Returns: { pet_type: string; name: string; price: number; role: string; emoji: string; sort: number; unlock_boss: string | null; unlocked: boolean; owned: boolean }[] }
       buy_shop_item: {
         Args: { p_item_id: string; p_today: string }
         Returns: Json
       }
+      buy_talent: { Args: { p_talent_id: string }; Returns: Json }
       charge_for_item: { Args: { p_item_id: string }; Returns: number }
+      claim_class_gold_reward: { Args: never; Returns: Json }
+      claim_inventory_kit: { Args: { p_kind: string }; Returns: Json }
       check_weekly_mission_failures: { Args: never; Returns: Json }
       claim_achievement: {
         Args: { p_user_achievement_id: string }
         Returns: {
+          fragment_reward: number
           gold_reward: number
           xp_reward: number
         }[]
@@ -3019,14 +3067,23 @@ export type Database = {
       claim_daily_bonus: { Args: { p_today: string }; Returns: Json }
       claim_health_challenge: { Args: never; Returns: Json }
       claim_pending_dungeon: { Args: never; Returns: Json }
+      choose_level3_companion: { Args: { p_type: string; p_name: string }; Returns: Json }
+      consume_inventory_item: { Args: { p_inventory_id: string }; Returns: Json }
       complete_co_op_mission: {
         Args: { p_mission_id: string }
         Returns: undefined
       }
       complete_mission: {
-        Args: { p_mission_id: string }
+        Args: { p_date?: string; p_mission_id: string }
         Returns: Json
       }
+      ensure_user_balance: { Args: never; Returns: number }
+      forage_inventory: { Args: { p_companion_id: string }; Returns: Json }
+      purchase_game_item: { Args: { p_item_id: string; p_request_id: string }; Returns: Json }
+      set_inventory_attunement: { Args: { p_inventory_id: string; p_attuned: boolean }; Returns: undefined }
+      set_inventory_equipped: { Args: { p_inventory_id: string; p_equipped: boolean; p_replace_weapon?: boolean }; Returns: undefined }
+      set_talent_equipped: { Args: { p_talent_row_id: string; p_equipped: boolean }; Returns: Json }
+      sync_auto_adventure: { Args: never; Returns: Json }
       complete_portal_run:
         | {
             Args: {
@@ -3358,6 +3415,7 @@ export type Database = {
         Args: { p_mission_id: string; p_today: string }
         Returns: Json
       }
+      use_scroll: { Args: { p_scroll_item_id: string }; Returns: Json }
       undo_npc_challenge: {
         Args: { p_challenge_id: string; p_npc_id: string; p_week_token: string }
         Returns: Json

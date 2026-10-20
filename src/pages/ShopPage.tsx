@@ -287,6 +287,10 @@ export default function ShopPage() {
             </div>
           </div>
 
+          <p className="text-xs text-muted-foreground" role="note">
+            {t('app.shop.undo_gold_note')}
+          </p>
+
           <div className="flex justify-end">
             <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <History className="w-4 h-4 text-orange-400" />

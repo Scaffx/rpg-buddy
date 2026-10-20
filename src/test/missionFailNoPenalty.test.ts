@@ -4,6 +4,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const rpcSpy = vi.fn().mockResolvedValue({ data: null, error: null });
 const insertedTables: string[] = [];
 const profileUpdates: any[] = [];
+const missionUpdates: any[] = [];
+const activityInserts: any[] = [];
 
 // Missão recorrente (todos os dias) com falhas acumuladas → força o caminho de
 // falha real (graça + protetor esgotados) ao longo de 30 dias.
@@ -19,6 +21,7 @@ const failingMission = {
 };
 type MissionRow = typeof failingMission & {
   frequency_type?: 'daily' | 'weekly';
+  due_date?: string | null;
 };
 let missionRows: MissionRow[] = [failingMission];
 
@@ -49,8 +52,16 @@ function makeBuilder(table: string) {
     maybeSingle: () => Promise.resolve(result),
     single: () => Promise.resolve(result),
     then: (resolve: any) => resolve(result), // torna o builder "awaitável"
-    update: (payload: any) => { if (table === 'profiles') profileUpdates.push(payload); return builder; },
-    insert: () => { insertedTables.push(table); return builder; },
+    update: (payload: any) => {
+      if (table === 'profiles') profileUpdates.push(payload);
+      if (table === 'missions') missionUpdates.push(payload);
+      return builder;
+    },
+    insert: (payload: any) => {
+      insertedTables.push(table);
+      if (table === 'activity_log') activityInserts.push(payload);
+      return builder;
+    },
     upsert: () => builder,
   };
   return builder;
@@ -71,6 +82,8 @@ describe('falha de missão NÃO drena XP/HP/MP (§4/§5 + torneira única #22)',
     rpcSpy.mockClear();
     insertedTables.length = 0;
     profileUpdates.length = 0;
+    missionUpdates.length = 0;
+    activityInserts.length = 0;
     missionRows = [failingMission];
   });
 
@@ -112,5 +125,114 @@ describe('falha de missão NÃO drena XP/HP/MP (§4/§5 + torneira única #22)',
     expect(
       profileUpdates.some((update) => update?.streak_current_days === 0),
     ).toBe(false);
+  });
+});
+
+// Data local no mesmo formato que o hook usa (en-CA = YYYY-MM-DD).
+function dataLocal(diasAtras: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - diasAtras);
+  return d.toLocaleDateString('en-CA');
+}
+
+describe('janela D-1: ontem ainda é registrável, então não é julgado (§1.3)', () => {
+  beforeEach(() => {
+    rpcSpy.mockClear();
+    insertedTables.length = 0;
+    profileUpdates.length = 0;
+    missionUpdates.length = 0;
+    activityInserts.length = 0;
+    missionRows = [failingMission];
+  });
+
+  it('a varredura recorrente para em anteontem e nunca escreve a data de ontem', async () => {
+    const ontem = dataLocal(1);
+    const anteontem = dataLocal(2);
+    const queryClient: any = { invalidateQueries: vi.fn() };
+
+    await runFailedMissionCheck('user-1', queryClient);
+
+    const diasEscritos = missionUpdates.flatMap((u) => Object.keys(u?.daily_status || {}));
+    // Anteontem já saiu da janela: é julgado (prova que a varredura rodou até a fronteira).
+    expect(diasEscritos).toContain(anteontem);
+    // Ontem, não. Nem no daily_status, nem em failed_date, nem no log.
+    expect(diasEscritos).not.toContain(ontem);
+    expect(missionUpdates.some((u) => u?.failed_date === ontem)).toBe(false);
+    expect(activityInserts.some((a) => String(a?.description || '').includes(ontem))).toBe(false);
+  });
+
+  it('missão avulsa vencida ontem não é julgada — segue registrável em "Ontem"', async () => {
+    missionRows = [{
+      ...failingMission,
+      id: 'avulsa-ontem',
+      title: 'Pagar boleto',
+      days_of_week: [],
+      due_date: dataLocal(1),
+    }];
+
+    const queryClient: any = { invalidateQueries: vi.fn() };
+    await runFailedMissionCheck('user-1', queryClient);
+
+    // Julgar ontem custaria protetor OU streak — nenhum dos dois pode acontecer.
+    expect(missionUpdates).toEqual([]);
+    expect(activityInserts.some((a) => a?.action === 'streak_protected')).toBe(false);
+    expect(profileUpdates.some((u) => u?.streak_current_days === 0)).toBe(false);
+  });
+});
+
+describe('avulsa dispensada/recuperada não volta a falhar na próxima varredura', () => {
+  beforeEach(() => {
+    rpcSpy.mockClear();
+    insertedTables.length = 0;
+    profileUpdates.length = 0;
+    missionUpdates.length = 0;
+    activityInserts.length = 0;
+    missionRows = [failingMission];
+  });
+
+  const avulsaVencida = (status: string) => {
+    const vencimento = dataLocal(5);
+    return [{
+      ...failingMission,
+      id: 'avulsa',
+      title: 'Pagar boleto',
+      days_of_week: [],
+      due_date: vencimento,
+      daily_status: { [vencimento]: status },
+    }];
+  };
+
+  it('dispensada (failed_accepted) não é re-julgada', async () => {
+    missionRows = avulsaVencida('failed_accepted');
+
+    const queryClient: any = { invalidateQueries: vi.fn() };
+    await runFailedMissionCheck('user-1', queryClient);
+
+    // Nenhum write na missão = o "Dispensar" grudou: o card não volta, o
+    // protetor não queima de novo e a sequência não zera de novo.
+    expect(missionUpdates).toEqual([]);
+    expect(activityInserts.some((a) => a?.action === 'streak_protected')).toBe(false);
+    expect(profileUpdates.some((u) => u?.streak_current_days === 0)).toBe(false);
+  });
+
+  it('recuperada ("Fiz" grava completed) não é re-julgada', async () => {
+    missionRows = avulsaVencida('completed');
+
+    const queryClient: any = { invalidateQueries: vi.fn() };
+    await runFailedMissionCheck('user-1', queryClient);
+
+    expect(missionUpdates).toEqual([]);
+    expect(activityInserts.some((a) => a?.action === 'streak_protected')).toBe(false);
+    expect(profileUpdates.some((u) => u?.streak_current_days === 0)).toBe(false);
+  });
+
+  it('protegida não queima uma segunda carga de protetor', async () => {
+    missionRows = avulsaVencida('protected');
+
+    const queryClient: any = { invalidateQueries: vi.fn() };
+    await runFailedMissionCheck('user-1', queryClient);
+
+    expect(missionUpdates).toEqual([]);
+    expect(activityInserts.some((a) => a?.action === 'streak_protected')).toBe(false);
   });
 });

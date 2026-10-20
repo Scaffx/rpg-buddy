@@ -97,13 +97,14 @@ export function getHealthChallengeXp(level: number): number {
 // `_complete_mission_with_weekly` (migration 20260810120000). Se mudar aqui,
 // mude lá — senão o app promete um XP que o servidor não paga.
 export const PRIORITY_XP_MULT: Record<string, number> = {
-  baixa: 0.7,
+  baixa: 0.2,
   media: 1.0,
-  alta: 1.5,
+  alta: 2.0,
 };
 
 /** Teto de missões de prioridade ALTA agendadas para um mesmo dia. */
 export const MAX_HIGH_PRIORITY_PER_DAY = 4;
+export const MAX_MEDIUM_PRIORITY_PER_DAY = 8;
 
 /**
  * XP base que a missão paga, já com a prioridade aplicada.

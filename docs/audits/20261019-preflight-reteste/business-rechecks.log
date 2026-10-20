@@ -1,0 +1,73 @@
+local integrated 85d9dd802e8f2a7b84faece2e2784fbc8051a72d; DB integration_cold_meta_fresh; PG17 port55579
+CASE docs/audits/20261019-correcao-final/cold_checklist.sql
+psql:docs/audits/20261019-correcao-final/cold_checklist.sql:34: NOTA:  COLD_CHECKLIST_PASS: toggle state only, 29 XP on completion, exact undo
+EXIT=0 cold_checklist.sql
+CASE docs/audits/20261019-correcao-final/cold_effects.sql
+psql:docs/audits/20261019-correcao-final/cold_effects.sql:94: NOTA:  COLD_EFFECTS_PASS: equipped social A/B, Flow spent/unspent, HP, inactive talent, next XP=25/30
+EXIT=0 cold_effects.sql
+CASE docs/audits/20261019-correcao-final/cold_effect_edges.sql
+ anchor_xp
+-----------
+ 25
+(1 row)
+
+ social_xp
+-----------
+ 5
+(1 row)
+
+ consumed_undo_xp
+------------------
+ 5
+(1 row)
+
+ social_redo_xp
+----------------
+ 5
+(1 row)
+
+ later_undo_xp
+---------------
+ 5
+(1 row)
+
+ cap_xp
+--------
+ 5
+(1 row)
+
+ regen_xp
+----------
+ 5
+(1 row)
+
+ study_xp
+----------
+ 5
+(1 row)
+
+psql:docs/audits/20261019-correcao-final/cold_effect_edges.sql:146: NOTA:  COLD_EFFECT_EDGES_PASS: perfect-day prior, consumed/later inspiration, HP A+B, HP/MP cap, damage, regen, MP spend
+EXIT=0 cold_effect_edges.sql
+CASE docs/audits/20261019-correcao-final/cold_points.sql
+psql:docs/audits/20261019-correcao-final/cold_points.sql:63: NOTA:  COLD_POINTS_PASS: 4->5->4, A/B, spent point atomic refusal
+EXIT=0 cold_points.sql
+CASE docs/audits/20261019-correcao-final/cold_priority_caps.sql
+psql:docs/audits/20261019-correcao-final/cold_priority_caps.sql:90: NOTA:  COLD_PRIORITY_PASS: today 4 high/8 medium, 10 low; tomorrow separate; undo preserves paid slot
+EXIT=0 cold_priority_caps.sql
+CASE docs/audits/20261019-correcao-final/cold_adventure_48.sql
+                    purchase_game_item
+----------------------------------------------------------
+ {"ok": true, "gold": 70, "price": 30, "replayed": false}
+(1 row)
+
+psql:docs/audits/20261019-correcao-final/cold_adventure_48.sql:42: NOTA:  COLD_ADVENTURE_PASS: 48 stages, 4 bosses, 120 gold, 2 loot, zero XP, replay stable
+psql:docs/audits/20261019-correcao-final/cold_adventure_48.sql:58: NOTA:  COLD_DAY_ROLLOVER_PASS: new São Paulo day credits 4 gold
+EXIT=0 cold_adventure_48.sql
+CASE docs/audits/20261019-correcao-final/cold_legacy_receipt.sql
+ paid_xp
+---------
+ 25
+(1 row)
+
+psql:docs/audits/20261019-correcao-final/cold_legacy_receipt.sql:42: NOTA:  COLD_LEGACY_PASS: missing effect provenance refused without balance change
+EXIT=0 cold_legacy_receipt.sql

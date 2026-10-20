@@ -1,0 +1,99 @@
+candidate 85d9dd8; service_role grant is deliberately non-gating
+CASE a1 service_grant integration_cold_meta_a1_liveacl
+BEGIN
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:1468: NOTA:  PROBE_MIGRATION_ACCEPTED
+SET
+GRANT
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+ROLLBACK
+PROBE_RESULT stage=a1 case=service_grant psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 service_grant integration_cold_pre_a12
+BEGIN
+SET
+GRANT
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:328: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=service_grant psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 service_grant integration_cold_meta_p13
+BEGIN
+SET
+GRANT
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:314: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=service_grant psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0

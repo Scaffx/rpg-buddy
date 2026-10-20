@@ -63,7 +63,7 @@ export function useDailyBonus() {
       queryClient.setQueryData(['daily-bonus-claimed', user?.id], { isClaimed: true, nextClaimAt: nextClaimTime });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal-fragments'] });
+      queryClient.invalidateQueries({ queryKey: ['my-fragments'] });
       queryClient.invalidateQueries({ queryKey: ['daily-bonus-claimed'] });
     },
     onError: () => {

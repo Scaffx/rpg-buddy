@@ -5,6 +5,7 @@ import { getAttributeLevels, getBossCombatBuffModifiers, getBossCombatStats, get
 import { getEquipmentBonuses, type InventoryItem } from './useInventory';
 import { getLevelFromXp } from '@/lib/progression';
 import { deriveMissionCategory } from '@/lib/missionTalentRules';
+import { getSaoPauloDateString } from '@/lib/weeklyMissions';
 
 function toDateString(d: Date): string {
   return d.toLocaleDateString('en-CA');
@@ -370,29 +371,16 @@ export function useAddChecklistItem() {
 }
 
 export function useToggleChecklistItem() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ itemId, completed, xpBonus }: { itemId: string; completed: boolean; xpBonus?: number }) => {
+    mutationFn: async ({ itemId, completed }: { itemId: string; completed: boolean; xpBonus?: number }) => {
+      // O checklist altera apenas estado. A conclusão da rotina paga o bônus
+      // persistido uma vez, na mesma transação da recompensa principal.
       const { error } = await supabase.from("checklist_items").update({ completed }).eq("id", itemId);
       if (error) throw error;
-
-      if (completed && user) {
-        const bonus = xpBonus || 2;
-        await supabase.from("xp_history" as any).insert({
-          user_id: user.id,
-          xp_gained: bonus,
-          type: "sub_mission",
-        } as any);
-
-        // 🔒 Server-side: bônus de XP do checklist via add_xp_to_user (auth.uid()+clamp).
-        await supabase.rpc('add_xp_to_user', { p_user_id: user.id, p_xp: bonus });
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checklist"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["xp_history"] });
     },
   });
 }
@@ -422,16 +410,15 @@ export function useTodayXp() {
   return useQuery({
     queryKey: ["xp_today", user?.id],
     queryFn: async () => {
-      const now = new Date();
-      const startOfDayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayInSaoPaulo = getSaoPauloDateString();
+      const startOfDay = new Date(`${todayInSaoPaulo}T00:00:00-03:00`);
       const { data, error } = await supabase
         .from("activity_log" as any)
         .select("xp_gained")
         .eq("user_id", user!.id)
-        .gt("xp_gained", 0)
-        .gte("created_at", startOfDayLocal.toISOString());
+        .gte("created_at", startOfDay.toISOString());
       if (error) throw error;
-      return (data || []).reduce((sum: number, item: any) => sum + (item.xp_gained || 0), 0);
+      return Math.max(0, (data || []).reduce((sum: number, item: any) => sum + (item.xp_gained || 0), 0));
     },
     enabled: !!user,
     refetchInterval: 10000,
@@ -496,21 +483,20 @@ export function useRankPosition() {
   });
 }
 
-// ✅ Hook para conceder XP quando água + comida estão completas
-export function useAwardHealthXP() {
-  const { user } = useAuth();
+// A meta de saúde restaura HP; progressão permanente só vem de rotinas.
+export function useRestoreHealthAfterGoals() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async () => {
-      // 🔒 Server-side: guard diário, +35 XP e restauração de HP no RPC
-      // claim_health_challenge (XP é escrito pelo servidor, não pelo client).
-      const { error } = await supabase.rpc('claim_health_challenge');
+      const { data, error } = await supabase.rpc('claim_health_challenge');
       if (error) throw error;
-      return { success: true, xpAwarded: 35 };
+      if (!(data as { success?: boolean } | null)?.success) {
+        throw new Error('Resposta inválida ao restaurar a saúde');
+      }
+      return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
       queryClient.invalidateQueries({ queryKey: ['health_stats'] });
     },

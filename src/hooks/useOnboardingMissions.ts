@@ -71,14 +71,19 @@ export function useClaimOnboardingMission() {
         { p_code: code },
       );
       if (error) throw error;
-      return data as ClaimOnboardingMissionResult;
+      if (!data || typeof data.xp_reward !== 'number') {
+        throw new Error('Resposta inválida ao concluir a etapa inicial');
+      }
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['onboarding-missions', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['xp_today', user?.id] });
+      if (result.xp_reward > 0) {
+        queryClient.invalidateQueries({ queryKey: ['xp_today', user?.id] });
+      }
     },
   });
 }

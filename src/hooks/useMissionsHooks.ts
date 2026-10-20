@@ -55,26 +55,34 @@ export const useCompleteMission = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      missionId, 
-      attributeId, 
-      xpReward, 
-      secondaryAttributeIds = [] 
-    }: {
-      missionId: string; 
-      attributeId: string; 
-      xpReward: number; 
+    mutationFn: async ({ missionId, targetDate }: {
+      missionId: string;
+      /** Mantidos no contrato de chamadores legados; nunca enviados a RPC nem usados como credito. */
+      attributeId?: string;
+      xpReward?: number;
       secondaryAttributeIds?: string[];
+      /**
+       * Dia que a pessoa está registrando (YYYY-MM-DD). Ausente = hoje.
+       * Vale hoje ou ontem — mas quem decide se a data é aceitável é o
+       * servidor, não esta linha. Aqui trafega só a intenção.
+       */
+      targetDate?: string;
     }) => {
       // 🔒 Economia server-side: toda a lógica de recompensa (XP escalado,
       // ouro por streak/checklist/talento, level, chaves de boss, efeitos de
       // talento, inspiração) roda no RPC transacional `complete_mission`.
-      // O RPC recebe somente mission_id — o servidor resolve data, hora,
-      // contadores e multiplicadores, então
-      // não é possível forjar XP/ouro/level pelo navegador.
-      const { data, error } = await supabase.rpc('complete_mission', {
-        p_mission_id: missionId,
-      });
+      // O cliente PROPÕE o dia; o servidor valida a janela (hoje ou ontem),
+      // resolve hora, contadores e multiplicadores — então continua não sendo
+      // possível forjar XP/ouro/level pelo navegador.
+      // O payload só carrega p_date quando há dia proposto. PostgREST escolhe
+      // a overload pelo conjunto de nomes de argumento: mandar p_date sempre
+      // faria a conclusão falhar com PGRST202 em qualquer ambiente onde a
+      // migration da janela D-1 ainda não subiu — inclusive na janela entre o
+      // deploy do front e a aplicação manual da migration em produção.
+      const args = targetDate
+        ? { p_mission_id: missionId, p_date: targetDate }
+        : { p_mission_id: missionId };
+      const { data, error } = await supabase.rpc('complete_mission', args);
       if (error) throw error;
 
       const result = (data || {}) as {
@@ -93,6 +101,8 @@ export const useCompleteMission = () => {
         execution_xp?: number;
         milestone_xp?: number;
         weekend_bonus?: boolean;
+        completed_date?: string;
+        is_backfill?: boolean;
       };
       return {
         success: true,
@@ -111,12 +121,16 @@ export const useCompleteMission = () => {
         executionXp: result.execution_xp ?? result.xp_gained ?? 0,
         milestoneXp: result.milestone_xp ?? 0,
         weekendBonus: !!result.weekend_bonus,
+        // Dia que o servidor de fato creditou — é ele que manda, não o que o
+        // cliente propôs.
+        completedDate: result.completed_date ?? getSaoPauloDateString(),
+        isBackfill: !!result.is_backfill,
       };
     },
 
     // ⚡ OPTIMISTIC UPDATE: marca a missão como concluída na UI antes do servidor responder.
-    onMutate: async ({ missionId, attributeId, xpReward, secondaryAttributeIds = [] }) => {
-      const today = getSaoPauloDateString();
+    onMutate: async ({ missionId, targetDate }) => {
+      const today = targetDate ?? getSaoPauloDateString();
       await queryClient.cancelQueries({ queryKey: ['missions'] });
 
       const previousMissions = queryClient.getQueriesData({ queryKey: ['missions'] });
@@ -133,7 +147,12 @@ export const useCompleteMission = () => {
             return {
               ...m,
               weekly_current_count: Number(m.weekly_current_count || 0) + 1,
-              weekly_last_completed_date: today,
+              // O servidor grava daily_status também na semanal, e é por ele que
+              // a lista pergunta "este dia foi marcado?". Sem espelhar aqui, o
+              // card só sairia da lista no refetch.
+              daily_status: { ...(m.daily_status || {}), [today]: 'completed' },
+              weekly_last_completed_date:
+                [m.weekly_last_completed_date, today].filter(Boolean).sort().pop() ?? today,
             };
           }
           const days: string[] = m.days_of_week || [];
@@ -144,33 +163,7 @@ export const useCompleteMission = () => {
         });
       });
 
-      // Atualiza otimisticamente o XP do perfil (estimativa)
-      queryClient.setQueryData(['profile', user?.id], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          total_xp: (old.total_xp || 0) + xpReward,
-          xp_today: (old.xp_today || 0) + xpReward,
-          missions_completed: (old.missions_completed || 0) + 1,
-        };
-      });
-
-      // Atualiza otimisticamente os atributos
-      queryClient.setQueryData(['attributes', user?.id], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((a: any) => {
-          if (a.id === attributeId) return { ...a, xp: (a.xp || 0) + xpReward };
-          if (secondaryAttributeIds.includes(a.id)) return { ...a, xp: (a.xp || 0) + 12 };
-          return a;
-        });
-      });
-
-      // Atualiza otimisticamente o ouro (estimativa: +2)
-      queryClient.setQueryData(['gold-balance', user?.id], (old: any) => {
-        if (!old) return old;
-        return { ...old, gold: (old.gold || 0) + 2 };
-      });
-
+      // Economia só aparece após retorno confirmado da RPC.
       return { previousMissions, previousProfile, previousAttributes, previousGold };
     },
 
@@ -179,11 +172,12 @@ export const useCompleteMission = () => {
     // "demora pra contabilizar" e o salto de valor (estimativa → real).
     onSuccess: (data: any, _vars, context: any) => {
       const prevProfile = context?.previousProfile as any;
+      const creditedToday = data?.completedDate === getSaoPauloDateString();
       if (prevProfile) {
         queryClient.setQueryData(['profile', user?.id], {
           ...prevProfile,
           total_xp: (prevProfile.total_xp || 0) + (data?.xpGained || 0),
-          xp_today: (prevProfile.xp_today || 0) + (data?.xpGained || 0),
+          xp_today: (prevProfile.xp_today || 0) + (creditedToday ? (data?.xpGained || 0) : 0),
           missions_completed: (prevProfile.missions_completed || 0) + 1,
           boss_keys: (prevProfile.boss_keys || 0) + (data?.gainedKeys || 0),
         });
@@ -196,8 +190,10 @@ export const useCompleteMission = () => {
         });
       }
       // O card "XP hoje" usa a query própria useTodayXp (['xp_today']).
-      queryClient.setQueryData(['xp_today', user?.id], (old: any) =>
-        Number(old || 0) + (data?.xpGained || 0));
+      if (creditedToday) {
+        queryClient.setQueryData(['xp_today', user?.id], (old: any) =>
+          Number(old || 0) + (data?.xpGained || 0));
+      }
 
       if (data?.frequencyType === 'weekly') {
         queryClient.setQueriesData({ queryKey: ['missions'] }, (old: any) => {
@@ -207,7 +203,14 @@ export const useCompleteMission = () => {
               ? {
                   ...mission,
                   weekly_current_count: data.weeklyCount,
-                  weekly_last_completed_date: getSaoPauloDateString(),
+                  // Registrar ontem não pode fazer este campo andar pra trás:
+                  // ele responde "qual foi a última execução", e a de ontem não
+                  // é mais recente que a de hoje que já estava lá.
+                  weekly_last_completed_date:
+                    [mission.weekly_last_completed_date, data.completedDate]
+                      .filter(Boolean)
+                      .sort()
+                      .pop() ?? data.completedDate,
                   weekly_milestone_paid:
                     mission.weekly_milestone_paid || data.milestoneReached,
                 }

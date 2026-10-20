@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import AppLayout from "@/components/AppLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfile, useAttributes, useAwardHealthXP, useBosses, useUpdateDisplayName, useUpdateRegion, useClasses, useSyncHealthMaxes, useUpdateAvatar } from "@/hooks/useProfile";
+import { useProfile, useAttributes, useRestoreHealthAfterGoals, useBosses, useUpdateDisplayName, useUpdateRegion, useClasses, useSyncHealthMaxes, useUpdateAvatar } from "@/hooks/useProfile";
 import {
   useUserAchievements,
   useAllAchievements,
@@ -33,6 +33,7 @@ import {
 import { getAttributeColorClass } from "@/lib/attributes";
 import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
 import { getLevelProgress } from "@/lib/progression";
+import { getSaoPauloDateString } from "@/lib/weeklyMissions";
 import { useDungeonPartnerships, BOND_TIERS, runsToNextTier } from "@/hooks/useDungeonPartnerships";
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 import NotificationSettings from '@/components/NotificationSettings';
@@ -818,7 +819,7 @@ export default function ProfilePage() {
   const consumeItem = useConsumeItem();
   const useScroll = useUseScroll();
   const equipBonuses = getEquipmentBonuses(inventory as InventoryItem[]);
-  const awardHealthXP = useAwardHealthXP();
+  const restoreHealth = useRestoreHealthAfterGoals();
   const updateDisplayName = useUpdateDisplayName();
   const updateRegion = useUpdateRegion();
   const updateAvatar = useUpdateAvatar();
@@ -852,7 +853,7 @@ export default function ProfilePage() {
   const [restModeEnabled, setRestModeEnabled] = useState(false);
   const [volume, setVolume] = useState(100);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [xpAwarded, setXpAwarded] = useState(false);
+  const [healthRestored, setHealthRestored] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [selectedRespecClass, setSelectedRespecClass] = useState<string>("guerreiro");
@@ -895,15 +896,15 @@ export default function ProfilePage() {
     setVolume(volume);
   }, [volume]);
 
-  // Reset XP Award flag diariamente após 23:59
+  // Reinicia a restauração diária no mesmo fuso das rotinas.
   useEffect(() => {
     const checkDayChange = () => {
-      const lastCheckDate = localStorage.getItem('lastXpCheckDate');
-      const today = new Date().toLocaleDateString('en-CA');
+      const lastCheckDate = localStorage.getItem('lastHealthRestoreCheckDate');
+      const today = getSaoPauloDateString();
       
       if (lastCheckDate !== today) {
-        setXpAwarded(false);
-        localStorage.setItem('lastXpCheckDate', today);
+        setHealthRestored(false);
+        localStorage.setItem('lastHealthRestoreCheckDate', today);
       }
     };
 
@@ -1276,36 +1277,35 @@ export default function ProfilePage() {
     }
   });
 
-  const checkAndAwardXP = async () => {
+  const checkAndRestoreHealth = async () => {
     try {
-      await awardHealthXP.mutateAsync();
-      setXpAwarded(true);
-      toast.success(t('app.profile.healthChallengeCompleteToast'));
+      await restoreHealth.mutateAsync();
+      setHealthRestored(true);
+      toast.success(t('app.profile.allGoalsComplete'));
     } catch (error: any) {
-      if (error.message.includes('já ganhou')) {
-        setXpAwarded(true);
-        toast.info(t('app.profile.xpAlreadyCollectedToast'));
+      if (error.message.includes('já recebeu') || error.message.includes('já ganhou')) {
+        setHealthRestored(true);
       } else {
-        toast.error(t('app.profile.xpErrorPrefix') + error.message);
+        toast.error(error.message);
       }
     }
   };
 
   const waterPercent = Math.min(100, Math.round((totalWaterToday / waterTargetMl) * 100));
 
-  // 🎯 Auto-disparar recompensa de XP quando ambas as metas (3+ refeições e água total) forem atingidas
+  // Restaura HP uma vez ao atingir as metas; não concede XP.
   useEffect(() => {
     if (
-      !xpAwarded &&
-      !awardHealthXP.isPending &&
+      !healthRestored &&
+      !restoreHealth.isPending &&
       mealsToday >= Math.max(3, mealsTarget) &&
       totalWaterToday >= waterTargetMl &&
       waterTargetMl > 0
     ) {
-      checkAndAwardXP();
+      checkAndRestoreHealth();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mealsToday, totalWaterToday, waterTargetMl, mealsTarget, xpAwarded]);
+  }, [mealsToday, totalWaterToday, waterTargetMl, mealsTarget, healthRestored]);
 
   const hpPercent = Math.round((currentHp / maxHp) * 100);
   const mpPercent = Math.round((currentMp / maxMp) * 100);
@@ -1730,7 +1730,7 @@ export default function ProfilePage() {
               </motion.div>
             )}
 
-            {/* XP Award Card */}
+            {/* Metas de saúde concluídas */}
             {mealsToday >= Math.max(3, mealsTarget) && totalWaterToday >= waterTargetMl && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -1739,8 +1739,6 @@ export default function ProfilePage() {
               >
                 <span className="text-4xl inline-block">🏆</span>
                 <h2 className="font-display font-bold text-lg text-success">{t('app.profile.allGoalsComplete')}</h2>
-                <p className="text-sm text-muted-foreground">{t('app.profile.xpHealthRewardMsg')}</p>
-                <div className="text-3xl font-bold text-xp pt-2">{t('app.profile.xpRewardValue')}</div>
               </motion.div>
             )}
             
@@ -2597,12 +2595,23 @@ export default function ProfilePage() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">{ach.description}</p>
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-xp/20 text-primary border border-primary/20 font-bold">
-                          +{ach.xp_reward} XP
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">
-                          +{ach.gold_reward} 🪙
-                        </span>
+                        {/* Conquista que não exige rotina paga fragmento, e aí XP e
+                            ouro são zero — mostrar "+0 XP" prometeria o que ela não dá. */}
+                        {(ach.xp_reward ?? 0) > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-xp/20 text-primary border border-primary/20 font-bold">
+                            +{ach.xp_reward} XP
+                          </span>
+                        )}
+                        {(ach.gold_reward ?? 0) > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 font-bold">
+                            +{ach.gold_reward} 🪙
+                          </span>
+                        )}
+                        {((ach as any).fragment_reward ?? 0) > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/20 font-bold">
+                            +{(ach as any).fragment_reward} 🔮 fragmento{(ach as any).fragment_reward > 1 ? 's' : ''}
+                          </span>
+                        )}
                         {claimed && (
                           <span className="text-[10px] text-emerald-400 font-semibold">✓ Resgatada</span>
                         )}

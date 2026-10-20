@@ -5,138 +5,47 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useAllCompanions } from './useCompanion';
-import { useMissions, useProfile } from './useProfile';
-import { computeAnchorStatusToday, computeHealthAnchors, combinePerfectDay } from '@/lib/anchors';
-import { DAYS_MAP, getLocalDateString } from '@/lib/streakUtils';
-import {
-  getActivePetType,
-  isForagePet,
-  hasForagedToday,
-  accrueAffinity,
-  rollForageRarity,
-  FORAGE_RARITY_DESC,
-  type ForageRarity,
-} from '@/lib/pets';
+import { getActivePetType, isForagePet } from '@/lib/pets';
+import { requireRpcObject } from '@/lib/rpcPayload';
 
-const db = supabase as any;
-const EQUIP_CATEGORIES = ['weapon', 'armor', 'accessory'];
 
-type ForageItem = { id: string; name: string; rarity: string };
-
-/**
- * Escolhe um item equipável do forrageio: começa na raridade sorteada e desce
- * até achar um item que o herói ainda NÃO tem (nunca sobe acima do teto). Exclui
- * consumíveis e drops de boss (forrageio é gear "selvagem", não loot exclusivo).
- */
-async function pickForageItem(rarity: ForageRarity, level: number, userId: string): Promise<ForageItem | null> {
-  const { data: owned } = await db.from('user_inventory').select('item_id').eq('user_id', userId);
-  const ownedIds = new Set((owned || []).map((r: any) => r.item_id));
-
-  const startIdx = FORAGE_RARITY_DESC.indexOf(rarity);
-  for (let i = startIdx; i < FORAGE_RARITY_DESC.length; i++) {
-    const { data } = await db
-      .from('game_items')
-      .select('id, name, rarity, category, is_consumable, boss_drop_level, level_required')
-      .in('category', EQUIP_CATEGORIES)
-      .eq('rarity', FORAGE_RARITY_DESC[i])
-      .eq('is_consumable', false)
-      .is('boss_drop_level', null)
-      .lte('level_required', Math.max(1, level));
-    const pool = (data || []).filter((it: any) => !ownedIds.has(it.id));
-    if (pool.length > 0) {
-      const chosen = pool[Math.floor(Math.random() * pool.length)];
-      return { id: chosen.id, name: chosen.name, rarity: chosen.rarity };
-    }
-  }
-  return null;
-}
-
-/**
- * Job diário de forrageio (Fase 1.5). Roda no app open (montado no AppLayout).
- * Se o pet ATIVO for caçador: acumula afinidade em dia perfeito e, 1x/dia, traz
- * um item equipável cuja raridade escala com a afinidade. Client-only, sem edge.
- * Falha em silêncio — forrageio é bônus e nunca pode quebrar o app.
- */
+/** One server-validated forage claim per user and São Paulo day. */
 export function useForrageio() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data: companions } = useAllCompanions();
-  const { data: missions } = useMissions();
-  const { data: profile } = useProfile();
   const ranForDayRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user || !companions || !missions) return;
-
+    if (!user || !companions) return;
     const activeType = getActivePetType(user.id);
     if (!isForagePet(activeType)) return;
     const pet = companions.find((c) => c.companion_type === activeType);
     if (!pet) return;
 
-    const todayStr = getLocalDateString();
-    if (ranForDayRef.current === todayStr) return; // já processado nesta sessão hoje
-    ranForDayRef.current = todayStr;
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    if (ranForDayRef.current === today) return;
+    ranForDayRef.current = today;
 
     void (async () => {
       try {
-        const todayDay = DAYS_MAP[new Date().getDay()];
-        const missionAnchor = computeAnchorStatusToday(missions as any[], todayStr, todayDay);
-        // Âncoras de saúde (opt-in): refeição/água registradas no Perfil contam pro dia perfeito.
-        const healthEnabled = Boolean((profile as any)?.health_anchors_enabled);
-        let healthAnchors = { meal: true, water: true };
-        if (healthEnabled) {
-          const [meals, water] = await Promise.all([
-            db.from('meal_log').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('meal_date', todayStr),
-            db.from('water_log').select('amount_ml').eq('user_id', user.id).eq('log_date', todayStr),
-          ]);
-          const mealCount = meals.count ?? 0;
-          const waterMl = (water.data || []).reduce((s: number, r: any) => s + Number(r.amount_ml || 0), 0);
-          healthAnchors = computeHealthAnchors(mealCount, waterMl);
-        }
-        const perfect = combinePerfectDay(missionAnchor, healthEnabled, healthAnchors);
-        const perfectDay = perfect.hasAnchors && perfect.allComplete;
-
-        // 1) Afinidade: +1 uma vez por dia perfeito.
-        let affinity = Number(pet.affinity ?? 0);
-        const accrued = accrueAffinity(affinity, pet.last_affinity_date ?? null, perfectDay, todayStr);
-        if (accrued) {
-          affinity = accrued.affinity;
-          await db
-            .from('companions')
-            .update({ affinity: accrued.affinity, last_affinity_date: accrued.lastAffinityDate })
-            .eq('id', pet.id);
-        }
-
-        // 2) Forrageio: 1x/dia.
-        if (!hasForagedToday(pet.last_forage_at ?? null, todayStr)) {
-          const rarity = rollForageRarity(affinity);
-          const item = await pickForageItem(rarity, Number(profile?.level ?? 1), user.id);
-
-          // Marca forrageado independentemente de ter achado item (1x/dia real).
-          await db.from('companions').update({ last_forage_at: todayStr }).eq('id', pet.id);
-
-          if (item) {
-            await db.from('user_inventory').insert({
-              user_id: user.id,
-              item_id: item.id,
-              quantity: 1,
-              equipped: false,
-            });
-            qc.invalidateQueries({ queryKey: ['inventory'] });
-            toast.success(t('app.companion.forage_toast_title', { name: pet.name, defaultValue: `🐾 ${pet.name} forrageou!` }), {
-              description: `${item.name} · ${item.rarity}`,
-            });
-          }
-        }
-
+        const { data, error } = await supabase.rpc('forage_inventory', { p_companion_id: pet.id });
+        if (error) throw error;
+        const result = requireRpcObject(data, 'forage_inventory');
+        if (result.ok !== true || typeof result.replayed !== 'boolean') throw new Error('Forrageio não confirmado pelo servidor.');
         qc.invalidateQueries({ queryKey: ['companions_all', user.id] });
-      } catch (e) {
-        // Silencioso: se as colunas ainda não existem (pré-migração) ou falha de rede,
-        // libera o retry no próximo open sem incomodar o usuário.
+        if (typeof result.item_id === 'string' && !result.replayed) {
+          qc.invalidateQueries({ queryKey: ['inventory', user.id] });
+          toast.success(t('app.companion.forage_toast_title', {
+            name: pet.name,
+            defaultValue: `🐾 ${pet.name} forrageou!`,
+          }), { description: `${typeof result.name === 'string' ? result.name : 'Item'} · ${typeof result.rarity === 'string' ? result.rarity : ''}` });
+        }
+      } catch (error) {
         ranForDayRef.current = null;
-        console.warn('[forrageio] pulado:', e);
+        console.warn('[forrageio] pulado:', error);
       }
     })();
-  }, [user, companions, missions, profile, qc, t]);
+  }, [user, companions, qc, t]);
 }

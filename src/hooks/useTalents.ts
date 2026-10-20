@@ -46,6 +46,7 @@ export function useTalentEffects() {
   const effects = new Set<string>();
 
   for (const row of data || []) {
+    if (!row.equipped) continue;
     const efeito = String((row as any).talentos_disponiveis?.efeito || '');
     if (efeito) effects.add(efeito);
   }
@@ -61,64 +62,8 @@ export function useBuyTalent() {
     mutationFn: async (talento: Talent) => {
       if (!user) throw new Error('Nao autenticado');
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('pontos_talento')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      const pontos = Number(profile?.pontos_talento ?? 0);
-      if (pontos <= 0) {
-        throw new Error('Voce nao tem pontos de talento suficientes.');
-      }
-
-      const { data: existing } = await supabase
-        .from('talentos_jogador')
-        .select('id')
-        .eq('personagem_id', user.id)
-        .eq('talento_id', talento.id)
-        .maybeSingle();
-
-      if (existing) {
-        throw new Error('Talento ja adquirido.');
-      }
-
-      // Auto-equipar se ainda houver vaga (até MAX_EQUIPPED_TALENTS).
-      // Evita o paradoxo do usuário comprar um talento e ele não estar
-      // equipado/ativo até ele tomar uma segunda ação manual.
-      const { count: currentlyEquipped } = await supabase
-        .from('talentos_jogador')
-        .select('id', { count: 'exact', head: true })
-        .eq('personagem_id', user.id)
-        .eq('equipped', true);
-
-      const shouldAutoEquip = (currentlyEquipped ?? 0) < MAX_EQUIPPED_TALENTS;
-
-      const { error: insertError } = await supabase
-        .from('talentos_jogador')
-        .insert({
-          personagem_id: user.id,
-          talento_id: talento.id,
-          equipped: shouldAutoEquip,
-        });
-
-      if (insertError) throw insertError;
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ pontos_talento: pontos - 1 })
-        .eq('user_id', user.id);
-
-      if (updateError) throw updateError;
-
-      await supabase.from('activity_log').insert({
-        user_id: user.id,
-        action: 'talent_bought',
-        description: `Talento adquirido: ${talento.nome}`,
-        xp_gained: 0,
-      });
+      const { error } = await supabase.rpc('buy_talent', { p_talent_id: talento.id });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['talentos-jogador'] });
@@ -133,19 +78,12 @@ export function useToggleEquipTalent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ rowId, currentlyEquipped, equippedCount }: { rowId: string; currentlyEquipped: boolean; equippedCount: number }) => {
+    mutationFn: async ({ rowId, currentlyEquipped }: { rowId: string; currentlyEquipped: boolean; equippedCount: number }) => {
       if (!user) throw new Error('Nao autenticado');
-
-      if (!currentlyEquipped && equippedCount >= MAX_EQUIPPED_TALENTS) {
-        throw new Error(`Limite de ${MAX_EQUIPPED_TALENTS} talentos equipados atingido.`);
-      }
-
-      const { error } = await supabase
-        .from('talentos_jogador')
-        .update({ equipped: !currentlyEquipped })
-        .eq('id', rowId)
-        .eq('personagem_id', user.id);
-
+      const { error } = await supabase.rpc('set_talent_equipped', {
+        p_talent_row_id: rowId,
+        p_equipped: !currentlyEquipped,
+      });
       if (error) throw error;
     },
     onMutate: async ({ rowId, currentlyEquipped }) => {

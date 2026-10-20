@@ -1,41 +1,22 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { useBosses, useBossBattles, useProfile, useAttributes, useStartActiveCombat, useHealthStats, useWorldEventBosses } from '@/hooks/useProfile';
-import { getLevelFromXp } from '@/lib/progression';
+import { useProfile, useAttributes, useHealthStats, useWorldEventBosses } from '@/hooks/useProfile';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Loader2, Skull, Users, Flame, Trophy, Globe, Crown, Eye, EyeOff, AlertTriangle, Copy, Swords, UserPlus, LogIn } from 'lucide-react';
+import { Loader2, Skull, Flame, Trophy, Globe, Crown, Copy, Swords, UserPlus, LogIn } from 'lucide-react';
 import GuidedTour, { type TourStep } from '@/components/GuidedTour';
 
 import { useToast } from '@/hooks/use-toast';
-import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats } from '@/lib/combat';
+import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import CombatArena from '@/components/CombatArena';
-import SphinxQuizModal from '@/components/SphinxQuizModal';
 import DungeonArena, { type PotionItem, type SessionPlayer } from '@/components/DungeonArena';
-import HeroStatusBar from '@/components/HeroStatusBar';
-import { useHeroStoryChoices } from '@/hooks/useHeroStoryChoices';
 import { useAuth } from '@/hooks/useAuth';
 import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
-
-/** Boss name patterns for story events (case-insensitive match) */
-const SKELETON_BOSS_PATTERN   = /esquelet/i;
-const MANTIROCA_BOSS_PATTERN  = /mantiroca/i;
-const IMMORTAL_BOSS_PATTERN   = /guerreiro\s+imortal/i;
-// Sphinx do Deserto (lv14): gatilho da fusão Fênix -> Esfinge (roadmap #2).
-// Não casa com "Esfinge Guardiã" (lv41), que é outro boss.
-const SPHINX_BOSS_PATTERN     = /sphinx\s+do\s+deserto/i;
-// Cadeia nórdica (roadmap #5).
-const GOLEM_ADAMANTINA_PATTERN = /golem\s+de\s+adamantina/i;
-const FENRIR_BOSS_PATTERN      = /fenrir/i;
-const ODIN_BOSS_PATTERN        = /\bodin\b/i;
-// Quiz da Esfinge / Djinn (roadmap #6).
-const ESFINGE_GUARDIA_PATTERN  = /esfinge\s+guardi/i; // lv41 (não casa com "Sphinx do Deserto" lv14)
-const DJINN_BOSS_PATTERN       = /djinn/i;             // lv39
+import AutoAdventure from '@/components/AutoAdventure';
 
 const REGION_LABELS: Record<string, string> = {
   south_america: 'América do Sul',
@@ -127,37 +108,14 @@ function WorldEventsTeaser() {
 export default function BossPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { data: bosses, isLoading } = useBosses();
-  const { data: battles } = useBossBattles();
   const { data: profile } = useProfile();
   const { data: attributes } = useAttributes();
   const { data: healthStats } = useHealthStats();
   const { data: inventory } = useInventory();
-  const startActiveCombat = useStartActiveCombat();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // ── Story hooks ─────────────────────────────────────────────────────────
-  const { data: storyChoices }    = useHeroStoryChoices();
-  // Esqueleto/Ossinho removido (spec §4: companheiros viraram cosméticos).
-  const [phoenixFusionOpen,    setPhoenixFusionOpen]    = useState(false);
-  const [phoenixFusing,        setPhoenixFusing]        = useState(false);
-  // ── Cadeia nórdica (roadmap #5) ──
-  const [ferreiroRescueOpen,   setFerreiroRescueOpen]   = useState(false);
-  const [ferreiroRescuing,     setFerreiroRescuing]     = useState(false);
-  const [fenrirChoiceOpen,     setFenrirChoiceOpen]     = useState(false);
-  const [fenrirChoosing,       setFenrirChoosing]       = useState(false);
-  const [odinIntroBoss,        setOdinIntroBoss]        = useState<any | null>(null);
-  // ── Quiz da Esfinge/Djinn (roadmap #6) ──
-  const [quizConfig, setQuizConfig] = useState<{ boss: any; difficulty: 'easy' | 'hard'; count: number; passThreshold: number } | null>(null);
-  const [mantirocaWarningBoss, setMantirocaWarningBoss] = useState<any | null>(null);
-  const [boostedMantirocaHp,   setBoostedMantirocaHp]   = useState(0);
-  const [deathWarningBoss,     setDeathWarningBoss]     = useState<any | null>(null);
-  // ────────────────────────────────────────────────────────────────────────
-
   const [activeDungeon, setActiveDungeon] = useState<{ id: string; name: string; friendCount: number; sessionId?: string; sessionPlayers?: SessionPlayer[]; isHost?: boolean } | null>(null);
-  const [activeCombat, setActiveCombat] = useState<{ id: string; bossId: string; bossName: string; bossIcon: string; bossElement: string | null; bossHp: number; playerHp: number; playerMp: number; playerMaxMp: number; playerFatigue: number } | null>(null);
-
   // ── Dungeon co-op session state ───────────────────────────────────────────
   type SessionFlow = 'idle' | 'choosing' | 'creating' | 'lobby' | 'joining';
   const [sessionFlow,     setSessionFlow]     = useState<SessionFlow>('idle');
@@ -167,11 +125,7 @@ export default function BossPage() {
   const [joinCodeInput,   setJoinCodeInput]   = useState('');
   const [sessionLoading,  setSessionLoading]  = useState(false);
   const sessionChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const [arenaVisible, setArenaVisible] = useState<boolean>(() => {
-    const stored = localStorage.getItem('rpg_combat_arena_visible');
-    return stored === null ? true : stored === 'true';
-  });
-  const [activeTab, setActiveTab] = useState<"solo" | "coletiva" | "ranking">("solo");
+  const [activeTab, setActiveTab] = useState<"aventura" | "coletiva" | "ranking">("aventura");
   const [rankingView, setRankingView] = useState<'mundial' | 'regional'>('mundial');
   const effectiveRegion = rankingView === 'mundial' ? null : (profile?.region ?? null);
   const { data: rankings, isLoading: rankingsLoading } = useRankings(effectiveRegion);
@@ -179,17 +133,6 @@ export default function BossPage() {
   const playerStatsBase = getPlayerCombatStats(profile?.level || 1, attrLevels);
   const equipBonuses = getEquipmentBonuses((inventory || []) as InventoryItem[]);
 
-  /** True se o jogador possui Tridente de Poseidon OU Chama Eterna de Ifrit */
-  const phoenixCanDie = Boolean(
-    inventory?.some((inv) =>
-      (inv.game_items as any)?.effect === 'derrota_fenix_permanente' ||
-      (inv.game_items as any)?.effect === 'captura_fenix_pet',
-    ),
-  );
-  // Afinidade da arma equipada (Cinzas de Guerra) — usada no ataque básico.
-  const equippedWeaponElement = (
-    inventory?.find((inv) => inv.equipped && (inv.game_items as any)?.weapon_element)?.game_items as any
-  )?.weapon_element || undefined;
   const playerStats = {
     ...playerStatsBase,
     atk:  playerStatsBase.atk  + equipBonuses.atk,
@@ -199,283 +142,6 @@ export default function BossPage() {
     crit: playerStatsBase.crit + equipBonuses.crit,
     hp:   playerStatsBase.hp   + equipBonuses.hp,
     mp:   playerStatsBase.mp + equipBonuses.mp,
-  };
-
-  const handleCombatVictory = () => {
-    queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
-    queryClient.invalidateQueries({ queryKey: ['profile'] });
-    queryClient.invalidateQueries({ queryKey: ['health_stats'] });
-    queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-
-    const bossName = activeCombat?.bossName ?? '';
-    // (História do esqueleto/Ossinho removida — §4. O boss de esqueleto agora
-    // é um boss comum, sem escolha de adoção.)
-
-    // Fusão Fênix -> Esfinge (roadmap #2): ao vencer a Sphinx do Deserto, se o
-    // herói já enfrentou a Fênix Renascente (que escapou ao menos 1×) e ainda
-    // não houve a união, dispara o encadeamento de história uma única vez.
-    if (
-      SPHINX_BOSS_PATTERN.test(bossName) &&
-      (storyChoices?.phoenix_kill_count ?? 0) >= 1 &&
-      !storyChoices?.phoenix_fused
-    ) {
-      setTimeout(() => setPhoenixFusionOpen(true), 1500);
-    }
-
-    // ── Cadeia nórdica (roadmap #5) ──────────────────────────────────────────
-    // Golem de Adamantina derrotado -> dropa a Picareta e abre o resgate do Ferreiro.
-    if (GOLEM_ADAMANTINA_PATTERN.test(bossName) && !storyChoices?.picareta_adamantina) {
-      void grantPicaretaAdamantina();
-    }
-    // Fenrir derrotado -> oferece libertá-lo das correntes (vira aliado contra Odin).
-    if (FENRIR_BOSS_PATTERN.test(bossName) && !storyChoices?.fenrir_allied) {
-      setTimeout(() => setFenrirChoiceOpen(true), 1500);
-    }
-  };
-
-  /** Golem de Adamantina: concede a Picareta de Adamantina e dispara o resgate do Ferreiro. */
-  const grantPicaretaAdamantina = async () => {
-    if (!user) return;
-    try {
-      const { data: picareta } = await supabase
-        .from('game_items')
-        .select('id')
-        .eq('effect', 'quest_picareta_adamantina')
-        .maybeSingle();
-      if (picareta) {
-        const { data: existing } = await supabase
-          .from('user_inventory')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('item_id', (picareta as any).id)
-          .maybeSingle();
-        if (!existing) {
-          await supabase.from('user_inventory').insert({
-            user_id: user.id, item_id: (picareta as any).id, quantity: 1, equipped: false,
-          });
-        }
-      }
-      await supabase.from('hero_story_choices').upsert({
-        user_id: user.id, picareta_adamantina: true,
-      }, { onConflict: 'user_id' });
-      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['inventory', user.id] });
-      toast({
-        title: t('app.boss.toast_picareta_title'),
-        description: t('app.boss.toast_picareta_desc'),
-        duration: 6000,
-      });
-      // Abre o evento de resgate do Ferreiro logo em seguida.
-      if (!storyChoices?.ferreiro_rescued) {
-        setTimeout(() => setFerreiroRescueOpen(true), 2200);
-      }
-    } catch {
-      // silencioso — UI atualiza via invalidate
-    }
-  };
-
-  /** Resgate do Ferreiro (evento de história): liberta o Ferreiro com a Picareta. */
-  const handleConfirmFerreiroRescue = async () => {
-    if (!user) { setFerreiroRescueOpen(false); return; }
-    setFerreiroRescuing(true);
-    try {
-      await supabase.from('hero_story_choices').upsert({
-        user_id: user.id, ferreiro_rescued: true,
-      }, { onConflict: 'user_id' });
-      // §1.1: marco narrativo não gera XP — concede item-ralo de marco (lembrança única).
-      const { data: keepsake } = await supabase.from('game_items').select('id').eq('name', 'Marreta do Resgate').maybeSingle();
-      if ((keepsake as any)?.id) {
-        await supabase.from('user_inventory').insert({ user_id: user.id, item_id: (keepsake as any).id, quantity: 1, equipped: false });
-      }
-      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      toast({
-        title: t('app.boss.toast_ferreiro_title'),
-        description: 'Você recebeu a Marreta do Resgate 🔨 — uma lembrança de marco.',
-        duration: 6000,
-      });
-    } catch (err: any) {
-      toast({ title: t('app.boss.toast_ferreiro_error'), description: err?.message, variant: 'destructive' });
-    } finally {
-      setFerreiroRescuing(false);
-      setFerreiroRescueOpen(false);
-    }
-  };
-
-  /** Fenrir: o jogador decide libertá-lo das correntes divinas (vira aliado) ou não. */
-  const handleFenrirChoice = async (ally: boolean) => {
-    if (!user) { setFenrirChoiceOpen(false); return; }
-    setFenrirChoosing(true);
-    try {
-      await supabase.from('hero_story_choices').upsert({
-        user_id: user.id, fenrir_allied: ally,
-      }, { onConflict: 'user_id' });
-      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
-      toast({
-        title: ally ? t('app.boss.toast_fenrir_ally_title') : t('app.boss.toast_fenrir_left_title'),
-        description: ally ? t('app.boss.toast_fenrir_ally_desc') : t('app.boss.toast_fenrir_left_desc'),
-        duration: 6000,
-      });
-    } catch (err: any) {
-      toast({ title: t('app.boss.toast_fenrir_error'), description: err?.message, variant: 'destructive' });
-    } finally {
-      setFenrirChoosing(false);
-      setFenrirChoiceOpen(false);
-    }
-  };
-
-  const handleCombatDefeat = async () => {
-    // ── Penalidade de morte: -1 nível + fadiga 100 ──────────────────────────
-    if (user && profile) {
-      const currentLevel = profile.level ?? 1;
-      const newLevel = Math.max(1, currentLevel - 1);
-      try {
-        await Promise.all([
-          supabase.from('profiles').update({ level: newLevel }).eq('user_id', user.id),
-          supabase.from('user_health_stats').update({ fatigue: 100 }).eq('user_id', user.id),
-        ]);
-        toast({
-          title: t('app.boss.toast_severe_defeat_title'),
-          description: t('app.boss.toast_severe_defeat_desc', { level: newLevel }),
-          variant: 'destructive',
-        });
-      } catch {
-        // silent — UI still updates via invalidate
-      }
-    }
-    queryClient.invalidateQueries({ queryKey: ['profile'] });
-    queryClient.invalidateQueries({ queryKey: ['health_stats'] });
-  };
-
-  /** Guerreiro Imortal: player usa a Cabeça de Basilisco → derrota verdadeira */
-  const handleImmortalTrueDefeat = async () => {
-    if (!user || !activeCombat) return;
-    try {
-      // 1. Remover Cabeça de Basilisco do inventário
-      const basiliscoInv = inventory?.find(
-        (inv) => (inv.game_items as any)?.effect === 'derrota_guerreiro_imortal',
-      );
-      if (basiliscoInv) {
-        await supabase.from('user_inventory').delete().eq('id', basiliscoInv.id);
-        queryClient.invalidateQueries({ queryKey: ['inventory', user.id] });
-      }
-
-      // 2. Registrar vitória verdadeira em boss_battles
-      await supabase.from('boss_battles').insert({
-        user_id: user.id,
-        boss_id: activeCombat.bossId,
-        damage_dealt: 1,
-        won: true,
-      });
-
-      // 3. §9.2 (Rotina é a Torneira): combate é RALO — sem XP/ouro.
-      //    A vitória dá loot/fragmento de história (abaixo), não progressão.
-
-      // 4. Drop Fragmento I do Pergaminho Ancestral
-      const { data: fragmentItem } = await supabase
-        .from('game_items')
-        .select('id')
-        .eq('effect', 'quest_scroll_fragment_1')
-        .maybeSingle();
-      if (fragmentItem) {
-        await supabase.from('user_inventory').insert({
-          user_id: user.id,
-          item_id: (fragmentItem as any).id,
-          quantity: 1,
-          equipped: false,
-        });
-      }
-
-      // 5. Marcar como verdadeiramente derrotado
-      await supabase.from('hero_story_choices').upsert({
-        user_id: user.id,
-        guerreiro_imortal_defeated: true,
-      }, { onConflict: 'user_id' });
-
-      queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
-
-      toast({
-        title: t('app.boss.toast_immortal_defeated_title'),
-        description: t('app.boss.toast_immortal_defeated_desc'),
-      });
-      setTimeout(() => {
-        toast({
-          title: t('app.boss.toast_fragment_title'),
-          description: t('app.boss.toast_fragment_desc'),
-        });
-      }, 2200);
-
-      setActiveCombat(null);
-    } catch (err: any) {
-      toast({ title: t('app.boss.toast_true_defeat_error'), description: err?.message, variant: 'destructive' });
-    }
-  };
-
-  const handleCombatClose = () => {
-    setActiveCombat(null);
-  };
-
-  /** Fênix Renascente: escapa — incrementa phoenix_kill_count e fecha o combate.
-   *  (Antes gravava em 'phoenix_escape_count', coluna inexistente — bug silencioso.) */
-  const handlePhoenixEscaped = async () => {
-    if (!user) return;
-    try {
-      const { data: choices } = await supabase
-        .from('hero_story_choices')
-        .select('phoenix_kill_count')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      const currentCount = (choices as any)?.phoenix_kill_count ?? 0;
-      await supabase.from('hero_story_choices').upsert({
-        user_id: user.id,
-        phoenix_kill_count: currentCount + 1,
-      }, { onConflict: 'user_id' });
-      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
-      const nextLevel = 10 + (currentCount + 1) * 10;
-      toast({
-        title: t('app.boss.toast_phoenix_escaped_title'),
-        description: t('app.boss.toast_phoenix_escaped_desc', { level: nextLevel }),
-        duration: 6000,
-      });
-    } catch {
-      // silencioso — UI atualiza via invalidate
-    } finally {
-      setActiveCombat(null);
-    }
-  };
-
-  /** Fusão Fênix -> Esfinge (roadmap #2): marca phoenix_fused e dá item-ralo de
-   *  marco (a Fênix nunca premiou ao escapar; agora o momento vira lembrança). */
-  const handleConfirmPhoenixFusion = async () => {
-    if (!user) { setPhoenixFusionOpen(false); return; }
-    setPhoenixFusing(true);
-    try {
-      await supabase.from('hero_story_choices').upsert({
-        user_id: user.id,
-        phoenix_fused: true,
-      }, { onConflict: 'user_id' });
-      // §1.1: marco narrativo não gera XP — concede item-ralo de marco (lembrança única).
-      const { data: keepsake } = await supabase.from('game_items').select('id').eq('name', 'Plumas da Fênix-Esfinge').maybeSingle();
-      if ((keepsake as any)?.id) {
-        await supabase.from('user_inventory').insert({ user_id: user.id, item_id: (keepsake as any).id, quantity: 1, equipped: false });
-      }
-      queryClient.invalidateQueries({ queryKey: ['hero_story_choices', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      toast({
-        title: t('app.boss.toast_phoenix_fused_title'),
-        description: 'Você recebeu as Plumas da Fênix-Esfinge 🪶 — uma lembrança de marco.',
-        duration: 6000,
-      });
-    } catch (err: any) {
-      toast({ title: t('app.boss.toast_phoenix_fused_error'), description: err?.message, variant: 'destructive' });
-    } finally {
-      setPhoenixFusing(false);
-      setPhoenixFusionOpen(false);
-    }
   };
 
   const dungeons = useMemo(() => [
@@ -488,11 +154,7 @@ export default function BossPage() {
       minLevel: 3,
       requiredPlayers: 4,
       boss: { name: 'Shagor + Zoth', hp: 300 + 160, icon: '🧌👺' },
-      xpReward: 240,
       description: t('app.boss.dungeon_1_desc'),
-      uniqueItem: t('app.boss.dungeon_1_unique_item'),
-      specialCoin: t('app.boss.dungeon_1_special_coin'),
-      titleReward: t('app.boss.dungeon_1_title_reward'),
       theme: 'orc',
       atmosphere: t('app.boss.dungeon_1_atmosphere'),
       minions: t('app.boss.dungeon_1_minions', { returnObjects: true }) as string[],
@@ -506,11 +168,7 @@ export default function BossPage() {
       minLevel: 8,
       requiredPlayers: 4,
       boss: { name: 'Esfinge Guardiã + Djinn', hp: 420 + 230, icon: '🦁🌪️' },
-      xpReward: 390,
       description: t('app.boss.dungeon_2_desc'),
-      uniqueItem: t('app.boss.dungeon_2_unique_item'),
-      specialCoin: t('app.boss.dungeon_2_special_coin'),
-      titleReward: t('app.boss.dungeon_2_title_reward'),
       theme: 'desert',
       atmosphere: t('app.boss.dungeon_2_atmosphere'),
       minions: t('app.boss.dungeon_2_minions', { returnObjects: true }) as string[],
@@ -524,11 +182,7 @@ export default function BossPage() {
       minLevel: 15,
       requiredPlayers: 4,
       boss: { name: 'Cavaleiro do Vazio + Wyvern', hp: 520 + 310, icon: '🗡️⚡' },
-      xpReward: 580,
       description: t('app.boss.dungeon_3_desc'),
-      uniqueItem: t('app.boss.dungeon_3_unique_item'),
-      specialCoin: t('app.boss.dungeon_3_special_coin'),
-      titleReward: t('app.boss.dungeon_3_title_reward'),
       theme: 'shadow',
       atmosphere: t('app.boss.dungeon_3_atmosphere'),
       minions: t('app.boss.dungeon_3_minions', { returnObjects: true }) as string[],
@@ -537,39 +191,8 @@ export default function BossPage() {
 
   const bossTourSteps: TourStep[] = [
     { target: 'boss-header', title: t('app.boss.tour_1_title'), description: t('app.boss.tour_1_desc') },
-    { target: 'boss-tabs',   title: t('app.boss.tour_2_title'), description: t('app.boss.tour_2_desc') },
-    { target: 'boss-keys',   title: t('app.boss.tour_3_title'), description: t('app.boss.tour_3_desc') },
-    { target: 'boss-list',   title: t('app.boss.tour_4_title'), description: t('app.boss.tour_4_desc') },
+    { target: 'boss-tabs', title: t('app.boss.tour_2_title'), description: t('app.boss.tour_2_desc') },
   ];
-
-  // Set of boss IDs already defeated (via boss_battles)
-  const defeatedBossIds = new Set(
-    battles?.filter((b) => b.won).map((b) => b.boss_id) || []
-  );
-
-  // Conjunto "efetivo" de derrotados: inclui o boss de esqueleto se ele foi
-  // derrotado permanentemente (hero_story_choices), mesmo após reset de admin.
-  // Usado para checar pré-requisitos de sequência (roadmap #1).
-  const effectiveDefeatedIds = useMemo(() => {
-    const set = new Set<string>(battles?.filter((b) => b.won).map((b) => b.boss_id) || []);
-    if (storyChoices?.skeleton_champion) {
-      const skeletonBoss = (bosses as any[])?.find((b) => SKELETON_BOSS_PATTERN.test(b.name ?? ''));
-      if (skeletonBoss) set.add(skeletonBoss.id);
-    }
-    return set;
-  }, [battles, bosses, storyChoices?.skeleton_champion]);
-
-  // Mapa id -> boss, para resolver o nome do pré-requisito a exibir.
-  const bossById = useMemo(
-    () => new Map<string, any>(((bosses as any[]) || []).map((b) => [b.id, b])),
-    [bosses],
-  );
-
-  /** Retorna true se o boss de esqueleto está permanentemente derrotado,
-   *  mesmo que boss_battles tenha sido resetado via script de admin.
-   *  A escolha na hero_story_choices é o registro definitivo. */
-  const isSkeletonPermanentlyDefeated = (bossName: string) =>
-    SKELETON_BOSS_PATTERN.test(bossName) && !!storyChoices?.skeleton_champion;
 
   const handleOpenDungeon = (dungeon: { id: string; name: string }) => {
     setSessionDungeon(dungeon);
@@ -765,150 +388,15 @@ export default function BossPage() {
     setSessionFlow('idle');
   }, []);
 
-  const handleDungeonVictory = ({ xpGained, goldGained, loot, rescued }: { xpGained: number; goldGained: number; loot: any[]; rescued: number }) => {
+  const handleDungeonVictory = () => {
     setActiveDungeon(null);
-    const rescuedPart = rescued > 0 ? t('app.boss.toast_rescued', { count: rescued }) : '';
-    toast({
-      title: t('app.boss.toast_dungeon_victory_title'),
-      description: t('app.boss.toast_dungeon_victory_desc', { xp: xpGained, gold: goldGained, rescued: rescuedPart, loot: loot.length }),
-    });
-    queryClient.invalidateQueries({ queryKey: ['profile'] });
-    queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
+    toast({ title: t('app.boss.toast_dungeon_victory_title'), description: 'Confronto concluído. Apenas itens presentes no inventário foram creditados.' });
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
   };
 
   const handleDungeonDefeat = () => {
     setActiveDungeon(null);
     toast({ title: t('app.boss.toast_dungeon_defeat_title'), description: t('app.boss.toast_dungeon_defeat_desc'), variant: 'destructive' });
-  };
-
-  const handleFightButtonClick = (boss: any) => {
-    const name = boss?.name ?? '';
-    // Odin (roadmap #5): intro do 3v1 (Thor + Loki) antes da luta.
-    if (ODIN_BOSS_PATTERN.test(name)) {
-      setOdinIntroBoss(boss);
-      return;
-    }
-    // Esfinge Guardiã / Djinn (roadmap #6): resolver enigmas antes de enfrentar.
-    if (ESFINGE_GUARDIA_PATTERN.test(name)) {
-      setQuizConfig({ boss, difficulty: 'easy', count: 5, passThreshold: 0.6 });
-      return;
-    }
-    if (DJINN_BOSS_PATTERN.test(name)) {
-      setQuizConfig({ boss, difficulty: 'hard', count: 7, passThreshold: 0.5 });
-      return;
-    }
-    setDeathWarningBoss(boss);
-  };
-
-  /** Resultado do quiz da Esfinge/Djinn: passar libera a luta; gabaritar dá Inspiração. */
-  const handleQuizComplete = async (result: { correct: number; total: number; passed: boolean; perfect: boolean }) => {
-    const boss = quizConfig?.boss;
-    setQuizConfig(null);
-    if (!boss) return;
-    if (!result.passed) {
-      toast({
-        title: t('app.quiz.toast_fail_title'),
-        description: t('app.quiz.toast_fail_desc', { correct: result.correct, total: result.total }),
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (result.perfect && user) {
-      try {
-        await supabase
-          .from('profiles')
-          .update({ inspired_available: true, inspired_earned_at: new Date().toISOString() })
-          .eq('user_id', user.id);
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
-      } catch {
-        // silencioso — a luta começa de qualquer forma
-      }
-      toast({ title: t('app.quiz.toast_perfect_title'), description: t('app.quiz.toast_perfect_desc') });
-    } else {
-      toast({ title: t('app.quiz.toast_pass_title'), description: t('app.quiz.toast_pass_desc', { correct: result.correct, total: result.total }) });
-    }
-    handleStartArenaCombat(boss);
-  };
-
-  /** Inicia a luta contra Odin (3v1). Se Fenrir for aliado, concede Inspiração (vantagem). */
-  const handleStartOdinFight = async () => {
-    const boss = odinIntroBoss;
-    setOdinIntroBoss(null);
-    if (!boss) return;
-    if (storyChoices?.fenrir_allied && user) {
-      try {
-        await supabase
-          .from('profiles')
-          .update({ inspired_available: true, inspired_earned_at: new Date().toISOString() })
-          .eq('user_id', user.id);
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
-      } catch {
-        // silencioso — a luta começa de qualquer forma
-      }
-    }
-    handleStartArenaCombat(boss);
-  };
-
-  const handleStartArenaCombat = async (boss: any, overrideBossHp?: number) => {
-    // Mantiroca + skeleton rejection = skeleton rides it and boss gets +40% HP
-    if (MANTIROCA_BOSS_PATTERN.test(boss.name ?? '') && storyChoices?.skeleton_champion === 'reject' && !overrideBossHp) {
-      const baseBossHp = boss.hp_max ?? boss.hp ?? 100;
-      setBoostedMantirocaHp(Math.round(baseBossHp * 1.4));
-      setMantirocaWarningBoss(boss);
-      return;
-    }
-
-    try {
-      const combat = await startActiveCombat.mutateAsync({ bossId: boss.id });
-
-      // Prioriza o HP/MP retornado diretamente pela mutation (valor fresco gravado no servidor).
-      // healthStats pode estar desatualizado no cache entre batalhas, causando HP incorreto.
-      const currentHp = combat.hp_atual_personagem != null
-        ? Number(combat.hp_atual_personagem)
-        : Number(healthStats?.current_hp ?? playerStats.hp ?? 120);
-      const currentMp = combat.mp_atual_personagem != null
-        ? Number(combat.mp_atual_personagem)
-        : Number(healthStats?.current_mp ?? playerStats.mp ?? 40);
-      const maxMp = healthStats?.max_mp != null
-        ? Number(healthStats.max_mp)
-        : Number(playerStats.mp ?? 40);
-      const currentFatigue = healthStats?.fatigue != null
-        ? Number(healthStats.fatigue)
-        : 0;
-
-      setActiveCombat({
-        id: combat.id,
-        bossId: boss.id,
-        bossName: boss.name,
-        bossIcon: boss.icon,
-        bossElement: boss.element ?? null,
-        bossHp: overrideBossHp ?? Number(combat.hp_atual_boss ?? boss.hp_max ?? boss.hp ?? 100),
-        playerHp: currentHp,
-        playerMp: currentMp,
-        playerMaxMp: maxMp,
-        playerFatigue: currentFatigue,
-      });
-      toast({ title: `⚔️ ${t('app.boss.combat_started')}`, description: t('app.boss.arena_opened', { name: boss.name }) });
-    } catch (err: any) {
-      const msg: string = err?.message || '';
-      // Avisos "soft block" — não são bugs, são mecânicas do jogo.
-      // Mostra como aviso amarelo, não como erro vermelho.
-      const isSoftWarning = /fadiga|short rest|descanse|cooldown|aguarde|sem chaves|sem energia/i.test(msg);
-      if (isSoftWarning) {
-        toast({
-          title: t('app.boss.toast_hero_warning'),
-          description: msg,
-          // sem variant destructive — usa o estilo padrão (amarelado/info)
-        });
-      } else {
-        toast({
-          title: t('app.boss.error_start_combat'),
-          description: msg || t('app.boss.error_start_combat_desc'),
-          variant: 'destructive',
-        });
-      }
-    }
   };
 
   const getRankMedal = (position: number) => {
@@ -938,14 +426,14 @@ export default function BossPage() {
         {/* Abas */}
         <div data-tour="boss-tabs" className="flex gap-2 flex-wrap">
           <button
-            onClick={() => setActiveTab("solo")}
+            onClick={() => setActiveTab("aventura")}
             className={`px-4 py-2 rounded-lg border font-semibold transition-all ${
-              activeTab === "solo"
+              activeTab === "aventura"
                 ? "bg-primary/20 border-primary/50 text-primary"
                 : "bg-secondary border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            ⚔️ {t('app.boss.tab_solo')}
+            ⚔️ Aventura
           </button>
           <button
             onClick={() => setActiveTab("coletiva")}
@@ -969,262 +457,8 @@ export default function BossPage() {
           </button>
         </div>
 
-        {/* ========== ABA: AVENTURA SOLO ========== */}
-        {activeTab === "solo" && (
-          <>
-            {profile && (
-              <div data-tour="boss-keys" className="rpg-card space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Poder de ataque: <span className="text-primary font-bold">{profile.level * 15}</span> + bônus aleatório
-                  </p>
-                  <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
-                    <span className="text-lg">🔑</span>
-                    <span className="font-bold text-primary text-lg">{profile.boss_keys || 0}</span>
-                    <span className="text-xs text-muted-foreground">{t('app.boss.keys_label')}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('app.boss.keys_hint')}
-                </p>
-                <HeroStatusBar />
-              </div>
-            )}
-
-            {isLoading ? (
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            ) : (
-              <div data-tour="boss-list" className="space-y-6">
-                {activeCombat && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        Arena ativa: {activeCombat.bossIcon} {activeCombat.bossName}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = !arenaVisible;
-                          setArenaVisible(next);
-                          localStorage.setItem('rpg_combat_arena_visible', String(next));
-                        }}
-                        className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        title={arenaVisible ? 'Ocultar arena de combate' : 'Mostrar arena de combate'}
-                      >
-                        {arenaVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        {arenaVisible ? 'Ocultar arena' : 'Mostrar arena'}
-                      </button>
-                    </div>
-                    {arenaVisible ? (
-                      <CombatArena
-                        combateId={activeCombat.id}
-                        initialBossHp={activeCombat.bossHp}
-                        initialPlayerHp={activeCombat.playerHp}
-                        initialPlayerMp={activeCombat.playerMp}
-                        initialPlayerMaxMp={activeCombat.playerMaxMp}
-                        initialPlayerFatigue={activeCombat.playerFatigue}
-                        bossName={activeCombat.bossName}
-                        bossElement={activeCombat.bossElement}
-                        onVictory={handleCombatVictory}
-                        onDefeat={handleCombatDefeat}
-                        onClose={handleCombatClose}
-                        hasBasiliscoHead={Boolean(
-                          inventory?.some((inv) => (inv.game_items as any)?.effect === 'derrota_guerreiro_imortal'),
-                        )}
-                        onImmortalFlee={handleCombatClose}
-                        onImmortalTrueDefeat={handleImmortalTrueDefeat}
-                        phoenixCanDie={phoenixCanDie}
-                        onPhoenixEscaped={handlePhoenixEscaped}
-                        weaponElement={equippedWeaponElement}
-                        companionData={
-                          // Odin 3v1: se Fenrir foi libertado, ele luta ao seu lado (roadmap #5).
-                          // (O esqueleto não luta mais — companheiros viraram cosméticos, §4.)
-                          ODIN_BOSS_PATTERN.test(activeCombat.bossName ?? '') && storyChoices?.fenrir_allied
-                            ? { name: 'Fenrir', level: 38, mood: 100, emoji: '🐺' }
-                            : undefined
-                        }
-                      />
-                    ) : (
-                      <div className="rpg-card flex items-center justify-between gap-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-3xl">{activeCombat.bossIcon}</span>
-                          <div>
-                            <p className="font-semibold text-foreground">Combate em andamento</p>
-                            <p className="text-xs text-muted-foreground">Arena oculta — o combate continua normalmente</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setArenaVisible(true);
-                            localStorage.setItem('rpg_combat_arena_visible', 'true');
-                          }}
-                          className="flex items-center gap-1.5 rounded-lg bg-primary/20 border border-primary/40 px-3 py-1.5 text-xs text-primary font-semibold hover:bg-primary/30 transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          Abrir arena
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {bosses?.map((boss: any, i: number) => {
-                  const b = getBossCombatStats(boss);
-                  const skills = (boss.skills || []) as { name: string; desc: string }[];
-                  const elementColors: Record<string, string> = {
-                    'Fogo': 'text-orange-400', 'Terra': 'text-amber-600', 'Gelo': 'text-cyan-400',
-                    'Escuridão': 'text-purple-400', 'Morto-Vivo': 'text-gray-400', 'Sagrado': 'text-yellow-300',
-                    'Natureza': 'text-green-400', 'Veneno': 'text-lime-400', 'Demônio': 'text-red-500',
-                    'Água': 'text-blue-400', 'Neutro': 'text-muted-foreground',
-                  };
-                  const difficultyStars = (boss.difficulty || '+P').split('+P').length - 1;
-                  const isDefeated = defeatedBossIds.has(boss.id) || isSkeletonPermanentlyDefeated(boss.name ?? '');
-                  const isLocked = profile && profile.level < boss.level;
-                  // Pré-requisito de sequência (roadmap #1): precisa derrotar o boss anterior da cadeia.
-                  const prereqBoss = boss.prereq_boss_id ? bossById.get(boss.prereq_boss_id) : null;
-                  const prereqMet = !boss.prereq_boss_id || effectiveDefeatedIds.has(boss.prereq_boss_id);
-
-                  return (
-                  <motion.div
-                    key={boss.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: Math.min(i * 0.05, 0.5) }}
-                    className={`rpg-card-glow flex flex-col items-center text-center gap-3 ${isLocked ? 'opacity-50' : ''}`}
-                  >
-                    <span className="text-5xl animate-float">{boss.icon}</span>
-                    <div>
-                      <h3 className="font-display font-bold text-foreground">{boss.name}</h3>
-                      {boss.is_final_boss && (
-                        <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                          👑 {t('app.boss.final_boss_badge')}
-                        </span>
-                      )}
-                      <p className={`text-xs font-semibold mt-1 ${elementColors[boss.element] || 'text-muted-foreground'}`}>
-                        🔮 {boss.element || 'Neutro'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">{boss.description}</p>
-                    </div>
-
-                    {/* Stats row */}
-                    <div className="flex gap-3 text-xs flex-wrap justify-center">
-                      <span className="text-health font-bold">❤️ {boss.hp} HP</span>
-                      <span className="text-primary font-bold">⭐ {t('app.boss.level_abbr', { level: boss.level })}</span>
-                      <span className="font-bold text-accent">🎒 Loot</span>
-                      <span className="font-bold text-primary">🔑 {boss.keys_cost || 1}</span>
-                    </div>
-
-                    {/* Difficulty */}
-                    <div className="flex items-center gap-1 text-xs">
-                      <span className="text-muted-foreground">{t('app.boss.difficulty_label')}:</span>
-                      {Array.from({ length: difficultyStars }).map((_, idx) => (
-                        <span key={idx} className="text-yellow-400">⭐</span>
-                      ))}
-                    </div>
-
-                    {/* Skills */}
-                    {skills.length > 0 && (
-                      <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs text-left space-y-1">
-                        <p className="font-semibold text-foreground mb-1">⚡ {t('app.boss.skills_label')}:</p>
-                        {skills.map((skill, idx) => (
-                          <div key={idx}>
-                            <span className="font-semibold text-primary">{skill.name}</span>
-                            <span className="text-muted-foreground"> — {skill.desc}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Mechanic */}
-                    {boss.mechanic && (
-                      <div className="w-full text-xs text-left bg-primary/10 rounded-lg p-2 border border-primary/20">
-                        <span className="font-semibold text-primary">🎯 {t('app.boss.mechanic_label')}:</span>{' '}
-                        <span className="text-foreground">{boss.mechanic}</span>
-                      </div>
-                    )}
-
-                    {/* Combat stats */}
-                    <div className="w-full rounded-lg border border-border/60 bg-muted/30 p-2 text-xs">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <div><p className="text-muted-foreground">ATK</p><p className="font-bold text-foreground">{b.atk}</p></div>
-                        <div><p className="text-muted-foreground">MATK</p><p className="font-bold text-foreground">{b.matk}</p></div>
-                        <div><p className="text-muted-foreground">DEF</p><p className="font-bold text-foreground">{b.def}</p></div>
-                        <div><p className="text-muted-foreground">AGI</p><p className="font-bold text-foreground">{b.agi}</p></div>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-2">
-                        {t('app.boss.weakness_label')}: <span className="font-semibold text-primary">{b.weakness}</span> • {t('app.boss.threat_label')}: <span className="font-semibold text-destructive">{b.threat}</span>
-                      </p>
-                    </div>
-
-                    {isDefeated ? (
-                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        ✅ {t('app.boss.boss_defeated')}
-                      </Button>
-                    ) : !prereqMet ? (
-                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔒 {t('app.boss.requires_prereq', { name: prereqBoss?.name ?? '???' })}
-                      </Button>
-                    ) : isLocked ? (
-                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔒 {t('app.boss.requires_level', { n: boss.level })}
-                      </Button>
-                    ) : (profile?.boss_keys || 0) < (boss.keys_cost || 1) ? (
-                      <Button disabled className="w-full bg-muted text-muted-foreground cursor-not-allowed" size="sm">
-                        🔑 {t('app.boss.needs_keys', { need: boss.keys_cost || 1, have: profile?.boss_keys || 0 })}
-                      </Button>
-                    ) : (
-                      <div className="w-full grid grid-cols-1 gap-2">
-                        <Button
-                          onClick={() => handleFightButtonClick(boss)}
-                          disabled={startActiveCombat.isPending}
-                          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                          size="sm"
-                        >
-                          {startActiveCombat.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                          ) : (
-                            <Skull className="w-4 h-4 mr-1" />
-                          )}
-                          {t('app.boss.fight_boss', { keys: boss.keys_cost || 1 })}
-                        </Button>
-                      </div>
-                    )}
-                  </motion.div>
-                  );
-                })}
-                </div>
-              </div>
-            )}
-
-            {/* Battle history */}
-            {battles && battles.length > 0 && (
-              <div>
-                <h2 className="text-lg font-display font-semibold text-foreground mb-3">{t('app.boss.battle_history')}</h2>
-                <div className="space-y-2">
-                  {battles.slice(0, 10).map((b) => (
-                    <div key={b.id} className="rpg-card flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span>{(b as any).bosses?.icon}</span>
-                        <div>
-                          <p className="text-sm text-foreground">{(b as any).bosses?.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {t('app.boss.damage_dealt')}: {b.damage_dealt} • {new Date(b.created_at).toLocaleString('pt-BR')}
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`text-sm font-bold ${b.won ? 'text-success' : 'text-destructive'}`}>
-                        {b.won ? `✅ ${t('app.boss.victory')}` : `❌ ${t('app.boss.defeat')}`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
+        {/* Aventura solo automatica; modos coletivo e ranking continuam abaixo. */}
+        {activeTab === "aventura" && <AutoAdventure />}
         {/* ========== ABA: MASMORRA COLETIVA ========== */}
         {activeTab === "coletiva" && (
           <div className="space-y-6">
@@ -1293,18 +527,11 @@ export default function BossPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="text-xs">
                       <div className="rpg-card bg-secondary/50 space-y-0.5">
                         <p className="text-muted-foreground font-semibold">{t('app.boss.final_boss')}</p>
                         <p className="font-bold text-foreground">{dungeon.boss.icon} {dungeon.boss.name}</p>
                         <p className="text-muted-foreground">❤️ {t('app.boss.total_hp', { hp: dungeon.boss.hp })}</p>
-                      </div>
-                      <div className="rpg-card bg-secondary/50 space-y-0.5">
-                        <p className="text-muted-foreground font-semibold">{t('app.boss.rewards')}</p>
-                        <p className="font-bold text-accent">🎒 Loot</p>
-                        <p className="text-muted-foreground">🪙 {dungeon.specialCoin}</p>
-                        <p className="text-muted-foreground">🎁 {dungeon.uniqueItem}</p>
-                        <p className="text-muted-foreground">🏅 {dungeon.titleReward}</p>
                       </div>
                     </div>
 
@@ -1573,253 +800,6 @@ export default function BossPage() {
         )}
       </div>
 
-
-      {/* ── Fusão Fênix + Esfinge (roadmap #2) ─────────────────────────────── */}
-      <Dialog open={phoenixFusionOpen} onOpenChange={(open) => { if (!open && !phoenixFusing) setPhoenixFusionOpen(false); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              🔥🦁 {t('app.boss.phoenix_fusion_title')}
-            </DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
-                <p>{t('app.boss.phoenix_fusion_p1')}</p>
-                <p>{t('app.boss.phoenix_fusion_p2')}</p>
-                <p className="font-semibold text-foreground">{t('app.boss.phoenix_fusion_p3')}</p>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-bold"
-              disabled={phoenixFusing}
-              onClick={handleConfirmPhoenixFusion}
-            >
-              {phoenixFusing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '✨ '}
-              {t('app.boss.phoenix_fusion_confirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Resgate do Ferreiro (roadmap #5) ───────────────────────────────── */}
-      <Dialog open={ferreiroRescueOpen} onOpenChange={(open) => { if (!open && !ferreiroRescuing) setFerreiroRescueOpen(false); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              ⛏️ {t('app.boss.ferreiro_title')}
-            </DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
-                <p>{t('app.boss.ferreiro_p1')}</p>
-                <p>{t('app.boss.ferreiro_p2')}</p>
-                <p className="font-semibold text-foreground">{t('app.boss.ferreiro_p3')}</p>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              className="w-full bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-700 hover:to-yellow-600 text-white font-bold"
-              disabled={ferreiroRescuing}
-              onClick={handleConfirmFerreiroRescue}
-            >
-              {ferreiroRescuing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '⛓️‍💥 '}
-              {t('app.boss.ferreiro_confirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Escolha do Fenrir (roadmap #5) ─────────────────────────────────── */}
-      <Dialog open={fenrirChoiceOpen} onOpenChange={(open) => { if (!open && !fenrirChoosing) setFenrirChoiceOpen(false); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              🐺 {t('app.boss.fenrir_title')}
-            </DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
-                <p>{t('app.boss.fenrir_p1')}</p>
-                <p>{t('app.boss.fenrir_p2')}</p>
-                <p className="font-semibold text-foreground">{t('app.boss.fenrir_question')}</p>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              disabled={fenrirChoosing}
-              onClick={() => handleFenrirChoice(false)}
-            >
-              {t('app.boss.fenrir_leave')}
-            </Button>
-            <Button
-              className="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 text-white font-bold"
-              disabled={fenrirChoosing}
-              onClick={() => handleFenrirChoice(true)}
-            >
-              {fenrirChoosing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '⛓️‍💥 '}
-              {t('app.boss.fenrir_free')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Intro do Odin 3v1 (roadmap #5) ─────────────────────────────────── */}
-      <Dialog open={!!odinIntroBoss} onOpenChange={(open) => { if (!open) setOdinIntroBoss(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              ⚡ {t('app.boss.odin_title')}
-            </DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
-                <p>{t('app.boss.odin_p1')}</p>
-                <p>{t('app.boss.odin_p2')}</p>
-                {storyChoices?.fenrir_allied ? (
-                  <p className="font-semibold text-emerald-400">🐺 {t('app.boss.odin_fenrir_ally')}</p>
-                ) : (
-                  <p className="font-semibold text-amber-400">{t('app.boss.odin_no_ally')}</p>
-                )}
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setOdinIntroBoss(null)}>
-              {t('app.boss.back')}
-            </Button>
-            <Button
-              className="w-full sm:w-auto bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold"
-              disabled={startActiveCombat.isPending}
-              onClick={handleStartOdinFight}
-            >
-              {startActiveCombat.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Swords className="w-4 h-4 mr-1" />}
-              {t('app.boss.odin_confirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Quiz da Esfinge / Djinn (roadmap #6) ───────────────────────────── */}
-      {quizConfig && (
-        <SphinxQuizModal
-          open={!!quizConfig}
-          bossName={quizConfig.boss?.name ?? ''}
-          difficulty={quizConfig.difficulty}
-          count={quizConfig.count}
-          passThreshold={quizConfig.passThreshold}
-          onComplete={handleQuizComplete}
-          onCancel={() => setQuizConfig(null)}
-        />
-      )}
-
-      {/* ── Mantiroca Warning Dialog ───────────────────────────────────────── */}
-      <Dialog open={!!mantirocaWarningBoss} onOpenChange={(open) => { if (!open) setMantirocaWarningBoss(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
-              {t('app.boss.mantiroca_title')}
-            </DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
-                <p>{t('app.boss.mantiroca_p1')}</p>
-                <p>{t('app.boss.mantiroca_p2')}</p>
-                <p>
-                  {t('app.boss.mantiroca_p3')}{' '}
-                  <span className="font-semibold text-red-400">{t('app.boss.mantiroca_hp_warning')}</span>
-                </p>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => setMantirocaWarningBoss(null)}
-            >
-              {t('app.boss.back')}
-            </Button>
-            <Button
-              variant="destructive"
-              className="w-full sm:w-auto"
-              disabled={startActiveCombat.isPending}
-              onClick={() => {
-                const boss = mantirocaWarningBoss;
-                setMantirocaWarningBoss(null);
-                handleStartArenaCombat(boss, boostedMantirocaHp);
-              }}
-            >
-              {t('app.boss.face_anyway')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Modal: aviso de penalidade de morte ───────────────────────── */}
-      <Dialog open={!!deathWarningBoss} onOpenChange={(open) => { if (!open) setDeathWarningBoss(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" />
-              {t('app.boss.death_title')}
-            </DialogTitle>
-            <DialogDescription asChild>
-              <div className="space-y-4 pt-2 text-left">
-                <p className="text-foreground font-medium">
-                  {t('app.boss.death_about_to_challenge')}{' '}
-                  <span className="text-primary font-bold">{deathWarningBoss?.name}</span>.
-                </p>
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 space-y-2">
-                  <p className="text-sm font-bold text-destructive uppercase tracking-wide">
-                    {t('app.boss.death_if_lose')}
-                  </p>
-                  <ul className="space-y-1.5 text-sm text-foreground">
-                    <li className="flex items-start gap-2">
-                      <span className="text-destructive font-bold mt-0.5">▼</span>
-                      <span><strong>{t('app.boss.death_penalty_1_bold')}</strong> {t('app.boss.death_penalty_1_rest')}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-destructive font-bold mt-0.5">▼</span>
-                      <span><strong>{t('app.boss.death_penalty_2_bold')}</strong> {t('app.boss.death_penalty_2_rest')}</span>
-                    </li>
-                  </ul>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('app.boss.death_advice')}
-                </p>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => setDeathWarningBoss(null)}
-            >
-              {t('app.boss.death_back')}
-            </Button>
-            <Button
-              variant="destructive"
-              className="w-full sm:w-auto"
-              disabled={startActiveCombat.isPending}
-              onClick={() => {
-                const boss = deathWarningBoss;
-                setDeathWarningBoss(null);
-                handleStartArenaCombat(boss);
-              }}
-            >
-              {startActiveCombat.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-1" />
-              ) : (
-                <Skull className="w-4 h-4 mr-1" />
-              )}
-              {t('app.boss.enter_arena')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── DungeonArena overlay ───────────────────────────────────────── */}
       {activeDungeon && (() => {

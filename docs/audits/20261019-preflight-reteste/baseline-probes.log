@@ -1,0 +1,810 @@
+source=988b7eb8ee4c1c49fb265b9b209da831c5c78911; local PG17 port 55579; rollback-only probes
+CASE a1 clean integration_cold_meta_a1
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+BEGIN
+psql:<stdin>:1440: NOTA:  PROBE_MIGRATION_ACCEPTED
+SET
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+ROLLBACK
+PROBE_RESULT stage=a1 case=clean psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a1 owner integration_cold_meta_a1
+BEGIN
+SET
+ALTER FUNCTION
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:1440: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a1 case=owner psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a1 anon_helper integration_cold_meta_a1
+BEGIN
+SET
+GRANT
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:1440: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a1 case=anon_helper psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a1 coexist_complete integration_cold_meta_a1
+BEGIN
+SET
+CREATE FUNCTION
+ALTER FUNCTION
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+ROLLBACK
+psql:<stdin>:7: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:1443: NOTA:  COEXIST_OWNER_AUTHENTICATED
+psql:<stdin>:1443: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a1 case=coexist_complete psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a1 coexist_weekly integration_cold_meta_a1
+BEGIN
+SET
+CREATE FUNCTION
+ALTER FUNCTION
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+ROLLBACK
+psql:<stdin>:7: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:1443: NOTA:  COEXIST_OWNER_AUTHENTICATED
+psql:<stdin>:1443: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a1 case=coexist_weekly psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a1 source_crlf integration_cold_meta_a1
+BEGIN
+SET
+CREATE FUNCTION
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+ALTER TABLE
+ALTER TABLE
+UPDATE 0
+COMMENT
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+DO
+REVOKE
+UPDATE 0
+DO
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+ROLLBACK
+psql:<stdin>:233: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:1669: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a1 case=source_crlf psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a1 source_isolated_cr integration_cold_meta_a1
+BEGIN
+SET
+CREATE FUNCTION
+DO
+psql:<stdin>:232: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:277: ERRO:  Progression source changed after known snapshot: f3d480f4e8afcf4a4d7f9aa7dffdffc7, 674f157fc9729832831c45c0092dfde3, 21cdfe0c120c50ab38f95687ddb70a9b, 923ccdffc8a3b16aff4241a4366c4791
+CONTEXT:  função PL/pgSQL inline_code_block linha 36 em RAISE
+PROBE_RESULT stage=a1 case=source_isolated_cr psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE a1 source_semantic integration_cold_meta_a1
+BEGIN
+SET
+CREATE FUNCTION
+DO
+psql:<stdin>:233: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:278: ERRO:  Progression source changed after known snapshot: c4f44fe939d31fd51714d61c58261b65, 674f157fc9729832831c45c0092dfde3, 21cdfe0c120c50ab38f95687ddb70a9b, 923ccdffc8a3b16aff4241a4366c4791
+CONTEXT:  função PL/pgSQL inline_code_block linha 36 em RAISE
+PROBE_RESULT stage=a1 case=source_semantic psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 clean integration_cold_pre_a12
+BEGIN
+SET
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:310: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=clean psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 owner integration_cold_pre_a12
+BEGIN
+SET
+ALTER FUNCTION
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:310: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=owner psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 anon_rpc integration_cold_pre_a12
+BEGIN
+SET
+GRANT
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:310: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=anon_rpc psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 anon_flow integration_cold_pre_a12
+BEGIN
+SET
+GRANT
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:310: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=anon_flow psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 revoke_rpc integration_cold_pre_a12
+BEGIN
+SET
+REVOKE
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:310: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=revoke_rpc psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 default_rpc integration_cold_pre_a12
+BEGIN
+SET
+CREATE FUNCTION
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:173: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:479: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=default_rpc psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 argname_rpc integration_cold_pre_a12
+BEGIN
+SET
+DROP FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:176: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:482: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=argname_rpc psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 return_rpc integration_cold_pre_a12
+BEGIN
+SET
+DROP FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:176: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:482: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=return_rpc psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 security_rpc integration_cold_pre_a12
+BEGIN
+SET
+ALTER FUNCTION
+DO
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:54: ERRO:  DERIVED_EFFECT_RPC_DRIFT: public.complete_mission(uuid,date)
+CONTEXT:  função PL/pgSQL inline_code_block linha 22 em RAISE
+PROBE_RESULT stage=a12 case=security_rpc psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 config_rpc integration_cold_pre_a12
+BEGIN
+SET
+ALTER FUNCTION
+DO
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:54: ERRO:  DERIVED_EFFECT_RPC_DRIFT: public.complete_mission(uuid,date)
+CONTEXT:  função PL/pgSQL inline_code_block linha 22 em RAISE
+PROBE_RESULT stage=a12 case=config_rpc psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 source_crlf integration_cold_pre_a12
+BEGIN
+SET
+CREATE FUNCTION
+DO
+DO
+CREATE TABLE
+ALTER TABLE
+REVOKE
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:173: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:479: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=a12 case=source_crlf psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 source_isolated_cr integration_cold_pre_a12
+BEGIN
+SET
+CREATE FUNCTION
+DO
+psql:<stdin>:172: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:222: ERRO:  DERIVED_EFFECT_RPC_DRIFT: public.complete_mission(uuid,date)
+CONTEXT:  função PL/pgSQL inline_code_block linha 22 em RAISE
+PROBE_RESULT stage=a12 case=source_isolated_cr psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 source_semantic integration_cold_pre_a12
+BEGIN
+SET
+CREATE FUNCTION
+DO
+psql:<stdin>:173: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:223: ERRO:  DERIVED_EFFECT_RPC_DRIFT: public.complete_mission(uuid,date)
+CONTEXT:  função PL/pgSQL inline_code_block linha 22 em RAISE
+PROBE_RESULT stage=a12 case=source_semantic psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 clean integration_cold_meta_p13
+BEGIN
+SET
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:298: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=clean psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 owner_helper integration_cold_meta_p13
+BEGIN
+SET
+ALTER FUNCTION
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:298: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=owner_helper psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 owner_curve integration_cold_meta_p13
+BEGIN
+SET
+ALTER FUNCTION
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:298: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=owner_curve psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 anon_helper integration_cold_meta_p13
+BEGIN
+SET
+GRANT
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:298: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=anon_helper psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 revoke_curve integration_cold_meta_p13
+BEGIN
+SET
+REVOKE
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:298: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=revoke_curve psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 default_helper integration_cold_meta_p13
+BEGIN
+SET
+CREATE FUNCTION
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:235: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:529: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=default_helper psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 return_helper integration_cold_meta_p13
+BEGIN
+SET
+DROP FUNCTION
+CREATE FUNCTION
+REVOKE
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:237: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:531: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=return_helper psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 security_helper integration_cold_meta_p13
+BEGIN
+SET
+ALTER FUNCTION
+DO
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:136: ERRO:  TALENT_HELPER_SOURCE_DRIFT: public._complete_mission_daily(uuid,date,integer)
+CONTEXT:  função PL/pgSQL inline_code_block linha 125 em RAISE
+PROBE_RESULT stage=p13 case=security_helper psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 config_helper integration_cold_meta_p13
+BEGIN
+SET
+ALTER FUNCTION
+DO
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:136: ERRO:  TALENT_HELPER_SOURCE_DRIFT: public._complete_mission_daily(uuid,date,integer)
+CONTEXT:  função PL/pgSQL inline_code_block linha 125 em RAISE
+PROBE_RESULT stage=p13 case=config_helper psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 source_crlf integration_cold_meta_p13
+BEGIN
+SET
+CREATE FUNCTION
+DO
+DO
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+REVOKE
+REVOKE
+DO
+DO
+ROLLBACK
+psql:<stdin>:235: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:529: NOTA:  PROBE_MIGRATION_ACCEPTED
+PROBE_RESULT stage=p13 case=source_crlf psql_exit=0 mutation_applied=true migration_accepted=true preflight_rejected=false sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 source_isolated_cr integration_cold_meta_p13
+BEGIN
+SET
+CREATE FUNCTION
+DO
+psql:<stdin>:234: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:366: ERRO:  TALENT_HELPER_SOURCE_DRIFT: public._complete_mission_daily(uuid,date,integer)
+CONTEXT:  função PL/pgSQL inline_code_block linha 125 em RAISE
+PROBE_RESULT stage=p13 case=source_isolated_cr psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 source_semantic integration_cold_meta_p13
+BEGIN
+SET
+CREATE FUNCTION
+DO
+psql:<stdin>:235: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:367: ERRO:  TALENT_HELPER_SOURCE_DRIFT: public._complete_mission_daily(uuid,date,integer)
+CONTEXT:  função PL/pgSQL inline_code_block linha 125 em RAISE
+PROBE_RESULT stage=p13 case=source_semantic psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0

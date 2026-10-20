@@ -1,0 +1,51 @@
+candidate 85d9dd8; extra owner and ACL cases across all consumed helpers
+CASE a1 owner_daily integration_cold_meta_a1_liveacl
+BEGIN
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+SET
+ALTER FUNCTION
+DO
+psql:<stdin>:77: ERRO:  Progression source metadata or authority changed: _complete_mission_daily(uuid,date,integer)
+CONTEXT:  função PL/pgSQL inline_code_block linha 46 em RAISE
+PROBE_RESULT stage=a1 case=owner_daily psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 owner_private_helper integration_cold_pre_a12
+BEGIN
+SET
+ALTER FUNCTION
+DO
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:72: ERRO:  DERIVED_EFFECT_HELPER_DRIFT: private.undo_mission_attribute_awards(uuid,date,uuid,boolean,date)
+CONTEXT:  função PL/pgSQL inline_code_block linha 49 em RAISE
+PROBE_RESULT stage=a12 case=owner_private_helper psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE a12 anon_health integration_cold_pre_a12
+BEGIN
+SET
+GRANT
+DO
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:72: ERRO:  DERIVED_EFFECT_HELPER_DRIFT: public._apply_mission_health_effects(uuid,numeric,integer,integer)
+CONTEXT:  função PL/pgSQL inline_code_block linha 49 em RAISE
+PROBE_RESULT stage=a12 case=anon_health psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 owner_trigger integration_cold_meta_p13
+BEGIN
+SET
+ALTER FUNCTION
+DO
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:152: ERRO:  TALENT_LEVEL_SOURCE_DRIFT
+CONTEXT:  função PL/pgSQL inline_code_block linha 37 em RAISE
+PROBE_RESULT stage=p13 case=owner_trigger psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0
+CASE p13 revoke_trigger integration_cold_meta_p13
+BEGIN
+SET
+REVOKE
+DO
+psql:<stdin>:4: NOTA:  PROBE_MUTATION_APPLIED
+psql:<stdin>:152: ERRO:  TALENT_LEVEL_SOURCE_DRIFT
+CONTEXT:  função PL/pgSQL inline_code_block linha 37 em RAISE
+PROBE_RESULT stage=p13 case=revoke_trigger psql_exit=3 mutation_applied=true migration_accepted=false preflight_rejected=true sentinel_after=f
+HARNESS_EXIT=0

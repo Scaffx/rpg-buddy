@@ -203,6 +203,7 @@ export function AppSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
+                        aria-label={collapsed ? t(`app.sidebar.${item.key}`) : undefined}
                         end={item.url === '/'}
                         className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sidebar-foreground/60 transition-all hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                         activeClassName="bg-primary/10 text-primary font-semibold border-l-2 border-primary"
@@ -239,6 +240,7 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <button
                     type="button"
+                    aria-label="Ajuda & Tutorial"
                     onClick={() => setShowHelp(true)}
                     className="group flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sidebar-foreground/60 transition-all hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                     title="Ver tutorial e ajuda"
@@ -257,6 +259,8 @@ export function AppSidebar() {
       {/* ── Rodapé: Logout ─────────────────────────────────────── */}
       <SidebarFooter className="border-t border-sidebar-border p-2">
         <button
+          type="button"
+          aria-label={t('app.sidebar.logout')}
           onClick={signOut}
           className="group flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sidebar-foreground/50 transition-all hover:text-destructive hover:bg-destructive/8"
         >

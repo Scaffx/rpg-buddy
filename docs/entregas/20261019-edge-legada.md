@@ -1,0 +1,20 @@
+# Edge legada `processar_turno` — entrega para revisão em 19/10/2026
+
+## Resultado
+
+Patch mínimo de release, **não implantado**. A fonte é a captura da Edge publicada v33, `ACTIVE`, `verify_jwt=true`, e não o arquivo canônico local. O diff remove o fluxo de recompensa da primeira vitória e o fluxo semanal de ouro, materiais e item; ambos faziam writes a partir do combate legado. O coordenador confirmou a retirada das duas faixas após a leitura da v33. O handler ainda resolve o turno, atualiza o combate/saúde, registra o turno com `xp_gained:0` e retorna o mesmo formato HTTP, com `loot_drop:null` em vitória. Não cria mecanismo alternativo de prêmio; a aventura SQL é a fonte canônica planejada para o combate automático.
+
+Artefatos revisáveis: [`published-v33.ts`](../../supabase/releases/20261019/processar_turno/published-v33.ts), [`index.ts`](../../supabase/releases/20261019/processar_turno/index.ts), [`README.md`](../../supabase/releases/20261019/processar_turno/README.md) e [`legacyCombatRelease.test.ts`](../../src/test/legacyCombatRelease.test.ts). O README contém metadados, hashes, argumentos exatos do MCP de deploy para revisão, guarda contra drift e rollback. Nenhuma credencial foi exportada no snapshot; `Deno.env.get` são somente referências no código.
+
+## Evidência
+
+- Base da worktree ao iniciar: `a38d0eebe017e65f8f1362cf5cfe2b8552b401cf`, árvore limpa. SHA256 do canônico local `supabase/functions/processar_turno/index.ts`: `8ab683ecc8b6f146c4c8beac87908e5f05377f6e7820c60aa16b47938cc1c21e`; arquivo não editado e **sem alegação de paridade** com a v33.
+- SHA256 dos bytes exatos de `published-v33.ts`: `c010dd703c9ebf3676252141d8893333856b38971b7b2debd6e5844851220c01`. SHA256 de `index.ts`: `6943cd24afe689cf8fb6f4b39f9a29eeb546cedfd773c38f0f2755c3cc44feba`. O hash `ezbr_sha256` dos metadados do provedor é `efc225424a6c7bb7417ada4658570dd33d334d86383c414a6b0db41b9a7c54be`; não é apresentado como hash do conteúdo bruto.
+- `git diff --no-index --numstat -- published-v33.ts index.ts`: `0` linhas adicionadas, `145` removidas. O teste reconstrói `index.ts` por concatenação exata do prefixo e sufixo da v33 em torno do bloco removido e fixa ambos os SHA256. `.gitattributes` local preserva bytes UTF-8/LF nos dois `.ts` após checkout.
+- `git diff --no-index --check -- published-v33.ts index.ts`: exit `1` pela diferença intencional entre os arquivos, sem diagnóstico de whitespace. `git diff --check` da worktree: exit `0`.
+- `node_modules\.bin\vitest.cmd run src/test/legacyCombatRelease.test.ts`: exit `0`, **7 testes**. Vitest transpila o handler e intercepta exclusivamente o import HTTPS de `supabase-js`; `Deno.serve`, `Deno.env`, auth, RPC de assinatura e tabelas são simulados, sem rede nem segredo. O **mesmo fixture** contra `published-v33.ts` tenta writes de primeira vitória e recompensa semanal; contra `index.ts`, vitória sem registro antigo, com registro antigo e com resgate semanal anterior preserva status `200`, `status:'vitoria'`, chaves da resposta, escrita de turno/saúde e não tenta `boss_battles.won`, XP/nível, ouro, materiais, inventário ou recibo de prêmio. Turno comum fica `em_andamento`, usuário sem auth recebe `401`, OPTIONS responde com CORS. O mock registra chamadas tentadas, não simula autorização real do banco.
+- Deno não está instalado/disponível nesta worktree; a sintaxe TypeScript foi exercitada pela transpilação em Vitest, não por `deno check`. Nenhuma chamada de gateway real, combate remoto, SQL remoto de escrita, push ou deploy foi feita. A efetividade de RLS/guard vivo, o crédito anterior em produção e a publicação posterior não foram testados aqui.
+
+## Revisão antes de publicar
+
+Refazer `get_edge_function` no Primary imediatamente antes do deploy e comparar versão, `ACTIVE`, `verify_jwt=true`, hash do conteúdo exato e `ezbr_sha256`. Se qualquer campo divergir, parar e reconstruir o patch sobre a publicação nova. O comando/argumentos de deploy e o rollback estão no README; ambos são **instruções para o coordenador**, não ações executadas nesta task. Rollback para `published-v33.ts` restauraria também os prêmios legados, portanto requer revisão operacional específica.

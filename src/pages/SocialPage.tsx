@@ -24,7 +24,7 @@ import DirectChatModal from "@/components/DirectChatModal";
 import { toast } from "sonner";
 import {
   Users, UserPlus, UserCheck, UserX, Search, Swords,
-  CheckCircle, Clock, Star, X, Plus, Trash2, Send, Ban, MessageSquare,
+  CheckCircle, Clock, X, Plus, Trash2, Send, Ban, MessageSquare,
 } from "lucide-react";
 
 // ────────────────────────────────────────────────────────────────
@@ -101,9 +101,7 @@ function CoOpMissionModal({
           </button>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          {t('app.social.invite_desc')} <strong className="text-primary">{t('app.social.invite_xp')}</strong>.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('app.social.invite_desc')}</p>
 
         {/* Título */}
         <div>
@@ -234,9 +232,10 @@ function CoOpMissionCard({ mission, currentUserId }: { mission: CoOpMission; cur
             <strong className="text-primary">{mission.duration_days ?? 7} dias</strong>
             {mission.ends_at && ` · até ${new Date(mission.ends_at).toLocaleDateString('pt-BR')}`}
           </p>
+          <p className="text-[11px] text-muted-foreground mt-1">{t('app.social.no_xp_note')}</p>
         </div>
         <span className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 bg-primary/15 text-primary rounded-full text-xs font-bold">
-          <Star className="w-3 h-3" /> {mission.xp_per_player} XP
+          <CheckCircle className="w-3 h-3" /> {t('app.social.collective_record')}
         </span>
       </div>
 
@@ -262,7 +261,7 @@ function CoOpMissionCard({ mission, currentUserId }: { mission: CoOpMission; cur
         <button
           onClick={() =>
             completeMission.mutate(mission.id, {
-              onSuccess: () => toast.success(t('app.social.toast_xp_claimed', { xp: mission.xp_per_player })),
+              onSuccess: () => toast.success(t('app.social.toast_participation_recorded')),
               onError: (e: any) => toast.error(e.message),
             })
           }

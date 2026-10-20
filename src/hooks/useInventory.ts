@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { getAttributeLevels, getPlayerCombatStats } from '@/lib/combat';
+import { requireRpcObject } from '@/lib/rpcPayload';
 
-const db = supabase as any;
 
 function toFiniteNumber(value: unknown, fallback: number): number {
   const n = Number(value);
@@ -67,7 +68,7 @@ export function useInventory() {
   return useQuery({
     queryKey: ['inventory', user?.id],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('user_inventory')
         .select('*, game_items(*)')
         .eq('user_id', user!.id);
@@ -89,9 +90,11 @@ export function useUseScroll() {
   return useMutation({
     mutationFn: async (scrollItemId: string) => {
       if (!user) throw new Error('Não autenticado');
-      const { data, error } = await db.rpc('use_scroll', { p_scroll_item_id: scrollItemId });
+      const { data, error } = await supabase.rpc('use_scroll', { p_scroll_item_id: scrollItemId });
       if (error) throw error;
-      return data as { ok: boolean; learned_node: string };
+      const result = requireRpcObject(data, 'use_scroll');
+      if (result.ok !== true || typeof result.learned_node !== 'string') throw new Error('Resposta inválida de use_scroll.');
+      return { ok: true, learned_node: result.learned_node };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
@@ -135,7 +138,7 @@ export function useGameItems(category?: string) {
   return useQuery({
     queryKey: ['game-items', category],
     queryFn: async () => {
-      let q = db.from('game_items').select('*');
+      let q = supabase.from('game_items').select('*');
       if (category) q = q.eq('category', category);
       const { data, error } = await q;
       if (error) throw error;
@@ -156,10 +159,13 @@ export function useShopItems() {
   return useQuery({
     queryKey: ['shop-game-items'],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('game_items')
         .select('*')
-        .not('shop_price', 'is', null)
+        .gt('shop_price', 0)
+        .eq('is_starter', false)
+        .is('boss_drop_level', null)
+        .in('category', ['weapon', 'armor', 'accessory', 'consumable'])
         .order('category')
         .order('shop_price');
       if (error) throw error;
@@ -177,48 +183,24 @@ export function useShopItems() {
 export function useBuyEquipment() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const pendingRequests = useRef(new Map<string, string>());
 
   return useMutation({
     mutationFn: async (item: GameItem) => {
       if (!user) throw new Error('Não autenticado');
 
-      // 🔒 Server-side: preço lido do banco + dedução guardada via charge_for_item.
-      const { error: chargeErr } = await supabase.rpc('charge_for_item', { p_item_id: item.id });
-      if (chargeErr) throw chargeErr;
-
-      if (item.stackable) {
-        const { data: existing } = await db
-          .from('user_inventory')
-          .select('id, quantity')
-          .eq('user_id', user.id)
-          .eq('item_id', item.id)
-          .maybeSingle();
-
-        if (existing) {
-          await db.from('user_inventory').update({ quantity: existing.quantity + 1 }).eq('id', existing.id);
-        } else {
-          await db.from('user_inventory').insert({ user_id: user.id, item_id: item.id, quantity: 1, equipped: false });
-        }
-      } else {
-        const { data: existing } = await db
-          .from('user_inventory')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('item_id', item.id)
-          .maybeSingle();
-
-        if (existing) throw new Error('Você já possui esse item!');
-        await db.from('user_inventory').insert({ user_id: user.id, item_id: item.id, quantity: 1, equipped: false });
-      }
-
-      await supabase.from('gold_history').insert({
-        user_id: user.id,
-        type: 'compra_equipamento',
-        amount: -(item.shop_price || 0),
-        reason: `Comprou ${item.name}`,
+      const requestId = pendingRequests.current.get(item.id) ?? crypto.randomUUID();
+      pendingRequests.current.set(item.id, requestId);
+      const { data, error } = await supabase.rpc('purchase_game_item', {
+        p_item_id: item.id,
+        p_request_id: requestId,
       });
+      if (error) throw error;
+      if (requireRpcObject(data, 'purchase_game_item').ok !== true) throw new Error('Compra não confirmada pelo servidor.');
+      return item.id;
     },
-    onSuccess: () => {
+    onSuccess: (itemId) => {
+      pendingRequests.current.delete(itemId);
       queryClient.invalidateQueries({ queryKey: ['gold-balance'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['gold-history'] });
@@ -234,69 +216,12 @@ export function useToggleEquip() {
     mutationFn: async ({ inventoryId, equipped }: { inventoryId: string; equipped: boolean }) => {
       if (!user) throw new Error('Não autenticado');
 
-      if (!equipped) {
-        await db.from('user_inventory').update({ equipped: false }).eq('id', inventoryId).eq('user_id', user.id);
-        return;
-      }
-
-      const { data: itemRow, error: itemError } = await db
-        .from('user_inventory')
-        .select('id, user_id, equipped, sintonizado, game_items(rarity, category)')
-        .eq('id', inventoryId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (itemError) throw itemError;
-      if (!itemRow) throw new Error('Item não encontrado no inventário.');
-
-      // --- Limites por categoria ---
-      const category = String(itemRow?.game_items?.category || '').toLowerCase();
-      const SLOT_LIMITS: Record<string, number> = { armor: 1, weapon: 2, accessory: 3 };
-      const limit = SLOT_LIMITS[category];
-      if (limit !== undefined) {
-        const { data: equippedRows, error: countError } = await db
-          .from('user_inventory')
-          .select('id, game_items!inner(category)')
-          .eq('user_id', user.id)
-          .eq('equipped', true)
-          .neq('id', inventoryId);
-
-        if (countError) throw countError;
-        const equippedCount = (equippedRows || []).filter(
-          (row: any) => String(row?.game_items?.category || '').toLowerCase() === category,
-        ).length;
-        if ((equippedCount || 0) >= limit) {
-          const labels: Record<string, string> = { armor: 'armadura', weapon: 'arma', accessory: 'acessório' };
-          throw new Error(
-            `Limite de ${labels[category] ?? category} atingido (${limit}/${limit}). Desequipe um item antes de equipar outro.`,
-          );
-        }
-      }
-
-      const rarity = String(itemRow?.game_items?.rarity || '').toLowerCase();
-      const requiresAttunement = ['epico', 'lendario'].includes(rarity);
-
-      if (requiresAttunement && !itemRow.sintonizado) {
-        const { count: attunedCount, error: countError } = await db
-          .from('user_inventory')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('sintonizado', true);
-
-        if (countError) throw countError;
-        if ((attunedCount || 0) >= 3) {
-          throw new Error('Limite de sintonização atingido (3/3). Desequipe ou dessintonize um item mágico para continuar.');
-        }
-
-        await db
-          .from('user_inventory')
-          .update({ sintonizado: true, equipped: true })
-          .eq('id', inventoryId)
-          .eq('user_id', user.id);
-        return;
-      }
-
-      await db.from('user_inventory').update({ equipped: true }).eq('id', inventoryId).eq('user_id', user.id);
+      const { error } = await supabase.rpc('set_inventory_equipped', {
+        p_inventory_id: inventoryId,
+        p_equipped: equipped,
+        p_replace_weapon: false,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
@@ -312,40 +237,11 @@ export function useToggleAttunement() {
     mutationFn: async ({ inventoryId, sintonizado }: { inventoryId: string; sintonizado: boolean }) => {
       if (!user) throw new Error('Não autenticado');
 
-      if (sintonizado) {
-        await db.from('user_inventory').update({ sintonizado: false }).eq('id', inventoryId).eq('user_id', user.id);
-        return;
-      }
-
-      const { data: itemRow, error: itemError } = await db
-        .from('user_inventory')
-        .select('id, sintonizado, game_items(rarity)')
-        .eq('id', inventoryId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (itemError) throw itemError;
-      if (!itemRow) throw new Error('Item não encontrado no inventário.');
-
-      const rarity = String(itemRow?.game_items?.rarity || '').toLowerCase();
-      const requiresAttunement = ['epico', 'lendario'].includes(rarity);
-
-      if (!requiresAttunement) {
-        throw new Error('Este item não exige sintonização.');
-      }
-
-      const { count: attunedCount, error: countError } = await db
-        .from('user_inventory')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('sintonizado', true);
-
-      if (countError) throw countError;
-      if ((attunedCount || 0) >= 3) {
-        throw new Error('Limite de sintonização atingido (3/3). Desequipe ou dessintonize um item mágico para continuar.');
-      }
-
-      await db.from('user_inventory').update({ sintonizado: true }).eq('id', inventoryId).eq('user_id', user.id);
+      const { error } = await supabase.rpc('set_inventory_attunement', {
+        p_inventory_id: inventoryId,
+        p_attuned: !sintonizado,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
@@ -358,10 +254,10 @@ export function useConsumeItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ inventoryId, quantity }: { inventoryId: string; quantity: number }) => {
+    mutationFn: async ({ inventoryId }: { inventoryId: string; quantity: number }) => {
       if (!user) throw new Error('Não autenticado');
 
-      const { data: inventoryRow, error: inventoryError } = await db
+      const { data: inventoryRow, error: inventoryError } = await supabase
         .from('user_inventory')
         .select('id, item_id, quantity, game_items(name, effect, is_consumable)')
         .eq('id', inventoryId)
@@ -376,31 +272,23 @@ export function useConsumeItem() {
       // Consider consumable if is_consumable flag is set OR if effect is defined (for older items)
       const isConsumable = Boolean(relatedItem?.is_consumable) || !!itemEffect;
 
-      const { data: talents } = await supabase
-        .from('talentos_jogador')
-        .select('talentos_disponiveis(efeito)')
-        .eq('personagem_id', user.id);
-
-      const hasAlquimistaAmador = (talents || []).some(
-        (row: any) => String(row?.talentos_disponiveis?.efeito || '') === 'alquimista_amador',
-      );
-
-      const isPotionLike = isConsumable && (
-        itemEffect.startsWith('heal_') ||
-        itemEffect.startsWith('mana_') ||
-        itemEffect === 'full_rest' ||
-        itemName.toLowerCase().includes('pocao')
-      );
-
-      const preserveCharge = hasAlquimistaAmador && isPotionLike && Math.random() < 0.1;
+      // Claim the charge before applying its effect; the server validates ownership,
+      // quantity and the Alquimista Amador chance under a row lock.
+      const { data: consumption, error: consumeError } = await supabase.rpc('consume_inventory_item', {
+        p_inventory_id: inventoryId,
+      });
+      if (consumeError) throw consumeError;
+      const consumed = requireRpcObject(consumption, 'consume_inventory_item');
+      if (consumed.ok !== true || typeof consumed.preserved !== 'boolean') throw new Error('Consumo não confirmado pelo servidor.');
+      const preserveCharge = consumed.preserved;
 
       if (isConsumable && itemEffect) {
         const [{ data: profile }, { data: attrs }] = await Promise.all([
-          db.from('profiles').select('level').eq('user_id', user.id).maybeSingle(),
-          db.from('attributes').select('name, level').eq('user_id', user.id),
+          supabase.from('profiles').select('level').eq('user_id', user.id).maybeSingle(),
+          supabase.from('attributes').select('name, level').eq('user_id', user.id),
         ]);
 
-        const { data: healthStats, error: healthError } = await db
+        const { data: healthStats, error: healthError } = await supabase
           .from('user_health_stats')
           .select('max_hp, current_hp, max_mp, current_mp, fatigue')
           .eq('user_id', user.id)
@@ -454,13 +342,13 @@ export function useConsumeItem() {
               max_hp: baseStats.max_hp,
               max_mp: baseStats.max_mp,
             };
-            const { error: updateHealthError } = await db
+            const { error: updateHealthError } = await supabase
               .from('user_health_stats')
               .update(payload)
               .eq('user_id', user.id);
             if (updateHealthError) throw updateHealthError;
           } else {
-            const { error: insertHealthError } = await db.from('user_health_stats').insert({
+            const { error: insertHealthError } = await supabase.from('user_health_stats').insert({
               user_id: user.id,
               max_hp: baseStats.max_hp,
               current_hp: Number(updates.current_hp ?? baseStats.current_hp),
@@ -471,24 +359,6 @@ export function useConsumeItem() {
             });
             if (insertHealthError) throw insertHealthError;
           }
-        }
-      }
-
-      if (!preserveCharge) {
-        if (quantity <= 1) {
-          const { error: deleteError } = await db
-            .from('user_inventory')
-            .delete()
-            .eq('id', inventoryId)
-            .eq('user_id', user.id);
-          if (deleteError) throw deleteError;
-        } else {
-          const { error: decError } = await db
-            .from('user_inventory')
-            .update({ quantity: quantity - 1 })
-            .eq('id', inventoryId)
-            .eq('user_id', user.id);
-          if (decError) throw decError;
         }
       }
 
@@ -510,226 +380,26 @@ export function useConsumeItem() {
   });
 }
 
-export function useClaimStarterKit() {
+/** Claims a bounded catalog kit once; the server selects the class and item IDs. */
+function useClaimKit(kind: 'starter' | 'class') {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (_starterClass?: string) => {
       if (!user) throw new Error('Não autenticado');
-
-      // Check if already claimed
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('starter_kit_claimed')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profile?.starter_kit_claimed) {
-        throw new Error('Kit inicial já foi resgatado!');
-      }
-
-      // Always give the novato kit (4 basic items)
-      const { data: noviceItems, error: itemsErr } = await db
-        .from('game_items')
-        .select('*')
-        .eq('is_starter', true)
-        .eq('starter_class', 'novato');
-
-      if (itemsErr) throw itemsErr;
-
-      for (const item of (noviceItems || [])) {
-        await db.from('user_inventory').upsert({
-          user_id: user.id,
-          item_id: item.id,
-          quantity: 1,
-          equipped: true,
-        }, { onConflict: 'user_id,item_id' });
-      }
-
-      // Also give starter consumables (potions)
-      const { data: potions } = await db
-        .from('game_items')
-        .select('*')
-        .eq('is_starter', true)
-        .eq('is_consumable', true);
-
-      for (const potion of (potions || [])) {
-        await db.from('user_inventory').upsert({
-          user_id: user.id,
-          item_id: potion.id,
-          quantity: 2,
-          equipped: false,
-        }, { onConflict: 'user_id,item_id' });
-      }
-
-      // Mark novato kit as claimed
-      await supabase.from('profiles').update({ starter_kit_claimed: true } as any).eq('user_id', user.id);
-
-      return noviceItems;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-    },
-  });
-}
-
-/** Concede o kit de equipamentos da classe escolhida (chamado ao selecionar classe no lv5) */
-export function useClaimClassKit() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (starterClass: string) => {
-      if (!user) throw new Error('Não autenticado');
-
-      // Check if already claimed
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('class_kit_claimed')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profile?.class_kit_claimed) {
-        return []; // silently skip
-      }
-
-      // Get class-specific gear (weapon + armor only — no novato, no consumables)
-      const { data: classItems, error: itemsErr } = await db
-        .from('game_items')
-        .select('*')
-        .eq('is_starter', true)
-        .eq('starter_class', starterClass)
-        .eq('is_consumable', false);
-
-      if (itemsErr) throw itemsErr;
-
-      for (const item of (classItems || [])) {
-        await db.from('user_inventory').upsert({
-          user_id: user.id,
-          item_id: item.id,
-          quantity: 1,
-          equipped: false, // player equips manually
-        }, { onConflict: 'user_id,item_id' });
-      }
-
-      // Mark class kit as claimed
-      await supabase.from('profiles').update({ class_kit_claimed: true } as any).eq('user_id', user.id);
-
-      return classItems;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-    },
-  });
-}
-
-/**
- * Kit inicial completo da classe escolhida no onboarding (LV1):
- * - arma + armadura + acessório da classe (is_starter), com arma e armadura já equipadas
- * - 2 frascos de mana + 1 frasco de vida (poções menores) no inventário
- * Idempotente: se starter_kit_claimed já estiver marcado, não faz nada.
- */
-export function useGrantOnboardingKit() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (starterClass: string) => {
-      if (!user) throw new Error('Não autenticado');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('starter_kit_claimed')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if ((profile as any)?.starter_kit_claimed) return;
-
-      // Equipamento da classe (arma + armadura + acessório)
-      const { data: classItems } = await db
-        .from('game_items')
-        .select('id, category')
-        .eq('is_starter', true)
-        .eq('starter_class', starterClass)
-        .eq('is_consumable', false);
-
-      for (const item of (classItems || [])) {
-        const cat = String(item.category || '').toLowerCase();
-        // Arma e armadura já entram equipadas; acessório fica no inventário.
-        const equipped = cat === 'weapon' || cat === 'armor';
-        await db.from('user_inventory').upsert(
-          { user_id: user.id, item_id: item.id, quantity: 1, equipped },
-          { onConflict: 'user_id,item_id' },
-        );
-      }
-
-      // Frascos: 2 de mana + 1 de vida (poções menores, lv1)
-      const { data: potions } = await db
-        .from('game_items')
-        .select('id, name, effect')
-        .in('name', ['Poção de MP Menor', 'Poção de HP Menor']);
-
-      for (const potion of (potions || [])) {
-        const isMana = String(potion.effect || '').startsWith('mana_');
-        await db.from('user_inventory').upsert(
-          { user_id: user.id, item_id: potion.id, quantity: isMana ? 2 : 1, equipped: false },
-          { onConflict: 'user_id,item_id' },
-        );
-      }
-
-      await supabase
-        .from('profiles')
-        .update({ starter_kit_claimed: true, class_kit_claimed: true } as any)
-        .eq('user_id', user.id);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-    },
-  });
-}
-
-export function useGrantBossLoot() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (bossLevel: number) => {
-      if (!user) throw new Error('Não autenticado');
-
-      // Find drop item for this boss level
-      const { data: dropItem, error } = await db
-        .from('game_items')
-        .select('*')
-        .eq('boss_drop_level', bossLevel)
-        .maybeSingle();
-
+      const { data, error } = await supabase.rpc('claim_inventory_kit', { p_kind: kind });
       if (error) throw error;
-      if (!dropItem) return null;
-
-      // Check if already has it
-      const { data: existing } = await db
-        .from('user_inventory')
-        .select('id, quantity')
-        .eq('user_id', user.id)
-        .eq('item_id', dropItem.id)
-        .maybeSingle();
-
-      if (existing) return dropItem; // Already has it
-
-      await db.from('user_inventory').insert({
-        user_id: user.id,
-        item_id: dropItem.id,
-        quantity: 1,
-        equipped: false,
-      });
-
-      return dropItem as GameItem;
+      const result = requireRpcObject(data, 'claim_inventory_kit');
+      if (result.ok !== true || typeof result.already_claimed !== 'boolean') throw new Error('Kit não confirmado pelo servidor.');
+      return { ok: true, already_claimed: result.already_claimed };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
   });
 }
+
+export function useClaimStarterKit() { return useClaimKit('starter'); }
+export function useClaimClassKit() { return useClaimKit('class'); }
+export function useGrantOnboardingKit() { return useClaimKit('starter'); }

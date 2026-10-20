@@ -17,6 +17,7 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 import { Flame, Gift, Shield, ShieldAlert, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAutoAdventure } from '@/hooks/useAutoAdventure';
 import { formatSeconds, getRemainingSeconds, readShortRestState, writeShortRestState } from '@/lib/shortRestState';
 import { useMidnightReset } from '@/hooks/useMidnightReset';
 import { useForrageio } from '@/hooks/useForrageio';
@@ -58,6 +59,8 @@ type StreakProtectorProfileRow = {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  // The authenticated shell reconciles elapsed encounters even if Arena is never opened.
+  useAutoAdventure({ background: true });
   const { t } = useTranslation();
   useMidnightReset();
   useCheckFailedMissions();

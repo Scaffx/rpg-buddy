@@ -1,7 +1,8 @@
 // src/pages/Missions.tsx
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from 'i18next';
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useMissions,
@@ -27,16 +28,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  getWeeklyListBucket,
+  getSaoPauloDateString,
   getWeeklyMissionErrorCode,
   getWeeklyMissionErrorMessage,
   getWeeklyMissionState,
-  isWeeklyFocusCandidate,
   isWeeklyMission,
+  isWeeklyRegistrableOnFocusDate,
 } from "@/lib/weeklyMissions";
 import { hasWeekendXpSchedule } from '@/lib/weekendXpBonus';
-import { findHighPriorityOverflow, missionScheduledDays } from '@/lib/missionPriority';
-import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY } from '@/lib/constants';
+import { countPriorityOnDate, findPriorityOverflow, missionScheduledDays, normalizePriority } from '@/lib/missionPriority';
+import { getMissionBaseXp, MAX_HIGH_PRIORITY_PER_DAY, MAX_MEDIUM_PRIORITY_PER_DAY } from '@/lib/constants';
 import AppLayout from "@/components/AppLayout";
 import { FailedMissionsSection } from "@/components/FailedMissionsSection";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,23 @@ const MISSIONS_TOUR_STEPS: TourStep[] = [
 ];
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+function nextSaoPauloDateForDay(today: string, day: string): string {
+  const date = new Date(`${today}T12:00:00Z`);
+  const targetDow = (DAYS.indexOf(day === 'Sab' ? 'Sáb' : day) + 1) % 7;
+  date.setUTCDate(date.getUTCDate() + ((targetDow - date.getUTCDay() + 7) % 7));
+  return date.toISOString().slice(0, 10);
+}
+
+function getPrioritySaveError(error: unknown, t: TFunction): string {
+  const message = String((error as { message?: string })?.message || '');
+  if (message.includes('MISSION_PRIORITY_CAP:')) {
+    const [, priority, day, limit] = message.match(/MISSION_PRIORITY_CAP:(alta|media):([^:]+):(\d+)/) || [];
+    return t('app.missions.priority_limit_api', { priority: t(priority === 'alta' ? 'app.missions.priority_high' : 'app.missions.priority_medium'), day: day || '', max: limit || '4' });
+  }
+  if (message.includes('MISSION_SCHEDULE_INVALID')) return t('app.missions.priority_schedule_invalid');
+  return t('app.missions.priority_save_failed_generic');
+}
 const DAYS_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 const TIMES = [
   { value: "manha", label: "🌅 Manhã", icon: Sunrise },
@@ -139,18 +157,21 @@ const STATUS_COLORS: Record<string, string> = {
   arquivada: "bg-muted-foreground",
 };
 
-function getLocalDateString(date: Date = new Date()): string {
-  return date.toLocaleDateString('en-CA');
-}
+const MISSION_GRID_CLASS = "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3";
 
-// ✅ FUNÇÃO AUXILIAR: Verificar se missão foi concluída hoje
-function foiConcluidaHoje(mission: any): boolean {
-  const weeklyState = getWeeklyMissionState(mission);
-  if (weeklyState) return weeklyState.completedToday;
-
-  const today = getLocalDateString();
-  const dailyStatus = mission.daily_status || {};
-  return dailyStatus[today] === "completed";
+// `daily_status` registra as diárias e semanais. A conclusão única marca
+// `completed` e usa `due_date` como dia elegível; arquivar também marca
+// `completed`, mas não é uma conclusão reversível.
+function foiConcluidaEm(mission: any, dateStr: string): boolean {
+  if (mission.status === 'arquivada' || mission.is_failed) return false;
+  const dailyStatus = mission.daily_status;
+  if (dailyStatus && typeof dailyStatus === 'object' && !Array.isArray(dailyStatus)
+      && dailyStatus[dateStr] === 'completed') return true;
+  const days = mission.days_of_week;
+  const isUnique = mission.frequency_type !== 'weekly'
+    && (days == null || (Array.isArray(days) && days.length === 0))
+    && !!mission.due_date;
+  return isUnique && mission.completed === true && mission.due_date === dateStr;
 }
 
 // ✅ FUNÇÃO AUXILIAR: Obter próximo dia agendado
@@ -229,8 +250,31 @@ export default function Missions() {
   const { data: failedMissions = [] } = useFailedMissions();
   const { showWelcomeBack, setShowWelcomeBack, daysAway } = useWelcomeBackCheck();
 
+  // ── Dia em foco ───────────────────────────────────────────────────────
+  // Esquecer de marcar e não ter feito são coisas diferentes, e o app só
+  // distingue as duas se aceitar o registro tardio. A janela é de um dia: além
+  // disso a memória já não é confiável e a marcação vira ficção.
+  // Fuso de São Paulo, não do aparelho: é o servidor que decide qual dia é hoje
+  // (invariante #3). Num aparelho em UTC+9, o "ontem" local ainda é o hoje do
+  // servidor — a UI listaria como ontem e o registro cairia em hoje.
+  const hojeStr = getSaoPauloDateString();
+  const ontemStr = getSaoPauloDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  const [focusDate, setFocusDate] = useState<string>(hojeStr);
+  const isBackfilling = focusDate === ontemStr;
+  // Domingo é o único D-1 que cai na semana anterior (a semana ISO começa na
+  // segunda). Aí a cota que vale é a da semana fechada, e o cliente só carregou
+  // a da semana corrente — nesse caso quem barra por cota é o servidor.
+  const backfillDeOutraSemana =
+    isBackfilling && new Date(`${focusDate}T12:00:00`).getDay() === 0;
+
+  // A virada de meia-noite com o app aberto deixaria focusDate apontando para
+  // um dia fora da janela; nesse caso ele volta pra hoje sozinho.
+  useEffect(() => {
+    if (focusDate !== hojeStr && focusDate !== ontemStr) setFocusDate(hojeStr);
+  }, [focusDate, hojeStr, ontemStr]);
+
   const todayDay = (() => {
-    const d = new Date().getDay();
+    const d = new Date(`${focusDate}T12:00:00`).getDay();
     return DAYS[d === 0 ? 6 : d - 1];
   })();
 
@@ -244,22 +288,30 @@ export default function Missions() {
     let nextUnique: any[] = [];
     let completed: any[] = [];
 
-    const hoje = getLocalDateString();
+    const hoje = focusDate;
 
     allMissions.forEach((m: any) => {
-      // Missões fracassadas são exibidas na seção própria, não na lista regular
-      if ((m as any).is_failed) return;
+      // Fracassadas têm seção própria; arquivadas não são conclusões nem
+      // tarefas disponíveis para registrar no dia em foco.
+      if ((m as any).is_failed || m.status === 'arquivada') return;
 
       const days = (m.days_of_week as string[]) || [];
       const isDaily = days.length > 0;
       const isUnique = days.length === 0 && m.due_date; // Missão única tem due_date e não tem dias recorrentes
       const isWeekly = isWeeklyMission(m);
-      const completedToday = foiConcluidaHoje(m);
+      const completedToday = foiConcluidaEm(m, focusDate);
       const isCompleted = m.completed || m.status === "arquivada";
+      // Uma regra só para as três abas: sem isto, "pendentes" e "foco" olhavam
+      // apenas para hoje e a janela D-1 só funcionava na aba "todas".
+      const weeklyDisponivel = isWeeklyRegistrableOnFocusDate(m, {
+        isBackfilling,
+        completedOnFocusDate: completedToday,
+        focusDateInPreviousWeek: backfillDeOutraSemana,
+      });
 
       // Filtro por aba
       if (activeTab === "concluidas") {
-        if (isCompleted || completedToday) {
+        if (m.status !== 'arquivada' && (m.completed || completedToday)) {
           completed.push(m);
         }
         return;
@@ -268,7 +320,7 @@ export default function Missions() {
       if (activeTab === "todas") {
         if (!isCompleted) {
           if (isWeekly) {
-            if (getWeeklyListBucket(m) === 'today') {
+            if (weeklyDisponivel) {
               today.push(m);
             } else {
               nextDays.push(m);
@@ -293,7 +345,7 @@ export default function Missions() {
       }
 
       if (activeTab === "foco") {
-        if (isWeeklyFocusCandidate(m)) {
+        if (isWeekly && weeklyDisponivel) {
           today.push(m);
         } else if (isUnique && m.due_date === hoje) {
           todayUnique.push(m);
@@ -305,7 +357,7 @@ export default function Missions() {
 
       // Pendentes (padrão)
       if (isWeekly) {
-        if (getWeeklyListBucket(m) === 'today') {
+        if (weeklyDisponivel) {
           today.push(m);
         } else {
           nextDays.push(m);
@@ -367,7 +419,7 @@ export default function Missions() {
       nextUniqueMissions: filterMissions(nextUnique),
       completedMissions: filterMissions(completed),
     };
-  }, [allMissions, activeTab, selectedCategories, searchQuery, todayDay, attrs]);
+  }, [allMissions, activeTab, selectedCategories, searchQuery, todayDay, attrs, focusDate, isBackfilling, backfillDeOutraSemana]);
 
   const toggleCategory = (cat: string) => {
     if (cat === "Todos") {
@@ -479,25 +531,23 @@ const handleSave = async () => {
     const isWeekly = formMissionType === 'recorrente' && formFrequencyType === 'weekly';
     const daysToSave = formMissionType === "unica" || isWeekly ? [] : formDays;
     const frequencyType = isWeekly ? 'weekly' : 'daily';
-    // Teto de prioridade alta por dia. Sem ele, em duas semanas tudo vira alta
-    // e a prioridade deixa de significar escolha — que é o ponto dela.
-    const overflow = findHighPriorityOverflow(allMissions || [], {
+    const slotUnchanged = editingMission
+      && normalizePriority(editingMission.priority) === normalizePriority(formPriority)
+      && (editingMission.frequency_type || 'daily') === frequencyType
+      && (editingMission.due_date || null) === (formMissionType === 'unica' ? formDueDate : null)
+      && JSON.stringify([...(editingMission.days_of_week || [])].sort()) === JSON.stringify([...daysToSave].sort());
+    const overflow = slotUnchanged ? null : findPriorityOverflow(allMissions || [], {
       id: editingMission?.id,
       priority: formPriority,
-      days: missionScheduledDays({
-        frequency_type: frequencyType,
-        days_of_week: daysToSave,
-        due_date: formMissionType === "unica" ? formDueDate : null,
-      }),
-    });
+      frequency_type: frequencyType,
+      days_of_week: daysToSave,
+      due_date: formMissionType === "unica" ? formDueDate : null,
+    }, getSaoPauloDateString());
 
     if (overflow) {
       toast({
-        title: t('app.missions.priority_cap_title'),
-        description: t('app.missions.priority_cap_desc', {
-          day: overflow.day,
-          max: MAX_HIGH_PRIORITY_PER_DAY,
-        }),
+        title: t('app.missions.priority_limit_title'),
+        description: t('app.missions.priority_limit_description', { priority: t(overflow.priority === 'alta' ? 'app.missions.priority_high' : 'app.missions.priority_medium'), count: overflow.count, max: overflow.max, day: overflow.date || overflow.day }),
         variant: 'destructive',
       });
       return;
@@ -544,8 +594,8 @@ const handleSave = async () => {
     }
 
     setShowCreateEdit(false);
-  } catch {
-    toast({ title: 'Erro', variant: 'destructive' });
+  } catch (error) {
+    toast({ title: t('app.missions.priority_save_failed_title'), description: getPrioritySaveError(error, t), variant: 'destructive' });
   }
 };
 
@@ -553,21 +603,32 @@ const handleSave = async () => {
     try {
       const result = await completeMission.mutateAsync({
         missionId: mission.id,
-        attributeId: mission.attribute_id,
-        xpReward: mission.xp_reward,
-        secondaryAttributeIds: mission.secondary_attribute_ids || [],
+        // Só viaja quando não é hoje: manter o payload igual ao de sempre no
+        // caminho comum evita mudar o comportamento de quem nunca usa isto.
+        targetDate: isBackfilling ? focusDate : undefined,
       });
+
+      if (result.isBackfill) {
+        toast({
+          title: t('app.missions.backfill_toast_title'),
+          description: t('app.missions.backfill_toast_desc', {
+            xp: result.xpGained,
+            gold: result.goldGained,
+          }),
+        });
+        return;
+      }
 
       if (result.frequencyType === 'weekly') {
         if (result.milestoneReached) {
           toast({
-            title: '🎉 Meta semanal concluída!',
-            description: `+${result.xpGained} XP e +${result.goldGained} ouro, incluindo o bônus da meta.`,
+            title: t('app.missions.priority_weekly_completed'),
+            description: t('app.missions.priority_weekly_total', { executionXp: result.executionXp, milestoneXp: result.milestoneXp, xp: result.xpGained, gold: result.goldGained }),
           });
         } else {
           toast({
-            title: 'Missão semanal concluída',
-            description: `Progresso: ${result.weeklyCount}/${result.weeklyTarget} · +${result.xpGained} XP`,
+            title: t('app.missions.priority_weekly_in_progress'),
+            description: t('app.missions.priority_weekly_progress', { count: result.weeklyCount, target: result.weeklyTarget, xp: result.xpGained, gold: result.goldGained }),
           });
         }
         return;
@@ -587,12 +648,12 @@ const handleSave = async () => {
       } else if (streak >= 3 && bonusLabel) {
         toast({
           title: `🔥 Streak ${streak} dias! ${bonusLabel}`,
-          description: t('app.missions.mission_completed_desc', { xp: getMissionBaseXp(mission.xp_reward, mission.priority), next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
+          description: t('app.missions.mission_completed_desc', { xp: result.xpGained, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
         });
       } else {
         toast({
           title: t('app.missions.mission_completed'),
-          description: t('app.missions.mission_completed_desc', { xp: getMissionBaseXp(mission.xp_reward, mission.priority), next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
+          description: t('app.missions.mission_completed_desc', { xp: result.xpGained, next: obterProximoDiaAgendado(mission) || t('app.missions.none') }),
         });
       }
     } catch (error) {
@@ -829,6 +890,41 @@ const handleSave = async () => {
           </div>
         )}
 
+        {/* ── Dia em foco: hoje ou ontem ─────────────────────── */}
+        {!isLoading && (
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/30 p-1">
+              {[
+                { value: hojeStr, label: t('app.missions.focus_today') },
+                { value: ontemStr, label: t('app.missions.focus_yesterday') },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFocusDate(value)}
+                  aria-pressed={focusDate === value}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                    focusDate === value
+                      ? 'bg-primary/20 text-primary border border-primary/40'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {isBackfilling && (
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3">
+                <p className="text-sm font-bold text-foreground">{t('app.missions.backfill_banner_title')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('app.missions.backfill_banner_desc')}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Missões Fracassadas ────────────────────────────── */}
         <FailedMissionsSection missions={failedMissions} />
 
@@ -878,10 +974,11 @@ const handleSave = async () => {
                         <span className="text-[10px] text-muted-foreground/50">({missions.length})</span>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      <div className={MISSION_GRID_CLASS}>
                         {missions.map((m: any, i: number) => (
                           <MissionCard
                             key={m.id}
+                            focusDate={focusDate}
                             mission={m}
                             attrs={attrs || []}
                             index={i}
@@ -896,6 +993,7 @@ const handleSave = async () => {
                             newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                             onNewChecklistTextChange={setNewChecklistText}
                             isCompletedToday={false}
+                            backfillDeOutraSemana={backfillDeOutraSemana}
                           />
                         ))}
                       </div>
@@ -915,10 +1013,11 @@ const handleSave = async () => {
                       🎯 {t('app.missions.unique_today_header')}
                       <span className="text-xs bg-orange-400/20 text-orange-400 px-2 py-1 rounded-full">{todayUniqueMissions.length}</span>
                     </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className={MISSION_GRID_CLASS}>
                       {todayUniqueMissions.map((m: any, i: number) => (
                         <MissionCard
                           key={m.id}
+                          focusDate={focusDate}
                           mission={m}
                           attrs={attrs || []}
                           index={i}
@@ -947,10 +1046,11 @@ const handleSave = async () => {
                       <div className="flex-1 h-px bg-orange-300/15" />
                       <span className="text-xs font-semibold text-orange-300/60 bg-orange-300/10 rounded-full px-2 py-0.5">{nextUniqueMissions.length}</span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className={MISSION_GRID_CLASS}>
                       {nextUniqueMissions.map((m: any, i: number) => (
                         <MissionCard
                           key={m.id}
+                          focusDate={focusDate}
                           mission={m}
                           attrs={attrs || []}
                           index={i}
@@ -983,10 +1083,11 @@ const handleSave = async () => {
           <span className="text-xs font-semibold text-muted-foreground/60 bg-muted/50 rounded-full px-2 py-0.5">{nextDaysMissions.length} {t('app.missions.mission_count')}</span>
         </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className={MISSION_GRID_CLASS}>
                   {nextDaysMissions.map((m: any, i: number) => (
                     <MissionCard
                       key={m.id}
+                      focusDate={focusDate}
                       mission={m}
                       attrs={attrs || []}
                       index={i}
@@ -1000,8 +1101,9 @@ const handleSave = async () => {
                       completing={completeMission.isPending}
                       newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                       onNewChecklistTextChange={setNewChecklistText}
-                      isCompletedToday={foiConcluidaHoje(m)}
-                      isFutureMission={!foiConcluidaHoje(m)}
+                      isCompletedToday={foiConcluidaEm(m, focusDate)}
+                      isFutureMission={!foiConcluidaEm(m, focusDate)}
+                      backfillDeOutraSemana={backfillDeOutraSemana}
                       proximoDia={obterProximoDiaAgendado(m)}
                     />
                   ))}
@@ -1018,10 +1120,11 @@ const handleSave = async () => {
           <span className="text-xs font-semibold text-emerald-400/70 bg-emerald-400/10 rounded-full px-2 py-0.5">{completedMissions.length}</span>
         </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className={MISSION_GRID_CLASS}>
                   {completedMissions.map((m: any, i: number) => (
                     <MissionCard
                       key={m.id}
+                      focusDate={focusDate}
                       mission={m}
                       attrs={attrs || []}
                       index={i}
@@ -1035,7 +1138,7 @@ const handleSave = async () => {
                       completing={completeMission.isPending}
                       newChecklistText={expandedMission === m.id ? newChecklistText : ""}
                       onNewChecklistTextChange={setNewChecklistText}
-                      isCompletedToday={false}
+                      isCompletedToday={foiConcluidaEm(m, focusDate)}
                     />
                   ))}
                 </div>
@@ -1082,6 +1185,7 @@ const handleSave = async () => {
   onSave={handleSave}
   saving={createMission.isPending || updateMission.isPending}
   missionId={editingMission?.id}
+  existingMissions={allMissions || []}
 />
 
       {/* Delete Confirmation */}
@@ -1124,12 +1228,14 @@ function AttributeChip({ name, icon }: { name: string; icon: string }) {
 function MissionCard({
   mission, attrs, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
   completing, newChecklistText, onNewChecklistTextChange, isCompletedToday, proximoDia, isFutureMission = false,
+  backfillDeOutraSemana = false, focusDate,
 }: {
   mission: any; attrs: any[]; index: number; expanded: boolean;
   onToggle: () => void; onComplete: () => void; onEdit: () => void;
   onDelete: () => void; onArchive: () => void; onPlay: () => void;
   completing: boolean; newChecklistText: string; onNewChecklistTextChange: (v: string) => void;
   isCompletedToday: boolean; proximoDia?: string | null; isFutureMission?: boolean;
+  backfillDeOutraSemana?: boolean; focusDate: string;
 }) {
   const { t } = useTranslation();
   const { data: checklist } = useChecklistItems(mission.id);
@@ -1147,6 +1253,11 @@ function MissionCard({
   const status = mission.status || 'pendente';
   const isCompleted = mission.completed;
   const weeklyState = getWeeklyMissionState(mission);
+  // A cota que trava é a da semana do dia sendo registrado. Quando esse dia
+  // caiu na semana anterior, o contador carregado aqui é o da semana errada —
+  // então o botão libera e quem barra por cota é o servidor.
+  const metaSemanalTrava =
+    Boolean(weeklyState?.targetReached) && !backfillDeOutraSemana;
   const hasWeekendBonus = hasWeekendXpSchedule(mission);
 
   // Get all attributes for this mission
@@ -1188,8 +1299,13 @@ function MissionCard({
   };
 
   const handleUndo = async () => {
+    const today = getSaoPauloDateString();
+    const yesterday = getSaoPauloDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    if ((focusDate !== today && focusDate !== yesterday) || !foiConcluidaEm(mission, focusDate)) return;
     try {
-      await undoMission.mutateAsync(mission.id);
+      // Desfaz o dia que está na tela. Mandar sempre hoje apagava a conclusão
+      // errada quando a pessoa estava revendo ontem.
+      await undoMission.mutateAsync({ missionId: mission.id, date: focusDate });
     } catch (error) {
       console.error('Erro ao desfazer:', error);
     }
@@ -1206,29 +1322,29 @@ function MissionCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.03, 0.4) }}
-      className={`group rounded-xl bg-card border border-border border-l-2 ${priorityBorderColor} p-3 flex flex-col justify-between aspect-square transition-all hover:border-border/80 hover:shadow-md ${
-        isCompleted ? 'opacity-55' : isCompletedToday ? 'opacity-75 border-yellow-400/40' : ''
+      className={`min-w-0 rounded-xl bg-card border border-border border-l-2 ${priorityBorderColor} p-3 flex flex-col justify-between transition-all hover:border-border/80 hover:shadow-md ${
+        isCompleted ? 'opacity-80' : isCompletedToday ? 'opacity-75 border-yellow-400/40' : ''
       }`}
     >
-      {/* Top: Status dot + ações (visíveis só no hover) */}
+      {/* Top: status e ações sempre visíveis em toque, mouse e teclado */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-start justify-between gap-2 mb-2">
           <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_COLORS[status] || 'bg-cyan-400'}`} />
-          <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={onEdit}>
-              <Pencil className="w-3.5 h-3.5" />
+          <div className="flex flex-wrap justify-end gap-1">
+            <Button size="sm" variant="ghost" aria-label={`Editar ${mission.title}`} className="h-9 gap-1 px-1.5 text-xs text-muted-foreground hover:text-primary" onClick={onEdit}>
+              <Pencil className="w-3.5 h-3.5" /> Editar
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
-              <Trash2 className="w-3.5 h-3.5" />
+            <Button size="sm" variant="ghost" aria-label={`Arquivar ${mission.title}`} className="h-9 gap-1 px-1.5 text-xs text-muted-foreground hover:text-foreground" onClick={onArchive}>
+              <Pause className="w-3.5 h-3.5" /> Arquivar
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" onClick={onArchive}>
-              <Pause className="w-3.5 h-3.5" />
+            <Button size="sm" variant="ghost" aria-label={`Excluir ${mission.title}`} className="h-9 gap-1 px-1.5 text-xs text-muted-foreground hover:text-destructive" onClick={onDelete}>
+              <Trash2 className="w-3.5 h-3.5" /> Excluir
             </Button>
           </div>
         </div>
 
         {/* Title */}
-        <p className={`font-display font-bold text-base text-foreground leading-tight line-clamp-2 ${isCompleted ? 'line-through' : ''}`}>
+        <p className={`font-display font-bold text-base text-foreground leading-tight break-words ${isCompleted ? 'line-through' : ''}`}>
           {mission.title}
         </p>
 
@@ -1240,29 +1356,38 @@ function MissionCard({
 
         {/* Description */}
         {mission.description && (
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{mission.description}</p>
+          <p className={`text-sm text-muted-foreground mt-1 break-words whitespace-pre-wrap ${expanded ? '' : 'line-clamp-3'}`}>{mission.description}</p>
         )}
 
-        {/* ✅ Status: Concluída Hoje */}
+        {/* Conclusão no dia em foco, com desfazer na janela hoje/ontem. */}
         {isCompletedToday && (
           <div className="mt-2 p-2 bg-yellow-400/10 border border-yellow-400/30 rounded-md space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs text-yellow-400 font-semibold flex items-center gap-1">
                 <Check className="w-3 h-3" />
-                Concluída hoje
+                {focusDate === getSaoPauloDateString()
+                  ? t('app.missions.completed_today')
+                  : t('app.missions.completed_yesterday', { defaultValue: 'Concluída ontem' })}
               </p>
-              {!weeklyState && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleUndo}
-                  disabled={undoMission.isPending}
-                  className="h-6 w-6 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
-                  title="Desfazer conclusão"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </Button>
-              )}
+              {/* Semanal também desfaz: undo_mission devolve XP, ouro e a vaga
+                  da cota da semana. Esconder o botão aqui deixava a única porta
+                  do desfazer semanal fechada. */}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={handleUndo}
+                disabled={undoMission.isPending}
+                className="h-9 w-9 shrink-0 p-0 text-yellow-400 hover:text-yellow-500 hover:bg-yellow-400/20"
+                aria-label={t('app.missions.undo_completion_a11y', {
+                  title: mission.title,
+                  date: focusDate,
+                  defaultValue: 'Desfazer conclusão de {{title}} em {{date}}',
+                })}
+                title={t('app.missions.undo_completion', { defaultValue: 'Desfazer conclusão' })}
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
             </div>
             {proximoDia && (
               <p className="text-xs text-yellow-400/70">
@@ -1345,7 +1470,7 @@ function MissionCard({
         <div className="flex items-center justify-between">
           <span className="text-sm text-primary font-bold">
 
-            ✨ +{getMissionBaseXp(mission.xp_reward, mission.priority)} XP
+            ✨ {t('app.missions.priority_base_xp', { xp: getMissionBaseXp(mission.xp_reward, mission.priority) })}
 
           </span>
           {mission.due_date && days.length === 0 && (
@@ -1364,10 +1489,10 @@ function MissionCard({
                 completing
                 || isCompletedToday
                 || isFutureMission
-                || Boolean(weeklyState?.targetReached)
+                || metaSemanalTrava
               }
-              className={`flex-1 h-9 rounded-lg text-sm font-semibold border transition-all ${
-                weeklyState?.targetReached
+              className={`flex-1 min-w-0 h-9 rounded-lg text-sm font-semibold border transition-all ${
+                metaSemanalTrava
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : isCompletedToday
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
@@ -1376,8 +1501,8 @@ function MissionCard({
                   : 'bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30'
               }`}
               title={
-                weeklyState?.targetReached
-                  ? 'Meta semanal atingida'
+                metaSemanalTrava
+                  ? t('app.missions.card_weekly_goal_reached')
                   : isCompletedToday
                     ? t('app.missions.tooltip_completed')
                     : isFutureMission
@@ -1385,13 +1510,13 @@ function MissionCard({
                       : t('app.missions.tooltip_complete')
               }
             >
-              {weeklyState?.targetReached ? (
+              {metaSemanalTrava ? (
                 <>
-                  <Lock className="w-4 h-4 mr-1" /> Meta atingida
+                  <Lock className="w-4 h-4 mr-1" /> {t('app.missions.card_goal_reached')}
                 </>
               ) : isCompletedToday ? (
                 <>
-                  <Lock className="w-4 h-4 mr-1" /> Bloqueada
+                  <Lock className="w-4 h-4 mr-1" /> {t('app.missions.card_locked')}
                 </>
               ) : isFutureMission ? (
                 <>
@@ -1406,20 +1531,23 @@ function MissionCard({
 
             <Button
               onClick={onPlay}
+              aria-label={t(status === 'em_progresso' ? 'app.missions.card_pause_named' : 'app.missions.card_resume_named', { title: mission.title })}
               disabled={isCompletedToday || isFutureMission}
-              className={`h-9 w-10 rounded-lg p-0 border transition-all ${
+              className={`h-9 shrink-0 rounded-lg px-2 border transition-all ${
                 isCompletedToday || isFutureMission
                   ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50'
                   : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30'
               }`}
             >
               {status === 'em_progresso' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {t(status === 'em_progresso' ? 'app.missions.card_pause' : 'app.missions.card_resume')}
             </Button>
           </div>
         )}
 
         {/* Expand */}
-        <button onClick={onToggle} className="w-full flex justify-center text-muted-foreground hover:text-foreground">
+        <button onClick={onToggle} aria-label={t(expanded ? 'app.missions.card_collapse_named' : 'app.missions.card_expand_named', { title: mission.title })} aria-expanded={expanded} className="w-full min-h-9 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md">
+          {t(expanded ? 'app.missions.card_hide_details' : 'app.missions.card_view_details')}
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -1445,7 +1573,7 @@ function MissionCard({
                 <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                   {item.description}
                 </span>
-                <span className="text-[10px] text-primary">+{item.xp_bonus} XP</span>
+                <span className="text-[10px] text-primary">{t('app.missions.priority_checklist_on_completion', { xp: item.xp_bonus })}</span>
                 <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -1478,7 +1606,7 @@ function MissionFormModal({
   formHorario, setFormHorario, formMissionType, setFormMissionType,
   formFrequencyType, setFormFrequencyType, formTargetCount, setFormTargetCount,
   formDueDate, setFormDueDate, formAnchor, setFormAnchor,
-  formIsAnchor, setFormIsAnchor, onSave, saving, missionId,
+  formIsAnchor, setFormIsAnchor, onSave, saving, missionId, existingMissions,
 }: {
   open: boolean; onOpenChange: (v: boolean) => void; isEditing: boolean; attrs: any[];
   formTitle: string; setFormTitle: (v: string) => void;
@@ -1496,6 +1624,7 @@ function MissionFormModal({
   formAnchor: string; setFormAnchor: (v: string) => void;
   formIsAnchor: boolean; setFormIsAnchor: (v: boolean) => void;
   onSave: () => void; saving: boolean; missionId?: string;
+  existingMissions: Parameters<typeof countPriorityOnDate>[0];
 }) {
   const { t } = useTranslation();
 
@@ -1546,6 +1675,12 @@ function MissionFormModal({
 
   const allSelectedIds = [formAttrId, ...formSecondaryAttrIds].filter(Boolean);
   const horariosArray = Array.isArray(formHorario) ? formHorario : [formHorario].filter(Boolean);
+  const selectedPriority = normalizePriority(formPriority);
+  const selectedMax = selectedPriority === 'alta' ? MAX_HIGH_PRIORITY_PER_DAY : MAX_MEDIUM_PRIORITY_PER_DAY;
+  const selectedDays = formMissionType === 'unica' ? [] : missionScheduledDays({
+    frequency_type: formFrequencyType,
+    days_of_week: formDays,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1559,14 +1694,14 @@ function MissionFormModal({
         <div className="space-y-4">
           {/* Title */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_title_label')} *</label>
-            <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={t('app.missions.form_title_placeholder')} className="bg-secondary border-border" />
+            <label htmlFor="mission-form-title" className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_title_label')} *</label>
+            <Input id="mission-form-title" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={t('app.missions.form_title_placeholder')} className="bg-secondary border-border" />
           </div>
 
           {/* Description */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_desc_label')}</label>
-            <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder={t('app.missions.form_desc_placeholder')} className="bg-secondary border-border min-h-[60px]" />
+            <label htmlFor="mission-form-description" className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_desc_label')}</label>
+            <Textarea id="mission-form-description" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder={t('app.missions.form_desc_placeholder')} className="bg-secondary border-border min-h-[60px]" />
           </div>
 
           {/* Primary Attribute */}
@@ -1576,7 +1711,7 @@ function MissionFormModal({
               setFormAttrId(v);
               setFormSecondaryAttrIds(formSecondaryAttrIds.filter((id) => id !== v));
             }}>
-              <SelectTrigger className="bg-secondary border-border">
+              <SelectTrigger aria-label={t('app.missions.form_attr_label')} className="bg-secondary border-border">
                 <SelectValue placeholder={t('app.missions.form_attr_placeholder')} />
               </SelectTrigger>
               <SelectContent>
@@ -1632,13 +1767,14 @@ function MissionFormModal({
           {/* Priority */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_priority_label')}</label>
-            <div className="flex gap-2">
+            <div className="flex gap-2" role="group" aria-label={t('app.missions.form_priority_label')}>
               {PRIORITIES.map((p) => {
                 const Icon = p.icon;
                 return (
                   <button
                     key={p.value}
                     type="button"
+                    aria-pressed={formPriority === p.value}
                     onClick={() => setFormPriority(p.value)}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border text-xs font-medium transition-all ${
                       formPriority === p.value ? `${p.color} ring-1 ring-current` : 'bg-secondary border-border text-muted-foreground'
@@ -1650,6 +1786,26 @@ function MissionFormModal({
                 );
               })}
             </div>
+            <p className="text-xs text-muted-foreground mt-2" aria-live="polite">
+              {t(`app.missions.priority_${selectedPriority === 'alta' ? 'high' : selectedPriority === 'media' ? 'medium' : 'low'}_hint`)}
+            </p>
+            {selectedPriority !== 'baixa' && (
+              <p className="text-xs text-muted-foreground mt-1" aria-live="polite">
+                {formMissionType === 'unica' && formDueDate
+                  ? t('app.missions.priority_slots_used', { day: formDueDate, count: countPriorityOnDate(existingMissions, selectedPriority, formDueDate), max: selectedMax })
+                  : selectedDays.length
+                    ? selectedDays.map((day) => {
+                        const date = nextSaoPauloDateForDay(getSaoPauloDateString(), day);
+                        return t('app.missions.priority_slots_used', { day: `${day} ${date}`, count: countPriorityOnDate(existingMissions, selectedPriority, date), max: selectedMax });
+                      }).join(' · ')
+                    : t('app.missions.priority_select_days')}
+              </p>
+            )}
+            {selectedPriority !== 'baixa' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('app.missions.priority_server_confirms')}
+              </p>
+            )}
           </div>
 
           {/* Âncora (implementation intention) — gancho do hábito a um evento que já acontece */}
@@ -1738,7 +1894,7 @@ function MissionFormModal({
               <label className="text-xs text-muted-foreground mb-1 block">
                 Frequência
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Frequência da missão">
                 <button
                   type="button"
                   onClick={() => setFormFrequencyType('daily')}
@@ -1792,6 +1948,7 @@ function MissionFormModal({
                 Ela aparece todos os dias até atingir a meta, mas só pode ser
                 concluída uma vez por dia. Para uma atividade extra, aumente a
                 meta ou crie uma missão única.
+                A vaga de prioridade fica reservada em todos os sete dias.
               </p>
             </div>
           )}
@@ -1800,11 +1957,12 @@ function MissionFormModal({
           {formMissionType === "recorrente" && (
             formFrequencyType === 'daily' && <div>
               <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_days_label')}</label>
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex gap-1.5 flex-wrap" role="group" aria-label={t('app.missions.form_days_label')}>
                 {DAYS.map((d) => (
                   <button
                     key={d}
                     type="button"
+                    aria-pressed={formDays.includes(d)}
                     onClick={() => toggleDay(d)}
                     className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
                       formDays.includes(d)
@@ -1822,8 +1980,9 @@ function MissionFormModal({
           {/* Due Date (only for unica) */}
           {formMissionType === "unica" && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_due_date_label')} *</label>
+              <label htmlFor="mission-form-due-date" className="text-xs text-muted-foreground mb-1 block">{t('app.missions.form_due_date_label')} *</label>
               <Input
+                id="mission-form-due-date"
                 type="date"
                 value={formDueDate}
                 onChange={(e) => setFormDueDate(e.target.value)}
@@ -1869,11 +2028,12 @@ function MissionFormModal({
                 {checklist?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-2">
                     <Checkbox
+                      aria-label={`${item.completed ? 'Desmarcar' : 'Marcar'} ${item.description}`}
                       checked={item.completed}
                       onCheckedChange={() => toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })}
                     />
                     <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : ''}`}>{item.description}</span>
-                    <span className="text-[10px] text-primary">+{item.xp_bonus} XP</span>
+                    <span className="text-[10px] text-primary">{t('app.missions.priority_checklist_on_completion', { xp: item.xp_bonus })}</span>
                     <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -1898,7 +2058,8 @@ function MissionFormModal({
           {/* XP preview */}
           <div className="rpg-card bg-secondary/50 text-center">
             <p className="text-xs text-muted-foreground">{t('app.missions.xp_preview_label')}</p>
-            <p className="text-primary font-bold">+25 XP</p>
+            <p className="text-primary font-bold">{t('app.missions.priority_base_xp', { xp: getMissionBaseXp(25, formPriority) })}</p>
+            <p className="text-[11px] text-muted-foreground">{t('app.missions.priority_preview_note')}</p>
           </div>
         </div>
 
