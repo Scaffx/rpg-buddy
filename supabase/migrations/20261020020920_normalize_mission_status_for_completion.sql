@@ -32,9 +32,25 @@ BEGIN
      OR pg_catalog.strpos(pg_catalog.pg_get_functiondef(
        'private.enforce_mission_priority()'::regprocedure), 'MISSION_PRIORITY_PAID_CAP') = 0
      OR NOT EXISTS (
-       SELECT 1 FROM pg_catalog.pg_trigger
-       WHERE tgrelid = 'public.missions'::regclass
-         AND tgname = 'enforce_mission_priority' AND tgenabled <> 'D'
+       SELECT 1 FROM pg_catalog.pg_trigger t
+       JOIN pg_catalog.pg_proc p ON p.oid = t.tgfoid
+       WHERE t.tgrelid = 'public.missions'::regclass
+         AND t.tgname = 'enforce_mission_priority'
+         AND t.tgenabled IN ('O', 'A') AND t.tgtype = 31
+         AND NOT t.tgisinternal
+         AND t.tgfoid = 'private.enforce_mission_priority()'::regprocedure
+         AND pg_catalog.pg_get_userbyid(p.proowner) = 'postgres' AND p.prosecdef
+     )
+     OR pg_catalog.to_regprocedure('private.lock_mission_priority_statement()') IS NULL
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_catalog.pg_trigger t
+       JOIN pg_catalog.pg_proc p ON p.oid = t.tgfoid
+       WHERE t.tgrelid = 'public.missions'::regclass
+         AND t.tgname = 'lock_mission_priority_statement'
+         AND t.tgenabled IN ('O', 'A') AND t.tgtype = 30
+         AND NOT t.tgisinternal
+         AND t.tgfoid = 'private.lock_mission_priority_statement()'::regprocedure
+         AND pg_catalog.pg_get_userbyid(p.proowner) = 'postgres' AND NOT p.prosecdef
      ) THEN
     RAISE EXCEPTION 'MISSION_STATUS_GUARD_DRIFT';
   END IF;
