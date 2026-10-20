@@ -296,6 +296,7 @@ export function useCreateMission() {
       const missionPayload = {
         user_id: user!.id,
         title,
+        status: 'pendente',
         attribute_id: attributeId,
         mission_category: missionCategory,
         due_date: dueDate || null,
