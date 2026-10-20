@@ -187,10 +187,14 @@ Vitória paga até 4 ouro normal ou 12 ouro de chefe, sujeita ao teto de 120 our
 nível ou atributos permanentes. Ouro de missões continua.
 
 A aventura considera o tempo fora do aplicativo e apresenta um resumo no retorno,
-limitado à janela de 24 horas. A conciliação ocorre em lotes e para na primeira
-derrota. O jogador então escolhe repetir a etapa ou recuar uma etapa (mínimo 1).
-Escolhas se referem à batalha atual e não podem reaproveitar um identificador
-antigo para receber outra recompensa. Repetir uma etapa já vencida não paga de novo.
+limitado à janela de 24 horas. A conciliação ocorre em lotes. Derrota causa recuo
+automático de uma etapa (mínimo 1); o personagem continua enfrentando inimigos
+nessa etapa, sem avançar após vitórias, até o jogador pedir para avançar novamente.
+Essa permanência também vale fora do aplicativo. Ações de avanço validam o estado
+atual e não aceitam uma etapa arbitrária. Batalhas repetidas podem conceder ouro e
+itens dentro da mesma cadência de recompensa e dos limites diários, sem duplicar
+o pagamento de uma batalha ou o desbloqueio de um chefe. Golpes e encontros são
+contínuos; a cadência inicial de novos créditos de recompensa permanece em 30 minutos.
 Pausar as animações não pausa o personagem nem altera o tempo elegível. Movimento
 reduzido mantém o estado da luta legível sem obrigar o usuário a acompanhar efeitos.
 
