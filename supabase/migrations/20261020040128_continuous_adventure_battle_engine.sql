@@ -585,6 +585,7 @@ DECLARE
   v_uid uuid := auth.uid();
   v_state public.adventure_state%ROWTYPE;
   v_battle app_private.adventure_battles%ROWTYPE;
+  v_request_at timestamptz;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'authentication required' USING ERRCODE='28000'; END IF;
   IF p_battle_id IS NULL THEN RAISE EXCEPTION 'battle id required' USING ERRCODE='22023'; END IF;
@@ -594,8 +595,12 @@ BEGIN
   END IF;
   SELECT * INTO STRICT v_battle FROM app_private.adventure_battles
    WHERE id=p_battle_id AND user_id=v_uid FOR UPDATE;
+  -- A bounded catch-up can leave an already ended battle marked fighting.
+  -- Take the clock after both locks so a wait cannot authorize a past fight.
+  v_request_at := clock_timestamp();
   IF v_battle.status<>'fighting' OR v_state.adventure_mode<>'holding' OR
-     v_state.advance_requested THEN
+     v_state.advance_requested OR v_battle.started_at > v_request_at OR
+     v_battle.ends_at <= v_request_at THEN
     RAISE EXCEPTION 'adventure cannot advance now' USING ERRCODE='22023';
   END IF;
   UPDATE public.adventure_state SET
