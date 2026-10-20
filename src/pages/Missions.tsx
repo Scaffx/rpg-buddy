@@ -1,6 +1,6 @@
 // src/pages/Missions.tsx
 import { ATTRIBUTE_COLORS } from "@/lib/attributes";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,7 +46,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1225,6 +1225,94 @@ function AttributeChip({ name, icon }: { name: string; icon: string }) {
 }
 
 /* ─── Mission Card ─── */
+export function MissionChecklistControls({
+  missionId, missionTitle, items, text, onTextChange, compact = false,
+}: {
+  missionId: string; missionTitle: string;
+  items?: NonNullable<ReturnType<typeof useChecklistItems>['data']> | null;
+  text: string; onTextChange: (value: string) => void; compact?: boolean;
+}) {
+  const { t } = useTranslation();
+  const addItem = useAddChecklistItem();
+  const toggleItem = useToggleChecklistItem();
+  const deleteItem = useDeleteChecklistItem();
+  const { toast } = useToast();
+  const submittedText = useRef<string | null>(null);
+
+  const handleAdd = async () => {
+    const description = text.trim();
+    if (!description || addItem.isPending || submittedText.current === description) return;
+    submittedText.current = description;
+    try {
+      await addItem.mutateAsync({ missionId, description });
+      onTextChange('');
+    } catch {
+      submittedText.current = null;
+      toast({ title: t('app.missions.priority_save_failed_title'), variant: 'destructive' });
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      {items?.map((item) => (
+        <div key={item.id} className="flex items-center gap-2">
+          <Checkbox
+            aria-label={t('app.missions.checklist_item_named', { item: item.description, title: missionTitle })}
+            checked={item.completed}
+            disabled={toggleItem.isPending}
+            onCheckedChange={() =>
+              toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })
+            }
+          />
+          <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+            {item.description}
+          </span>
+          <span className="text-[10px] text-primary">{t('app.missions.priority_checklist_on_completion', { xp: item.xp_bonus })}</span>
+          <button
+            type="button"
+            aria-label={t('app.missions.checklist_remove_named', { item: item.description, title: missionTitle })}
+            disabled={deleteItem.isPending}
+            onClick={() => deleteItem.mutate(item.id)}
+            className="text-destructive/60 hover:text-destructive"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <Input
+          value={text}
+          onChange={(event) => {
+            submittedText.current = null;
+            onTextChange(event.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            event.stopPropagation();
+            void handleAdd();
+          }}
+          aria-label={t('app.missions.checklist_new_item_named', { title: missionTitle })}
+          placeholder={t('app.missions.add_item_placeholder')}
+          disabled={addItem.isPending}
+          className={compact ? 'h-7 text-xs bg-secondary border-border' : undefined}
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className={compact ? 'h-7 text-xs' : 'h-7 text-xs border-primary/30 text-primary'}
+          aria-label={t('app.missions.checklist_add_named', { title: missionTitle })}
+          onClick={() => void handleAdd()}
+          disabled={addItem.isPending || !text.trim()}
+        >
+          <Plus className="w-3 h-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function MissionCard({
   mission, attrs, index, expanded, onToggle, onComplete, onEdit, onDelete, onArchive, onPlay,
   completing, newChecklistText, onNewChecklistTextChange, isCompletedToday, proximoDia, isFutureMission = false,
@@ -1239,11 +1327,7 @@ function MissionCard({
 }) {
   const { t } = useTranslation();
   const { data: checklist } = useChecklistItems(mission.id);
-  const addItem = useAddChecklistItem();
-  const toggleItem = useToggleChecklistItem();
-  const deleteItem = useDeleteChecklistItem();
   const undoMission = useUndoMission();
-  const { toast } = useToast();
 
   const days = (mission.days_of_week as string[]) || [];
   const completedCount = (checklist || []).filter((c: any) => c.completed).length;
@@ -1286,17 +1370,6 @@ function MissionCard({
         return horarioObj?.label || h;
       })
     : [];
-
-  const handleAddChecklist = async () => {
-    if (!newChecklistText.trim()) return;
-
-    try {
-      await addItem.mutateAsync({ missionId: mission.id, description: newChecklistText.trim() });
-      onNewChecklistTextChange('');
-    } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
-    }
-  };
 
   const handleUndo = async () => {
     const today = getSaoPauloDateString();
@@ -1562,33 +1635,13 @@ function MissionCard({
             className="overflow-hidden space-y-2 pt-2 border-t border-border"
           >
             <p className="text-xs text-muted-foreground font-medium">{t('app.missions.submissions_label')}</p>
-            {checklist?.map((item: any) => (
-              <div key={item.id} className="flex items-center gap-2">
-                <Checkbox
-                  checked={item.completed}
-                  onCheckedChange={() =>
-                    toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })
-                  }
-                />
-                <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                  {item.description}
-                </span>
-                <span className="text-[10px] text-primary">{t('app.missions.priority_checklist_on_completion', { xp: item.xp_bonus })}</span>
-                <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <Input
-                value={newChecklistText}
-                onChange={(e) => onNewChecklistTextChange(e.target.value)}
-                placeholder={t('app.missions.add_item_placeholder')}
-              />
-              <Button size="sm" variant="outline" className="h-7 text-xs border-primary/30 text-primary" onClick={handleAddChecklist} disabled={addItem.isPending}>
-                <Plus className="w-3 h-3" />
-              </Button>
-            </div>
+            <MissionChecklistControls
+              missionId={mission.id}
+              missionTitle={mission.title}
+              items={checklist}
+              text={newChecklistText}
+              onTextChange={onNewChecklistTextChange}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1597,6 +1650,20 @@ function MissionCard({
 }
 
 /* ─── Create/Edit Modal ─── */
+export function MissionFormDialogHeader({ isEditing }: { isEditing: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <DialogHeader>
+      <DialogTitle className="text-primary font-display">
+        {isEditing ? `✏️ ${t('app.missions.edit_title')}` : `📜 ${t('app.missions.create_title')}`}
+      </DialogTitle>
+      <DialogDescription>
+        {t(isEditing ? 'app.missions.form_edit_description' : 'app.missions.form_create_description')}
+      </DialogDescription>
+    </DialogHeader>
+  );
+}
+
 function MissionFormModal({
   open, onOpenChange, isEditing, attrs,
   formTitle, setFormTitle, formDescription, setFormDescription,
@@ -1635,9 +1702,6 @@ function MissionFormModal({
   ];
 
   const { data: checklist } = useChecklistItems(missionId || '');
-  const addItem = useAddChecklistItem();
-  const toggleItem = useToggleChecklistItem();
-  const deleteItem = useDeleteChecklistItem();
   const [newItem, setNewItem] = useState('');
 
   const toggleDay = (d: string) => {
@@ -1666,13 +1730,6 @@ function MissionFormModal({
     }
   };
 
-  const handleAddItem = async () => {
-    if (!newItem.trim() || !missionId) return;
-
-    await addItem.mutateAsync({ missionId, description: newItem.trim() });
-    setNewItem('');
-  };
-
   const allSelectedIds = [formAttrId, ...formSecondaryAttrIds].filter(Boolean);
   const horariosArray = Array.isArray(formHorario) ? formHorario : [formHorario].filter(Boolean);
   const selectedPriority = normalizePriority(formPriority);
@@ -1685,11 +1742,7 @@ function MissionFormModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-h-[85vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-primary font-display">
-            {isEditing ? `✏️ ${t('app.missions.edit_title')}` : `📜 ${t('app.missions.create_title')}`}
-          </DialogTitle>
-        </DialogHeader>
+        <MissionFormDialogHeader isEditing={isEditing} />
 
         <div className="space-y-4">
           {/* Title */}
@@ -2024,34 +2077,14 @@ function MissionFormModal({
           {isEditing && missionId && (
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">{t('app.missions.submissions_label')}</label>
-              <div className="space-y-1.5">
-                {checklist?.map((item: any) => (
-                  <div key={item.id} className="flex items-center gap-2">
-                    <Checkbox
-                      aria-label={`${item.completed ? 'Desmarcar' : 'Marcar'} ${item.description}`}
-                      checked={item.completed}
-                      onCheckedChange={() => toggleItem.mutate({ itemId: item.id, completed: !item.completed, xpBonus: item.xp_bonus })}
-                    />
-                    <span className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : ''}`}>{item.description}</span>
-                    <span className="text-[10px] text-primary">{t('app.missions.priority_checklist_on_completion', { xp: item.xp_bonus })}</span>
-                    <button onClick={() => deleteItem.mutate(item.id)} className="text-destructive/60 hover:text-destructive">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                <div className="flex gap-2">
-                  <Input
-                    value={newItem}
-                    onChange={(e) => setNewItem(e.target.value)}
-                    placeholder={t('app.missions.add_item_placeholder')}
-                    className="h-7 text-xs bg-secondary border-border"
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}  
-                  />
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleAddItem} disabled={addItem.isPending}>
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
+              <MissionChecklistControls
+                missionId={missionId}
+                missionTitle={formTitle}
+                items={checklist}
+                text={newItem}
+                onTextChange={setNewItem}
+                compact
+              />
             </div>
           )}
 
