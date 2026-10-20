@@ -31,7 +31,13 @@
 .adventure-enemy-svg { transform:scaleX(-1); }
 .adventure-impact-zone { position:relative; align-self:center; height:90px; }
 .adventure-vfx { position:absolute; left:20%; top:30%; width:55px; height:55px; border:5px solid #eaf7fc; border-radius:50%; box-shadow:0 0 15px #9de9ff,inset 0 0 12px #9de9ff; animation:adventure-impact .8s ease-out infinite; }
-.adventure-vfx-fire { border-color:#ffb04a; box-shadow:0 0 18px #ff672f; }.adventure-vfx-water { border-color:#8cddf2; box-shadow:0 0 18px #4fb9e2; }.adventure-vfx-arcane,.adventure-vfx-shadow { border-color:#c7a3ff; box-shadow:0 0 18px #a262f8; }.adventure-vfx-light { border-color:#fff2a8; box-shadow:0 0 18px #ffe06c; }.adventure-vfx-reverse { left:-70%; }
+.adventure-vfx-physical::before,.adventure-vfx-physical::after { content:''; position:absolute; top:43%; left:-20%; width:135%; height:4px; background:#eaf7fc; transform:rotate(-35deg); box-shadow:0 0 7px #fff; }
+.adventure-vfx-physical::after { transform:rotate(35deg); }
+.adventure-vfx-arcane { border-color:#c7a3ff; box-shadow:0 0 18px #a262f8; }
+.adventure-vfx-arcane::before { content:''; position:absolute; inset:5px; border:3px solid #e5d6ff; transform:rotate(45deg); box-shadow:0 0 8px #a262f8; }
+.adventure-vfx-light { border-color:#fff2a8; box-shadow:0 0 18px #ffe06c; background:#fff4b948; }
+.adventure-vfx-light::before { content:''; position:absolute; inset:-17px; background:repeating-conic-gradient(from 0deg,#fff2a8 0deg 8deg,transparent 8deg 45deg); clip-path:circle(50%); }
+.adventure-vfx-reverse { left:-70%; }
 .adventure-vfx-fire { border:0; border-radius:40% 0 50% 50%; background:linear-gradient(30deg,#f45132,#ffb43f 70%,#fff1a2); transform:rotate(-30deg); }
 .adventure-vfx-ice { border:3px solid #d9f9ff; border-radius:0; background:#75cee978; box-shadow:0 0 17px #a1f2ff; transform:rotate(45deg); }
 .adventure-vfx-ice::before,.adventure-vfx-ice::after { content:''; position:absolute; inset:-11px 17px; border-left:3px solid #e4fcff; border-right:3px solid #e4fcff; }

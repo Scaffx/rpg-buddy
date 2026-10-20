@@ -37,6 +37,7 @@ describe('cena 2D da aventura', () => {
       expect(scene.querySelector('.adventure-hero-svg')).not.toBeNull();
       expect(adventureHeroClass(heroClass)).toBe(heroClass);
     }
+    expect(adventureHeroClass('novato')).toBe('clerico');
   });
 
   it('varia cenário e criatura em todos os biomas; etapa dez mostra chefe', () => {
@@ -50,6 +51,9 @@ describe('cena 2D da aventura', () => {
     expect(adventureBiome(11)).toBe('aquatico');
     expect(adventureBiome(21)).toBe('ruinas');
     expect(adventureBiome(31)).toBe('vulcanico');
+    expect(adventureBiome(1, 'aquatic')).toBe('aquatico');
+    expect(adventureBiome(1, 'ruins')).toBe('ruinas');
+    expect(adventureBiome(1, 'volcanic')).toBe('vulcanico');
   });
 
   it('pausa visual e não inventa dano ou habilidade sem evento', () => {
@@ -68,11 +72,13 @@ describe('cena 2D da aventura', () => {
     expect(scene.querySelector('.adventure-still')).not.toBeNull();
   });
 
-  it('representa raio e natureza somente a partir do efeito do evento', () => {
+  it('representa os sete efeitos normalizados somente a partir do evento', () => {
     const base = { stage: 8, biome: 'vulcanico' as const, heroClass: 'mago' as const, heroName: 'Heroína', enemyName: 'Golem', isBoss: false, paused: false };
-    const scene = renderScene(<AdventureScene {...base} frame={{ status: 'fighting', action: { id: 'event-1', actor: 'hero', damage: 9, effect: 'lightning' } }} />);
-    expect(scene.querySelector('.adventure-vfx-lightning')).not.toBeNull();
-    renderScene(<AdventureScene {...base} frame={{ status: 'fighting', action: { id: 'event-2', actor: 'hero', damage: 9, effect: 'nature' } }} />);
-    expect(scene.querySelector('.adventure-vfx-nature')).not.toBeNull();
+    for (const effect of ['physical', 'arcane', 'fire', 'ice', 'lightning', 'nature', 'light'] as const) {
+      const scene = renderScene(<AdventureScene {...base} frame={{ status: 'fighting', action: { id: `event-${effect}`, actor: 'hero', damage: 9, effect } }} />);
+      expect(scene.querySelector(`.adventure-vfx-${effect}`)).not.toBeNull();
+    }
+    renderScene(<AdventureScene {...base} frame={{ status: 'fighting' }} />);
+    expect(container!.querySelector('[class*=adventure-vfx-]')).toBeNull();
   });
 });
