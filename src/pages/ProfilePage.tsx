@@ -2270,7 +2270,7 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-bold text-foreground">{t('app.profile.inventoryTitle')}</h3>
               </div>
 
-              {!profile?.starter_kit_claimed ? (
+              {!profile?.starter_kit_claimed && (
                 <div className="space-y-4">
                   <div className="text-center space-y-2">
                     <p className="text-4xl">🥚</p>
@@ -2286,13 +2286,15 @@ export default function ProfilePage() {
                     </button>
                   </div>
                 </div>
-              ) : inventory.length === 0 ? (
+              )}
+
+              {inventory.length === 0 ? (
                 <div className="space-y-2 text-center">
                   <p className="text-4xl">🛡️</p>
                   <p className="text-sm text-muted-foreground">
-                    {profile?.class_kit_claimed
-                      ? t('app.profile.defeatBossesForItems')
-                      : t('app.profile.reachLevel5ForKit')
+                    {profile?.starter_kit_claimed && !profile?.class_kit_claimed
+                      ? t('app.profile.reachLevel5ForKit')
+                      : t('app.profile.defeatBossesForItems')
                     }
                   </p>
                 </div>
