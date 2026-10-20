@@ -1,0 +1,34 @@
+integration_review_guard_noop_fixed503 createdb exit=0
+
+integration_review_guard_noop_fixed503 src/test/sql/portal_coop_fixture.sql exit=0
+
+
+integration_review_guard_noop_fixed503 docs/audits/20261020-continuo/probe_portal_guard_drift.sql exit=0
+       setup
+--------------------
+ guard_changed=true
+(1 row)
+
+
+
+integration_review_guard_noop_fixed503 migration expected_exit=3 actual_exit=3
+
+psql:<stdin>:86: ERRO:  Profile guard definition or ACL drifted: public._guard_profiles_economy()
+CONTEXT:  função PL/pgSQL inline_code_block linha 58 em RAISE
+
+integration_review_guard_noop_fixed503 no_ddl exit=0 value=t
+
+integration_review_guard_binding_fixed503 createdb exit=0
+
+integration_review_guard_binding_fixed503 src/test/sql/portal_coop_fixture.sql exit=0
+
+
+integration_review_guard_binding_fixed503 docs/audits/20261020-continuo/probe_portal_guard_binding.sql exit=0
+
+
+integration_review_guard_binding_fixed503 migration expected_exit=3 actual_exit=3
+
+psql:<stdin>:86: ERRO:  Profile guard binding or event drifted: guard_profiles_economy
+CONTEXT:  função PL/pgSQL inline_code_block linha 66 em RAISE
+
+integration_review_guard_binding_fixed503 no_ddl exit=0 value=t
