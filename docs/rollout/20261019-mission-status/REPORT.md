@@ -2,7 +2,7 @@
 
 ## Fonte e causa
 
-[Certo] A base isolada foi `9019effe7da99b3cfa1b4ab3edcae6311858e338`. O handoff da reprodução publicada registrou `missions.status text NULL sem DEFAULT`; `useCreateMission` omitia `status`, enquanto `complete_mission(uuid,date)` exige `pendente`, `em_progresso` ou `em_andamento` antes de creditar. A missão QA `f0f3f05c-e3e4-441b-836d-8524f1b2e534` tinha `status NULL`, `completed=false`, `is_failed=false`, e a chamada autenticada retornou `P0001 MISSION_NOT_ACTIVE`.
+[Certo] A base isolada foi `9019effe7da99b3cfa1b4ab3edcae6311858e338`. O handoff da reprodução publicada registrou `missions.status text NULL sem DEFAULT`; `useCreateMission` omitia `status`, enquanto `complete_mission(uuid,date)` exige `pendente`, `em_progresso` ou `em_andamento` antes de creditar. A missão de QA tinha `status NULL`, `completed=false`, `is_failed=false`, e a chamada autenticada retornou `P0001 MISSION_NOT_ACTIVE`.
 
 [Certo] O snapshot vivo entregue pela coordenação continha 29 missões: 22 `NULL/false/false`, 4 `NULL/false/true`, 1 `NULL/true`, 1 `arquivada/true` e 1 `pendente/false`. São contagens da captura anterior ao patch, não uma consulta atual feita por este worker. A migration histórica declarava `status NOT NULL DEFAULT 'pendente'`, mas isso não descrevia o banco publicado.
 
@@ -33,3 +33,11 @@
 [Provável] O backfill atualizará 22 linhas do snapshot publicado se nada mudou desde a captura; triggers de `updated_at` no schema vivo podem alterar timestamps dessas linhas. Rotinas legadas sem agenda válida continuarão recusadas pelo guard de agenda. A fixture local reduzida não prova API/PostgREST, RLS completo, UI autenticada nem estado atual de produção.
 
 [Certo] Antes da aplicação remota, guardar preimage por `id` de `status`, `completed`, `is_failed`, `updated_at` e contagens de wallet/ledger. Se a transação de aplicação falhar, o rollback transacional restaura tudo. Para reversão posterior, remover somente o trigger/função novos, restaurar o default anterior capturado e devolver `status NULL` apenas aos IDs do preimage ainda sem mudança posterior; nunca fazer UPDATE amplo de todas as linhas `pendente`. Nenhuma escrita remota foi feita nesta tarefa.
+
+## Complemento da integração e aplicação pela coordenação
+
+[Certo] O corte final de SQL é o commit `5a18d092`, SHA-256 UTF8/LF `67fe32da76ecf2071d343af86d38e8bd0ee21ef4691ee66c61af3e86b922ea97`. Além do reparo acima, exige os dois gatilhos de cota e lock ativos em origem, tipos, funções alvo e owners esperados. A revisão independente deste corte e seus testes negativos estão em `../20261019-status-review/REPORT.md`.
+
+[Certo] A coordenação aplicou esse SQL na Primary em 20/10/2026 às 02:37 UTC (19/10 às 23:37 BRT), depois de conferir as condições vivas e guardar preimage privada fora do Git. Foram normalizadas 31 linhas ativas, incluindo registros de QA criados após o snapshot inicial. Oito comparações de conteúdo por checksum preservaram progressão, carteiras, inventário, atributos, conclusões, progresso semanal, linhas históricas inativas e todos os demais campos de missões, exceto status e updated_at esperados. Histórico: 178 migrations; versão canônica `20261020020920`, SQL armazenado com o mesmo hash. Nenhuma preimage de conta foi incluída neste PR.
+
+[Certo] Na integração, 268 testes em 38 arquivos passaram; o build final passou após integrar os rótulos de prioridade derivados das constantes compartilhadas. A instalação limpa npm ci e o typecheck global continuam com dívidas anteriores, separadas dos testes com as dependências disponíveis. O smoke da interface deste reparo será registrado pela coordenação após a publicação.
