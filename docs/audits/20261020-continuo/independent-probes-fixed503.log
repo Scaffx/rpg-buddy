@@ -1,0 +1,182 @@
+psql -X -v ON_ERROR_STOP=1 -q -h 127.0.0.1 -p 55620 -U postgres -d integration_review_continuo_fixed503 -f probe_adventure_legacy.sql
+sha256_lf=8a8007b1728b2c60805b9ad69c1cf956695e7659d8cb15ee29278880a7127d4c exit=0
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+              result
+-----------------------------------
+ legacy-start and future HP passed
+(1 row)
+
+
+
+psql -X -v ON_ERROR_STOP=1 -q -h 127.0.0.1 -p 55620 -U postgres -d integration_review_continuo_fixed503 -f probe_adventure_offline.sql
+sha256_lf=2f3b9124d3881e0175fe71d34e116c07ee14da4159cf6368b1cefd89efa52bbe exit=0
+ stage | adventure_mode | gold_today | loot_today | timelines | first_clears
+-------+----------------+------------+------------+-----------+--------------
+   129 | holding        |         16 |          0 |       127 |          129
+(1 row)
+
+
+psql:<stdin>:33: NOTA:  offline calls=20 battles=466 defeats=1 seconds=0.272
+
+psql -X -v ON_ERROR_STOP=1 -q -h 127.0.0.1 -p 55620 -U postgres -d integration_review_continuo_fixed503 -f probe_advance_clock_fixed.sql
+sha256_lf=656c6cde09ef11661b36e28a957e1b5b724112581bc80c7b67833fb10716a8c9 exit=0
+ ok
+----
+
+(1 row)
+
+             result
+---------------------------------
+ expired_rejected_unchanged=true
+(1 row)
+
+         result
+-------------------------
+ drain_kept_stage_9=true
+(1 row)
+
+ ok
+----
+
+(1 row)
+
+               result
+------------------------------------
+ live_accepted_stage_9_pending=true
+(1 row)
+
+
+
+psql -X -v ON_ERROR_STOP=1 -q -h 127.0.0.1 -p 55620 -U postgres -d integration_review_portal_fixed503 -f probe_portal_dual_boss.sql
+sha256_lf=e3f74f72ce15d9665bb5e7753057d1a92afd7e7b4209551a58faa97d61402fc7 exit=0
+                    portal_coop_join
+--------------------------------------------------------
+ {"session_id": "e99c5216-995e-4657-b40a-902c98b9aa62"}
+(1 row)
+
+                                    portal_coop_start
+------------------------------------------------------------------------------------------
+ {"status": "active", "players": 2, "session_id": "e99c5216-995e-4657-b40a-902c98b9aa62"}
+(1 row)
+
+               portal_coop_action
+------------------------------------------------
+ {"wave": 2, "damage": 172, "status": "active"}
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+ pg_sleep
+----------
+
+(1 row)
+
+               portal_coop_action
+------------------------------------------------
+ {"wave": 2, "damage": 172, "status": "active"}
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+ assert_true
+-------------
+
+(1 row)
+
+            result
+------------------------------
+ dual-boss retaliation passed
+(1 row)
+
+
+
+psql -X -v ON_ERROR_STOP=1 -q -h 127.0.0.1 -p 55620 -U postgres -d integration_review_portal_fixed503 -f probe_portal_membership.sql
+sha256_lf=3e961bdd448cf4f758413ca73101dc9c89aa99c3521b8e22c6005197ecc49f3a exit=0
+              set_config
+--------------------------------------
+ dc7f2732-96c8-4e1a-bdc5-f2ad17c22f32
+(1 row)
+
+ set_config
+------------
+ 2FFFB515
+(1 row)
+
+                    portal_coop_join
+--------------------------------------------------------
+ {"session_id": "dc7f2732-96c8-4e1a-bdc5-f2ad17c22f32"}
+(1 row)
+
+                    portal_coop_join
+--------------------------------------------------------
+ {"session_id": "dc7f2732-96c8-4e1a-bdc5-f2ad17c22f32"}
+(1 row)
+
+                    portal_coop_join
+--------------------------------------------------------
+ {"session_id": "dc7f2732-96c8-4e1a-bdc5-f2ad17c22f32"}
+(1 row)
+
+                                    portal_coop_start
+------------------------------------------------------------------------------------------
+ {"status": "active", "players": 4, "session_id": "dc7f2732-96c8-4e1a-bdc5-f2ad17c22f32"}
+(1 row)
+
+                       result
+----------------------------------------------------
+ solo, low level, fifth, outsider and roster passed
+(1 row)
+
+
+
+psql -X -v ON_ERROR_STOP=1 -q -h 127.0.0.1 -p 55620 -U postgres -d integration_review_portal_fixed503 -f probe_portal_reward_replay.sql
+sha256_lf=4427df768200cae786e658fc73a09224ebb203ba6405f4ef435873618a5978f4 exit=0
+              set_config
+--------------------------------------
+ a79af752-f1e9-4102-a592-4c6d3d15a87e
+(1 row)
+
+                    portal_coop_join
+--------------------------------------------------------
+ {"session_id": "a79af752-f1e9-4102-a592-4c6d3d15a87e"}
+(1 row)
+
+                                    portal_coop_start
+------------------------------------------------------------------------------------------
+ {"status": "active", "players": 2, "session_id": "a79af752-f1e9-4102-a592-4c6d3d15a87e"}
+(1 row)
+
+                                                     receipts
+------------------------------------------------------------------------------------------------------------------
+ first={"wave": 1, "damage": 172, "status": "completed"} replay={"wave": 1, "damage": 172, "status": "completed"}
+(1 row)
+
+                       result
+----------------------------------------------------
+ daily zero-XP/gold, two winners, one action passed
+(1 row)
