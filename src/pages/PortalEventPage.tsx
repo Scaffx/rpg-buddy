@@ -17,7 +17,11 @@ const difficulties: Record<CoopDifficulty, { name: string; min: number; waves: s
   ultra: { name: 'Ultralendário', min: 50, waves: '2 + 2 + 1' },
 };
 const dailyDifficulty: Record<string, CoopDifficulty> = { blue: 'easy', yellow: 'medium', red: 'hard', legendary: 'legendary' };
-const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Ação recusada pelo servidor.';
+const errorMessage = (error: unknown) => {
+  const message = typeof error === 'string' ? error
+    : error && typeof error === 'object' && 'message' in error ? error.message : null;
+  return typeof message === 'string' && message.trim() ? message.trim() : 'Ação recusada pelo servidor.';
+};
 
 export default function PortalEventPage() {
   const { user } = useAuth();
@@ -33,7 +37,14 @@ export default function PortalEventPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [companionId, setCompanionId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ title: string; message: string } | null>(null);
   const { data: session } = useCoopState(sessionId);
+
+  function showFailure(title: string, error: unknown) {
+    const message = errorMessage(error);
+    setFeedback({ title, message });
+    toast({ title, description: message, variant: 'destructive' });
+  }
 
   async function make(source: 'daily' | 'fragments', difficulty: CoopDifficulty | null) {
     try {
@@ -45,31 +56,34 @@ export default function PortalEventPage() {
       const result = await create.mutateAsync({ source, difficulty, eventId, requestId, companionId });
       localStorage.removeItem(key);
       setSessionId(result.session_id);
-    } catch (error) { toast({ title: 'Entrada recusada', description: errorMessage(error), variant: 'destructive' }); }
+      setFeedback(null);
+    } catch (error) { showFailure('Entrada recusada', error); }
   }
 
   async function enter() {
     try {
       const result = await join.mutateAsync({ code: code.trim().toUpperCase(), companionId });
       setSessionId(result.session_id); setCode('');
-    } catch (error) { toast({ title: 'Convite recusado', description: errorMessage(error), variant: 'destructive' }); }
+      setFeedback(null);
+    } catch (error) { showFailure('Convite recusado', error); }
   }
   async function begin() {
     if (!sessionId) return;
-    try { await start.mutateAsync(sessionId); }
-    catch (error) { toast({ title: 'Início recusado', description: errorMessage(error), variant: 'destructive' }); }
+    try { await start.mutateAsync(sessionId); setFeedback(null); }
+    catch (error) { showFailure('Início recusado', error); }
   }
   async function hit(slot: number) {
     if (!sessionId) return;
-    try { await attack.mutateAsync({ sessionId, slot, actionId: crypto.randomUUID() }); }
-    catch (error) { toast({ title: 'Ataque recusado', description: errorMessage(error), variant: 'destructive' }); }
+    try { await attack.mutateAsync({ sessionId, slot, actionId: crypto.randomUUID() }); setFeedback(null); }
+    catch (error) { showFailure('Ataque recusado', error); }
   }
   async function scanDaily() {
     if (!event) return;
     try {
       const result = await scan.mutateAsync(event.event_id);
       if (result.error) throw new Error(result.error);
-    } catch (error) { toast({ title: 'Escaneamento recusado', description: errorMessage(error), variant: 'destructive' }); }
+      setFeedback(null);
+    } catch (error) { showFailure('Escaneamento recusado', error); }
   }
 
   const player = session?.players.find(p => p.user_id === user?.id);
@@ -78,6 +92,9 @@ export default function PortalEventPage() {
     <header><p className="text-xs uppercase tracking-widest text-purple-300">Portais cooperativos</p>
       <h1 className="text-3xl font-bold">Entre com 2 a 4 jogadores</h1>
       <p className="text-sm text-muted-foreground">Enfrente os bosses com seu grupo. XP e atributos vêm das rotinas; ouro e itens vêm da aventura automática.</p></header>
+    {feedback && <div role="alert" className="rounded-xl border border-red-500/50 bg-red-950/30 p-4 text-sm text-red-100">
+      <strong className="block">{feedback.title}</strong><p>{feedback.message}</p>
+    </div>}
     {session ? <section className="space-y-4 rounded-2xl border border-purple-500/30 bg-purple-950/20 p-5">
       <div className="flex justify-between gap-3"><div><h2 className="text-xl font-bold">{difficulties[session.difficulty].name} · {session.status === 'active' ? `Encontro ${session.wave}` : session.status}</h2>
         <p className="text-sm text-muted-foreground">{difficulties[session.difficulty].waves}</p></div>
