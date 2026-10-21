@@ -880,7 +880,7 @@
     },
     "feats": {
       "page_title": "Real life talents",
-      "available_points": "Available points: {{n}}",
+      "available_points": "Available points:",
       "points_hint": "Next point at level {{n}}, earned through routines.",
       "undo_points_note": "Before buying: if undoing a routine would remove an already spent point, undo will be refused. Your purchased talent remains.",
       "synergy_label": "Synergy",

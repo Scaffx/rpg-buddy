@@ -885,7 +885,7 @@
     },
     "feats": {
       "page_title": "Talentos",
-      "available_points": "Puntos disponibles: {{n}}",
+      "available_points": "Puntos disponibles:",
       "points_hint": "Próximo punto en el nivel {{n}}, al progresar con rutinas.",
       "undo_points_note": "Antes de comprar: si deshacer una rutina quitaría un punto ya gastado, se rechazará la acción. El talento comprado permanece.",
       "synergy_label": "Sinergia",
