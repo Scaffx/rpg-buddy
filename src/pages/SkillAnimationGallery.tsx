@@ -33,6 +33,7 @@ export default function SkillAnimationGallery() {
     return () => window.clearInterval(timer);
   }, [autoplay, skill.id]);
   const node = catalog.find(item => item.id === skill.id);
+  const sourceItem = node && 'sourceItem' in node ? node.sourceItem : null;
   const effect = (node?.effect ?? {}) as { mpCost?: number; effectType?: string; transform?: string };
   const mpCost = skill.nodeType === 'skill' && typeof effect.mpCost === 'number' ? effect.mpCost : null;
   const heal = effect.effectType === 'heal' || effect.transform === 'aura_restauradora';
@@ -65,6 +66,7 @@ export default function SkillAnimationGallery() {
         <div className="skill-gallery-selected">
           <span className="skill-gallery-eyebrow">{group.label} · {skill.nodeType === 'variant' ? 'VARIANTE · PRÉVIA VISUAL' : 'HABILIDADE ATIVA'}</span>
           <h2 id="skill-gallery-selection">{skill.name}</h2><p>{skill.description}</p>
+          {sourceItem && <p>Habilidade de arma: {sourceItem}</p>}
           {skill.nodeType === 'variant' && <p className="skill-gallery-variant-note">Esta variante ainda não tem efeito na aventura. Aqui você está avaliando a animação.</p>}
         </div>
         <AdventureScene stage={3} biome={biome} heroClass={heroClass} heroName={group.label} enemyName="Alvo de treino" isBoss={false} frame={frame} paused={paused} announceActions={false} />
