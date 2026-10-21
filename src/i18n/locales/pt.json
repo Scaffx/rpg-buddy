@@ -880,7 +880,7 @@
     },
     "feats": {
       "page_title": "Talentos da vida real",
-      "available_points": "Pontos disponíveis: {{n}}",
+      "available_points": "Pontos disponíveis:",
       "points_hint": "Próximo ponto no nível {{n}}, ao evoluir com rotinas.",
       "undo_points_note": "Antes de comprar: se desfazer uma rotina retiraria um ponto já gasto, o desfazer será recusado. O talento comprado permanece.",
       "synergy_label": "Sinergia",
