@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { AdventureEnemySprite, AdventureHeroSprite } from './AdventureSprites';
 import { BIOME_LABELS, enemyVisualVariant, type AdventureBiome, type AdventureHeroClass } from '@/lib/adventureVisuals';
 import './adventureScene.css';
+import { AdventureScenery } from './AdventureScenery';
 import { findSkillAnimation } from './skills/registry';
 import { AdventureSkillEffect } from './skills/AdventureSkillEffect';
 import { findEnemyAnimation, resolveEnemyPresentation } from './enemies/registry';
@@ -147,9 +148,7 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
       <ResourceBar label={enemyName} value={frame.enemyHp} max={frame.enemyMaxHp} resource="HP" />
     </div>
     <div ref={sceneRef} role="group" aria-label={`Cena da etapa ${stage}: ${heroName} e ${enemyName}`} className={`adventure-scene adventure-biome-${biome} ${motionClass}`} data-biome={biome} data-hero-class={heroClass} data-enemy-key={enemy?.key} data-status={frame.status} data-stage={stage} data-action-style={actionStyle}>
-    <div className="adventure-scene-sky" aria-hidden="true"><span className="adventure-sun" /><span className="adventure-cloud cloud-one" /><span className="adventure-cloud cloud-two" /></div>
-    <div className="adventure-scene-far" aria-hidden="true" /><div className="adventure-scene-middle" aria-hidden="true" />
-    <div className="adventure-scene-ground" aria-hidden="true"><span className="adventure-path" /><span className="adventure-ground-detail detail-one" /><span className="adventure-ground-detail detail-two" /><span className="adventure-ground-detail detail-three" /></div>
+    <AdventureScenery biome={biome} />
     <div className="adventure-scene-top">
       <span className="adventure-stage-badge">Etapa {stage} · {BIOME_LABELS[biome]}</span>
       {isBoss && <span className="adventure-boss-badge">Chefe</span>}

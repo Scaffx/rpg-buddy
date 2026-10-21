@@ -60,6 +60,18 @@ const ENEMIES: Record<AdventureBiome, [EnemyShape, EnemyShape, EnemyShape, Enemy
     { body: '#58bdb5', shadow: '#267e8f', eye: '#e5ffb5', kind: 'serpent' },
     { body: '#397b9d', shadow: '#244c7b', eye: '#c9ffec', kind: 'boss' },
   ],
+  deserto: [
+    { body: '#deb36d', shadow: '#956348', eye: '#fff0c8', kind: 'beast' },
+    { body: '#deb36d', shadow: '#956348', eye: '#fff0c8', kind: 'flying' },
+    { body: '#deb36d', shadow: '#956348', eye: '#fff0c8', kind: 'armored' },
+    { body: '#deb36d', shadow: '#956348', eye: '#fff0c8', kind: 'boss' },
+  ],
+  gelo: [
+    { body: '#b4e0ec', shadow: '#587fa3', eye: '#e3fdff', kind: 'beast' },
+    { body: '#b4e0ec', shadow: '#587fa3', eye: '#e3fdff', kind: 'flying' },
+    { body: '#b4e0ec', shadow: '#587fa3', eye: '#e3fdff', kind: 'armored' },
+    { body: '#b4e0ec', shadow: '#587fa3', eye: '#e3fdff', kind: 'boss' },
+  ],
   ruinas: [
     { body: '#afa895', shadow: '#666778', eye: '#dbf4ff', kind: 'armored' },
     { body: '#9f84a5', shadow: '#594d73', eye: '#eacfff', kind: 'flying' },
