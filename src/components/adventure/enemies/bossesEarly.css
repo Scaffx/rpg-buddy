@@ -147,7 +147,6 @@
 .bossesEarly-sprite {
   display: block;
   overflow: visible;
-  image-rendering: pixelated;
   filter: drop-shadow(0 1px 1px #10202caa);
 }
 .bossesEarly-sprite__body { transform-origin: 16px 25px; animation: bossesEarly-breathe 1200ms ease-out both; }
