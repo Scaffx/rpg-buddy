@@ -120,10 +120,6 @@ export default function CombatLoadout() {
   }, [weaponSkills, treeSkills, cinzaSkills, aprendizSkills, hasClass]);
 
   const unlockedById = useMemo(() => new Map(allSkills.filter((s) => s.unlocked).map((s) => [s.id, s])), [allSkills]);
-  const classSkillNeedsChoice = (skill: { _src?: string }) => skill._src === 'tree'
-    && treeKey !== 'aprendiz'
-    && !(treeKey === 'novato' && ['novato', 'clerico'].includes(String(profile?.starter_class || '')))
-    && !profile?.current_class_id;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   useEffect(() => {
@@ -181,7 +177,6 @@ export default function CombatLoadout() {
                 <span className="text-muted-foreground">{t('app.habhub.skill_cost_cooldown', { mp: s.mpCost ?? 0, turns: s.cooldown ?? 0 })}</span>
                 {directDamageOnly(s.effectType) && <span className="text-muted-foreground">{t('app.habhub.direct_damage_only')}</span>}
                 {!adventureExecutable(s.effectType) && <span className="text-amber-300">{t('app.habhub.not_in_auto_adventure')}</span>}
-                {classSkillNeedsChoice(s) && <span className="text-amber-300">{t('app.habhub.class_choice_required')}</span>}
                 <div className="ml-auto flex items-center gap-1">
                   <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t('app.habhub.move_up', { name: s.name })} className="rounded p-1 hover:bg-emerald-500/20 disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
                   <button type="button" onClick={() => move(index, 1)} disabled={index === selected.length - 1} aria-label={t('app.habhub.move_down', { name: s.name })} className="rounded p-1 hover:bg-emerald-500/20 disabled:opacity-40"><ArrowDown className="h-4 w-4" /></button>
@@ -219,7 +214,6 @@ export default function CombatLoadout() {
               </div>
               {!adventureExecutable(s.effectType) && <p className="text-xs text-amber-300">{t('app.habhub.not_in_auto_adventure')}</p>}
               {directDamageOnly(s.effectType) && <p className="text-xs text-muted-foreground">{t('app.habhub.direct_damage_only')}</p>}
-              {classSkillNeedsChoice(s) && <p className="text-xs text-amber-300">{t('app.habhub.class_choice_required')}</p>}
               {s.unlocked && (
                 <button onClick={() => toggle(s.id)}
                   className={`w-full rounded-lg px-3 py-1.5 text-xs font-semibold transition ${inDeck ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-rose-500/10 hover:text-rose-300' : 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20'}`}>
