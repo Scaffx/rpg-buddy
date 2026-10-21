@@ -13,12 +13,16 @@ type BattleEvent = {
   at: string; actor: 'hero' | 'enemy'; kind: 'attack' | 'skill'; damage: number;
   hero_hp: number; enemy_hp: number; skill_id: string | null; skill_name: string | null;
   effect?: string | null;
+  hero_mp?: number | null; mp_cost?: number | null; skill_type?: string | null;
+  healing?: number | null; raw_damage?: number | null; damage_multiplier?: number | null;
+  effect_note?: string | null;
 };
 type LiveBattle = {
   id: string; stage: number; attempt: number; kind: 'normal' | 'boss';
   status: 'fighting' | 'defeated' | 'won'; replay?: boolean; started_at: string; ends_at: string;
   hero_class?: string;
   hero_hp: number; hero_max_hp: number; enemy_hp: number; enemy_max_hp: number;
+  hero_mp?: number | null; hero_max_mp?: number | null;
   enemy_name: string; enemy_icon: string | null; boss_id: string | null;
   events: BattleEvent[]; biome?: string | null;
 };
@@ -149,12 +153,19 @@ export default function AutoAdventure() {
     status: displayedDefeat ? 'defeated' : stageTransition ? 'transition' : status,
     heroHp: battle ? lastEvent?.hero_hp ?? battle.hero_max_hp : null,
     heroMaxHp: battle?.hero_max_hp,
+    heroMp: battle?.hero_max_mp == null ? null : [...visibleEvents].reverse().find(event => typeof event.hero_mp === 'number')?.hero_mp ?? battle.hero_max_mp,
+    heroMaxMp: battle?.hero_max_mp,
     enemyHp: battle ? lastEvent?.enemy_hp ?? battle.enemy_max_hp : null,
     enemyMaxHp: battle?.enemy_max_hp,
-    action: activeEvent ? {
-      id: `${battle!.id}-${visibleEvents.length - 1}`, actor: activeEvent.actor,
-      skillName: activeEvent.kind === 'skill' ? activeEvent.skill_name : null,
-      damage: activeEvent.damage, effect: visualEffect(activeEvent.effect),
+    animateAction: Boolean(activeEvent),
+    action: lastEvent ? {
+      id: `${battle!.id}-${visibleEvents.length - 1}`, actor: lastEvent.actor,
+      kind: lastEvent.kind,
+      skillName: lastEvent.kind === 'skill' ? lastEvent.skill_name : null,
+      damage: lastEvent.damage, effect: visualEffect(lastEvent.effect),
+      mpCost: lastEvent.mp_cost, healing: lastEvent.healing,
+      rawDamage: lastEvent.raw_damage, damageMultiplier: lastEvent.damage_multiplier,
+      effectNote: lastEvent.effect_note, skillType: lastEvent.skill_type,
     } : null,
   };
   const latest = data.encounters[0];
@@ -193,7 +204,7 @@ export default function AutoAdventure() {
         {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
       </div>
       {mode === 'holding' && <AdventureHoldNotice stage={holdingStage} advanceToStage={holdingStage + 1} retreatedFromStage={data.encounters.find(encounter => !encounter.won && encounter.stage === holdingStage + 1)?.stage} pending={advanceMutation.isPending} accepted={Boolean(advanceRequested || (currentBattle && acceptedBattleId === currentBattle.id))} canAdvance={canRequestAdvance} error={advanceMutation.isError && attemptedBattleId.current === currentBattle?.id} onAdvance={() => void advance()} />}
-      <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Combates podem dar ouro e itens; rotinas concluídas dão XP e atributos. Recompensas são periódicas e têm limites diários.</p>
+      <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Alterações em equipamentos e habilidades passam a valer na próxima luta iniciada. Combates podem dar ouro e itens; rotinas concluídas dão XP e atributos. Recompensas são periódicas e têm limites diários.</p>
     </div>
     <div className="grid min-w-0 gap-3 sm:grid-cols-3">
       <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Ouro da aventura hoje</p><p className="text-xl font-bold text-amber-300">{data.gold_today} / {data.limits.gold_per_day}</p></div>
