@@ -5,18 +5,22 @@ import { AdventureScene, type AdventureSceneAction, type AdventureSceneFrame } f
 import { ENEMY_ANIMATION_GROUPS, ENEMY_ANIMATIONS, ENEMY_PRESENTATIONS } from '@/components/adventure/enemies/registry';
 import './SkillAnimationGallery.css';
 import './EnemyAnimationGallery.css';
+import { BIOME_LABELS, type AdventureHeroClass } from '@/lib/adventureVisuals';
 
 const groupKeys = Object.keys(ENEMY_ANIMATION_GROUPS);
 const currentElements = ['physical', 'arcane', 'fire', 'ice', 'lightning', 'nature', 'light'];
 const specialCount = ENEMY_ANIMATIONS.filter(animation => animation.kind === 'skill').length;
 const bossCount = ENEMY_PRESENTATIONS.filter(enemy => enemy.kind === 'boss').length;
 const creatureCount = ENEMY_PRESENTATIONS.length - bossCount;
+const HEROES: Record<AdventureHeroClass, string> = { guerreiro: 'Guerreiro', mago: 'Mago', gatuno: 'Gatuno', arqueiro: 'Arqueiro', clerico: 'Clérigo', ferreiro: 'Ferreiro', aprendiz: 'Aprendiz' };
+const REALM_STAGE = { floresta: 1, deserto: 11, aquatico: 21, gelo: 31, vulcanico: 41, ruinas: 21 };
 
 /** Public visual previews. No player data, mutations or combat simulation. */
 export default function EnemyAnimationGallery() {
   const [params, setParams] = useSearchParams();
   const groupKey = groupKeys.find(key => key === params.get('grupo')) ?? 'early';
   const group = ENEMY_ANIMATION_GROUPS[groupKey];
+  const heroClass = (Object.keys(HEROES).find(key => key === params.get('heroi')) ?? 'guerreiro') as AdventureHeroClass;
   const enemy = group.enemies.find(item => item.key === params.get('inimigo')) ?? group.enemies[0];
   const animations = group.animations.filter(item => item.enemyKey === enemy.key);
   const animation = animations.find(item => item.id === params.get('habilidade')) ?? animations[0];
@@ -34,7 +38,7 @@ export default function EnemyAnimationGallery() {
   }, [autoplay, animation.id]);
 
   const select = (nextGroup: string, nextEnemy: string, nextAnimation?: string) => {
-    setParams({ grupo: nextGroup, inimigo: nextEnemy, ...(nextAnimation ? { habilidade: nextAnimation } : {}) }, { replace: true });
+    setParams({ grupo: nextGroup, inimigo: nextEnemy, heroi: heroClass, ...(nextAnimation ? { habilidade: nextAnimation } : {}) }, { replace: true });
     setSerial(value => value + 1);
   };
   const preview = animation.kind === 'skill';
@@ -53,7 +57,8 @@ export default function EnemyAnimationGallery() {
       <Link to="/previa-habilidades" className="skill-gallery-back">← Habilidades dos personagens</Link>
       <p className="skill-gallery-eyebrow">ATELIÊ DOS INIMIGOS · {ENEMY_ANIMATIONS.length} ANIMAÇÕES</p>
       <h1>Bosses e pequenas criaturas</h1>
-      <p>{bossCount} bosses · {specialCount} habilidades especiais · {creatureCount} criaturas pequenas</p>
+      <p>{bossCount} bosses · {specialCount} habilidades especiais · 15 criaturas dos reinos + {creatureCount - 15} de ruínas antigas</p>
+      <p>Normal → deserto → água → gelo → fogo. Nove etapas de criaturas e um boss por reino; o ciclo recomeça na etapa 51.</p>
       <div className="skill-gallery-notice" role="note"><strong>Demonstração visual.</strong> Vida e dano são ilustrativos. Esta galeria não inicia combates nem altera seu personagem. Na aventura automática, os inimigos executam ataques básicos; os especiais apresentados aqui são prévias.</div>
     </header>
     <div className="skill-gallery-toolbar enemy-gallery-toolbar">
@@ -61,7 +66,10 @@ export default function EnemyAnimationGallery() {
         {groupKeys.map(key => <option key={key} value={key}>{ENEMY_ANIMATION_GROUPS[key].label}</option>)}
       </select></label>
       <label>Inimigo<select value={enemy.key} onChange={event => select(groupKey, event.target.value)}>
-        {group.enemies.map(item => <option key={item.key} value={item.key}>{item.name}</option>)}
+        {group.enemies.map(item => <option key={item.key} value={item.key}>{item.name}{item.kind === 'creature' ? ` · ${BIOME_LABELS[item.biome]}${item.biome === 'ruinas' ? ' (legado)' : ''}` : ''}</option>)}
+      </select></label>
+      <label>Personagem<select value={heroClass} onChange={event => { const next = new URLSearchParams(params); next.set('heroi', event.target.value); setParams(next, { replace: true }); setSerial(value => value + 1); }}>
+        {Object.entries(HEROES).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
       </select></label>
     </div>
     <div className="enemy-gallery-layout">
@@ -77,7 +85,7 @@ export default function EnemyAnimationGallery() {
           <h2 id="enemy-gallery-selection">{animation.name}</h2><p>{animation.description}</p>
           {preview && <p className="skill-gallery-variant-note">Esta habilidade especial ainda não é executada na aventura automática. Aqui você está avaliando sua animação.</p>}
         </div>
-        <AdventureScene stage={enemy.kind === 'boss' ? 10 : 3} biome={enemy.biome} heroClass="guerreiro" heroName="Herói de treino" enemyName={enemy.name} isBoss={enemy.kind === 'boss'} bossId={enemy.bossId} frame={frame} paused={paused} announceActions={false} />
+        <AdventureScene stage={enemy.kind === 'boss' ? 10 : REALM_STAGE[enemy.biome] + (enemy.slot ?? 0)} biome={enemy.biome} heroClass={heroClass} heroName={`${HEROES[heroClass]} de treino`} enemyName={enemy.name} isBoss={enemy.kind === 'boss'} bossId={enemy.bossId} frame={frame} paused={paused} announceActions={false} />
         <div className="skill-gallery-playback">
           <button type="button" onClick={() => setSerial(value => value + 1)}>Repetir animação</button>
           <button type="button" aria-pressed={repeating} onClick={() => setRepeating(value => !value)}>{repeating ? 'Desligar repetição' : 'Repetir automaticamente'}</button>

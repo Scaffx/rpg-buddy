@@ -2,7 +2,7 @@ import type { AdventureBiome } from '@/lib/adventureVisuals';
 import type { EnemyAnimationDefinition, EnemyPresentation } from './types';
 
 // Names and biome/slot pairs mirror catalog.snapshot.json. These are visual labels only.
-const BIOMES: readonly AdventureBiome[] = ['floresta', 'aquatico', 'ruinas', 'vulcanico'];
+const BIOMES: readonly AdventureBiome[] = ['floresta', 'aquatico', 'ruinas', 'vulcanico', 'deserto', 'gelo'];
 const CREATURES = [
   { biome: 0, slot: 0, name: 'Lobo da mata', motion: 'lunge', description: 'Mordida do lobo.' },
   { biome: 0, slot: 1, name: 'Javali selvagem', motion: 'lunge', description: 'Investida com as presas.' },
@@ -16,6 +16,12 @@ const CREATURES = [
   { biome: 3, slot: 0, name: 'Criatura de fogo', motion: 'lunge', description: 'Garra envolta em brasa visual.' },
   { biome: 3, slot: 1, name: 'Asa de brasa', motion: 'flight', description: 'Rasante com penas incandescentes.' },
   { biome: 3, slot: 2, name: 'Golem vulcânico', motion: 'slam', description: 'Soco de rocha vulcânica.' },
+  { biome: 4, slot: 0, name: 'Escorpião das dunas', motion: 'lunge', description: 'Pinça e golpe do ferrão.' },
+  { biome: 4, slot: 1, name: 'Cobra da areia', motion: 'lunge', description: 'Bote da serpente entre grãos de areia.' },
+  { biome: 4, slot: 2, name: 'Besouro do deserto', motion: 'slam', description: 'Investida da carapaça.' },
+  { biome: 5, slot: 0, name: 'Lobo da neve', motion: 'lunge', description: 'Mordida do lobo entre flocos de neve.' },
+  { biome: 5, slot: 1, name: 'Coruja glacial', motion: 'flight', description: 'Rasante de asas nevadas.' },
+  { biome: 5, slot: 2, name: 'Golem de gelo', motion: 'slam', description: 'Soco de cristal glacial.' },
 ] as const;
 
 export const creaturesEnemies: EnemyPresentation[] = CREATURES.map(({ biome, slot, name }) => ({

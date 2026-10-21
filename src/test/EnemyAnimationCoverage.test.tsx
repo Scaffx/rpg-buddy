@@ -31,9 +31,9 @@ describe('enemy animations: catalog, identity and confirmed actions', () => {
     const expected = catalog.bosses.flatMap(item => [{ id: `boss:${item.id}:attack`, name: 'Ataque básico' }, ...item.skills.map((skill, index) => ({ id: `boss:${item.id}:skill:${index}`, name: skill.name }))]);
     expected.push(...catalog.creatures.map(item => ({ id: `creature:${item.biome}:${item.slot}:attack`, name: 'Ataque básico' })));
     expect(ENEMY_ANIMATIONS.map(item => ({ id: item.id, name: item.name })).sort((a, b) => a.id.localeCompare(b.id))).toEqual(expected.sort((a, b) => a.id.localeCompare(b.id)));
-    expect(new Set(ENEMY_ANIMATIONS.map(item => item.id)).size).toBe(252);
+    expect(new Set(ENEMY_ANIMATIONS.map(item => item.id)).size).toBe(258);
     expect(ENEMY_PRESENTATIONS.filter(item => item.kind === 'boss')).toHaveLength(60);
-    expect(ENEMY_PRESENTATIONS.filter(item => item.kind === 'creature')).toHaveLength(12);
+    expect(ENEMY_PRESENTATIONS.filter(item => item.kind === 'creature')).toHaveLength(18);
     expect(ENEMY_ANIMATIONS.filter(item => item.kind === 'skill')).toHaveLength(180);
     const expectedEnemies = [...catalog.bosses.map(item => ({ key: `boss:${item.id}`, name: item.name })), ...catalog.creatures.map(item => ({ key: `creature:${item.biome}:${item.slot}`, name: item.name }))];
     expect(ENEMY_PRESENTATIONS.map(item => ({ key: item.key, name: item.name })).sort((a, b) => a.key.localeCompare(b.key))).toEqual(expectedEnemies.sort((a, b) => a.key.localeCompare(b.key)));

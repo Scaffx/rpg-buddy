@@ -14,6 +14,12 @@ const ATTACK_SHAPES: Record<string, string> = {
   'creature:3:0:attack': 'claw',
   'creature:3:1:attack': 'feather',
   'creature:3:2:attack': 'magma',
+  'creature:4:0:attack': 'sting',
+  'creature:4:1:attack': 'sand',
+  'creature:4:2:attack': 'shell',
+  'creature:5:0:attack': 'snow-bite',
+  'creature:5:1:attack': 'snow-wing',
+  'creature:5:2:attack': 'crystal',
 };
 
 export function CreaturesEffect({ animationId, target }: EnemyEffectProps) {
