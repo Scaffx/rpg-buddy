@@ -63,6 +63,20 @@ const queryClient = new QueryClient({
   },
 });
 
+function AuthRecovery({ onRetry }: { onRetry: () => void }) {
+  return (
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <div role="alert" className="max-w-md space-y-4 text-center">
+        <h1 className="text-xl font-semibold">Não foi possível confirmar sua sessão</h1>
+        <p>Tente novamente para continuar.</p>
+        <button type="button" onClick={onRetry} className="rounded-md bg-primary px-4 py-2 text-primary-foreground">
+          Tentar novamente
+        </button>
+      </div>
+    </main>
+  );
+}
+
 function ProtectedRoute({
   children,
   bypassOnboarding = false,
@@ -72,11 +86,12 @@ function ProtectedRoute({
   bypassOnboarding?: boolean;
   bypassSubscription?: boolean;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading, authError, retryAuth } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { isActive, isLoading: subscriptionLoading } = useSubscription();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
 
+  if (authError) return <AuthRecovery onRetry={retryAuth} />;
   if (loading || profileLoading || subscriptionLoading || adminLoading) {
     return (
       <LifeonRPGSplash fullscreen label="abrindo o portal" />
@@ -104,7 +119,8 @@ function ProtectedRoute({
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, authError, retryAuth } = useAuth();
+  if (authError) return <AuthRecovery onRetry={retryAuth} />;
   if (loading) {
     return (
       <LifeonRPGSplash fullscreen label="abrindo o portal" />
@@ -117,8 +133,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function LandingRoute() {
   // Landing pública: visitantes e usuários com assinatura expirada veem o pitch.
   // Usuários com assinatura ativa vão direto pro app.
-  const { user, loading } = useAuth();
+  const { user, loading, authError, retryAuth } = useAuth();
   const { isActive, isLoading: subLoading } = useSubscription();
+  if (authError) return <AuthRecovery onRetry={retryAuth} />;
   if (loading || (user && subLoading)) {
     return (
       <LifeonRPGSplash fullscreen label="abrindo o portal" />
