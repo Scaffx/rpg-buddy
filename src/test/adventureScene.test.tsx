@@ -61,7 +61,7 @@ describe('cena 2D da aventura', () => {
     expect(scene.querySelector('.adventure-still')).not.toBeNull();
     expect(scene.textContent).not.toContain('dano');
     expect(scene.querySelector('[role=meter]')).toBeNull();
-    renderScene(<AdventureScene stage={2} biome="floresta" heroClass="arqueiro" heroName="Heroína" enemyName="Lobo" isBoss={false} paused={false} frame={{ status: 'fighting', action: { id: 'server-event-1', actor: 'hero', skillName: 'Tiro Vetor', damage: 12, effect: 'physical' } }} />);
+    renderScene(<AdventureScene stage={2} biome="floresta" heroClass="arqueiro" heroName="Heroína" enemyName="Lobo" isBoss={false} paused={false} frame={{ status: 'fighting', action: { id: 'server-event-1', actor: 'hero', kind: 'skill', skillName: 'Tiro Vetor', damage: 12, effect: 'physical' } }} />);
     expect(scene.textContent).toContain('Tiro Vetor');
     expect(scene.textContent).toContain('12 de dano');
   });

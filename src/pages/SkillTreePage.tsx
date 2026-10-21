@@ -10,6 +10,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useHeroClass } from '@/hooks/useHeroClass';
 import {
   useSkillTreeNodes,
+  useAllSkillTreeNodes,
   usePlayerSkillNodes,
   useAllocateSkillNode,
   useResetSkillTree,
@@ -47,12 +48,13 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
   const { treeKey } = useHeroClass();
   const tree = treeKey || 'mago';
   const { data: nodes = [], isLoading } = useSkillTreeNodes(tree);
+  const { data: allNodes = [], isLoading: allNodesLoading } = useAllSkillTreeNodes();
   const { data: ranks = {} } = usePlayerSkillNodes();
   const allocate = useAllocateSkillNode();
   const reset = useResetSkillTree();
 
   const level = Number(profile?.level ?? 1);
-  const spent = useMemo(() => computeSpentPoints(nodes, ranks), [nodes, ranks]);
+  const spent = useMemo(() => computeSpentPoints(allNodes, ranks), [allNodes, ranks]);
   const available = Math.max(0, level - spent);
 
   const tronco = useMemo(() => nodes.find((n) => n.branch === 'tronco'), [nodes]);
@@ -106,14 +108,14 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
     });
   };
 
-  // Respec: grátis até o nível 15; depois custa ouro fixo.
+  // The live RPC charges 150 gold above level 10; its response is the receipt.
   const RESET_COST = 150;
-  const resetCharged = level > 15;
+  const resetCharged = level > 10;
   const handleReset = () => {
     if (resetCharged && !window.confirm(t('app.skilltree.respec_confirm', { cost: RESET_COST }))) return;
     reset.mutate(undefined, {
-      onSuccess: (data: any) => toast.success(
-        data?.charged > 0 ? t('app.skilltree.reset_paid', { cost: data.charged }) : t('app.skilltree.reset_done'),
+      onSuccess: (data) => toast.success(
+        data.charged > 0 ? t('app.skilltree.reset_paid', { cost: data.charged }) : t('app.skilltree.reset_done'),
       ),
       onError: (err: any) => toast.error(
         String(err?.message || '').includes('INSUFFICIENT_GOLD') ? t('app.skilltree.err_gold', { cost: RESET_COST }) : (err?.message || t('app.skilltree.err_generic')),
@@ -131,12 +133,16 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
       : 'rounded-full w-14 h-14';
     const inner = node.node_type === 'variant' ? '-rotate-45' : '';
     const elIcon = node.node_type === 'skill' ? meta.emoji : node.node_type === 'variant' ? '◆' : '•';
+    const directDamage = node.node_type === 'skill' && ['dano', 'damage'].includes(String(node.effect?.effectType || 'dano'));
+    const adventureNote = directDamage ? t('app.habhub.direct_damage_only') : node.node_type !== 'skill' ? t('app.skilltree.legend_phase2') : '';
+    const description = `${node.name} — ${node.description}${adventureNote ? ` ${adventureNote}` : ''}`;
     return (
       <div className="flex flex-col items-center gap-1 w-[88px]">
         <button
           type="button"
           onClick={() => handleAllocate(node)}
-          title={`${node.name} — ${node.description}`}
+          title={description}
+          aria-label={description}
           className={`relative flex items-center justify-center border-2 transition select-none ${shape} ${
             s.rank > 0
               ? `bg-primary/20 border-primary ring-2 ${meta.ring}`
@@ -188,7 +194,7 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
             </div>
           </div>
           <Button
-            variant="outline" size="sm" onClick={handleReset} disabled={reset.isPending || spent === 0}
+            variant="outline" size="sm" onClick={handleReset} disabled={reset.isPending || allNodesLoading || spent === 0}
             className="border-rose-500/40 text-rose-300 hover:bg-rose-500/10"
           >
             <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> {t('app.skilltree.respec')}{resetCharged ? ` (${RESET_COST}🪙)` : ''}
@@ -196,7 +202,7 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
         </div>
         <p className="text-xs text-muted-foreground -mt-3">{t('app.skilltree.hint')}</p>
 
-        {isLoading ? (
+        {isLoading || allNodesLoading ? (
           <div className="rpg-card text-center py-10 text-muted-foreground">…</div>
         ) : nodes.length === 0 ? (
           <div className="rpg-card text-center py-10 text-muted-foreground">{t('app.skilltree.coming_soon')}</div>

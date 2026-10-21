@@ -223,6 +223,15 @@ export default function Onboarding() {
     if (!user || !selectedClass || !attributes) return;
     setSaving(true);
     try {
+      if (!troncoNode) throw new Error('STARTER_SKILL_NOT_READY');
+      const { data: chosenClass, error: classError } = await supabase.rpc(
+        'choose_starter_class' as any,
+        { p_starter_class: selectedClass.id },
+      );
+      if (classError) throw classError;
+      const confirmedItem = (chosenClass as { starter_item?: string } | null)?.starter_item;
+      if (!confirmedItem) throw new Error('STARTER_CLASS_NOT_CONFIRMED');
+
       const missionsToCreate = selectedClass.missions.filter((_, i) => selectedMissions.has(i));
 
       for (const m of missionsToCreate) {
@@ -244,43 +253,40 @@ export default function Onboarding() {
         });
       }
 
-      // Marca onboarding como concluído no banco.
-      const { error: updateProfileError } = await supabase.from('profiles').update({
-        onboarding_completed: true,
-        region: selectedRegion,
-        starter_class: selectedClass.id,
-        starter_item: selectedClass.starterItem,
-      } as any).eq('user_id', user.id);
-
-      if (updateProfileError) {
-        console.error('[onboarding] falha ao atualizar perfil:', updateProfileError);
-      }
-
       // Aprende a 1ª habilidade da trilha da classe (nó-tronco), gastando o
       // ponto de habilidade do LV1. Server-authoritative via allocate_skill_node.
       if (troncoNode) {
-        try {
-          await supabase.rpc('allocate_skill_node', { p_node_id: troncoNode.id } as any);
+        const { error: allocateError } = await supabase.rpc(
+          'allocate_skill_node', { p_node_id: troncoNode.id } as any,
+        );
+        if (allocateError) {
+          const { data: existingNode, error: existingError } = await supabase
+            .from('player_skill_nodes')
+            .select('rank')
+            .eq('user_id', user.id)
+            .eq('node_id', troncoNode.id)
+            .maybeSingle();
+          if (existingError || !existingNode || existingNode.rank < 1) throw allocateError;
+        }
 
-          // Aprender != equipar: o combate lê só profiles.combat_skill_loadout.
-          // Sem este passo o jogador chega ao primeiro combate com Ataque Básico
-          // apenas, mesmo tendo a habilidade na árvore.
-          const existingLoadout = Array.isArray((profile as any)?.combat_skill_loadout)
-            ? (profile as any).combat_skill_loadout
-            : [];
-          if (existingLoadout.length === 0) {
-            await supabase
-              .from('profiles')
-              .update({ combat_skill_loadout: [buildTreeSkillEntry(troncoNode)] } as any)
-              .eq('user_id', user.id);
-          }
-        } catch {
-          // Já alocado / sem ponto — ignora; jogador pode pegar no hub depois.
+        // Aprender != equipar: a próxima luta lê o loadout persistido.
+        const existingLoadout = Array.isArray((profile as any)?.combat_skill_loadout)
+          ? (profile as any).combat_skill_loadout : [];
+        if (existingLoadout.length === 0) {
+          const { error: equipError } = await supabase.from('profiles')
+            .update({ combat_skill_loadout: [buildTreeSkillEntry(troncoNode)] } as any)
+            .eq('user_id', user.id);
+          if (equipError) throw equipError;
         }
       }
 
-      // Salva no localStorage como fallback confiável.
-      markOnboardingCompletedLocal(user.id, selectedClass.id, selectedClass.starterItem);
+      const { error: updateProfileError } = await supabase.from('profiles').update({
+        onboarding_completed: true,
+        region: selectedRegion,
+      } as any).eq('user_id', user.id);
+      if (updateProfileError) throw updateProfileError;
+
+      markOnboardingCompletedLocal(user.id, selectedClass.id, confirmedItem);
 
       // Atualiza cache local imediatamente para evitar alerta stale no retorno.
       queryClient.setQueryData(['profile', user.id], (old: Record<string, unknown> | undefined) => {
@@ -290,7 +296,7 @@ export default function Onboarding() {
           onboarding_completed: true,
           region: selectedRegion,
           starter_class: selectedClass.id,
-          starter_item: selectedClass.starterItem,
+          starter_item: confirmedItem,
         };
       });
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] });

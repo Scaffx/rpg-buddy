@@ -1,0 +1,5 @@
+\set ON_ERROR_STOP on
+SET ROLE authenticated;
+SET request.jwt.claim.sub='00000000-0000-0000-0000-000000000002';
+SELECT public.choose_starter_class('mago');
+RESET ROLE;

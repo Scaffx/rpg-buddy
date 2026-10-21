@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useProfile, useClasses, useAttributes } from '@/hooks/useProfile';
-import { useAuth } from '@/hooks/useAuth';
 import { getAttributeLevels } from '@/lib/combat';
 import { resolveTreeKey, isAprendizClass } from '@/lib/aprendizTree';
 
@@ -39,7 +38,6 @@ export function starterClassDisplayName(starter?: string | null): string {
  * Centraliza a lógica antes duplicada no Perfil — usada pelo hub de Habilidades.
  */
 export function useHeroClass() {
-  const { user } = useAuth();
   const { data: profile } = useProfile();
   const { data: classes } = useClasses();
   const { data: attributes } = useAttributes();
@@ -58,12 +56,12 @@ export function useHeroClass() {
       const resolved = node?.column_index === 2 ? CLASS_NAME_TO_STARTER[node.name] : null;
       if (resolved) return resolved;
     }
-    return (profile as any)?.starter_class || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null) || 'novato';
-  }, [user, profile, classes]);
+    return (profile as any)?.starter_class || 'novato';
+  }, [profile, classes]);
 
   const starterItem = useMemo(
-    () => (profile as any)?.starter_item || (user ? localStorage.getItem(`starter_item_v1_${user.id}`) : null) || 'Adaga de Treino',
-    [user, profile],
+    () => (profile as any)?.starter_item || 'Adaga de Treino',
+    [profile],
   );
 
   const currentClassName = useMemo(() => {
@@ -75,13 +73,12 @@ export function useHeroClass() {
     return undefined;
   }, [profile, classes]);
 
-  // Houve escolha REAL de classe? (starterClass cai em 'novato' por padrão; isto distingue
-  // "ainda não escolheu" — pra liberar só skills de arma até o jogador escolher uma classe.)
-  const hasClass = useMemo(() => Boolean(
-    (profile as any)?.current_class_id ||
-    (typeof (profile as any)?.starter_class === 'string' && (profile as any).starter_class.trim().length > 0) ||
-    (user && localStorage.getItem(`starter_class_v1_${user.id}`)),
-  ), [profile, user]);
+  // A classe inicial é uma projeção do servidor. Cache local não concede árvore.
+  const hasClass = useMemo(
+    () => typeof (profile as any)?.starter_class === 'string' &&
+      Object.prototype.hasOwnProperty.call(STARTER_TO_CLASS_NAME, (profile as any).starter_class),
+    [profile],
+  );
 
   // Árvore de habilidades a exibir: Aprendiz (tier 0) mostra a mini-árvore tutorial.
   const isAprendiz = useMemo(

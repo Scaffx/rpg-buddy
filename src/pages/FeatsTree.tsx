@@ -1,13 +1,11 @@
 import { motion } from 'framer-motion';
-import { Sparkles, Clock3, Flame, Coins, CheckCircle2, Shield, BookOpen, Swords, WandSparkles, Gem, Wind, Settings2 } from 'lucide-react';
+import { Sparkles, Clock3, Flame, Coins, CheckCircle2, Shield, BookOpen, Swords, WandSparkles, Gem, Wind } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { useProfile } from '@/hooks/useProfile';
 import { useAvailableTalents, useBuyTalent, usePlayerTalents, useToggleEquipTalent, MAX_EQUIPPED_TALENTS, type Talent } from '@/hooks/useTalents';
-import { MODE_SKILL_LIMITS } from '@/lib/constants';
 
 // Área de cada talento — agrupa a árvore por temas (roadmap #4b: árvore unificada).
 const TALENT_AREA: Record<string, string> = {
@@ -24,16 +22,6 @@ const AREA_META: Record<string, { emoji: string }> = {
   sorte: { emoji: '🍀' }, vitalidade: { emoji: '🌿' }, outros: { emoji: '📦' },
 };
 const AREA_ORDER = ['ofensivo', 'magia', 'defensivo', 'foco', 'economia', 'social', 'sorte', 'vitalidade', 'outros'];
-
-// Ícone/cor por tipo de efeito das habilidades ativas (espelha a arena).
-const SKILL_EFFECT_META: Record<string, { icon: string; cls: string }> = {
-  dano:    { icon: '⚔️', cls: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' },
-  heal:    { icon: '💚', cls: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' },
-  buff:    { icon: '🛡️', cls: 'border-blue-500/40 bg-blue-500/10 text-blue-200' },
-  debuff:  { icon: '🔻', cls: 'border-orange-500/40 bg-orange-500/10 text-orange-200' },
-  cc:      { icon: '⚡', cls: 'border-violet-500/40 bg-violet-500/10 text-violet-200' },
-  utility: { icon: '✨', cls: 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200' },
-};
 
 const TALENT_UI: Record<string, { icon: any; accent: string; title: string; synergy: string }> = {
   madrugador: {
@@ -210,11 +198,6 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
     );
   };
 
-  // ── Habilidades ativas de combate (loadout) — visão unificada (roadmap #4b) ──
-  const combatLoadout: any[] = Array.isArray((profile as any)?.combat_skill_loadout)
-    ? ((profile as any).combat_skill_loadout as any[])
-    : [];
-
   // Árvore organizada por área (tema).
   const talentsByArea = AREA_ORDER
     .map((area) => ({ area, items: talentos.filter((tl) => (TALENT_AREA[tl.efeito] || 'outros') === area) }))
@@ -311,43 +294,6 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
           </div>
         </div>
 
-        {/* ── Habilidades ativas de combate (loadout) — visão unificada ───────── */}
-        <div data-tour="feats-loadout" className="rpg-card border-cyan-500/30 space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Swords className="w-5 h-5 text-cyan-400" />
-              <h2 className="text-lg font-bold text-foreground">{t('app.feats.active_skills_title')}</h2>
-            </div>
-            <Link
-              to="/profile"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
-            >
-              <Settings2 className="w-3.5 h-3.5" /> {t('app.feats.edit_loadout')}
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t('app.feats.mode_limits', { solo: MODE_SKILL_LIMITS.solo, dungeon: MODE_SKILL_LIMITS.dungeon, event: MODE_SKILL_LIMITS.event })}
-          </p>
-          {combatLoadout.length > 0 ? (
-            <div className="flex gap-2 flex-wrap">
-              {combatLoadout.slice(0, MODE_SKILL_LIMITS.event).map((skill: any, i: number) => {
-                const meta = SKILL_EFFECT_META[String(skill?.effectType || 'dano')] || SKILL_EFFECT_META.dano;
-                return (
-                  <span key={String(skill?.id ?? i)} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium ${meta.cls}`}>
-                    <span>{meta.icon}</span>
-                    <span>{String(skill?.name ?? '—')}</span>
-                    {typeof skill?.mpCost === 'number' && skill.mpCost > 0 && (
-                      <span className="opacity-70 font-mono">{skill.mpCost} MP</span>
-                    )}
-                  </span>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t('app.feats.no_active_skills')}</p>
-          )}
-        </div>
-
         {/* ── Talentos (passivos) agrupados por área ──────────────────────────── */}
         <div data-tour="feats-tree" className="space-y-6">
         {talentsByArea.map(({ area, items }) => (
@@ -368,7 +314,6 @@ export default function FeatsTree({ embedded }: { embedded?: boolean } = {}) {
             targets={[
               { target: 'feats-header', key: 'overview' },
               { target: 'feats-points', key: 'points' },
-              { target: 'feats-loadout', key: 'loadout' },
               { target: 'feats-tree', key: 'tree' },
             ]}
           />

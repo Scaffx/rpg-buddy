@@ -9,7 +9,7 @@ import CombatLoadout from '@/components/CombatLoadout';
 
 type Tab = 'arvore' | 'loadout' | 'talentos';
 
-/** Hub único de Habilidades: Árvore (desbloquear) + Loadout (equipar) + Talentos de Vida. */
+/** Habilidades: árvore, loadout ordenado e talentos da vida real. */
 export default function HabilidadesHub() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('arvore');

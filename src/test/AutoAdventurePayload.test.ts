@@ -55,6 +55,41 @@ describe('auto adventure RPC contract', () => {
     expect(parsed.last_battle?.events[0].at).toBe('2026-10-19T18:30:00Z');
   });
 
+  it('accepts v3 stats, mana and real skill effects without requiring them on legacy battles', () => {
+    const legacy = parseAdventureSnapshot(snapshot).battle;
+    expect(legacy?.hero_mp).toBeUndefined();
+    const base = (snapshot as Record<string, Json>).battle as Record<string, Json>;
+    const event = (base.events as Json[])[0] as Record<string, Json>;
+    const v3Battle = {
+      ...base, hero_max_mp: 80, hero_mp: 72, hero_attack: 41, hero_defense: 25,
+      engine_version: 'v3', enemy_resistances: { fire: 0.5 },
+      events: [{ ...event, hero_mp: 72, mp_cost: 8, skill_type: 'heal', healing: 18,
+        raw_damage: 0, damage_multiplier: 1, effect_note: 'heal' }],
+    };
+    const parsed = parseAdventureSnapshot({ ...snapshot, battle: v3Battle });
+    expect(parsed.battle?.hero_max_mp).toBe(80);
+    expect(parsed.battle?.enemy_resistances?.fire).toBe(0.5);
+    expect(parsed.battle?.events[0].mp_cost).toBe(8);
+    expect(parsed.battle?.events[0].healing).toBe(18);
+    expect(() => parseAdventureSnapshot({ ...snapshot, battle: {
+      ...v3Battle, events: [{ ...event, skill_type: 'invented' }],
+    } })).toThrow('AUTO_ADVENTURE_INVALID_RESPONSE');
+  });
+
+  it('keeps a turn-limit draw distinct from a death and accepts legacy results', () => {
+    const base = (snapshot as Record<string, Json>).battle as Record<string, Json>;
+    const parsed = parseAdventureSnapshot({ ...snapshot,
+      last_result: { ...encounter, won: false, status: 'draw', end_reason: 'turn_limit' },
+      last_battle: { ...base, status: 'draw', end_reason: 'turn_limit', hero_hp: 25, enemy_hp: 40 },
+      catchup: { ...(snapshot as Record<string, Json>).catchup as object, draws: 1, defeated: false },
+    });
+    expect(parsed.last_battle?.status).toBe('draw');
+    expect(parsed.last_battle?.end_reason).toBe('turn_limit');
+    expect(parsed.last_result?.status).toBe('draw');
+    expect(parsed.catchup.draws).toBe(1);
+    expect(parsed.catchup.defeated).toBe(false);
+  });
+
   it('schedules from server time, including time elapsed while the panel stays open', () => {
     const parsed = parseAdventureSnapshot(snapshot);
     const updatedAt = Date.parse('2026-10-19T18:30:05Z');

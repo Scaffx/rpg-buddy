@@ -4,12 +4,12 @@ type OnboardingProfileLike = {
 };
 
 export function hasCompletedOnboarding(profile: OnboardingProfileLike | null | undefined, userId: string): boolean {
-  const doneInDb = profile?.onboarding_completed === true;
-  const doneInLocal = localStorage.getItem(`onboarding_v1_${userId}`) === "done";
-  const starterClassInDb = typeof profile?.starter_class === "string" && profile.starter_class.trim().length > 0;
-  const starterClassInLocal = typeof localStorage.getItem(`starter_class_v1_${userId}`) === "string";
-
-  return doneInDb || doneInLocal || starterClassInDb || starterClassInLocal;
+  void userId;
+  // O marcador local acelera a apresentação, mas não prova escolha de classe.
+  return profile?.onboarding_completed === true &&
+    typeof profile.starter_class === "string" &&
+    ["guerreiro", "mago", "gatuno", "ferreiro", "clerico", "novato", "arqueiro"]
+      .includes(profile.starter_class);
 }
 
 export function markOnboardingCompletedLocal(userId: string, starterClass: string, starterItem: string): void {

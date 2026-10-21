@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Swords, Save, X as XIcon, Lock, Sparkles } from 'lucide-react';
+import { Swords, Save, X as XIcon, Lock, Sparkles, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -14,6 +14,9 @@ import { buildTreeSkillEntry } from '@/lib/combat';
 // Loadout LIVRE: sem teto rígido. O jogador leva todas as skills que desbloqueou;
 // o balanceio vem da PROFUNDIDADE da árvore (focar/maxar 2 elementos > espalhar).
 const EFFECT_ICON: Record<string, string> = { dano: '⚔️', heal: '💚', buff: '🛡️', debuff: '🔻', cc: '⚡', utility: '✨' };
+const adventureExecutable = (effectType: string) =>
+  ['dano', 'damage', 'heal', 'buff', 'debuff', 'cc'].includes(effectType);
+const directDamageOnly = (effectType: string) => effectType === 'dano' || effectType === 'damage';
 const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe', tree: 'Árvore', weapon: 'Arma', cinza: 'Cinza' };
 
 /** Mapeia nós-skill alocados (rank>=1) de uma árvore para entradas de loadout. */
@@ -117,26 +120,18 @@ export default function CombatLoadout() {
   }, [weaponSkills, treeSkills, cinzaSkills, aprendizSkills, hasClass]);
 
   const unlockedById = useMemo(() => new Map(allSkills.filter((s) => s.unlocked).map((s) => [s.id, s])), [allSkills]);
+  const classSkillNeedsChoice = (skill: { _src?: string }) => skill._src === 'tree'
+    && treeKey !== 'aprendiz'
+    && !(treeKey === 'novato' && ['novato', 'clerico'].includes(String(profile?.starter_class || '')))
+    && !profile?.current_class_id;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   useEffect(() => {
     const raw = Array.isArray((profile as any)?.combat_skill_loadout) ? (profile as any).combat_skill_loadout : [];
-    setSelectedIds(raw.map((e: any) => String(e?.id || '')).filter((id: string) => id && unlockedById.has(id)));
+    setSelectedIds([...new Set<string>(raw.map((entry: unknown) =>
+      entry && typeof entry === 'object' && 'id' in entry ? String(entry.id || '') : '',
+    ).filter((id: string) => id && unlockedById.has(id)))]);
   }, [profile, unlockedById]);
-
-  // Frascos (estilo Elden Ring): aloca até 4 entre Vida e Mana. Persistido em profiles.
-  const [flaskHp, setFlaskHp] = useState(2);
-  const [flaskMp, setFlaskMp] = useState(2);
-  useEffect(() => {
-    setFlaskHp(Math.max(0, Number((profile as any)?.flask_hp_count ?? 2)));
-    setFlaskMp(Math.max(0, Number((profile as any)?.flask_mp_count ?? 2)));
-  }, [profile]);
-  const saveFlasks = async (hp: number, mp: number) => {
-    if (!user || hp < 0 || mp < 0 || hp + mp > 4) return;
-    setFlaskHp(hp); setFlaskMp(mp);
-    await supabase.from('profiles').update({ flask_hp_count: hp, flask_mp_count: mp } as any).eq('user_id', user.id);
-    qc.invalidateQueries({ queryKey: ['profile'] });
-  };
 
   const selected = selectedIds.map((id) => unlockedById.get(id)).filter(Boolean) as any[];
 
@@ -159,31 +154,18 @@ export default function CombatLoadout() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  const move = (index: number, direction: -1 | 1) => {
+    const other = index + direction;
+    if (other < 0 || other >= selectedIds.length) return;
+    setSelectedIds((ids) => {
+      const ordered = [...ids];
+      [ordered[index], ordered[other]] = [ordered[other], ordered[index]];
+      return ordered;
+    });
+  };
+
   return (
     <div className="space-y-5">
-      {/* Frascos de combate (Elden Ring): aloca 4 entre Vida e Mana */}
-      <div className="rpg-card space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground">🧪 Frascos de combate</h3>
-          <span className="text-xs font-bold text-muted-foreground">{flaskHp + flaskMp}/4</span>
-        </div>
-        <p className="text-xs text-muted-foreground">Aloque até 4 frascos entre Vida (cura 40% do HP) e Mana (restaura 50% do MP). Resetam a cada luta.</p>
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-emerald-300">🧪 Vida</span>
-            <button onClick={() => saveFlasks(Math.max(0, flaskHp - 1), flaskMp)} className="w-6 h-6 rounded bg-muted/40 text-foreground font-bold">−</button>
-            <span className="w-4 text-center text-sm font-bold text-foreground">{flaskHp}</span>
-            <button onClick={() => saveFlasks(flaskHp + 1, flaskMp)} disabled={flaskHp + flaskMp >= 4} className="w-6 h-6 rounded bg-muted/40 text-foreground font-bold disabled:opacity-40">+</button>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-sky-300">💧 Mana</span>
-            <button onClick={() => saveFlasks(flaskHp, Math.max(0, flaskMp - 1))} className="w-6 h-6 rounded bg-muted/40 text-foreground font-bold">−</button>
-            <span className="w-4 text-center text-sm font-bold text-foreground">{flaskMp}</span>
-            <button onClick={() => saveFlasks(flaskHp, flaskMp + 1)} disabled={flaskHp + flaskMp >= 4} className="w-6 h-6 rounded bg-muted/40 text-foreground font-bold disabled:opacity-40">+</button>
-          </div>
-        </div>
-      </div>
-
       {/* Slots */}
       <div className="rpg-card space-y-3">
         <div className="flex items-center justify-between">
@@ -192,13 +174,20 @@ export default function CombatLoadout() {
         </div>
         <p className="text-xs text-muted-foreground">{t('app.habhub.loadout_free_hint')}</p>
         {selected.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {selected.map((s) => (
-              <button key={s.id} onClick={() => toggle(s.id)} title={t('app.habhub.remove')} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-200 hover:border-rose-500/50 transition-colors">
-                <span>{EFFECT_ICON[s.effectType] || '⚔️'}</span>
-                <span>{s.name}</span>
-                <XIcon className="w-3 h-3 text-emerald-400/60" />
-              </button>
+          <div className="space-y-2" aria-label={t('app.habhub.ordered_skills')}>
+            {selected.map((s, index) => (
+              <div key={s.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-200">
+                <span className="font-semibold">{index + 1}. {EFFECT_ICON[s.effectType] || '⚔️'} {s.name}</span>
+                <span className="text-muted-foreground">{t('app.habhub.skill_cost_cooldown', { mp: s.mpCost ?? 0, turns: s.cooldown ?? 0 })}</span>
+                {directDamageOnly(s.effectType) && <span className="text-muted-foreground">{t('app.habhub.direct_damage_only')}</span>}
+                {!adventureExecutable(s.effectType) && <span className="text-amber-300">{t('app.habhub.not_in_auto_adventure')}</span>}
+                {classSkillNeedsChoice(s) && <span className="text-amber-300">{t('app.habhub.class_choice_required')}</span>}
+                <div className="ml-auto flex items-center gap-1">
+                  <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t('app.habhub.move_up', { name: s.name })} className="rounded p-1 hover:bg-emerald-500/20 disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => move(index, 1)} disabled={index === selected.length - 1} aria-label={t('app.habhub.move_down', { name: s.name })} className="rounded p-1 hover:bg-emerald-500/20 disabled:opacity-40"><ArrowDown className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => toggle(s.id)} aria-label={t('app.habhub.remove_named', { name: s.name })} className="rounded p-1 hover:bg-rose-500/20"><XIcon className="h-4 w-4" /></button>
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -228,6 +217,9 @@ export default function CombatLoadout() {
                 {typeof s.mpCost === 'number' && s.mpCost > 0 && <span className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300">💧 {s.mpCost}</span>}
                 <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-300">⏱ {s.cooldown}t</span>
               </div>
+              {!adventureExecutable(s.effectType) && <p className="text-xs text-amber-300">{t('app.habhub.not_in_auto_adventure')}</p>}
+              {directDamageOnly(s.effectType) && <p className="text-xs text-muted-foreground">{t('app.habhub.direct_damage_only')}</p>}
+              {classSkillNeedsChoice(s) && <p className="text-xs text-amber-300">{t('app.habhub.class_choice_required')}</p>}
               {s.unlocked && (
                 <button onClick={() => toggle(s.id)}
                   className={`w-full rounded-lg px-3 py-1.5 text-xs font-semibold transition ${inDeck ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-rose-500/10 hover:text-rose-300' : 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20'}`}>

@@ -31,7 +31,7 @@ import {
   AlertTriangle, Sword, Scroll, Clock, CheckCircle, XCircle, Award, Settings,
 } from "lucide-react";
 import { getAttributeColorClass } from "@/lib/attributes";
-import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout, getStarterItemForClass } from "@/lib/combat";
+import { getAttributeLevels, getBossCombatStats, getPlayerCombatStats, getSkillLoadout } from "@/lib/combat";
 import { getLevelProgress } from "@/lib/progression";
 import { getSaoPauloDateString } from "@/lib/weeklyMissions";
 import { useDungeonPartnerships, BOND_TIERS, runsToNextTier } from "@/hooks/useDungeonPartnerships";
@@ -862,7 +862,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    const savedClass = profile?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
+    const savedClass = profile?.starter_class || "novato";
     setSelectedRespecClass(savedClass);
   }, [user, profile]);
 
@@ -955,12 +955,12 @@ export default function ProfilePage() {
       const resolved = node?.column_index === 2 ? CLASS_NAME_TO_STARTER[node.name] : null;
       if (resolved) return resolved;
     }
-    // Priority 2: stored starter_class from onboarding / respec
-    return profile?.starter_class || (user ? localStorage.getItem(`starter_class_v1_${user.id}`) : null) || 'novato';
-  }, [user, profile, classes]);
+    // Classe inicial persistida no perfil.
+    return profile?.starter_class || 'novato';
+  }, [profile, classes]);
   const starterItem = useMemo(
-    () => profile?.starter_item || (user ? localStorage.getItem(`starter_item_v1_${user.id}`) : null) || "Adaga de Treino",
-    [user, profile],
+    () => profile?.starter_item || "Adaga de Treino",
+    [profile],
   );
   // Nome completo da classe atual (ex: "Alquimista", "Mecânico") para lookup em T3_CLASS_SKILLS
   const currentClassName = useMemo(() => {
@@ -1315,7 +1315,7 @@ export default function ProfilePage() {
   const respecClass = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error(t('app.profile.notAuthenticated'));
-      const currentClass = profile?.starter_class || localStorage.getItem(`starter_class_v1_${user.id}`) || "novato";
+      const currentClass = profile?.starter_class;
       if (selectedRespecClass === currentClass) {
         throw new Error(t('app.profile.alreadyInClass'));
       }
@@ -1328,22 +1328,17 @@ export default function ProfilePage() {
       });
       if (error) throw error;
 
-      const starterItem = (data as any)?.starter_item || getStarterItemForClass(selectedRespecClass as any);
+      const confirmedClass = (data as any)?.starter_class;
+      const starterItem = (data as any)?.starter_item;
+      if (confirmedClass !== selectedRespecClass || !starterItem) {
+        throw new Error('CLASS_RESPEC_NOT_CONFIRMED');
+      }
       // O servidor decide se o respec foi gratuito (was_free = primeiro respec).
       const isFirstRespec = Boolean((data as any)?.was_free);
-      localStorage.setItem(`starter_class_v1_${user.id}`, selectedRespecClass);
-      localStorage.setItem(`starter_item_v1_${user.id}`, starterItem);
-      localStorage.setItem(`respec_used_${user.id}`, 'true');
-
-      // Atualiza o banco de dados
-      await supabase.from('profiles').update({
-        starter_class: selectedRespecClass,
-        starter_item: starterItem,
-      } as any).eq('user_id', user.id).then(() => {});
-
       return { starterItem, isFirstRespec };
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["gold-balance"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       if (data.isFirstRespec) {
