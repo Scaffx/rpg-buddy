@@ -1,5 +1,5 @@
 export type AdventureBiome = 'floresta' | 'aquatico' | 'ruinas' | 'vulcanico';
-export type AdventureHeroClass = 'guerreiro' | 'mago' | 'gatuno' | 'arqueiro' | 'clerico' | 'ferreiro';
+export type AdventureHeroClass = 'guerreiro' | 'mago' | 'gatuno' | 'arqueiro' | 'clerico' | 'ferreiro' | 'aprendiz';
 
 const BIOMES: AdventureBiome[] = ['floresta', 'aquatico', 'ruinas', 'vulcanico'];
 
@@ -14,6 +14,7 @@ export function adventureBiome(stage: number, serverBiome?: string | null): Adve
 
 export function adventureHeroClass(starter?: string | null, displayName?: string | null): AdventureHeroClass {
   const normalized = `${starter ?? ''} ${displayName ?? ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/aprendiz/.test(normalized)) return 'aprendiz';
   if (/mago|feitice|bruxo|arcan/.test(normalized)) return 'mago';
   if (/gatuno|ladino|assassin/.test(normalized)) return 'gatuno';
   if (/arqueiro|cacador|atirador/.test(normalized)) return 'arqueiro';

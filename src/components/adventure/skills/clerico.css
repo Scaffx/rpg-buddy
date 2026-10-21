@@ -1,0 +1,290 @@
+.vfx-clerico {
+  --skill-source-x: 25%;
+  --skill-target-x: 75%;
+  --skill-line-y: 62%;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.vfx-clerico[data-target='self'] { --skill-target-x: var(--skill-source-x); }
+
+.vfx-clerico__target,
+.vfx-clerico__source {
+  position: absolute;
+  left: var(--skill-target-x);
+  top: var(--skill-line-y);
+  transform: translate(-50%, -50%);
+}
+
+.vfx-clerico__source { left: var(--skill-source-x); }
+.vfx-clerico__target > *, .vfx-clerico__light-route > * { position: absolute; display: block; }
+
+/* A short staff arc ends in a small, angular contact mark. */
+.vfx-clerico__staff { width: 94px; height: 102px; }
+.vfx-clerico__staff-shaft {
+  left: 50%; top: 48%; width: 6px; height: 80px;
+  border: 1px solid #4e2d18; border-radius: 5px;
+  background: linear-gradient(90deg, #754127, #d9a66b 47%, #633a25);
+  box-shadow: 0 0 5px #f7d99a99;
+  transform-origin: 50% 85%;
+  transform: translate(-50%, -70%) rotate(38deg);
+  animation: vfx-clerico-staff-swing 1100ms ease-out both;
+}
+.vfx-clerico__staff-arc {
+  left: 10px; top: 8px; width: 76px; height: 52px;
+  border-top: 3px solid #f5dca0; border-right: 2px solid #d8ad6c;
+  border-radius: 50%; transform: rotate(20deg);
+  animation: vfx-clerico-staff-arc 1100ms ease-out both;
+}
+.vfx-clerico__staff-hit {
+  left: 50%; top: 50%; width: 42px; height: 42px;
+  background: #fff1c1;
+  clip-path: polygon(50% 0, 57% 37%, 90% 18%, 68% 48%, 100% 57%, 62% 62%, 78% 100%, 50% 70%, 24% 100%, 39% 62%, 0 57%, 34% 48%, 12% 18%, 43% 37%);
+  transform: translate(-50%, -50%) scale(.8);
+  animation: vfx-clerico-staff-hit 1100ms ease-out both;
+}
+
+/* Healing rises from the hero, with a circular seal instead of a projectile. */
+.vfx-clerico__heal { width: 100px; height: 100px; }
+.vfx-clerico__heal-ring {
+  inset: 13px; border: 2px solid #f8e6ac; border-radius: 50%;
+  box-shadow: 0 0 13px #e7db96aa, inset 0 0 8px #f9e8ae88;
+  animation: vfx-clerico-heal-ring 1100ms ease-out both;
+}
+.vfx-clerico__heal-seal {
+  left: 30px; top: 30px; width: 40px; height: 40px;
+  stroke: #fff7d2; stroke-width: 2; stroke-linecap: round;
+  filter: drop-shadow(0 0 4px #eadd91);
+  animation: vfx-clerico-heal-seal 1100ms ease-out both;
+}
+.vfx-clerico__heal-drop {
+  width: 8px; height: 13px; border-radius: 65% 65% 65% 5%;
+  background: #e7ffcd; box-shadow: 0 0 7px #b5eea4;
+  transform: rotate(-45deg);
+  animation: vfx-clerico-heal-drop 1100ms ease-out both;
+}
+.vfx-clerico__heal-drop--one { left: 14px; top: 64px; --vfx-clerico-rise: -44px; }
+.vfx-clerico__heal-drop--two { left: 76px; top: 59px; --vfx-clerico-rise: -54px; }
+.vfx-clerico__heal-drop--three { left: 55px; top: 83px; --vfx-clerico-rise: -62px; }
+
+/* A horizontal thread reaches the enemy before the four-point impact opens. */
+.vfx-clerico__light-source {
+  width: 23px; height: 23px; background: #fff6c8;
+  clip-path: polygon(50% 0, 66% 34%, 100% 50%, 66% 66%, 50% 100%, 34% 66%, 0 50%, 34% 34%);
+  filter: drop-shadow(0 0 7px #ffdc7f);
+  animation: vfx-clerico-light-source 1100ms ease-out both;
+}
+.vfx-clerico__light-route {
+  position: absolute; left: var(--skill-source-x); top: var(--skill-line-y);
+  width: calc(var(--skill-target-x) - var(--skill-source-x)); height: 18px;
+  transform: translateY(-50%);
+}
+.vfx-clerico__light-ray {
+  inset: 6px 0; border-radius: 100%;
+  background: linear-gradient(90deg, #ffe18e99, #fff9d4, #ffdc76);
+  box-shadow: 0 0 9px 3px #ffeaa788;
+  transform-origin: left center;
+  animation: vfx-clerico-light-ray 1100ms ease-in-out both;
+}
+.vfx-clerico__light-hit { width: 76px; height: 76px; }
+.vfx-clerico__light-star {
+  inset: 9px; background: #fff8da;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  filter: drop-shadow(0 0 9px #ffe28b);
+  animation: vfx-clerico-light-star 1100ms ease-out both;
+}
+.vfx-clerico__light-circle {
+  inset: 3px; border: 2px solid #f8df9b; border-radius: 50%;
+  animation: vfx-clerico-light-circle 1100ms ease-out both;
+}
+
+/* Paired panels converge into one shield silhouette. */
+.vfx-clerico__shield { width: 90px; height: 106px; }
+.vfx-clerico__shield-wing {
+  top: 20px; width: 32px; height: 69px;
+  background: linear-gradient(135deg, #e9dca155, #fff6cd99);
+  border: 1px solid #fff4c6aa;
+  clip-path: polygon(0 0, 100% 12%, 100% 100%, 0 72%);
+  animation: vfx-clerico-shield-wing 1100ms ease-out both;
+}
+.vfx-clerico__shield-wing--left { left: 12px; --vfx-clerico-fold: -30px; }
+.vfx-clerico__shield-wing--right { right: 12px; transform: scaleX(-1); --vfx-clerico-fold: 30px; }
+.vfx-clerico__shield-outline {
+  left: 9px; top: 7px; width: 72px; height: 88px;
+  stroke: #fff5c8; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px #e7ce80);
+  animation: vfx-clerico-shield-outline 1100ms ease-out both;
+}
+
+/* Several distinct rings read as a restorative aura, without looping. */
+.vfx-clerico__aura { width: 116px; height: 116px; }
+.vfx-clerico__aura-core {
+  left: 47px; top: 47px; width: 22px; height: 22px; border-radius: 50%;
+  background: #fff7cc; box-shadow: 0 0 18px 8px #d9eeb377;
+  animation: vfx-clerico-aura-core 1100ms ease-out both;
+}
+.vfx-clerico__aura-ring {
+  inset: 18px; border: 2px solid #e7f5bd; border-radius: 50%;
+  box-shadow: 0 0 7px #f7f3b577;
+  animation: vfx-clerico-aura-ring 1100ms ease-out both;
+}
+.vfx-clerico__aura-ring--two { inset: 9px; }
+.vfx-clerico__aura-ring--three { inset: 0; }
+.vfx-clerico__aura-petal {
+  top: 48px; width: 15px; height: 28px; border-radius: 90% 0 90% 0;
+  background: #ecffd2; box-shadow: 0 0 8px #d0efac;
+  animation: vfx-clerico-aura-petal 1100ms ease-out both;
+}
+.vfx-clerico__aura-petal--left { left: 14px; --vfx-clerico-petal-x: -16px; }
+.vfx-clerico__aura-petal--right { right: 14px; --vfx-clerico-petal-x: 16px; }
+
+/* Judgement forms above the target, then lands in a contained vertical column. */
+.vfx-clerico__judgement { width: 112px; height: 140px; }
+.vfx-clerico__judgement-sigil {
+  left: 31px; top: 0; width: 50px; height: 24px;
+  border: 2px solid #ffefba; border-radius: 50%;
+  box-shadow: 0 0 9px #f9d883, inset 0 0 6px #fff6cc;
+  transform: rotate(-10deg);
+  animation: vfx-clerico-judgement-sigil 1100ms ease-out both;
+}
+.vfx-clerico__judgement-column {
+  left: 41px; top: 15px; width: 30px; height: 105px;
+  background: linear-gradient(90deg, transparent, #f9e8aebb 25%, #fffbe9 50%, #f8df9dba 75%, transparent);
+  clip-path: polygon(25% 0, 75% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 7px #ffe7a2);
+  transform-origin: center top;
+  animation: vfx-clerico-judgement-column 1100ms ease-out both;
+}
+.vfx-clerico__judgement-ground {
+  left: 9px; bottom: 9px; width: 94px; height: 19px;
+  border: 3px solid #fff1b9; border-radius: 50%;
+  box-shadow: 0 0 8px #eacb80;
+  animation: vfx-clerico-judgement-ground 1100ms ease-out both;
+}
+.vfx-clerico__judgement-spark {
+  bottom: 27px; width: 14px; height: 29px;
+  background: #fff9df;
+  clip-path: polygon(50% 0, 65% 40%, 100% 50%, 65% 60%, 50% 100%, 35% 60%, 0 50%, 35% 40%);
+  animation: vfx-clerico-judgement-spark 1100ms ease-out both;
+}
+.vfx-clerico__judgement-spark--left { left: 11px; --vfx-clerico-spark-x: -18px; }
+.vfx-clerico__judgement-spark--right { right: 11px; --vfx-clerico-spark-x: 18px; }
+
+@keyframes vfx-clerico-staff-swing {
+  0% { opacity: 0; transform: translate(-50%, -70%) rotate(-55deg) scale(.75); }
+  35% { opacity: 1; transform: translate(-50%, -70%) rotate(-55deg) scale(.75); }
+  75% { opacity: 1; transform: translate(-50%, -70%) rotate(38deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -70%) rotate(43deg); }
+}
+@keyframes vfx-clerico-staff-arc {
+  0%, 35% { opacity: 0; transform: rotate(-35deg) scale(.55); }
+  60% { opacity: .9; }
+  75% { opacity: .5; transform: rotate(20deg) scale(1); }
+  100% { opacity: 0; }
+}
+@keyframes vfx-clerico-staff-hit {
+  0%, 74% { opacity: 0; transform: translate(-50%, -50%) scale(.25); }
+  84% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+}
+@keyframes vfx-clerico-heal-ring {
+  0% { opacity: 0; transform: scale(.35); }
+  35% { opacity: .85; transform: scale(.7); }
+  75% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.2); }
+}
+@keyframes vfx-clerico-heal-seal {
+  0% { opacity: 0; transform: rotate(-40deg) scale(.4); }
+  35% { opacity: .8; }
+  75% { opacity: 1; transform: rotate(0) scale(1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+@keyframes vfx-clerico-heal-drop {
+  0%, 35% { opacity: 0; transform: translateY(12px) rotate(-45deg) scale(.6); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(var(--vfx-clerico-rise)) rotate(-45deg); }
+}
+@keyframes vfx-clerico-light-source {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  35% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  75% { opacity: .8; }
+  100% { opacity: 0; }
+}
+@keyframes vfx-clerico-light-ray {
+  0%, 35% { opacity: 0; transform: scaleX(0); }
+  40% { opacity: 1; }
+  75% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+@keyframes vfx-clerico-light-star {
+  0%, 74% { opacity: 0; transform: scale(.15) rotate(-20deg); }
+  85% { opacity: 1; transform: scale(1) rotate(0); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+@keyframes vfx-clerico-light-circle {
+  0%, 74% { opacity: 0; transform: scale(.2); }
+  85% { opacity: .8; }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+@keyframes vfx-clerico-shield-wing {
+  0% { opacity: 0; translate: var(--vfx-clerico-fold) 0; }
+  35% { opacity: .4; }
+  75% { opacity: .9; translate: 0 0; }
+  100% { opacity: 0; }
+}
+@keyframes vfx-clerico-shield-outline {
+  0%, 34% { opacity: 0; transform: scale(.65); }
+  75% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+@keyframes vfx-clerico-aura-core {
+  0% { opacity: 0; transform: scale(.2); }
+  35% { opacity: 1; transform: scale(1); }
+  75% { opacity: .85; }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+@keyframes vfx-clerico-aura-ring {
+  0%, 35% { opacity: 0; transform: scale(.3); }
+  55% { opacity: .9; }
+  75% { opacity: .85; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.2); }
+}
+@keyframes vfx-clerico-aura-petal {
+  0%, 35% { opacity: 0; transform: translate(0, 14px) rotate(-30deg) scale(.5); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--vfx-clerico-petal-x), -28px) rotate(25deg); }
+}
+@keyframes vfx-clerico-judgement-sigil {
+  0% { opacity: 0; transform: translateY(-12px) rotate(-10deg) scale(.5); }
+  35% { opacity: 1; transform: translateY(0) rotate(-10deg) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes vfx-clerico-judgement-column {
+  0%, 35% { opacity: 0; transform: scaleY(0); }
+  75% { opacity: .9; transform: scaleY(1); }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes vfx-clerico-judgement-ground {
+  0%, 74% { opacity: 0; transform: scaleX(.3); }
+  85% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1.2); }
+}
+@keyframes vfx-clerico-judgement-spark {
+  0%, 74% { opacity: 0; transform: translate(0, 0) scale(.4); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--vfx-clerico-spark-x), -28px); }
+}
+
+/* Still mode keeps the complete gesture visible without motion or flashing. */
+.adventure-still .vfx-clerico *,
+.adventure-still .vfx-clerico *::before,
+.adventure-still .vfx-clerico *::after { animation: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vfx-clerico *, .vfx-clerico *::before, .vfx-clerico *::after { animation: none !important; }
+}

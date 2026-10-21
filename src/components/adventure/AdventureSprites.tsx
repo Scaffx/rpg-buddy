@@ -9,6 +9,7 @@ const HERO_PALETTE: Record<AdventureHeroClass, { coat: string; shadow: string; t
   arqueiro: { coat: '#558c66', shadow: '#326747', trim: '#dfba75', weapon: '#e8c58d' },
   clerico: { coat: '#e8e1c9', shadow: '#a99cb5', trim: '#edcb68', weapon: '#f6d978' },
   ferreiro: { coat: '#aa654f', shadow: '#72453c', trim: '#e9b96d', weapon: '#cfdae4' },
+  aprendiz: { coat: '#79978d', shadow: '#425e5b', trim: '#dccb9c', weapon: '#b99368' },
 };
 
 /** Original 24px SVG character, using the mascot's palette and pixel grid. */
@@ -24,8 +25,9 @@ export function AdventureHeroSprite({ heroClass, className }: SpriteProps & { he
       <rect x="9" y="8" width="15" height="2" fill={heroClass === 'gatuno' ? p.shadow : p.trim} />
       <rect x="11" y="10" width="11" height="8" fill="#f4cfa2" /><rect x="19" y="12" width="2" height="2" fill="#2a2440" />
       <rect x="10" y="18" width="14" height="8" fill={p.coat} /><rect x="10" y="19" width="3" height="7" fill={p.shadow} />
-      <rect x="16" y="18" width="2" height="7" fill={p.trim} /><rect x="8" y="20" width="3" height="5" fill={p.shadow} />
-      <rect x="23" y="20" width="3" height="5" fill={p.shadow} /><rect x="9" y="25" width="15" height="2" fill="#473d78" />
+      <rect x="16" y="18" width="2" height="7" fill={p.trim} />
+      <g className="adventure-hero-arms"><rect x="8" y="20" width="3" height="5" fill={p.shadow} /><rect x="23" y="20" width="3" height="5" fill={p.shadow} /></g>
+      <rect x="9" y="25" width="15" height="2" fill="#473d78" />
       {heroClass === 'mago' && <><rect x="14" y="1" width="6" height="4" fill={p.shadow} /><rect x="11" y="5" width="12" height="2" fill={p.coat} /></>}
       {heroClass === 'gatuno' && <rect x="10" y="10" width="13" height="3" fill={p.shadow} />}
       {heroClass === 'arqueiro' && <><rect x="9" y="8" width="2" height="10" fill={p.shadow} /><rect x="8" y="12" width="3" height="3" fill={p.trim} /></>}
@@ -33,6 +35,7 @@ export function AdventureHeroSprite({ heroClass, className }: SpriteProps & { he
       {heroClass === 'ferreiro' && <><rect x="15" y="19" width="7" height="6" fill="#695149" /><rect x="15" y="24" width="7" height="2" fill={p.trim} /></>}
     </g>
     <g className="adventure-hero-weapon">
+      {heroClass === 'aprendiz' && <><rect x="26" y="13" width="2" height="15" fill={p.weapon} /><rect x="25" y="10" width="4" height="5" fill="#c7a374" /></>}
       {heroClass === 'guerreiro' && <><rect x="25" y="5" width="2" height="17" fill={p.weapon} /><rect x="24" y="4" width="4" height="2" fill={p.weapon} /><rect x="22" y="20" width="8" height="2" fill={p.trim} /><rect x="25" y="22" width="2" height="5" fill="#795a43" /></>}
       {heroClass === 'mago' && <><rect x="26" y="7" width="2" height="21" fill="#a67b60" /><rect x="24" y="5" width="6" height="5" fill={p.weapon} /><rect x="26" y="3" width="2" height="2" fill="#e9f9ff" /></>}
       {heroClass === 'gatuno' && <><rect x="25" y="14" width="2" height="10" fill={p.weapon} /><rect x="23" y="13" width="5" height="2" fill={p.weapon} /><rect x="24" y="23" width="4" height="2" fill={p.trim} /></>}

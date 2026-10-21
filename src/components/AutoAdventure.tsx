@@ -169,6 +169,7 @@ export default function AutoAdventure() {
       id: `${battle!.id}-${visibleEvents.length - 1}`, actor: lastEvent.actor,
       kind: lastEvent.kind,
       skillName: lastEvent.kind === 'skill' ? lastEvent.skill_name : null,
+      skillId: lastEvent.kind === 'skill' ? lastEvent.skill_id : null,
       damage: lastEvent.damage, effect: visualEffect(lastEvent.effect),
       mpCost: lastEvent.mp_cost, healing: lastEvent.healing,
       rawDamage: lastEvent.raw_damage, damageMultiplier: lastEvent.damage_multiplier,

@@ -1,0 +1,364 @@
+.vfx-guerreiro {
+  --vfx-guerreiro-source-x: var(--skill-source-x, 25%);
+  --vfx-guerreiro-target-x: var(--skill-target-x, 75%);
+  --vfx-guerreiro-line-y: var(--skill-line-y, 62%);
+  --vfx-guerreiro-end-x: var(--vfx-guerreiro-target-x);
+  --vfx-guerreiro-distance: calc(var(--vfx-guerreiro-end-x) - var(--vfx-guerreiro-source-x));
+  --vfx-guerreiro-size: clamp(42px, 10vw, 84px);
+  --vfx-guerreiro-color: #dbe7ef;
+  --vfx-guerreiro-glow: #638aa6;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--vfx-guerreiro-color);
+  isolation: isolate;
+}
+
+.vfx-guerreiro[data-target='self'] {
+  --vfx-guerreiro-end-x: var(--vfx-guerreiro-source-x);
+}
+
+.vfx-guerreiro svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 5px var(--vfx-guerreiro-glow));
+}
+
+.vfx-guerreiro .vfx-guerreiro__echo {
+  opacity: .55;
+  stroke-width: 2.5;
+}
+
+.vfx-guerreiro__source,
+.vfx-guerreiro__impact,
+.vfx-guerreiro__traveler {
+  position: absolute;
+  display: block;
+  width: var(--vfx-guerreiro-size);
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.vfx-guerreiro__source {
+  left: var(--vfx-guerreiro-source-x);
+  top: var(--vfx-guerreiro-line-y);
+  width: calc(var(--vfx-guerreiro-size) * .65);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: vfx-guerreiro-gather 1100ms ease-out both;
+}
+
+.vfx-guerreiro__mover {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: vfx-guerreiro-advance 1100ms linear both;
+}
+
+.vfx-guerreiro__traveler {
+  left: var(--vfx-guerreiro-source-x);
+  top: var(--vfx-guerreiro-line-y);
+  transform: translate(-50%, -50%);
+}
+
+.vfx-guerreiro__traveler svg {
+  animation: vfx-guerreiro-steel-sweep 1100ms ease-in-out both;
+}
+
+.vfx-guerreiro__impact {
+  left: var(--vfx-guerreiro-end-x);
+  top: var(--vfx-guerreiro-line-y);
+  width: calc(var(--vfx-guerreiro-size) * 1.18);
+  transform: translate(-50%, -50%) scale(.35);
+  opacity: 0;
+  animation: vfx-guerreiro-impact 1100ms ease-out both;
+}
+
+.vfx-guerreiro--g_chama,
+.vfx-guerreiro--g_inf_var {
+  --vfx-guerreiro-color: #ffad54;
+  --vfx-guerreiro-glow: #e44a28;
+}
+
+.vfx-guerreiro--g_corte,
+.vfx-guerreiro--g_sang_var {
+  --vfx-guerreiro-color: #ed9a9a;
+  --vfx-guerreiro-glow: #a64359;
+}
+
+.vfx-guerreiro--g_ruptura {
+  --vfx-guerreiro-color: #d9d4b8;
+  --vfx-guerreiro-glow: #857d68;
+}
+
+.vfx-guerreiro--g_for_var {
+  --vfx-guerreiro-color: #f0e8d3;
+  --vfx-guerreiro-glow: #a29d83;
+  --vfx-guerreiro-size: clamp(48px, 12vw, 94px);
+}
+
+.vfx-guerreiro--g_inf_var {
+  --vfx-guerreiro-size: clamp(50px, 13vw, 100px);
+}
+
+.vfx-guerreiro--g_sang_var {
+  --vfx-guerreiro-size: clamp(47px, 11vw, 90px);
+}
+
+.vfx-guerreiro--g_golpe .vfx-guerreiro__source svg {
+  animation: vfx-guerreiro-guard 1100ms ease-out both;
+}
+
+.vfx-guerreiro--g_chama .vfx-guerreiro__source svg,
+.vfx-guerreiro--g_inf_var .vfx-guerreiro__source svg {
+  animation: vfx-guerreiro-ignite 1100ms ease-out both;
+}
+
+.vfx-guerreiro--g_corte .vfx-guerreiro__source svg,
+.vfx-guerreiro--g_sang_var .vfx-guerreiro__source svg {
+  animation: vfx-guerreiro-poise 1100ms ease-out both;
+}
+
+.vfx-guerreiro--g_ruptura .vfx-guerreiro__source svg,
+.vfx-guerreiro--g_for_var .vfx-guerreiro__source svg {
+  animation: vfx-guerreiro-heft 1100ms ease-out both;
+}
+
+.vfx-guerreiro--g_chama .vfx-guerreiro__traveler svg {
+  animation: vfx-guerreiro-flame-thrust 1100ms ease-in-out both;
+}
+
+.vfx-guerreiro--g_corte .vfx-guerreiro__traveler svg {
+  animation: vfx-guerreiro-razor-draw 1100ms ease-in-out both;
+}
+
+.vfx-guerreiro--g_ruptura .vfx-guerreiro__traveler svg {
+  animation: vfx-guerreiro-heavy-drop 1100ms ease-in both;
+}
+
+.vfx-guerreiro--g_for_var .vfx-guerreiro__traveler svg {
+  animation: vfx-guerreiro-cleaver-turn 1100ms ease-in-out both;
+}
+
+.vfx-guerreiro--g_inf_var .vfx-guerreiro__traveler svg {
+  animation: vfx-guerreiro-molten-line 1100ms ease-out both;
+}
+
+.vfx-guerreiro--g_sang_var .vfx-guerreiro__traveler svg {
+  animation: vfx-guerreiro-blade-wheel 1100ms ease-in-out both;
+}
+
+.vfx-guerreiro--g_ruptura .vfx-guerreiro__impact {
+  animation-name: vfx-guerreiro-ground-break;
+}
+
+.vfx-guerreiro--g_for_var .vfx-guerreiro__impact {
+  animation-name: vfx-guerreiro-shock-ring;
+}
+
+.vfx-guerreiro--g_inf_var .vfx-guerreiro__impact {
+  animation-name: vfx-guerreiro-erupt;
+}
+
+.vfx-guerreiro--g_corte .vfx-guerreiro__impact .vfx-guerreiro__cut-one,
+.vfx-guerreiro--g_sang_var .vfx-guerreiro__impact .vfx-guerreiro__cut-one {
+  animation: vfx-guerreiro-first-cut 1100ms linear both;
+}
+
+.vfx-guerreiro--g_corte .vfx-guerreiro__impact .vfx-guerreiro__cut-two,
+.vfx-guerreiro--g_sang_var .vfx-guerreiro__impact .vfx-guerreiro__cut-two {
+  animation: vfx-guerreiro-second-cut 1100ms linear both;
+}
+
+.vfx-guerreiro--g_sang_var .vfx-guerreiro__impact .vfx-guerreiro__cut-three {
+  animation: vfx-guerreiro-third-cut 1100ms linear both;
+}
+
+.vfx-guerreiro--g_corte circle,
+.vfx-guerreiro--g_inf_var circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+@keyframes vfx-guerreiro-gather {
+  0%, 5% { opacity: 0; }
+  14%, 35% { opacity: .95; }
+  44%, 100% { opacity: 0; }
+}
+
+@keyframes vfx-guerreiro-advance {
+  0%, 34% { opacity: 0; transform: translateX(0); }
+  37% { opacity: 1; transform: translateX(0); }
+  74% { opacity: 1; transform: translateX(var(--vfx-guerreiro-distance)); }
+  76%, 100% { opacity: 0; transform: translateX(var(--vfx-guerreiro-distance)); }
+}
+
+@keyframes vfx-guerreiro-impact {
+  0%, 74% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  77% { opacity: 1; transform: translate(-50%, -50%) scale(.76); }
+  88% { opacity: .95; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.16); }
+}
+
+@keyframes vfx-guerreiro-guard {
+  0% { transform: rotate(-55deg) scale(.7); }
+  35% { transform: rotate(0) scale(1); }
+  100% { transform: rotate(0) scale(1); }
+}
+
+@keyframes vfx-guerreiro-ignite {
+  0% { transform: scaleY(.35); }
+  35% { transform: scaleY(1.08); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes vfx-guerreiro-poise {
+  0% { transform: rotate(-18deg) scale(.7); }
+  35% { transform: rotate(13deg) scale(1); }
+  100% { transform: rotate(13deg) scale(1); }
+}
+
+@keyframes vfx-guerreiro-heft {
+  0% { transform: translateY(16%) rotate(-25deg); }
+  35% { transform: translateY(-9%) rotate(11deg); }
+  100% { transform: translateY(-9%) rotate(11deg); }
+}
+
+@keyframes vfx-guerreiro-steel-sweep {
+  0%, 35% { transform: rotate(-52deg) scale(.55); }
+  75% { transform: rotate(32deg) scale(1.08); }
+  100% { transform: rotate(32deg) scale(1.08); }
+}
+
+@keyframes vfx-guerreiro-flame-thrust {
+  0%, 35% { transform: rotate(-20deg) scale(.6); }
+  60% { transform: rotate(-7deg) scale(1.04); }
+  75%, 100% { transform: rotate(10deg) scale(1.12); }
+}
+
+@keyframes vfx-guerreiro-razor-draw {
+  0%, 35% { transform: rotate(-36deg) scaleX(.55); }
+  62% { transform: rotate(8deg) scaleX(1.08); }
+  75%, 100% { transform: rotate(23deg) scaleX(1.18); }
+}
+
+@keyframes vfx-guerreiro-heavy-drop {
+  0%, 35% { transform: translateY(-28%) rotate(-28deg) scale(.7); }
+  62% { transform: translateY(-24%) rotate(10deg) scale(1); }
+  75%, 100% { transform: translateY(14%) rotate(27deg) scale(1.1); }
+}
+
+@keyframes vfx-guerreiro-cleaver-turn {
+  0%, 35% { transform: rotate(-64deg) scale(.7); }
+  57% { transform: rotate(-22deg) scale(1); }
+  75%, 100% { transform: rotate(43deg) scale(1.16); }
+}
+
+@keyframes vfx-guerreiro-molten-line {
+  0%, 35% { transform: scaleX(.35) translateY(5%); }
+  60% { transform: scaleX(1.04) translateY(-4%); }
+  75%, 100% { transform: scaleX(1.2) translateY(5%); }
+}
+
+@keyframes vfx-guerreiro-blade-wheel {
+  0%, 35% { transform: rotate(-90deg) scale(.58); }
+  55% { transform: rotate(25deg) scale(1); }
+  75%, 100% { transform: rotate(175deg) scale(1.16); }
+}
+
+@keyframes vfx-guerreiro-ground-break {
+  0%, 74% { opacity: 0; transform: translate(-50%, -65%) scale(.35); }
+  78% { opacity: 1; transform: translate(-50%, -50%) scale(.83); }
+  91% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+}
+
+@keyframes vfx-guerreiro-shock-ring {
+  0%, 74% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  77% { opacity: 1; transform: translate(-50%, -50%) scale(.55); }
+  90% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.45); }
+}
+
+@keyframes vfx-guerreiro-erupt {
+  0%, 74% { opacity: 0; transform: translate(-50%, -15%) scale(.25, .1); }
+  79% { opacity: 1; transform: translate(-50%, -50%) scale(.8, .7); }
+  91% { opacity: 1; transform: translate(-50%, -50%) scale(1, 1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.18, 1.3); }
+}
+
+@keyframes vfx-guerreiro-first-cut {
+  0%, 74% { opacity: 0; }
+  77%, 88% { opacity: 1; }
+  100% { opacity: .55; }
+}
+
+@keyframes vfx-guerreiro-second-cut {
+  0%, 80% { opacity: 0; }
+  84%, 94% { opacity: 1; }
+  100% { opacity: .7; }
+}
+
+@keyframes vfx-guerreiro-third-cut {
+  0%, 88% { opacity: 0; }
+  92%, 100% { opacity: 1; }
+}
+
+/* A paused encounter and reduced motion display the source and final emblem. */
+.adventure-still .vfx-guerreiro *,
+.adventure-still .vfx-guerreiro *::before,
+.adventure-still .vfx-guerreiro *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.adventure-still .vfx-guerreiro__source {
+  opacity: .45 !important;
+}
+
+.adventure-still .vfx-guerreiro__mover {
+  opacity: 0 !important;
+}
+
+.adventure-still .vfx-guerreiro__impact {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+}
+
+.adventure-still .vfx-guerreiro__impact path {
+  opacity: 1 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vfx-guerreiro *,
+  .vfx-guerreiro *::before,
+  .vfx-guerreiro *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .vfx-guerreiro__source {
+    opacity: .45 !important;
+  }
+
+  .vfx-guerreiro__mover {
+    opacity: 0 !important;
+  }
+
+  .vfx-guerreiro__impact {
+    opacity: 1 !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+  }
+
+  .vfx-guerreiro__impact path {
+    opacity: 1 !important;
+  }
+}

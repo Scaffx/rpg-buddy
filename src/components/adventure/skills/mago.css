@@ -1,0 +1,579 @@
+.vfx-mago {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  --vfx-mago-source-x: var(--skill-source-x, 25%);
+  --vfx-mago-impact-x: var(--skill-target-x, 75%);
+  --vfx-mago-line-y: var(--skill-line-y, 62%);
+  --vfx-mago-duration: 1100ms;
+}
+
+.vfx-mago[data-target='self'] {
+  --vfx-mago-impact-x: var(--skill-source-x, 25%);
+}
+
+.vfx-mago::before {
+  content: '';
+  position: absolute;
+  left: var(--vfx-mago-source-x);
+  top: var(--vfx-mago-line-y);
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--vfx-mago-cast-color, #c5aaff);
+  border-left-color: transparent;
+  border-radius: 50%;
+  box-shadow: 0 0 9px var(--vfx-mago-cast-color, #c5aaff);
+  opacity: 0;
+  animation: vfx-mago-form var(--vfx-mago-duration) ease-out both;
+}
+
+.vfx-mago--m_bola_fogo, .vfx-mago--m_fogo_var { --vfx-mago-cast-color: #ffaf58; }
+.vfx-mago--m_lanca_gelo, .vfx-mago--m_gelo_var { --vfx-mago-cast-color: #a6ebfa; }
+.vfx-mago--m_corrente_raio, .vfx-mago--m_raio_var { --vfx-mago-cast-color: #b4eaff; }
+
+.vfx-mago__dardo-rune,
+.vfx-mago__dardo-shot,
+.vfx-mago__dardo-mark,
+.vfx-mago__fire-orb,
+.vfx-mago__fire-impact,
+.vfx-mago__lightning-impact,
+.vfx-mago__burst-core,
+.vfx-mago__burst-ring,
+.vfx-mago__burst-cross,
+.vfx-mago__ice-lance,
+.vfx-mago__ice-shatter,
+.vfx-mago__singularity-orbit,
+.vfx-mago__singularity-core,
+.vfx-mago__singularity-collapse,
+.vfx-mago__meteor-trail,
+.vfx-mago__meteor-rock,
+.vfx-mago__meteor-impact,
+.vfx-mago__nova-center,
+.vfx-mago__nova-ring,
+.vfx-mago__nova-crystals,
+.vfx-mago__tornado-column,
+.vfx-mago__tornado-sparks {
+  position: absolute;
+  left: var(--vfx-mago-impact-x);
+  top: var(--vfx-mago-line-y);
+  opacity: 0;
+}
+
+/* Dardo: a small launch glyph and a three-facet point, then a target seal. */
+.vfx-mago__dardo-rune {
+  left: var(--vfx-mago-source-x);
+  width: 34px;
+  height: 34px;
+  border: 2px solid #a38bff;
+  border-radius: 7px;
+  box-shadow: 0 0 12px #8a67f7a6, inset 0 0 8px #ccbaff7a;
+  animation: vfx-mago-rune var(--vfx-mago-duration) ease-out both;
+}
+
+.vfx-mago__dardo-rune::before,
+.vfx-mago__dardo-rune::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid #eadfff;
+  border-radius: 50%;
+}
+
+.vfx-mago__dardo-rune::after { inset: 12px; background: #f7eeff; }
+
+.vfx-mago__dardo-shot {
+  left: var(--vfx-mago-source-x);
+  width: 48px;
+  height: 14px;
+  background: linear-gradient(90deg, #6b55b200, #a99dff 32%, #fff 76%, #c5e8ff);
+  clip-path: polygon(0 49%, 18% 16%, 63% 16%, 100% 50%, 63% 84%, 18% 84%);
+  filter: drop-shadow(0 0 7px #957cff);
+  animation: vfx-mago-dardo-flight var(--vfx-mago-duration) ease-in-out both;
+}
+
+.vfx-mago__dardo-shot i {
+  position: absolute;
+  left: 16%;
+  width: 42%;
+  height: 1px;
+  background: #f6f0ff;
+}
+.vfx-mago__dardo-shot i:nth-child(1) { top: 27%; }
+.vfx-mago__dardo-shot i:nth-child(2) { top: 50%; }
+.vfx-mago__dardo-shot i:nth-child(3) { top: 73%; }
+
+.vfx-mago__dardo-mark {
+  width: 42px;
+  height: 42px;
+  border: 2px solid #b9a9ff;
+  border-radius: 7px;
+  box-shadow: 0 0 14px #927af5a6;
+  animation: vfx-mago-seal var(--vfx-mago-duration) ease-out both;
+}
+.vfx-mago__dardo-mark::after {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border: 1px solid #f7efff;
+  border-radius: 50%;
+}
+
+/* Fireball: luminous core, trailing flame, then a low ember burst. */
+.vfx-mago__fire-orb {
+  left: var(--vfx-mago-source-x);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 68% 42%, #fff7cc 0 13%, #ffd14f 26%, #f46b23 61%, #a92116 86%);
+  box-shadow: 0 0 12px #ffb23f, 0 0 28px #e65d2e80;
+  animation: vfx-mago-fire-flight var(--vfx-mago-duration) ease-in both;
+}
+.vfx-mago__fire-orb::before {
+  content: '';
+  position: absolute;
+  right: 62%;
+  top: 20%;
+  width: 72px;
+  height: 25px;
+  background: linear-gradient(90deg, #9e2a0900, #fa782a78 45%, #ffd96a);
+  clip-path: polygon(0 50%, 26% 0, 58% 31%, 100% 16%, 100% 82%, 54% 69%, 24% 100%);
+}
+.vfx-mago__fire-orb i {
+  position: absolute;
+  right: 110%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffcc55;
+  box-shadow: 0 0 6px #ff8a39;
+}
+.vfx-mago__fire-orb i:nth-child(1) { top: -8px; right: 145%; }
+.vfx-mago__fire-orb i:nth-child(2) { bottom: -8px; right: 190%; }
+
+.vfx-mago__fire-impact {
+  width: 96px;
+  height: 76px;
+  border: 3px solid #ff9e3d;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #fff4adcf 0, #ff9e477a 24%, #c6311600 65%);
+  box-shadow: 0 0 22px #ee6b2c9e;
+  animation: vfx-mago-fire-burst var(--vfx-mago-duration) ease-out both;
+}
+.vfx-mago__fire-impact i {
+  position: absolute;
+  inset: 20px 28px;
+  border-radius: 50%;
+  background: #fff3bb;
+  box-shadow: 0 0 16px #fff0a0;
+}
+.vfx-mago__fire-impact b {
+  position: absolute;
+  left: calc(50% - 3px);
+  top: calc(50% - 18px);
+  width: 6px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(#ffd36a, #f36f2e00);
+  transform: rotate(var(--vfx-mago-ray)) translateY(-37px);
+}
+.vfx-mago__fire-impact b:nth-of-type(1) { --vfx-mago-ray: 0deg; }
+.vfx-mago__fire-impact b:nth-of-type(2) { --vfx-mago-ray: 60deg; }
+.vfx-mago__fire-impact b:nth-of-type(3) { --vfx-mago-ray: 120deg; }
+.vfx-mago__fire-impact b:nth-of-type(4) { --vfx-mago-ray: 180deg; }
+.vfx-mago__fire-impact b:nth-of-type(5) { --vfx-mago-ray: 240deg; }
+.vfx-mago__fire-impact b:nth-of-type(6) { --vfx-mago-ray: 300deg; }
+
+/* Lightning: one broken stroke with two short branches, never a screen flash. */
+.vfx-mago__lightning {
+  position: absolute;
+  left: var(--vfx-mago-source-x);
+  top: calc(var(--vfx-mago-line-y) - 12%);
+  width: calc(var(--vfx-mago-impact-x) - var(--vfx-mago-source-x));
+  height: 24%;
+  overflow: visible;
+  fill: none;
+  stroke: #e2faff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: bevel;
+  filter: drop-shadow(0 0 5px #4bcbff);
+  opacity: 0;
+  animation: vfx-mago-bolt-appear var(--vfx-mago-duration) ease-out both;
+}
+.vfx-mago__lightning-main { stroke-dasharray: 145; stroke-dashoffset: 145; animation: vfx-mago-bolt-draw var(--vfx-mago-duration) linear both; }
+.vfx-mago__lightning-branch { stroke: #81ddff; stroke-width: 2; stroke-dasharray: 50; stroke-dashoffset: 50; animation: vfx-mago-branch-draw var(--vfx-mago-duration) linear both; }
+.vfx-mago__lightning-impact { width: 76px; height: 76px; animation: vfx-mago-electric-pop var(--vfx-mago-duration) ease-out both; }
+.vfx-mago__lightning-impact i {
+  position: absolute;
+  left: calc(50% - 2px);
+  top: 5px;
+  width: 4px;
+  height: 66px;
+  background: linear-gradient(#8ceeff00, #d9fbff 25% 75%, #8ceeff00);
+  transform: rotate(var(--vfx-mago-ray));
+  box-shadow: 0 0 7px #5acaf0;
+}
+.vfx-mago__lightning-impact i:nth-child(1) { --vfx-mago-ray: 0deg; }
+.vfx-mago__lightning-impact i:nth-child(2) { --vfx-mago-ray: 60deg; }
+.vfx-mago__lightning-impact i:nth-child(3) { --vfx-mago-ray: 120deg; }
+
+/* Arcane burst: a square sigil turns into a circular shock ring. */
+.vfx-mago__burst-core {
+  width: 54px;
+  height: 54px;
+  border: 2px solid #bc9eff;
+  box-shadow: 0 0 12px #9675eeb3, inset 0 0 15px #8d6eea73;
+  animation: vfx-mago-burst-core var(--vfx-mago-duration) ease-out both;
+}
+.vfx-mago__burst-core i { position: absolute; inset: 12px; border: 2px solid #ece0ff; transform: rotate(45deg); }
+.vfx-mago__burst-ring {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #dfcaff;
+  border-radius: 50%;
+  box-shadow: 0 0 17px #9473e9;
+  animation: vfx-mago-burst-ring var(--vfx-mago-duration) ease-out both;
+}
+.vfx-mago__burst-cross { width: 108px; height: 108px; animation: vfx-mago-electric-pop var(--vfx-mago-duration) ease-out both; }
+.vfx-mago__burst-cross i {
+  position: absolute;
+  left: calc(50% - 2px);
+  top: 4px;
+  width: 4px;
+  height: 100px;
+  background: linear-gradient(#c4a9ff00, #d5c2ff 33% 67%, #c4a9ff00);
+  transform: rotate(var(--vfx-mago-ray));
+}
+.vfx-mago__burst-cross i:nth-child(1) { --vfx-mago-ray: 0deg; }
+.vfx-mago__burst-cross i:nth-child(2) { --vfx-mago-ray: 45deg; }
+.vfx-mago__burst-cross i:nth-child(3) { --vfx-mago-ray: 90deg; }
+.vfx-mago__burst-cross i:nth-child(4) { --vfx-mago-ray: 135deg; }
+
+/* Ice lance: a long triangular spear and six separate crystal chips. */
+.vfx-mago__ice-lance {
+  left: var(--vfx-mago-source-x);
+  width: 78px;
+  height: 20px;
+  background: linear-gradient(#edffff 0 23%, #7edbf4 42%, #3690d5 83%, #dffaff);
+  clip-path: polygon(0 30%, 42% 0, 100% 50%, 42% 100%, 0 70%);
+  filter: drop-shadow(0 0 7px #73d9f5);
+  animation: vfx-mago-ice-flight var(--vfx-mago-duration) ease-in-out both;
+}
+.vfx-mago__ice-lance i { position: absolute; left: 34%; top: 2px; width: 55%; height: 2px; background: #fff; transform: rotate(8deg); }
+.vfx-mago__ice-shatter { width: 1px; height: 1px; animation: vfx-mago-shatter-show var(--vfx-mago-duration) ease-out both; }
+.vfx-mago__ice-shatter i,
+.vfx-mago__nova-crystals i {
+  position: absolute;
+  left: -7px;
+  top: -33px;
+  width: 14px;
+  height: 34px;
+  background: linear-gradient(90deg, #42a6d9, #e5ffff 48%, #82d4eb);
+  clip-path: polygon(50% 0, 100% 72%, 50% 100%, 0 72%);
+  filter: drop-shadow(0 0 5px #8de6fb);
+  transform-origin: 50% 100%;
+  transform: rotate(var(--vfx-mago-ray));
+}
+.vfx-mago__ice-shatter i:nth-child(1), .vfx-mago__nova-crystals i:nth-child(1) { --vfx-mago-ray: 0deg; }
+.vfx-mago__ice-shatter i:nth-child(2), .vfx-mago__nova-crystals i:nth-child(2) { --vfx-mago-ray: 60deg; }
+.vfx-mago__ice-shatter i:nth-child(3), .vfx-mago__nova-crystals i:nth-child(3) { --vfx-mago-ray: 120deg; }
+.vfx-mago__ice-shatter i:nth-child(4), .vfx-mago__nova-crystals i:nth-child(4) { --vfx-mago-ray: 180deg; }
+.vfx-mago__ice-shatter i:nth-child(5), .vfx-mago__nova-crystals i:nth-child(5) { --vfx-mago-ray: 240deg; }
+.vfx-mago__ice-shatter i:nth-child(6), .vfx-mago__nova-crystals i:nth-child(6) { --vfx-mago-ray: 300deg; }
+
+/* Singularidade: asymmetric counter-rotating arcs contract into a dark center. */
+.vfx-mago__singularity-orbit { border: 4px solid transparent; border-radius: 50%; box-shadow: 0 0 11px #af92fc6b; }
+.vfx-mago__singularity-orbit--outer {
+  width: 114px;
+  height: 76px;
+  border-top-color: #d1b8ff;
+  border-bottom-color: #8870d4;
+  animation: vfx-mago-vortex-outer var(--vfx-mago-duration) ease-in both;
+}
+.vfx-mago__singularity-orbit--inner {
+  width: 68px;
+  height: 100px;
+  border-left-color: #efdbff;
+  border-right-color: #7659c5;
+  animation: vfx-mago-vortex-inner var(--vfx-mago-duration) ease-in both;
+}
+.vfx-mago__singularity-core {
+  width: 42px;
+  height: 42px;
+  border: 2px solid #ccb3ff;
+  border-radius: 50%;
+  background: radial-gradient(circle, #22113a 0 35%, #6d4aa7 62%, #f4e8ff 100%);
+  box-shadow: 0 0 17px #ad8af9;
+  animation: vfx-mago-vortex-core var(--vfx-mago-duration) ease-in both;
+}
+.vfx-mago__singularity-collapse {
+  width: 26px;
+  height: 26px;
+  border: 3px solid #eddbff;
+  border-radius: 50%;
+  animation: vfx-mago-vortex-collapse var(--vfx-mago-duration) ease-out both;
+}
+
+/* Meteor: oblique descent and ground-level fragments. */
+.vfx-mago__meteor-trail {
+  width: 38px;
+  height: 135px;
+  background: linear-gradient(#ef422900, #ff9e4d80 54%, #ffdb72);
+  clip-path: polygon(48% 0, 100% 80%, 64% 100%, 0 82%);
+  transform-origin: 50% 100%;
+  animation: vfx-mago-meteor-tail var(--vfx-mago-duration) ease-in both;
+}
+.vfx-mago__meteor-rock {
+  width: 50px;
+  height: 54px;
+  border-radius: 36% 53% 42% 47%;
+  background: radial-gradient(circle at 63% 66%, #ffe7a1 0 13%, #ff9a38 34%, #8d3325 72%, #411c28 94%);
+  box-shadow: 0 0 18px #ff7d40;
+  animation: vfx-mago-meteor-fall var(--vfx-mago-duration) ease-in both;
+}
+.vfx-mago__meteor-rock i { position: absolute; inset: 9px 18px 22px 7px; border: 3px solid #6d2d25; border-radius: 45%; transform: rotate(24deg); }
+.vfx-mago__meteor-impact { width: 1px; height: 1px; animation: vfx-mago-shatter-show var(--vfx-mago-duration) ease-out both; }
+.vfx-mago__meteor-impact i {
+  position: absolute;
+  left: -6px;
+  top: -24px;
+  width: 12px;
+  height: 25px;
+  background: linear-gradient(#ffe991, #f27b35 68%, #f27b3500);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  transform-origin: 50% 100%;
+  transform: rotate(var(--vfx-mago-ray)) translateY(-35px);
+}
+.vfx-mago__meteor-impact i:nth-child(1) { --vfx-mago-ray: 0deg; }
+.vfx-mago__meteor-impact i:nth-child(2) { --vfx-mago-ray: 60deg; }
+.vfx-mago__meteor-impact i:nth-child(3) { --vfx-mago-ray: 120deg; }
+.vfx-mago__meteor-impact i:nth-child(4) { --vfx-mago-ray: 180deg; }
+.vfx-mago__meteor-impact i:nth-child(5) { --vfx-mago-ray: 240deg; }
+.vfx-mago__meteor-impact i:nth-child(6) { --vfx-mago-ray: 300deg; }
+
+/* Nova: stationary pale core, growing crown, then a thin radial circle. */
+.vfx-mago__nova-center {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 22%, #beefff 52%, #56abd58c 82%);
+  box-shadow: 0 0 15px #91e9fa;
+  animation: vfx-mago-nova-core var(--vfx-mago-duration) ease-out both;
+}
+.vfx-mago__nova-ring {
+  width: 46px;
+  height: 46px;
+  border: 3px solid #c9f4ff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #73cde9;
+  animation: vfx-mago-nova-ring var(--vfx-mago-duration) ease-out both;
+}
+.vfx-mago__nova-crystals { width: 1px; height: 1px; animation: vfx-mago-nova-crown var(--vfx-mago-duration) ease-out both; }
+.vfx-mago__nova-crystals i { height: 46px; width: 17px; left: -8px; top: -45px; }
+
+/* Tornado: three offset wind arcs and short branching electrical marks. */
+.vfx-mago__tornado-column { width: 100px; height: 120px; top: calc(var(--vfx-mago-line-y) - 42px); animation: vfx-mago-tornado-rise var(--vfx-mago-duration) ease-out both; }
+.vfx-mago__tornado-column i {
+  position: absolute;
+  left: 5%;
+  width: 90%;
+  height: 30px;
+  border: 5px solid transparent;
+  border-top-color: #c7eefa;
+  border-right-color: #80b9f2;
+  border-radius: 50%;
+  box-shadow: 0 -3px 9px #83c6ec69;
+  transform: rotate(var(--vfx-mago-twist));
+}
+.vfx-mago__tornado-column i:nth-child(1) { top: 4px; width: 50%; left: 25%; --vfx-mago-twist: -24deg; }
+.vfx-mago__tornado-column i:nth-child(2) { top: 42px; width: 72%; left: 14%; --vfx-mago-twist: 16deg; }
+.vfx-mago__tornado-column i:nth-child(3) { top: 82px; --vfx-mago-twist: -11deg; }
+.vfx-mago__tornado-sparks { width: 100px; height: 120px; top: calc(var(--vfx-mago-line-y) - 42px); animation: vfx-mago-electric-pop var(--vfx-mago-duration) ease-out both; }
+.vfx-mago__tornado-sparks i {
+  position: absolute;
+  width: 25px;
+  height: 34px;
+  border-left: 3px solid #e8fbff;
+  clip-path: polygon(0 0, 100% 0, 35% 45%, 95% 45%, 0 100%, 24% 50%);
+  filter: drop-shadow(0 0 5px #74dfff);
+}
+.vfx-mago__tornado-sparks i:nth-child(1) { left: 2px; top: 15px; transform: rotate(-19deg); }
+.vfx-mago__tornado-sparks i:nth-child(2) { right: 2px; top: 48px; transform: rotate(22deg); }
+.vfx-mago__tornado-sparks i:nth-child(3) { left: 28px; bottom: 0; transform: rotate(10deg); }
+
+@keyframes vfx-mago-rune {
+  0%, 7% { opacity: 0; transform: translate(-50%, -50%) rotate(0) scale(.25); }
+  18%, 35% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1); }
+  54%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(90deg) scale(.7); }
+}
+@keyframes vfx-mago-form {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-45deg) scale(.2); }
+  12%, 29% { opacity: .8; transform: translate(-50%, -50%) rotate(30deg) scale(1); }
+  35%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(90deg) scale(.55); }
+}
+@keyframes vfx-mago-dardo-flight {
+  0%, 34% { left: var(--vfx-mago-source-x); opacity: 0; transform: translate(-50%, -50%) scale(.4); }
+  39% { opacity: 1; }
+  74% { left: var(--vfx-mago-impact-x); opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  77%, 100% { left: var(--vfx-mago-impact-x); opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+}
+@keyframes vfx-mago-seal {
+  0%, 74% { opacity: 0; transform: translate(-50%, -50%) rotate(-45deg) scale(.1); }
+  84% { opacity: 1; transform: translate(-50%, -50%) rotate(20deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(1.35); }
+}
+@keyframes vfx-mago-fire-flight {
+  0%, 30% { left: var(--vfx-mago-source-x); opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  36% { opacity: 1; }
+  73% { left: var(--vfx-mago-impact-x); opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+  77%, 100% { left: var(--vfx-mago-impact-x); opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+}
+@keyframes vfx-mago-fire-burst {
+  0%, 73% { opacity: 0; transform: translate(-50%, -50%) scale(.12); }
+  84% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.55); }
+}
+@keyframes vfx-mago-bolt-appear {
+  0%, 34% { opacity: 0; }
+  41%, 76% { opacity: 1; }
+  86%, 100% { opacity: 0; }
+}
+@keyframes vfx-mago-bolt-draw {
+  0%, 34% { stroke-dashoffset: 145; }
+  72%, 100% { stroke-dashoffset: 0; }
+}
+@keyframes vfx-mago-branch-draw {
+  0%, 49% { stroke-dashoffset: 50; }
+  75%, 100% { stroke-dashoffset: 0; }
+}
+@keyframes vfx-mago-electric-pop {
+  0%, 73% { opacity: 0; transform: translate(-50%, -50%) scale(.15); }
+  82% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); }
+}
+@keyframes vfx-mago-burst-core {
+  0%, 33% { opacity: 0; transform: translate(-50%, -50%) rotate(0) scale(.15); }
+  51%, 74% { opacity: 1; transform: translate(-50%, -50%) rotate(70deg) scale(1); }
+  84%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(100deg) scale(.3); }
+}
+@keyframes vfx-mago-burst-ring {
+  0%, 73% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  83% { opacity: 1; transform: translate(-50%, -50%) scale(1.4); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3.2); }
+}
+@keyframes vfx-mago-ice-flight {
+  0%, 31% { left: var(--vfx-mago-source-x); opacity: 0; transform: translate(-50%, -50%) scaleX(.35); }
+  38% { opacity: 1; }
+  73% { left: var(--vfx-mago-impact-x); opacity: 1; transform: translate(-50%, -50%) scaleX(1.18); }
+  77%, 100% { left: var(--vfx-mago-impact-x); opacity: 0; transform: translate(-50%, -50%) scaleX(.15); }
+}
+@keyframes vfx-mago-shatter-show {
+  0%, 74% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  87% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.65); }
+}
+@keyframes vfx-mago-vortex-outer {
+  0%, 31% { opacity: 0; transform: translate(-50%, -50%) rotate(-90deg) scale(1.4); }
+  43%, 74% { opacity: 1; }
+  78% { opacity: 1; transform: translate(-50%, -50%) rotate(155deg) scale(.8); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(220deg) scale(.06); }
+}
+@keyframes vfx-mago-vortex-inner {
+  0%, 31% { opacity: 0; transform: translate(-50%, -50%) rotate(90deg) scale(1.3); }
+  43%, 74% { opacity: 1; }
+  78% { opacity: 1; transform: translate(-50%, -50%) rotate(-150deg) scale(.9); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(-200deg) scale(.08); }
+}
+@keyframes vfx-mago-vortex-core {
+  0%, 35% { opacity: 0; transform: translate(-50%, -50%) scale(.1); }
+  49%, 78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.15); }
+}
+@keyframes vfx-mago-vortex-collapse {
+  0%, 75% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  87% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3); }
+}
+@keyframes vfx-mago-meteor-tail {
+  0%, 28% { opacity: 0; transform: translate(-165px, -175px) rotate(-40deg) scaleY(.3); }
+  42% { opacity: .85; }
+  74% { opacity: 1; transform: translate(-19px, -20px) rotate(-40deg) scaleY(1); }
+  80%, 100% { opacity: 0; transform: translate(-19px, -20px) rotate(-40deg) scaleY(.2); }
+}
+@keyframes vfx-mago-meteor-fall {
+  0%, 28% { opacity: 0; transform: translate(-155px, -185px) rotate(-80deg) scale(.35); }
+  36% { opacity: 1; }
+  74% { opacity: 1; transform: translate(-50%, -50%) rotate(55deg) scale(1.15); }
+  78%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(75deg) scale(.2); }
+}
+@keyframes vfx-mago-nova-core {
+  0%, 34% { opacity: 0; transform: translate(-50%, -50%) scale(.15); }
+  51%, 75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.55); }
+}
+@keyframes vfx-mago-nova-ring {
+  0%, 71% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  83% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3.3); }
+}
+@keyframes vfx-mago-nova-crown {
+  0%, 68% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  79%, 92% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+@keyframes vfx-mago-tornado-rise {
+  0%, 32% { opacity: 0; transform: translate(-50%, -25%) rotate(-50deg) scale(.2); }
+  48% { opacity: .8; }
+  74% { opacity: 1; transform: translate(-50%, -50%) rotate(40deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -70%) rotate(95deg) scale(.55); }
+}
+
+/* Still mode keeps one readable emblem at the correct target position. */
+.adventure-still .vfx-mago *,
+.adventure-still .vfx-mago::before,
+.adventure-still .vfx-mago *::before,
+.adventure-still .vfx-mago *::after {
+  animation: none !important;
+  transition: none !important;
+}
+.adventure-still .vfx-mago::before { display: none; }
+.adventure-still .vfx-mago__dardo-rune,
+.adventure-still .vfx-mago__dardo-shot,
+.adventure-still .vfx-mago__fire-orb,
+.adventure-still .vfx-mago__lightning,
+.adventure-still .vfx-mago__ice-lance,
+.adventure-still .vfx-mago__meteor-trail { display: none; }
+.adventure-still .vfx-mago__dardo-mark,
+.adventure-still .vfx-mago__fire-impact,
+.adventure-still .vfx-mago__lightning-impact,
+.adventure-still .vfx-mago__burst-core,
+.adventure-still .vfx-mago__burst-ring,
+.adventure-still .vfx-mago__burst-cross,
+.adventure-still .vfx-mago__ice-shatter,
+.adventure-still .vfx-mago__singularity-orbit,
+.adventure-still .vfx-mago__singularity-core,
+.adventure-still .vfx-mago__meteor-rock,
+.adventure-still .vfx-mago__meteor-impact,
+.adventure-still .vfx-mago__nova-center,
+.adventure-still .vfx-mago__nova-ring,
+.adventure-still .vfx-mago__nova-crystals,
+.adventure-still .vfx-mago__tornado-column,
+.adventure-still .vfx-mago__tornado-sparks {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vfx-mago *, .vfx-mago::before, .vfx-mago *::before, .vfx-mago *::after { animation: none !important; transition: none !important; }
+  .vfx-mago::before { display: none; }
+  .vfx-mago__dardo-rune, .vfx-mago__dardo-shot, .vfx-mago__fire-orb, .vfx-mago__lightning, .vfx-mago__ice-lance, .vfx-mago__meteor-trail { display: none; }
+  .vfx-mago__dardo-mark, .vfx-mago__fire-impact, .vfx-mago__lightning-impact, .vfx-mago__burst-core,
+  .vfx-mago__burst-ring, .vfx-mago__burst-cross, .vfx-mago__ice-shatter, .vfx-mago__singularity-orbit,
+  .vfx-mago__singularity-core, .vfx-mago__meteor-rock, .vfx-mago__meteor-impact, .vfx-mago__nova-center,
+  .vfx-mago__nova-ring, .vfx-mago__nova-crystals, .vfx-mago__tornado-column, .vfx-mago__tornado-sparks {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}

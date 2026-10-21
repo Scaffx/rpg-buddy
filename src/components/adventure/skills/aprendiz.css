@@ -1,0 +1,316 @@
+.vfx-aprendiz {
+  --vfx-aprendiz-end-x: var(--skill-target-x, 75%);
+  --vfx-aprendiz-y: var(--skill-line-y, 62%);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.vfx-aprendiz[data-target='self'] {
+  --vfx-aprendiz-end-x: var(--skill-source-x, 25%);
+}
+
+.vfx-aprendiz > span { position: absolute; display: block; box-sizing: border-box; }
+
+/* The resting shapes are also the still-motion illustration. */
+.vfx-aprendiz__impact {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: clamp(16px, 3vw, 30px);
+  aspect-ratio: 1;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Golpe Improvisado: a short, uneven fist trail and four-point contact. */
+.vfx-aprendiz--golpe { color: #f5d1a0; }
+.vfx-aprendiz__punch {
+  left: calc(var(--vfx-aprendiz-end-x) - clamp(30px, 5vw, 62px));
+  top: calc(var(--vfx-aprendiz-y) - 9px);
+  width: clamp(30px, 5vw, 62px);
+  height: 14px;
+  border-top: 4px solid #f6e0bd;
+  border-radius: 65% 20% 0 0;
+  transform: rotate(-12deg);
+  box-shadow: 0 -5px 0 -3px #a77d62;
+  animation: vfx-aprendiz-punch 1050ms ease-out both;
+}
+.vfx-aprendiz__impact--small {
+  width: clamp(16px, 2.5vw, 24px);
+  border-radius: 20%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  animation: vfx-aprendiz-impact 1050ms ease-out both;
+}
+
+/* Corte Flamejante: a broad crescent with staggered rising embers. */
+.vfx-aprendiz--flamejante { color: #ff8c3e; }
+.vfx-aprendiz__flame-arc {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: clamp(42px, 7vw, 92px);
+  height: clamp(44px, 7vw, 90px);
+  border-right: clamp(6px, 1vw, 12px) solid #ffc36b;
+  border-top: 3px solid #ff702d;
+  border-radius: 50%;
+  transform: translate(-52%, -50%) rotate(42deg);
+  filter: drop-shadow(0 0 5px #d65423);
+  animation: vfx-aprendiz-flame-arc 1100ms ease-out both;
+}
+.vfx-aprendiz__ember {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: 7px;
+  height: 11px;
+  background: #ffb456;
+  border-radius: 70% 20% 70% 30%;
+  transform: translate(-50%, -50%) rotate(30deg);
+  animation: vfx-aprendiz-ember 1100ms ease-out both;
+}
+.vfx-aprendiz__ember--one { margin: -27px 0 0 21px; }
+.vfx-aprendiz__ember--two { margin: -5px 0 0 33px; animation-delay: 55ms; }
+.vfx-aprendiz__ember--three { margin: 19px 0 0 15px; animation-delay: 100ms; }
+
+/* Lâmina Glacial: one narrow diamond edge breaks into three shards. */
+.vfx-aprendiz--glacial { color: #a8edff; }
+.vfx-aprendiz__ice-blade {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: clamp(12px, 2vw, 22px);
+  height: clamp(52px, 8vw, 94px);
+  background: linear-gradient(90deg, #edfaff 0 38%, #70c9ed 39% 65%, #d8f8ff 66%);
+  clip-path: polygon(50% 0, 100% 28%, 75% 84%, 50% 100%, 25% 84%, 0 28%);
+  transform: translate(-50%, -50%) rotate(37deg);
+  filter: drop-shadow(0 0 4px #7be0ff);
+  animation: vfx-aprendiz-ice-blade 1100ms ease-out both;
+}
+.vfx-aprendiz__shard {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: 9px;
+  height: 20px;
+  background: #a8edff;
+  clip-path: polygon(50% 0, 100% 70%, 50% 100%, 0 70%);
+  transform: translate(-50%, -50%) rotate(35deg);
+  animation: vfx-aprendiz-shard 1100ms ease-out both;
+}
+.vfx-aprendiz__shard--one { margin: -28px 0 0 22px; }
+.vfx-aprendiz__shard--two { margin: 16px 0 0 27px; transform: translate(-50%, -50%) rotate(85deg); }
+.vfx-aprendiz__shard--three { margin: 26px 0 0 -16px; transform: translate(-50%, -50%) rotate(-35deg); }
+
+/* Corte Veloz: two independent crossing marks, offset in time. */
+.vfx-aprendiz--veloz { color: #e2e9e5; }
+.vfx-aprendiz__swift {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: clamp(40px, 6vw, 78px);
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #f4fff7 20% 83%, transparent);
+  border-radius: 100%;
+  transform: translate(-50%, -50%) rotate(-38deg);
+  animation: vfx-aprendiz-swift 1000ms ease-out both;
+}
+.vfx-aprendiz__swift--one { margin-top: -9px; }
+.vfx-aprendiz__swift--two { margin-top: 10px; transform: translate(-50%, -50%) rotate(34deg); animation-delay: 90ms; }
+.vfx-aprendiz__impact--swift { width: 12px; border-width: 1px; animation: vfx-aprendiz-impact 1100ms ease-out both; }
+
+/* Estocada: a straight line and pointed tip. */
+.vfx-aprendiz--estocada { color: #e9d7b3; }
+.vfx-aprendiz__thrust-line,
+.vfx-aprendiz__arrow-line,
+.vfx-aprendiz__arcane-path {
+  left: var(--skill-source-x, 25%);
+  top: var(--vfx-aprendiz-y);
+  width: calc(var(--vfx-aprendiz-end-x) - var(--skill-source-x, 25%));
+  transform-origin: left center;
+}
+.vfx-aprendiz__thrust-line {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #f8e9c9 40% 95%, transparent);
+  animation: vfx-aprendiz-line 1050ms ease-in-out both;
+}
+.vfx-aprendiz__thrust-tip {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: 27px;
+  height: 15px;
+  background: #f8e9c9;
+  clip-path: polygon(0 18%, 72% 18%, 100% 50%, 72% 82%, 0 82%);
+  transform: translate(-100%, -50%);
+  animation: vfx-aprendiz-tip 1050ms ease-out both;
+}
+.vfx-aprendiz__impact--thrust { width: 18px; border-width: 1px; animation: vfx-aprendiz-impact 1050ms ease-out both; }
+
+/* Flecha Perfurante: shaft, triangular arrowhead, and split feather. */
+.vfx-aprendiz--flecha { color: #c8e4cd; }
+.vfx-aprendiz__arrow-line {
+  height: 2px;
+  background: #d6ead2;
+  box-shadow: 0 3px 0 -1px #7e9d83;
+  animation: vfx-aprendiz-line 1100ms ease-out both;
+}
+.vfx-aprendiz__arrow-tip {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: 22px;
+  height: 17px;
+  background: #eaf5dc;
+  clip-path: polygon(0 12%, 100% 50%, 0 88%, 23% 50%);
+  transform: translate(-70%, -48%);
+  animation: vfx-aprendiz-tip 1100ms ease-out both;
+}
+.vfx-aprendiz__arrow-feather {
+  left: var(--skill-source-x, 25%);
+  top: var(--vfx-aprendiz-y);
+  width: 17px;
+  height: 15px;
+  border-left: 2px solid #d6ead2;
+  border-top: 2px solid #d6ead2;
+  transform: translateY(-50%) rotate(45deg);
+  animation: vfx-aprendiz-feather 1100ms ease-out both;
+}
+.vfx-aprendiz__impact--arrow { width: 27px; border-width: 1px; animation: vfx-aprendiz-ring 1100ms ease-out both; }
+
+/* Raio Sereno: two fine converging rays, then a quiet halo. */
+.vfx-aprendiz--sereno { color: #ffe9a1; }
+.vfx-aprendiz__ray {
+  left: var(--skill-source-x, 25%);
+  top: var(--vfx-aprendiz-y);
+  width: calc(var(--vfx-aprendiz-end-x) - var(--skill-source-x, 25%));
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fff3c3 20% 80%, #fffdf0);
+  transform-origin: left center;
+  animation: vfx-aprendiz-ray 1150ms ease-in-out both;
+}
+.vfx-aprendiz__ray--upper { transform: rotate(-3deg); }
+.vfx-aprendiz__ray--lower { transform: rotate(3deg); }
+.vfx-aprendiz__halo {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: clamp(35px, 5vw, 65px);
+  aspect-ratio: 1;
+  border: 2px solid #fff1b4;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 5px #ffe9a124;
+  transform: translate(-50%, -50%);
+  animation: vfx-aprendiz-halo 1150ms ease-out both;
+}
+
+/* Corte Brutal: a broad weighted slash and two chips. */
+.vfx-aprendiz--brutal { color: #f0bd9e; }
+.vfx-aprendiz__brutal-cut {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: clamp(15px, 2.6vw, 31px);
+  height: clamp(61px, 10vw, 115px);
+  background: linear-gradient(90deg, #865b4e, #ffdcbd 45%, #a56d55);
+  clip-path: polygon(13% 0, 100% 0, 82% 100%, 0 85%);
+  transform: translate(-50%, -50%) rotate(38deg);
+  animation: vfx-aprendiz-brutal 1150ms ease-in both;
+}
+.vfx-aprendiz__chip {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: 10px;
+  height: 9px;
+  background: #c5987d;
+  clip-path: polygon(0 0, 100% 20%, 70% 100%, 15% 75%);
+  animation: vfx-aprendiz-chip 1150ms ease-out both;
+}
+.vfx-aprendiz__chip--one { margin: -25px 0 0 25px; }
+.vfx-aprendiz__chip--two { margin: 26px 0 0 -27px; animation-delay: 40ms; }
+
+/* Dardo Arcano: a diamond bolt with three spaced motes. */
+.vfx-aprendiz--arcano { color: #d7b7ff; }
+.vfx-aprendiz__arcane-path {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #aa70e8 35%, #e7d0ff);
+  animation: vfx-aprendiz-line 1100ms ease-out both;
+}
+.vfx-aprendiz__arcane-dart {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: 29px;
+  height: 22px;
+  background: #e5c8ff;
+  clip-path: polygon(0 50%, 56% 0, 100% 50%, 56% 100%);
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 5px #8e50c3);
+  animation: vfx-aprendiz-dart 1100ms ease-out both;
+}
+.vfx-aprendiz__arcane-dot {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: 5px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #c18cef;
+  animation: vfx-aprendiz-dot 1100ms ease-out both;
+}
+.vfx-aprendiz__arcane-dot--one { margin: -20px 0 0 -30px; }
+.vfx-aprendiz__arcane-dot--two { margin: 17px 0 0 -42px; animation-delay: 55ms; }
+.vfx-aprendiz__arcane-dot--three { margin: -7px 0 0 -57px; animation-delay: 100ms; }
+
+/* Pancada: downward hammer head and a low spreading ground wave. */
+.vfx-aprendiz--pancada { color: #d9c7a1; }
+.vfx-aprendiz__hammer {
+  left: var(--vfx-aprendiz-end-x);
+  top: var(--vfx-aprendiz-y);
+  width: clamp(42px, 7vw, 74px);
+  height: clamp(20px, 3vw, 34px);
+  border: 4px solid #ebe0c5;
+  border-radius: 7px 7px 11px 11px;
+  background: linear-gradient(90deg, #856d5b, #c4b395 50%, #856d5b);
+  transform: translate(-50%, -100%) rotate(-15deg);
+  animation: vfx-aprendiz-hammer 1150ms ease-in both;
+}
+.vfx-aprendiz__shockwave {
+  left: var(--vfx-aprendiz-end-x);
+  top: calc(var(--vfx-aprendiz-y) + 7px);
+  width: clamp(54px, 9vw, 110px);
+  height: 17px;
+  border: 3px solid #d9c7a1;
+  border-top: 0;
+  border-radius: 0 0 50% 50%;
+  transform: translateX(-50%);
+  animation: vfx-aprendiz-shock 1150ms ease-out both;
+}
+.vfx-aprendiz__dust {
+  left: var(--vfx-aprendiz-end-x);
+  top: calc(var(--vfx-aprendiz-y) + 12px);
+  width: 10px;
+  height: 5px;
+  border-radius: 50%;
+  background: #aa9175;
+  animation: vfx-aprendiz-dust 1150ms ease-out both;
+}
+.vfx-aprendiz__dust--one { margin-left: -35px; }
+.vfx-aprendiz__dust--two { margin-left: 25px; animation-delay: 40ms; }
+
+@keyframes vfx-aprendiz-punch { 0%, 35% { opacity: 0; transform: translateX(-35px) rotate(-12deg) scaleX(.4); } 60% { opacity: 1; } 75% { transform: translateX(0) rotate(-12deg) scaleX(1); } 100% { opacity: 0; } }
+@keyframes vfx-aprendiz-impact { 0%, 74% { opacity: 0; scale: .35; } 82% { opacity: 1; scale: 1.25; } 100% { opacity: 0; scale: 1.5; } }
+@keyframes vfx-aprendiz-flame-arc { 0%, 35% { opacity: 0; transform: translate(-80%, -50%) rotate(-55deg) scale(.45); } 75% { opacity: 1; transform: translate(-52%, -50%) rotate(42deg) scale(1); } 100% { opacity: 0; transform: translate(-52%, -50%) rotate(55deg) scale(1.12); } }
+@keyframes vfx-aprendiz-ember { 0%, 72% { opacity: 0; } 78% { opacity: 1; } 100% { opacity: 0; translate: 5px -20px; } }
+@keyframes vfx-aprendiz-ice-blade { 0%, 35% { opacity: 0; transform: translate(-100%, -20%) rotate(-60deg) scale(.3); } 75% { opacity: 1; transform: translate(-50%, -50%) rotate(37deg) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(37deg) scale(.85); } }
+@keyframes vfx-aprendiz-shard { 0%, 74% { opacity: 0; scale: .3; } 82% { opacity: 1; scale: 1; } 100% { opacity: 0; translate: 9px -9px; } }
+@keyframes vfx-aprendiz-swift { 0%, 35% { opacity: 0; scale: .2 1; } 56% { opacity: 1; scale: 1 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes vfx-aprendiz-line { 0%, 35% { opacity: 0; scale: 0 1; } 75% { opacity: 1; scale: 1 1; } 100% { opacity: 0; } }
+@keyframes vfx-aprendiz-tip { 0%, 35% { opacity: 0; left: var(--skill-source-x, 25%); } 45% { opacity: 1; } 75% { opacity: 1; left: var(--vfx-aprendiz-end-x); } 100% { opacity: 0; } }
+@keyframes vfx-aprendiz-feather { 0%, 35% { opacity: 0; left: var(--skill-source-x, 25%); } 45% { opacity: 1; } 75% { opacity: 1; left: var(--vfx-aprendiz-end-x); } 100% { opacity: 0; } }
+@keyframes vfx-aprendiz-ring { 0%, 74% { opacity: 0; scale: .35; } 82% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.7; } }
+@keyframes vfx-aprendiz-ray { 0%, 35% { opacity: 0; scale: 0 1; } 75% { opacity: 1; scale: 1 1; } 100% { opacity: 0; } }
+@keyframes vfx-aprendiz-halo { 0%, 74% { opacity: 0; scale: .65; } 84% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.18; } }
+@keyframes vfx-aprendiz-brutal { 0%, 35% { opacity: 0; transform: translate(-90%, -95%) rotate(-50deg) scale(.6); } 75% { opacity: 1; transform: translate(-50%, -50%) rotate(38deg) scale(1); } 100% { opacity: 0; } }
+@keyframes vfx-aprendiz-chip { 0%, 74% { opacity: 0; scale: .25; } 80% { opacity: 1; scale: 1; } 100% { opacity: 0; translate: 10px 10px; } }
+@keyframes vfx-aprendiz-dart { 0%, 35% { opacity: 0; left: var(--skill-source-x, 25%); transform: translate(-50%, -50%) scale(.35); } 45% { opacity: 1; } 75% { opacity: 1; left: var(--vfx-aprendiz-end-x); transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25); } }
+@keyframes vfx-aprendiz-dot { 0%, 40% { opacity: 0; } 60% { opacity: 1; } 100% { opacity: 0; translate: 14px 0; } }
+@keyframes vfx-aprendiz-hammer { 0%, 35% { opacity: 0; transform: translate(-50%, -240%) rotate(-35deg); } 75% { opacity: 1; transform: translate(-50%, -100%) rotate(-15deg); } 100% { opacity: 0; } }
+@keyframes vfx-aprendiz-shock { 0%, 74% { opacity: 0; scale: .3 1; } 82% { opacity: 1; scale: 1 1; } 100% { opacity: 0; scale: 1.3 1; } }
+@keyframes vfx-aprendiz-dust { 0%, 74% { opacity: 0; } 82% { opacity: 1; } 100% { opacity: 0; translate: 12px -7px; } }
+
+.adventure-still .vfx-aprendiz > span { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .vfx-aprendiz > span { animation: none !important; }
+}

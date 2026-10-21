@@ -1,0 +1,329 @@
+.vfx-arqueiro {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  --vfx-arqueiro-source-x: var(--skill-source-x, 25%);
+  --vfx-arqueiro-target-x: var(--skill-target-x, 75%);
+  --vfx-arqueiro-line-y: var(--skill-line-y, 62%);
+  --vfx-arqueiro-duration: 1040ms;
+  --vfx-arqueiro-color: #f7d999;
+}
+
+.vfx-arqueiro--self { --vfx-arqueiro-target-x: var(--skill-source-x, 25%); }
+.vfx-arqueiro--a_fogo, .vfx-arqueiro--a_fogo_var { --vfx-arqueiro-color: #ff8539; }
+.vfx-arqueiro--a_gelo, .vfx-arqueiro--a_gelo_var { --vfx-arqueiro-color: #8ce7ff; }
+.vfx-arqueiro--a_vetor { --vfx-arqueiro-color: #f1e3ae; }
+.vfx-arqueiro--a_pre_var { --vfx-arqueiro-color: #a586f7; }
+
+.vfx-arqueiro__draw,
+.vfx-arqueiro__flight,
+.vfx-arqueiro__impact,
+.vfx-arqueiro__sight {
+  position: absolute;
+  top: var(--vfx-arqueiro-line-y);
+  pointer-events: none;
+}
+
+.vfx-arqueiro__draw {
+  left: var(--vfx-arqueiro-source-x);
+  width: 34px;
+  height: 54px;
+  border: 2px solid var(--vfx-arqueiro-color);
+  border-right-color: transparent;
+  border-radius: 50%;
+  box-shadow: -3px 0 10px color-mix(in srgb, var(--vfx-arqueiro-color) 50%, transparent);
+  animation: vfx-arqueiro-draw var(--vfx-arqueiro-duration) ease-out both;
+}
+
+.vfx-arqueiro__draw::after {
+  content: '';
+  position: absolute;
+  inset: 4px 12px 4px auto;
+  width: 1px;
+  background: var(--vfx-arqueiro-color);
+  transform: skewX(-15deg);
+}
+
+.vfx-arqueiro__draw--ice { border-radius: 14% 66% 18% 60%; }
+.vfx-arqueiro__draw--volley { width: 42px; height: 63px; border-style: double; border-width: 4px; }
+.vfx-arqueiro__draw--storm { width: 45px; height: 45px; border-radius: 25%; transform: translate(-50%, -50%) rotate(45deg); }
+
+.vfx-arqueiro__flight {
+  left: var(--vfx-arqueiro-source-x);
+  width: 56px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  animation: vfx-arqueiro-flight var(--vfx-arqueiro-duration) cubic-bezier(.12,.68,.22,1) both;
+}
+
+.vfx-arqueiro__shaft,
+.vfx-arqueiro__head,
+.vfx-arqueiro__fletching,
+.vfx-arqueiro__flame-tail,
+.vfx-arqueiro__ice-shaft,
+.vfx-arqueiro__ice-tip,
+.vfx-arqueiro__ice-dust,
+.vfx-arqueiro__needle,
+.vfx-arqueiro__void-core,
+.vfx-arqueiro__void-echo { position: absolute; display: block; }
+
+/* A short, straight arrow and a compact target mark. */
+.vfx-arqueiro__flight--plain { height: 12px; }
+.vfx-arqueiro__flight--plain .vfx-arqueiro__shaft {
+  left: 5px; top: 5px; width: 42px; height: 2px; background: #f7d999;
+  box-shadow: 0 0 4px #f7d999;
+}
+.vfx-arqueiro__flight--plain .vfx-arqueiro__head {
+  right: 0; top: 1px; width: 10px; height: 10px; background: #fff1c8;
+  clip-path: polygon(0 0, 100% 50%, 0 100%, 38% 50%);
+}
+.vfx-arqueiro__fletching {
+  left: 0; top: 1px; width: 13px; height: 10px; border-left: 2px solid #f7d999;
+  background: #dbb868; clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.vfx-arqueiro__impact {
+  left: var(--vfx-arqueiro-target-x);
+  width: 50px; height: 50px;
+  transform: translate(-50%, -50%);
+  animation: vfx-arqueiro-impact var(--vfx-arqueiro-duration) ease-out both;
+}
+.vfx-arqueiro__impact--plain {
+  width: 35px; height: 35px; border: 2px solid #f7d999;
+  border-radius: 50%; box-shadow: 0 0 8px #f7d99988;
+}
+.vfx-arqueiro__mark {
+  position: absolute; top: 50%; left: 50%; width: 21px; height: 1px;
+  background: #fff1c8; transform: translate(-50%, -50%) rotate(-28deg);
+}
+
+/* Fire arrow: a ragged tail and five rising flame teeth. */
+.vfx-arqueiro__flight--fire .vfx-arqueiro__shaft {
+  left: 12px; top: 9px; width: 34px; height: 3px; background: #ffb454;
+  box-shadow: 0 0 7px #ff7e29;
+}
+.vfx-arqueiro__flight--fire .vfx-arqueiro__head {
+  right: 0; top: 3px; width: 14px; height: 14px; background: #fff0a2;
+  clip-path: polygon(0 0, 100% 50%, 0 100%, 34% 50%);
+  filter: drop-shadow(0 0 4px #ff6d22);
+}
+.vfx-arqueiro__flame-tail {
+  left: -8px; top: 0; width: 29px; height: 20px;
+  background: linear-gradient(90deg, transparent, #e8471d 45%, #ffd15e);
+  clip-path: polygon(0 47%, 28% 7%, 46% 43%, 65% 0, 100% 50%, 55% 100%, 40% 64%, 17% 94%);
+  filter: drop-shadow(0 0 5px #ff6d22);
+}
+.vfx-arqueiro__impact--fire > span,
+.vfx-arqueiro__impact--rain > span {
+  position: absolute; bottom: 8px; left: calc(50% - 5px); width: 11px; height: 35px;
+  background: linear-gradient(#ffe493, #ff7c2b 55%, #d53b1d);
+  clip-path: polygon(50% 0, 85% 36%, 100% 72%, 58% 100%, 6% 76%, 25% 40%);
+  transform-origin: 50% 100%;
+}
+.vfx-arqueiro__impact--fire > span:nth-child(1) { transform: rotate(-62deg) scale(.65); }
+.vfx-arqueiro__impact--fire > span:nth-child(2) { transform: rotate(-30deg) scale(.85); }
+.vfx-arqueiro__impact--fire > span:nth-child(4) { transform: rotate(34deg) scale(.8); }
+.vfx-arqueiro__impact--fire > span:nth-child(5) { transform: rotate(65deg) scale(.6); }
+
+/* Ice arrow: a long faceted tip and a three-axis snow crystal. */
+.vfx-arqueiro__flight--ice { width: 64px; }
+.vfx-arqueiro__ice-shaft {
+  left: 5px; top: 8px; width: 43px; height: 4px;
+  background: linear-gradient(#f2ffff, #5ac6ed); clip-path: polygon(0 50%, 15% 0, 100% 0, 100% 100%, 15% 100%);
+  box-shadow: 0 0 7px #8ce7ff;
+}
+.vfx-arqueiro__ice-tip {
+  right: 0; top: 1px; width: 21px; height: 18px;
+  background: linear-gradient(145deg, #ffffff, #6bd8f4 68%, #3090c2);
+  clip-path: polygon(0 50%, 32% 0, 100% 50%, 32% 100%);
+  filter: drop-shadow(0 0 4px #8ce7ff);
+}
+.vfx-arqueiro__ice-dust {
+  left: -12px; top: 7px; width: 12px; height: 5px;
+  border-top: 2px dotted #c6f5ff; border-bottom: 1px dotted #80d9f6;
+}
+.vfx-arqueiro__impact--ice > span,
+.vfx-arqueiro__impact--storm > span {
+  position: absolute; left: 50%; top: 50%; width: 3px; height: 50px;
+  border-radius: 2px; background: #d2f8ff; box-shadow: 0 0 8px #6bd8f4;
+  transform: translate(-50%, -50%) rotate(var(--vfx-arqueiro-ray));
+}
+.vfx-arqueiro__impact--ice > span:nth-child(1), .vfx-arqueiro__impact--storm > span:nth-child(1) { --vfx-arqueiro-ray: 0deg; }
+.vfx-arqueiro__impact--ice > span:nth-child(2), .vfx-arqueiro__impact--storm > span:nth-child(2) { --vfx-arqueiro-ray: 60deg; }
+.vfx-arqueiro__impact--ice > span:nth-child(3), .vfx-arqueiro__impact--storm > span:nth-child(3) { --vfx-arqueiro-ray: 120deg; }
+.vfx-arqueiro__impact--ice > span::after,
+.vfx-arqueiro__impact--storm > span::after {
+  content: ''; position: absolute; left: -6px; top: 10px; width: 13px; height: 13px;
+  border-left: 2px solid #d2f8ff; border-right: 2px solid #d2f8ff; transform: rotate(45deg);
+}
+
+/* Piercing shot: sight first, then a thin needle and an axial cut. */
+.vfx-arqueiro__sight {
+  left: var(--vfx-arqueiro-target-x); width: 56px; height: 56px;
+  border: 1px solid #f1e3ae; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: vfx-arqueiro-sight var(--vfx-arqueiro-duration) ease-out both;
+}
+.vfx-arqueiro__sight > span:first-child {
+  position: absolute; inset: 11px; border: 1px dashed #fff2be; border-radius: 50%;
+}
+.vfx-arqueiro__sight > span:last-child {
+  position: absolute; left: -8px; right: -8px; top: 50%; height: 1px;
+  background: linear-gradient(90deg, #f1e3ae 0 18%, transparent 18% 82%, #f1e3ae 82%);
+}
+.vfx-arqueiro__flight--pierce { width: 72px; }
+.vfx-arqueiro__needle {
+  top: 8px; left: 0; width: 72px; height: 4px;
+  background: linear-gradient(90deg, transparent, #dbbf79 48%, #fff9d4);
+  clip-path: polygon(0 45%, 82% 30%, 100% 50%, 82% 70%);
+  box-shadow: 0 0 6px #fff0ac;
+}
+.vfx-arqueiro__impact--pierce { width: 62px; height: 28px; }
+.vfx-arqueiro__impact--pierce > span:first-child {
+  position: absolute; top: 13px; left: -12px; width: 86px; height: 2px;
+  background: linear-gradient(90deg, transparent, #fff4c6 35% 65%, transparent);
+  box-shadow: 0 0 8px #edce83;
+}
+.vfx-arqueiro__impact--pierce > span:last-child {
+  position: absolute; top: 2px; left: 25px; width: 10px; height: 24px;
+  border-left: 2px solid #e8d6a1; border-right: 2px solid #e8d6a1;
+  transform: skewX(-22deg);
+}
+
+/* Fire volley: five separated diagonal bolts, not a recolored single shot. */
+.vfx-arqueiro__rain,
+.vfx-arqueiro__storm {
+  position: absolute; left: var(--vfx-arqueiro-target-x); top: var(--vfx-arqueiro-line-y);
+  width: 1px; height: 1px;
+}
+.vfx-arqueiro__rain > span {
+  position: absolute; left: var(--vfx-arqueiro-offset); top: 0;
+  width: 8px; height: 32px;
+  background: linear-gradient(180deg, #fff4b1, #ff9a39 48%, #cc431a);
+  clip-path: polygon(40% 0, 100% 60%, 50% 100%, 0 60%);
+  filter: drop-shadow(0 0 5px #ff7026);
+  animation: vfx-arqueiro-rain var(--vfx-arqueiro-duration) ease-in both;
+}
+.vfx-arqueiro__rain > span:nth-child(1) { --vfx-arqueiro-offset: -42px; animation-delay: 0ms; }
+.vfx-arqueiro__rain > span:nth-child(2) { --vfx-arqueiro-offset: -20px; animation-delay: 35ms; }
+.vfx-arqueiro__rain > span:nth-child(3) { --vfx-arqueiro-offset: 0px; animation-delay: 70ms; }
+.vfx-arqueiro__rain > span:nth-child(4) { --vfx-arqueiro-offset: 20px; animation-delay: 105ms; }
+.vfx-arqueiro__rain > span:nth-child(5) { --vfx-arqueiro-offset: 42px; animation-delay: 140ms; }
+.vfx-arqueiro__impact--rain { width: 115px; height: 50px; }
+.vfx-arqueiro__impact--rain > span { bottom: 4px; height: 27px; }
+.vfx-arqueiro__impact--rain > span:nth-child(1) { left: 18px; transform: rotate(-24deg); }
+.vfx-arqueiro__impact--rain > span:nth-child(2) { left: 52px; height: 38px; }
+.vfx-arqueiro__impact--rain > span:nth-child(3) { left: 88px; transform: rotate(25deg); }
+
+/* Ice storm: six shards orbit inward; the center crystal follows the convergence. */
+.vfx-arqueiro__storm::before {
+  content: ''; position: absolute; left: 0; top: 0; width: 88px; height: 88px;
+  border: 2px dashed #9beaff; border-radius: 50%;
+  box-shadow: 0 0 9px #77cfe9;
+  animation: vfx-arqueiro-storm-ring var(--vfx-arqueiro-duration) ease-out both;
+}
+.vfx-arqueiro__storm > span {
+  position: absolute; top: 0; left: 0; width: 12px; height: 24px;
+  background: linear-gradient(120deg, #ffffff, #64ccea);
+  clip-path: polygon(50% 0, 100% 42%, 50% 100%, 0 42%);
+  filter: drop-shadow(0 0 5px #8ce7ff);
+  animation: vfx-arqueiro-storm-shard var(--vfx-arqueiro-duration) ease-in-out both;
+}
+.vfx-arqueiro__storm > span:nth-child(1) { --vfx-arqueiro-angle: 0deg; }
+.vfx-arqueiro__storm > span:nth-child(2) { --vfx-arqueiro-angle: 60deg; }
+.vfx-arqueiro__storm > span:nth-child(3) { --vfx-arqueiro-angle: 120deg; }
+.vfx-arqueiro__storm > span:nth-child(4) { --vfx-arqueiro-angle: 180deg; }
+.vfx-arqueiro__storm > span:nth-child(5) { --vfx-arqueiro-angle: 240deg; }
+.vfx-arqueiro__storm > span:nth-child(6) { --vfx-arqueiro-angle: 300deg; }
+.vfx-arqueiro__impact--storm { width: 70px; height: 70px; }
+.vfx-arqueiro__impact--storm > span { height: 65px; }
+
+/* Void shot: a dark dart with two echoes and an iris instead of a bright flash. */
+.vfx-arqueiro__sight--void { border-color: #9f82dc; border-radius: 36% 64% 50% 50%; }
+.vfx-arqueiro__sight--void > span:first-child { border-color: #b699ef; border-style: solid; }
+.vfx-arqueiro__sight--void > span:last-child { background: linear-gradient(90deg, #a586f7 0 18%, transparent 18% 82%, #a586f7 82%); }
+.vfx-arqueiro__flight--void { width: 88px; }
+.vfx-arqueiro__void-core {
+  left: 10px; top: 5px; width: 76px; height: 10px;
+  background: linear-gradient(90deg, transparent, #4c2b76 45%, #c2a5ff 85%, #412267);
+  clip-path: polygon(0 50%, 20% 12%, 84% 20%, 100% 50%, 84% 80%, 20% 88%);
+  filter: drop-shadow(0 0 5px #9b70ed);
+}
+.vfx-arqueiro__void-echo {
+  left: -12px; top: 1px; width: 50px; height: 18px;
+  border-top: 2px solid #9570d7; border-bottom: 2px solid #9570d7;
+  clip-path: polygon(0 50%, 100% 0, 86% 50%, 100% 100%);
+}
+.vfx-arqueiro__impact--void {
+  width: 65px; height: 65px; border: 3px solid #ab83eb;
+  border-radius: 50%; background: radial-gradient(ellipse, #271539 0 24%, #573980 45%, transparent 68%);
+  box-shadow: 0 0 11px #784eb0;
+}
+.vfx-arqueiro__impact--void > span:first-child {
+  position: absolute; inset: 8px; border: 2px solid #d4bbff; border-radius: 50% 40% 50% 40%;
+}
+.vfx-arqueiro__impact--void > span:last-child {
+  position: absolute; left: -28px; right: -28px; top: 29px; height: 2px;
+  background: linear-gradient(90deg, transparent, #b08ce8, transparent);
+}
+
+@keyframes vfx-arqueiro-draw {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.65); }
+  12% { opacity: .9; }
+  35% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  43%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); }
+}
+@keyframes vfx-arqueiro-flight {
+  0%, 34% { left: var(--vfx-arqueiro-source-x); opacity: 0; }
+  35% { left: var(--vfx-arqueiro-source-x); opacity: 1; }
+  75% { left: var(--vfx-arqueiro-target-x); opacity: 1; }
+  80%, 100% { left: var(--vfx-arqueiro-target-x); opacity: 0; }
+}
+@keyframes vfx-arqueiro-impact {
+  0%, 74% { opacity: 0; transform: translate(-50%, -50%) scale(.25); }
+  76% { opacity: .9; }
+  90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+}
+@keyframes vfx-arqueiro-sight {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.5) rotate(-25deg); }
+  20% { opacity: .9; }
+  35% { opacity: 1; transform: translate(-50%, -50%) scale(.7) rotate(0); }
+  48%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.55); }
+}
+@keyframes vfx-arqueiro-rain {
+  0%, 34% { opacity: 0; transform: translate(-34px, -92px) rotate(-27deg) scale(.5); }
+  37% { opacity: 1; }
+  75% { opacity: 1; transform: translate(0, 0) rotate(-27deg) scale(1); }
+  82%, 100% { opacity: 0; transform: translate(4px, 5px) rotate(-27deg); }
+}
+@keyframes vfx-arqueiro-storm-ring {
+  0%, 34% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0); }
+  40% { opacity: .75; }
+  75% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(130deg); }
+  85%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.5) rotate(175deg); }
+}
+@keyframes vfx-arqueiro-storm-shard {
+  0%, 34% { opacity: 0; transform: rotate(var(--vfx-arqueiro-angle)) translateY(-65px) scale(.5); }
+  38% { opacity: 1; }
+  75% { opacity: 1; transform: rotate(calc(var(--vfx-arqueiro-angle) + 145deg)) translateY(-26px) scale(1); }
+  82%, 100% { opacity: 0; transform: rotate(calc(var(--vfx-arqueiro-angle) + 175deg)) translateY(-5px) scale(.5); }
+}
+
+/* A still scene or reduced-motion preference shows the hit silhouette without travel or flicker. */
+.adventure-still .vfx-arqueiro *,
+.adventure-still .vfx-arqueiro *::before,
+.adventure-still .vfx-arqueiro *::after { animation: none !important; transition: none !important; }
+.adventure-still .vfx-arqueiro__draw,
+.adventure-still .vfx-arqueiro__sight,
+.adventure-still .vfx-arqueiro__rain,
+.adventure-still .vfx-arqueiro__storm { display: none; }
+.adventure-still .vfx-arqueiro__flight { left: var(--vfx-arqueiro-target-x); opacity: 1; }
+.adventure-still .vfx-arqueiro__impact { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .vfx-arqueiro *, .vfx-arqueiro *::before, .vfx-arqueiro *::after { animation: none !important; transition: none !important; }
+  .vfx-arqueiro__draw, .vfx-arqueiro__sight, .vfx-arqueiro__rain, .vfx-arqueiro__storm { display: none; }
+  .vfx-arqueiro__flight { left: var(--vfx-arqueiro-target-x); opacity: 1; }
+  .vfx-arqueiro__impact { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
