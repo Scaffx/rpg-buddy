@@ -1,0 +1,9 @@
+.adventure-scenery { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.adventure-scenery .realm-sky { fill: var(--realm-sky, #e0eedc); }
+.adventure-scenery .realm-sun { fill: var(--realm-sun, #f8e7ab); }
+.adventure-scenery .realm-clouds { stroke: var(--realm-clouds, #f8fbeb); stroke-width: 11; opacity: .65; }
+.scenery-deserto { --realm-sky: #f5e1bd; --realm-sun: #ffefb5; --realm-clouds: #fff4dc; }
+.scenery-aquatico { --realm-sky: #d5eae6; --realm-sun: #f9edbd; --realm-clouds: #f4f9e8; }
+.scenery-gelo { --realm-sky: #d9e5f0; --realm-sun: #f0f5ef; --realm-clouds: #f4f9f7; }
+.scenery-vulcanico { --realm-sky: #d8b1ad; --realm-sun: #f4cf9e; --realm-clouds: #ebcebd; }
+.scenery-ruinas { --realm-sky: #dce2db; --realm-sun: #ebe5bd; }

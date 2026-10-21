@@ -1,14 +1,14 @@
-export type AdventureBiome = 'floresta' | 'aquatico' | 'ruinas' | 'vulcanico';
+export type AdventureBiome = 'floresta' | 'aquatico' | 'ruinas' | 'vulcanico' | 'deserto' | 'gelo';
 export type AdventureHeroClass = 'guerreiro' | 'mago' | 'gatuno' | 'arqueiro' | 'clerico' | 'ferreiro' | 'aprendiz';
 
-const BIOMES: AdventureBiome[] = ['floresta', 'aquatico', 'ruinas', 'vulcanico'];
+const BIOMES: AdventureBiome[] = ['floresta', 'deserto', 'aquatico', 'gelo', 'vulcanico'];
 
 /** Biome is scenery only. The server decides the opponent, fight and rewards. */
 export function adventureBiome(stage: number, serverBiome?: string | null): AdventureBiome {
   const normalized = serverBiome?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const serverBiomes: Record<string, AdventureBiome> = { forest: 'floresta', aquatic: 'aquatico', ruins: 'ruinas', volcanic: 'vulcanico' };
-  if (normalized && serverBiomes[normalized]) return serverBiomes[normalized];
-  if (normalized === 'floresta' || normalized === 'aquatico' || normalized === 'ruinas' || normalized === 'vulcanico') return normalized;
+  const serverBiomes: Record<string, AdventureBiome> = { forest: 'floresta', aquatic: 'aquatico', ruins: 'ruinas', volcanic: 'vulcanico', desert: 'deserto', ice: 'gelo' };
+  if (normalized && Object.prototype.hasOwnProperty.call(serverBiomes, normalized)) return serverBiomes[normalized];
+  if (normalized === 'floresta' || normalized === 'aquatico' || normalized === 'ruinas' || normalized === 'vulcanico' || normalized === 'deserto' || normalized === 'gelo') return normalized;
   return BIOMES[Math.floor((Math.max(1, stage) - 1) / 10) % BIOMES.length];
 }
 
@@ -24,10 +24,12 @@ export function adventureHeroClass(starter?: string | null, displayName?: string
 }
 
 export const BIOME_LABELS: Record<AdventureBiome, string> = {
-  floresta: 'Floresta',
-  aquatico: 'Costa',
+  floresta: 'Reino normal',
+  aquatico: 'Reino da água',
   ruinas: 'Ruínas',
-  vulcanico: 'Vulcão',
+  vulcanico: 'Reino do fogo',
+  deserto: 'Reino do deserto',
+  gelo: 'Reino de gelo',
 };
 
 export function enemyVisualVariant(stage: number, isBoss: boolean): 0 | 1 | 2 | 3 {

@@ -121,6 +121,21 @@
 .vfx-creatures--magma .vfx-creatures__strike { clip-path: polygon(15% 0,83% 8%,100% 45%,82% 100%,12% 90%,0 35%); background: linear-gradient(130deg,#554147 15%,var(--creature-ink) 34%,#594347 57%,#ffca6d 70%); }
 .vfx-creatures--magma .vfx-creatures__impact { border-style: double; border-width: 6px; border-radius: 20%; }
 
+.vfx-creatures--sting { --creature-ink: #d4a264; --creature-glow: #f2dab2; }
+.vfx-creatures--sting .vfx-creatures__strike { clip-path: polygon(0 34%,65% 34%,65% 0,100% 50%,65% 100%,65% 66%,0 66%); }
+.vfx-creatures--sand { --creature-ink: #dab37c; --creature-glow: #f8dfab; }
+.vfx-creatures--sand .vfx-creatures__strike { border-radius: 50%; background: radial-gradient(circle at 25% 25%,var(--creature-ink) 0 16%,transparent 18%),radial-gradient(circle at 75% 60%,var(--creature-ink) 0 20%,transparent 22%),radial-gradient(circle at 25% 90%,var(--creature-ink) 0 15%,transparent 17%); }
+.vfx-creatures--shell { --creature-ink: #c39b5b; --creature-glow: #edd4a1; }
+.vfx-creatures--shell .vfx-creatures__strike { border: 3px solid #8a704f; border-radius: 48% 48% 35% 35%; }
+.vfx-creatures--shell .vfx-creatures__strike::after { inset: 0 50% 0 0; border-right: 2px solid #8a704f; }
+.vfx-creatures--snow-bite { --creature-ink: #e7f5f1; --creature-glow: #9bbfd6; }
+.vfx-creatures--snow-bite .vfx-creatures__strike { clip-path: polygon(0 0,100% 0,83% 100%,62% 30%,42% 100%,25% 30%,8% 100%); }
+.vfx-creatures--snow-wing { --creature-ink: #d8eaf0; --creature-glow: #aac7df; }
+.vfx-creatures--snow-wing .vfx-creatures__strike { clip-path: polygon(0 4%,48% 45%,100% 4%,85% 83%,67% 64%,50% 100%,33% 64%,14% 83%); }
+.vfx-creatures--crystal { --creature-ink: #bce5ee; --creature-glow: #ecfff9; }
+.vfx-creatures--crystal .vfx-creatures__strike { clip-path: polygon(25% 0,75% 0,100% 35%,67% 100%,30% 100%,0 35%); background: linear-gradient(120deg,#e8faf4 42%,#91bed5 43% 65%,#c7e9ef 66%); }
+.vfx-creatures--crystal .vfx-creatures__impact { border-radius: 15%; transform: translate(-50%,-50%) rotate(30deg); }
+
 @keyframes creature-strike {
   0%, 15% { left: var(--creature-source); opacity: 0; scale: .65; }
   24%, 42% { opacity: 1; scale: 1; }

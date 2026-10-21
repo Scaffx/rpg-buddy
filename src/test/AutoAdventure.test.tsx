@@ -42,6 +42,7 @@ afterEach(() => {
   mutation.mutateAsync.mockReset();
   mutation.isPending = false;
   mutation.isError = false;
+  vi.useRealTimers();
 });
 
 describe('AutoAdventure', () => {
@@ -175,6 +176,41 @@ describe('AutoAdventure', () => {
     expect(page.textContent).toContain('Em combate · Mago');
     expect(page.querySelector('[aria-label="Javali: 88 de 100 HP"]')).not.toBeNull();
     expect(page.querySelector('[aria-label="Murillo: 100 de 100 HP"]')).not.toBeNull();
+  });
+
+  it('derives reaction age from the server clock without restarting on its 250ms tick', () => {
+    vi.useFakeTimers();
+    const now = Date.parse('2026-10-21T12:00:00Z');
+    vi.setSystemTime(now);
+    mocked.value = {
+      data: {
+        stage: 2, server_now: new Date(now).toISOString(), next_at: new Date(now + 12_000).toISOString(),
+        boss: { stage: 10, id: 'boss', name: 'Chefe', icon: null }, encounters: [], gold_today: 0, loot_today: 0,
+        limits: { gold_per_day: 120, items_per_day: 2 },
+        battle: {
+          ...liveBattleTimes(), id: 'late-battle', stage: 2, attempt: 0, kind: 'normal', status: 'fighting',
+          enemy_name: 'Javali', enemy_icon: null, boss_id: null,
+          hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 91,
+          events: [{ at: new Date(now - 800).toISOString(), actor: 'hero', kind: 'attack', damage: 9,
+            skill_id: null, skill_name: null, hero_hp: 100, enemy_hp: 91 }],
+        },
+      },
+      dataUpdatedAt: now, isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
+    };
+    const page = renderAdventure();
+    const shell = page.querySelector('.adventure-fighter-enemy [data-hit-id]') as HTMLElement;
+    expect(shell?.style.animationDelay).toBe('-800ms');
+    act(() => vi.advanceTimersByTime(250));
+    expect(page.querySelector('.adventure-fighter-enemy [data-hit-id]')).toBe(shell);
+    expect(shell.style.animationDelay).toBe('-800ms');
+    act(() => vi.advanceTimersByTime(70));
+    expect(page.querySelector('[data-hit-id]')).toBeNull();
+    const prior = mocked.value as { data: { battle: { events: Array<{ at: string }>; id: string } } };
+    mocked.value = { ...prior, data: { ...prior.data, battle: { ...prior.data.battle,
+      id: 'late-battle-2', events: [{ ...prior.data.battle.events[0], at: new Date(now - 980).toISOString() }],
+    } } };
+    renderAdventure();
+    expect(page.querySelector('[data-hit-id]')).toBeNull();
   });
 
   it('após derrota na 10 permanece na 9 até solicitar avanço pela batalha atual', async () => {

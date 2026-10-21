@@ -77,6 +77,7 @@ describe('class skill animation coverage and server presentation', () => {
     const buttons = [...page.querySelectorAll('button')];
     act(() => buttons.find(button => button.textContent === 'Bola de FogoAtiva')!.click());
     expect(page.querySelector('#skill-gallery-selection')?.textContent).toBe('Bola de Fogo');
+    expect((page.querySelector('.adventure-fighter-enemy [data-hit-id]') as HTMLElement)?.style.animationDelay).toBe('0ms');
     const classSelect = page.querySelector('select')!;
     act(() => {classSelect.value='guerreiro';classSelect.dispatchEvent(new Event('change',{bubbles:true}));});
     expect(page.querySelector('[data-hero-class="guerreiro"]')).not.toBeNull();

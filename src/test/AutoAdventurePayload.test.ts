@@ -30,6 +30,15 @@ const snapshot: Json = {
 };
 
 describe('auto adventure RPC contract', () => {
+  it('accepts the five realm names and historical ruins without changing battle identity', () => {
+    const base = (snapshot as Record<string, Json>).battle as Record<string, Json>;
+    for (const biome of ['forest', 'desert', 'aquatic', 'ice', 'volcanic', 'ruins']) {
+      const battle = parseAdventureSnapshot({ ...snapshot, battle: { ...base, biome } }).battle;
+      expect(battle?.biome).toBe(biome);
+      expect(battle?.id).toBe(base.id);
+    }
+    expect(() => parseAdventureSnapshot({ ...snapshot, battle: { ...base, biome: 'invented' } })).toThrow('AUTO_ADVENTURE_INVALID_RESPONSE');
+  });
   it('accepts the boss identity and server clock from the composed RPC', () => {
     const parsed = parseAdventureSnapshot(snapshot);
     expect(parsed.encounters[0].boss_id).toBe(encounter.boss_id);

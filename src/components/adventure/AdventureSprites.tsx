@@ -1,50 +1,7 @@
-import type { AdventureBiome, AdventureHeroClass } from '@/lib/adventureVisuals';
+import type { AdventureBiome } from '@/lib/adventureVisuals';
+export { AdventureHeroSprite } from './heroes/AdventureHeroArtwork';
 
 type SpriteProps = { className?: string };
-
-const HERO_PALETTE: Record<AdventureHeroClass, { coat: string; shadow: string; trim: string; weapon: string }> = {
-  guerreiro: { coat: '#5b7fe0', shadow: '#3f59b5', trim: '#e8c66f', weapon: '#d6f1fc' },
-  mago: { coat: '#885fbc', shadow: '#583c89', trim: '#b8eeff', weapon: '#a7ecff' },
-  gatuno: { coat: '#5a6c7c', shadow: '#344453', trim: '#b8d5b0', weapon: '#d6e5ee' },
-  arqueiro: { coat: '#558c66', shadow: '#326747', trim: '#dfba75', weapon: '#e8c58d' },
-  clerico: { coat: '#e8e1c9', shadow: '#a99cb5', trim: '#edcb68', weapon: '#f6d978' },
-  ferreiro: { coat: '#aa654f', shadow: '#72453c', trim: '#e9b96d', weapon: '#cfdae4' },
-  aprendiz: { coat: '#79978d', shadow: '#425e5b', trim: '#dccb9c', weapon: '#b99368' },
-};
-
-/** Original 24px SVG character, using the mascot's palette and pixel grid. */
-export function AdventureHeroSprite({ heroClass, className }: SpriteProps & { heroClass: AdventureHeroClass }) {
-  const p = HERO_PALETTE[heroClass];
-  return <svg className={className} viewBox="0 0 32 32" shapeRendering="crispEdges" aria-hidden="true">
-    <g className="adventure-hero-legs">
-      <rect x="11" y="25" width="4" height="4" fill="#473d78" /><rect x="18" y="25" width="4" height="4" fill="#473d78" />
-      <rect x="10" y="29" width="6" height="2" fill="#241f38" /><rect x="17" y="29" width="6" height="2" fill="#241f38" />
-    </g>
-    <g className="adventure-hero-body">
-      <rect x="11" y="5" width="11" height="3" fill={heroClass === 'mago' ? p.shadow : '#e8c66f'} />
-      <rect x="9" y="8" width="15" height="2" fill={heroClass === 'gatuno' ? p.shadow : p.trim} />
-      <rect x="11" y="10" width="11" height="8" fill="#f4cfa2" /><rect x="19" y="12" width="2" height="2" fill="#2a2440" />
-      <rect x="10" y="18" width="14" height="8" fill={p.coat} /><rect x="10" y="19" width="3" height="7" fill={p.shadow} />
-      <rect x="16" y="18" width="2" height="7" fill={p.trim} />
-      <g className="adventure-hero-arms"><rect x="8" y="20" width="3" height="5" fill={p.shadow} /><rect x="23" y="20" width="3" height="5" fill={p.shadow} /></g>
-      <rect x="9" y="25" width="15" height="2" fill="#473d78" />
-      {heroClass === 'mago' && <><rect x="14" y="1" width="6" height="4" fill={p.shadow} /><rect x="11" y="5" width="12" height="2" fill={p.coat} /></>}
-      {heroClass === 'gatuno' && <rect x="10" y="10" width="13" height="3" fill={p.shadow} />}
-      {heroClass === 'arqueiro' && <><rect x="9" y="8" width="2" height="10" fill={p.shadow} /><rect x="8" y="12" width="3" height="3" fill={p.trim} /></>}
-      {heroClass === 'clerico' && <><rect x="13" y="20" width="7" height="2" fill={p.trim} /><rect x="16" y="18" width="2" height="7" fill={p.trim} /></>}
-      {heroClass === 'ferreiro' && <><rect x="15" y="19" width="7" height="6" fill="#695149" /><rect x="15" y="24" width="7" height="2" fill={p.trim} /></>}
-    </g>
-    <g className="adventure-hero-weapon">
-      {heroClass === 'aprendiz' && <><rect x="26" y="13" width="2" height="15" fill={p.weapon} /><rect x="25" y="10" width="4" height="5" fill="#c7a374" /></>}
-      {heroClass === 'guerreiro' && <><rect x="25" y="5" width="2" height="17" fill={p.weapon} /><rect x="24" y="4" width="4" height="2" fill={p.weapon} /><rect x="22" y="20" width="8" height="2" fill={p.trim} /><rect x="25" y="22" width="2" height="5" fill="#795a43" /></>}
-      {heroClass === 'mago' && <><rect x="26" y="7" width="2" height="21" fill="#a67b60" /><rect x="24" y="5" width="6" height="5" fill={p.weapon} /><rect x="26" y="3" width="2" height="2" fill="#e9f9ff" /></>}
-      {heroClass === 'gatuno' && <><rect x="25" y="14" width="2" height="10" fill={p.weapon} /><rect x="23" y="13" width="5" height="2" fill={p.weapon} /><rect x="24" y="23" width="4" height="2" fill={p.trim} /></>}
-      {heroClass === 'arqueiro' && <><path d="M27 7 Q32 16 27 27" fill="none" stroke={p.weapon} strokeWidth="2" /><path d="M27 7 L27 27" stroke="#ecede0" strokeWidth="1" /><rect x="22" y="16" width="8" height="2" fill={p.trim} /></>}
-      {heroClass === 'clerico' && <><rect x="25" y="9" width="2" height="19" fill="#b59b77" /><rect x="23" y="8" width="6" height="6" fill={p.weapon} /><rect x="25" y="6" width="2" height="10" fill="#fff1ac" /></>}
-      {heroClass === 'ferreiro' && <><rect x="25" y="16" width="2" height="12" fill="#916b4e" /><rect x="22" y="9" width="8" height="8" fill={p.weapon} /><rect x="21" y="10" width="2" height="6" fill="#aab8c4" /></>}
-    </g>
-  </svg>;
-}
 
 type EnemyShape = { body: string; shadow: string; eye: string; kind: 'beast' | 'flying' | 'armored' | 'serpent' | 'boss' };
 const ENEMIES: Record<AdventureBiome, [EnemyShape, EnemyShape, EnemyShape, EnemyShape]> = {
@@ -59,6 +16,18 @@ const ENEMIES: Record<AdventureBiome, [EnemyShape, EnemyShape, EnemyShape, Enemy
     { body: '#7b8ec3', shadow: '#445890', eye: '#d9fffa', kind: 'flying' },
     { body: '#58bdb5', shadow: '#267e8f', eye: '#e5ffb5', kind: 'serpent' },
     { body: '#397b9d', shadow: '#244c7b', eye: '#c9ffec', kind: 'boss' },
+  ],
+  deserto: [
+    { body: '#deb36d', shadow: '#956348', eye: '#fff0c8', kind: 'beast' },
+    { body: '#deb36d', shadow: '#956348', eye: '#fff0c8', kind: 'flying' },
+    { body: '#deb36d', shadow: '#956348', eye: '#fff0c8', kind: 'armored' },
+    { body: '#deb36d', shadow: '#956348', eye: '#fff0c8', kind: 'boss' },
+  ],
+  gelo: [
+    { body: '#b4e0ec', shadow: '#587fa3', eye: '#e3fdff', kind: 'beast' },
+    { body: '#b4e0ec', shadow: '#587fa3', eye: '#e3fdff', kind: 'flying' },
+    { body: '#b4e0ec', shadow: '#587fa3', eye: '#e3fdff', kind: 'armored' },
+    { body: '#b4e0ec', shadow: '#587fa3', eye: '#e3fdff', kind: 'boss' },
   ],
   ruinas: [
     { body: '#afa895', shadow: '#666778', eye: '#dbf4ff', kind: 'armored' },

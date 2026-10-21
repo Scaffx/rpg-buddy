@@ -43,7 +43,7 @@ export type AdventureBattle = {
   kind: 'normal' | 'boss';
   status: 'fighting' | 'won' | 'defeated' | 'draw';
   replay: boolean;
-  biome: 'forest' | 'aquatic' | 'ruins' | 'volcanic';
+  biome: 'forest' | 'aquatic' | 'ruins' | 'volcanic' | 'desert' | 'ice';
   started_at: string;
   ends_at: string;
   hero_power: number;
@@ -186,7 +186,7 @@ function battle(value: Json): AdventureBattle {
   const row = object(value);
   if (row.kind !== 'normal' && row.kind !== 'boss') throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   if (row.status !== 'fighting' && row.status !== 'won' && row.status !== 'defeated' && row.status !== 'draw') throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
-  if (!['forest', 'aquatic', 'ruins', 'volcanic'].includes(String(row.biome))) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  if (!['forest', 'aquatic', 'ruins', 'volcanic', 'desert', 'ice'].includes(String(row.biome))) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   if (!Array.isArray(row.events)) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   return {
     id: string(row.id), stage: number(row.stage), attempt: number(row.attempt),

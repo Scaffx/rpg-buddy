@@ -3,12 +3,15 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { AdventureEnemySprite, AdventureHeroSprite } from './AdventureSprites';
 import { BIOME_LABELS, enemyVisualVariant, type AdventureBiome, type AdventureHeroClass } from '@/lib/adventureVisuals';
 import './adventureScene.css';
+import { AdventureScenery } from './AdventureScenery';
 import { findSkillAnimation } from './skills/registry';
 import { AdventureSkillEffect } from './skills/AdventureSkillEffect';
 import { findEnemyAnimation, resolveEnemyPresentation } from './enemies/registry';
 import { AdventureEnemyEffect } from './enemies/AdventureEnemyEffect';
 import { AdventureEnemyPortrait } from './enemies/AdventureEnemyPortrait';
 import { enemyActionMotion } from './enemies/enemyMotion';
+import { useDamageReaction } from './useDamageReaction';
+import './damageReaction.css';
 
 export type AdventureSceneAction = {
   id: string;
@@ -36,6 +39,7 @@ export type AdventureSceneFrame = {
   enemyMaxHp?: number | null;
   action?: AdventureSceneAction | null;
   animateAction?: boolean;
+  actionElapsedMs?: number;
 };
 
 type Props = {
@@ -109,10 +113,11 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
     return () => observer.disconnect();
   }, []);
   const reducedMotion = useReducedMotion();
-  const still = paused || reducedMotion;
+  const still = Boolean(paused || reducedMotion);
   const action = frame.status === 'fighting' ? frame.action : null;
   const blockedEnemy = action?.actor === 'enemy' && (action.effectNote === 'stunned' || action.damageMultiplier === 0);
   const visualAction = frame.animateAction === false || blockedEnemy ? null : action;
+  const hit = useDamageReaction(frame.action, frame.status === 'fighting' && frame.animateAction === true, still, frame.actionElapsedMs);
   const heroAttack = visualAction?.actor === 'hero';
   const enemyAttack = visualAction?.actor === 'enemy';
   const specific = heroAttack && visualAction?.kind === 'skill' ? findSkillAnimation(visualAction.skillId, heroClass) : null;
@@ -147,9 +152,7 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
       <ResourceBar label={enemyName} value={frame.enemyHp} max={frame.enemyMaxHp} resource="HP" />
     </div>
     <div ref={sceneRef} role="group" aria-label={`Cena da etapa ${stage}: ${heroName} e ${enemyName}`} className={`adventure-scene adventure-biome-${biome} ${motionClass}`} data-biome={biome} data-hero-class={heroClass} data-enemy-key={enemy?.key} data-status={frame.status} data-stage={stage} data-action-style={actionStyle}>
-    <div className="adventure-scene-sky" aria-hidden="true"><span className="adventure-sun" /><span className="adventure-cloud cloud-one" /><span className="adventure-cloud cloud-two" /></div>
-    <div className="adventure-scene-far" aria-hidden="true" /><div className="adventure-scene-middle" aria-hidden="true" />
-    <div className="adventure-scene-ground" aria-hidden="true"><span className="adventure-path" /><span className="adventure-ground-detail detail-one" /><span className="adventure-ground-detail detail-two" /><span className="adventure-ground-detail detail-three" /></div>
+    <AdventureScenery biome={biome} />
     <div className="adventure-scene-top">
       <span className="adventure-stage-badge">Etapa {stage} · {BIOME_LABELS[biome]}</span>
       {isBoss && <span className="adventure-boss-badge">Chefe</span>}
@@ -159,14 +162,20 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
         <motion.div key={heroAttack ? visualAction.id : 'hero-idle'} className={`adventure-sprite-track ${frame.status === 'exploring' ? 'adventure-exploring' : ''} ${frame.status === 'fighting' ? 'adventure-walking' : ''} ${heroAttack ? `adventure-${actionStyle}` : ''} ${frame.status === 'defeated' ? 'adventure-defeated' : ''}`}
             animate={still ? { x: 0, y: 0 } : heroMotion}
           transition={still ? { duration: 0 } : { duration: heroAttack ? 1.2 : frame.status === 'exploring' ? 4 : 1.5, ease: 'easeInOut', repeat: frame.status === 'exploring' ? Infinity : 0 }}>
-          <AdventureHeroSprite heroClass={heroClass} className="adventure-hero-svg" />
+          <div className="adventure-damage-shell" data-hit-target={hit?.target === 'hero' ? 'hero' : undefined} data-hit-id={hit?.target === 'hero' ? hit.id : undefined} style={hit?.target === 'hero' ? { animationDelay: `${-hit.elapsedMs}ms` } : undefined}>
+            <AdventureHeroSprite heroClass={heroClass} className="adventure-hero-svg" />
+            {hit?.target === 'hero' && <span className="adventure-damage-marks" aria-hidden="true" />}
+          </div>
         </motion.div>
       </div>
       <div className="adventure-fighter adventure-fighter-enemy">
         <motion.div key={enemyAttack ? visualAction.id : 'enemy-idle'} className={`adventure-sprite-track ${enemyAttack ? `adventure-enemy-attack adventure-${actionStyle}` : ''} ${frame.status === 'defeated' ? 'adventure-enemy-victory' : ''}`}
             animate={still ? { x: 0, y: 0 } : enemyMotion}
           transition={still ? { duration: 0 } : { duration: 1.1, ease: 'easeInOut', repeat: 0 }}>
-          {enemy ? <AdventureEnemyPortrait enemyKey={enemy.key} className="adventure-enemy-svg" /> : <AdventureEnemySprite biome={biome} variant={enemyVisualVariant(stage, isBoss)} className="adventure-enemy-svg" />}
+          <div className="adventure-damage-shell" data-hit-target={hit?.target === 'enemy' ? 'enemy' : undefined} data-hit-id={hit?.target === 'enemy' ? hit.id : undefined} style={hit?.target === 'enemy' ? { animationDelay: `${-hit.elapsedMs}ms` } : undefined}>
+            {enemy ? <AdventureEnemyPortrait enemyKey={enemy.key} className="adventure-enemy-svg" /> : <AdventureEnemySprite biome={biome} variant={enemyVisualVariant(stage, isBoss)} className="adventure-enemy-svg" />}
+            {hit?.target === 'enemy' && <span className="adventure-damage-marks" aria-hidden="true" />}
+          </div>
         </motion.div>
       </div>
     </div>

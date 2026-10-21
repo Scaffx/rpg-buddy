@@ -1822,6 +1822,48 @@
       "slot": 2,
       "biome": 3,
       "resistances": {}
+    },
+    {
+      "icon": "🦂",
+      "name": "Escorpião das dunas",
+      "slot": 0,
+      "biome": 4,
+      "resistances": {}
+    },
+    {
+      "icon": "🐍",
+      "name": "Cobra da areia",
+      "slot": 1,
+      "biome": 4,
+      "resistances": {}
+    },
+    {
+      "icon": "🪲",
+      "name": "Besouro do deserto",
+      "slot": 2,
+      "biome": 4,
+      "resistances": {}
+    },
+    {
+      "icon": "🐺",
+      "name": "Lobo da neve",
+      "slot": 0,
+      "biome": 5,
+      "resistances": {}
+    },
+    {
+      "icon": "🦉",
+      "name": "Coruja glacial",
+      "slot": 1,
+      "biome": 5,
+      "resistances": {}
+    },
+    {
+      "icon": "🧊",
+      "name": "Golem de gelo",
+      "slot": 2,
+      "biome": 5,
+      "resistances": {}
     }
   ]
 }

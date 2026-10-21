@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { EnemySpriteProps } from './types';
 import './creatures.css';
+import { REALM_CREATURE_ARTWORK } from './RealmCreaturesArtwork';
 
 function Eye({ x, y, size = 3 }: { x: number; y: number; size?: number }) {
   return <g stroke="none"><ellipse cx={x} cy={y} rx={size} ry={size + .7} fill="#293244"/><circle cx={x + .8} cy={y - 1} r="1" fill="#fff9e7"/></g>;
@@ -8,6 +9,7 @@ function Eye({ x, y, size = 3 }: { x: number; y: number; size?: number }) {
 
 /** Original artwork on a 64-unit grid, scaled by the sprite's static wrapper. */
 const CREATURE_ARTWORK: Record<string, ReactNode> = {
+  ...REALM_CREATURE_ARTWORK,
   'creature:0:0': <>
     <path fill="#758d9e" d="M16 38Q4 37 5 22L12 26 9 19Q23 25 23 39Z"/>
     <path fill="#647c91" d="M16 43 14 55Q10 62 19 60L25 48M38 45 39 57Q39 61 46 59L47 44"/>

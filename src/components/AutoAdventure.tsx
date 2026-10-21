@@ -142,7 +142,8 @@ export default function AutoAdventure() {
   const battle = displayedDefeat ?? currentBattle ?? null;
   const visibleEvents = battle?.events.filter(event => Date.parse(event.at) <= serverTime) ?? [];
   const lastEvent = visibleEvents.at(-1);
-  const activeEvent = lastEvent && serverTime - Date.parse(lastEvent.at) < 1350 ? lastEvent : null;
+  const actionElapsedMs = lastEvent ? serverTime - Date.parse(lastEvent.at) : undefined;
+  const activeEvent = lastEvent && actionElapsedMs !== undefined && actionElapsedMs >= 0 && actionElapsedMs < 1350 ? lastEvent : null;
   const isBoss = battle ? battle.kind === 'boss' : data.stage % 10 === 0;
   const stage = battle?.stage ?? data.stage;
   const holdingStage = data.stage;
@@ -165,6 +166,7 @@ export default function AutoAdventure() {
     enemyHp: battle ? lastEvent?.enemy_hp ?? battle.enemy_max_hp : null,
     enemyMaxHp: battle?.enemy_max_hp,
     animateAction: Boolean(activeEvent),
+    actionElapsedMs,
     action: lastEvent ? {
       id: `${battle!.id}-${visibleEvents.length - 1}`, actor: lastEvent.actor,
       kind: lastEvent.kind,

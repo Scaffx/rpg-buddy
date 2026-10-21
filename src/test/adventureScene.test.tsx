@@ -48,9 +48,9 @@ describe('cena 2D da aventura', () => {
       expect(scene.textContent).toContain('Chefe');
       expect(scene.querySelector('[aria-valuenow="32"]')).not.toBeNull();
     }
-    expect(adventureBiome(11)).toBe('aquatico');
-    expect(adventureBiome(21)).toBe('ruinas');
-    expect(adventureBiome(31)).toBe('vulcanico');
+    expect(adventureBiome(11)).toBe('deserto');
+    expect(adventureBiome(21)).toBe('aquatico');
+    expect(adventureBiome(31)).toBe('gelo');
     expect(adventureBiome(1, 'aquatic')).toBe('aquatico');
     expect(adventureBiome(1, 'ruins')).toBe('ruinas');
     expect(adventureBiome(1, 'volcanic')).toBe('vulcanico');
