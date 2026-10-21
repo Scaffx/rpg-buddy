@@ -1,0 +1,1214 @@
+[
+  {
+    "id": "a_golpe",
+    "name": "Golpe Improvisado",
+    "branch": "tronco",
+    "effect": {
+      "kind": "skill",
+      "power": 30,
+      "mpCost": 0,
+      "element": "neutro",
+      "cooldown": 1,
+      "effectType": "dano",
+      "pct_per_rank": 15
+    },
+    "nodeType": "skill",
+    "description": "Soco ou facada — ataque físico sem custo de MP. Suba de rank para bater mais forte.",
+    "tree": "aprendiz"
+  },
+  {
+    "id": "a_forca",
+    "name": "Livro de Força",
+    "branch": "forca",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "fisico",
+      "pct_per_rank": 4
+    },
+    "nodeType": "passive",
+    "description": "+4% de dano físico. Sinaliza o caminho do Guerreiro/Ferreiro.",
+    "tree": "aprendiz"
+  },
+  {
+    "id": "a_estudos",
+    "name": "Livro de Estudos",
+    "branch": "arcano",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "magico",
+      "pct_per_rank": 4
+    },
+    "nodeType": "passive",
+    "description": "+4% de dano mágico. Sinaliza o caminho do Mago.",
+    "tree": "aprendiz"
+  },
+  {
+    "id": "a_agilidade",
+    "name": "Livro de Agilidade",
+    "branch": "furtividade",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "fisico",
+      "pct_per_rank": 4
+    },
+    "nodeType": "passive",
+    "description": "+4% de dano físico. Sinaliza o caminho do Gatuno/Arqueiro.",
+    "tree": "aprendiz"
+  },
+  {
+    "id": "a_tiro",
+    "name": "Tiro Certeiro",
+    "branch": "tronco",
+    "effect": {
+      "kind": "skill",
+      "power": 32,
+      "mpCost": 0,
+      "element": "neutro",
+      "cooldown": 1,
+      "effectType": "dano",
+      "pct_per_rank": 10
+    },
+    "nodeType": "skill",
+    "description": "Disparo físico rápido, sem custo. Sobe de rank para mais dano.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_fogo",
+    "name": "Flecha Flamejante",
+    "branch": "fogo",
+    "effect": {
+      "kind": "skill",
+      "power": 50,
+      "mpCost": 6,
+      "element": "fogo",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Flecha em chamas: dano de fogo que aplica Queimadura.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_gelo",
+    "name": "Flecha de Gelo",
+    "branch": "gelo",
+    "effect": {
+      "kind": "skill",
+      "power": 50,
+      "mpCost": 6,
+      "element": "gelo",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Flecha gélida: dano de gelo que pode Congelar o alvo.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_vetor",
+    "name": "Disparo Perfurante",
+    "branch": "precisao",
+    "effect": {
+      "kind": "skill",
+      "power": 46,
+      "mpCost": 5,
+      "element": "neutro",
+      "cooldown": 2,
+      "effectType": "debuff"
+    },
+    "nodeType": "skill",
+    "description": "Flecha precisa que expõe a fraqueza do alvo (Vulnerável).",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_fogo_mod1",
+    "name": "Pontas Incandescentes",
+    "branch": "fogo",
+    "effect": {
+      "mod": "element_dmg",
+      "kind": "mod",
+      "element": "fogo",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano de Fogo por rank.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_gelo_mod1",
+    "name": "Pontas Glaciais",
+    "branch": "gelo",
+    "effect": {
+      "mod": "element_dmg",
+      "kind": "mod",
+      "element": "gelo",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano de Gelo por rank.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_pre_mod1",
+    "name": "Olho de Águia",
+    "branch": "precisao",
+    "effect": {
+      "mod": "vs_status_dmg",
+      "kind": "mod",
+      "status": "vulnerable",
+      "pct_per_rank": 10
+    },
+    "nodeType": "passive",
+    "description": "+10% de dano contra alvos Vulneráveis por rank.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_fogo_mod2",
+    "name": "Incêndio Persistente",
+    "branch": "fogo",
+    "effect": {
+      "mod": "status_dur",
+      "kind": "mod",
+      "status": "burning",
+      "turns_per_rank": 1
+    },
+    "nodeType": "passive",
+    "description": "Queimadura dura +1 turno por rank.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_gelo_mod2",
+    "name": "Frio Profundo",
+    "branch": "gelo",
+    "effect": {
+      "mod": "status_dur",
+      "kind": "mod",
+      "status": "frozen",
+      "turns_per_rank": 1
+    },
+    "nodeType": "passive",
+    "description": "Congelado dura +1 turno por rank.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_pre_mod2",
+    "name": "Mira Letal",
+    "branch": "precisao",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "fisico",
+      "pct_per_rank": 7
+    },
+    "nodeType": "passive",
+    "description": "+7% de dano físico por rank.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_fogo_var",
+    "name": "Chuva de Fogo",
+    "branch": "fogo",
+    "effect": {
+      "aoe": true,
+      "kind": "variant",
+      "bonus_pct": 45,
+      "transform": "chuva_fogo"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Flecha Flamejante numa saraivada de fogo em área.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_gelo_var",
+    "name": "Tempestade de Gelo",
+    "branch": "gelo",
+    "effect": {
+      "aoe": true,
+      "kind": "variant",
+      "bonus_pct": 45,
+      "transform": "tempestade_gelo"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Flecha de Gelo numa nevasca em área.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "a_pre_var",
+    "name": "Tiro do Vazio",
+    "branch": "precisao",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 50,
+      "transform": "tiro_vazio"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Disparo Perfurante num tiro penetrante de dano massivo.",
+    "tree": "arqueiro"
+  },
+  {
+    "id": "cinza_corte_flamejante",
+    "name": "Corte Flamejante",
+    "branch": "arte_arma",
+    "effect": {
+      "power": 46,
+      "mpCost": 5,
+      "element": "fogo",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Cinza de Guerra: golpe de fogo que aplica Queimadura. Requer ESPADA equipada.",
+    "tree": "cinzas"
+  },
+  {
+    "id": "cinza_lamina_glacial",
+    "name": "Lâmina Glacial",
+    "branch": "arte_arma",
+    "effect": {
+      "power": 44,
+      "mpCost": 5,
+      "element": "gelo",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Cinza de Guerra: imbui o golpe de gelo (pode Congelar). Requer arma de elemento GELO.",
+    "tree": "cinzas"
+  },
+  {
+    "id": "f_martelada",
+    "name": "Martelada",
+    "branch": "tronco",
+    "effect": {
+      "kind": "skill",
+      "power": 36,
+      "mpCost": 0,
+      "element": "neutro",
+      "cooldown": 1,
+      "effectType": "dano",
+      "pct_per_rank": 10
+    },
+    "nodeType": "skill",
+    "description": "Golpe físico pesado de martelo, sem custo. Sobe de rank para mais dano.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_chama",
+    "name": "Malho Flamejante",
+    "branch": "infusao",
+    "effect": {
+      "kind": "skill",
+      "power": 56,
+      "mpCost": 7,
+      "element": "fogo",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Martelo em brasa: golpe físico que aplica Queimadura.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_forja1",
+    "name": "Olho de Mestre",
+    "branch": "forja",
+    "effect": {
+      "kind": "craft",
+      "craft": "quality",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de qualidade nas armas forjadas por rank.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_impacto",
+    "name": "Impacto de Forja",
+    "branch": "forca",
+    "effect": {
+      "kind": "skill",
+      "power": 62,
+      "mpCost": 6,
+      "element": "neutro",
+      "cooldown": 3,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Golpe físico brutal que esmaga a guarda do inimigo.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "ferreiro_t1_pancada_atordoante",
+    "name": "Pancada Atordoante",
+    "branch": "forja",
+    "effect": {
+      "power": 48,
+      "mpCost": 7,
+      "element": "neutro",
+      "cooldown": 3,
+      "effectType": "cc"
+    },
+    "nodeType": "skill",
+    "description": "Golpe pesado que causa dano e ATORDOA o boss por um turno (perde a ação).",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_for_mod1",
+    "name": "Marreta Brutal",
+    "branch": "forca",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "fisico",
+      "pct_per_rank": 7
+    },
+    "nodeType": "passive",
+    "description": "+7% de dano físico por rank.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_forja2",
+    "name": "Mão Firme",
+    "branch": "forja",
+    "effect": {
+      "kind": "craft",
+      "craft": "affix_chance",
+      "pct_per_rank": 6
+    },
+    "nodeType": "passive",
+    "description": "+6% de chance de afixo (bônus aleatório) por rank.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_inf_mod1",
+    "name": "Têmpera Flamejante",
+    "branch": "infusao",
+    "effect": {
+      "mod": "element_dmg",
+      "kind": "mod",
+      "element": "fogo",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano de Fogo por rank.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_for_mod2",
+    "name": "Forja Ardente",
+    "branch": "forca",
+    "effect": {
+      "mod": "vs_status_dmg",
+      "kind": "mod",
+      "status": "burning",
+      "pct_per_rank": 10
+    },
+    "nodeType": "passive",
+    "description": "+10% de dano contra alvos Queimando por rank.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_inf_mod2",
+    "name": "Brasa Duradoura",
+    "branch": "infusao",
+    "effect": {
+      "mod": "status_dur",
+      "kind": "mod",
+      "status": "burning",
+      "turns_per_rank": 1
+    },
+    "nodeType": "passive",
+    "description": "Queimadura dura +1 turno por rank.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_forja3",
+    "name": "Economia de Material",
+    "branch": "forja",
+    "effect": {
+      "kind": "craft",
+      "craft": "material_cost",
+      "pct_per_rank": 5
+    },
+    "nodeType": "passive",
+    "description": "-5% de custo de material por rank.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_for_var",
+    "name": "Bigorna",
+    "branch": "forca",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 50,
+      "transform": "bigorna"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Impacto de Forja num golpe demolidor de dano massivo.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "f_inf_var",
+    "name": "Forja Vulcânica",
+    "branch": "infusao",
+    "effect": {
+      "aoe": true,
+      "kind": "variant",
+      "bonus_pct": 45,
+      "transform": "forja_vulcanica"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Malho Flamejante numa erupção de fogo em área.",
+    "tree": "ferreiro"
+  },
+  {
+    "id": "gt_punhal",
+    "name": "Punhalada",
+    "branch": "tronco",
+    "effect": {
+      "kind": "skill",
+      "power": 32,
+      "mpCost": 0,
+      "element": "neutro",
+      "cooldown": 1,
+      "effectType": "dano",
+      "pct_per_rank": 10
+    },
+    "nodeType": "skill",
+    "description": "Ataque físico rápido, sem custo. Sobe de rank para mais dano.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_furtivo",
+    "name": "Golpe Furtivo",
+    "branch": "furtividade",
+    "effect": {
+      "kind": "skill",
+      "power": 46,
+      "mpCost": 5,
+      "element": "neutro",
+      "cooldown": 2,
+      "effectType": "debuff"
+    },
+    "nodeType": "skill",
+    "description": "Ataque pelas costas que MARCA o alvo (Vulnerável: +dano recebido).",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_retalhar",
+    "name": "Retalhar",
+    "branch": "sangramento",
+    "effect": {
+      "kind": "skill",
+      "power": 46,
+      "mpCost": 5,
+      "element": "neutro",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Cortes rápidos que provocam Sangramento (DoT crescente).",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_veneno",
+    "name": "Lâmina Envenenada",
+    "branch": "veneno",
+    "effect": {
+      "kind": "skill",
+      "power": 46,
+      "mpCost": 6,
+      "element": "natureza",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Golpe peçonhento que aplica Veneno (dano por turno).",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_fur_mod1",
+    "name": "Caçador de Brechas",
+    "branch": "furtividade",
+    "effect": {
+      "mod": "vs_status_dmg",
+      "kind": "mod",
+      "status": "vulnerable",
+      "pct_per_rank": 10
+    },
+    "nodeType": "passive",
+    "description": "+10% de dano contra alvos Vulneráveis por rank.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_sang_mod1",
+    "name": "Hemorragia",
+    "branch": "sangramento",
+    "effect": {
+      "mod": "vs_status_dmg",
+      "kind": "mod",
+      "status": "bleeding",
+      "pct_per_rank": 10
+    },
+    "nodeType": "passive",
+    "description": "+10% de dano contra alvos Sangrando por rank.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_ven_mod1",
+    "name": "Toxina Potente",
+    "branch": "veneno",
+    "effect": {
+      "mod": "vs_status_dmg",
+      "kind": "mod",
+      "status": "poison",
+      "pct_per_rank": 10
+    },
+    "nodeType": "passive",
+    "description": "+10% de dano contra alvos Envenenados por rank.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_fur_mod2",
+    "name": "Letalidade",
+    "branch": "furtividade",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "fisico",
+      "pct_per_rank": 7
+    },
+    "nodeType": "passive",
+    "description": "+7% de dano físico por rank.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_sang_mod2",
+    "name": "Faca Afiada",
+    "branch": "sangramento",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "fisico",
+      "pct_per_rank": 7
+    },
+    "nodeType": "passive",
+    "description": "+7% de dano físico por rank.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_ven_mod2",
+    "name": "Peçonha Persistente",
+    "branch": "veneno",
+    "effect": {
+      "mod": "status_dur",
+      "kind": "mod",
+      "status": "poison",
+      "turns_per_rank": 1
+    },
+    "nodeType": "passive",
+    "description": "Veneno dura +1 turno por rank.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_fur_var",
+    "name": "Assassinato",
+    "branch": "furtividade",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 55,
+      "transform": "assassinato"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Golpe Furtivo num golpe de execução com dano massivo.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_sang_var",
+    "name": "Estripar",
+    "branch": "sangramento",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 45,
+      "transform": "estripar"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Retalhar numa rajada de cortes profundos.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "gt_ven_var",
+    "name": "Névoa Tóxica",
+    "branch": "veneno",
+    "effect": {
+      "aoe": true,
+      "kind": "variant",
+      "bonus_pct": 40,
+      "transform": "nevoa_toxica"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Lâmina Envenenada numa nuvem de veneno em área.",
+    "tree": "gatuno"
+  },
+  {
+    "id": "g_golpe",
+    "name": "Golpe Marcial",
+    "branch": "tronco",
+    "effect": {
+      "kind": "skill",
+      "power": 34,
+      "mpCost": 0,
+      "element": "neutro",
+      "cooldown": 1,
+      "effectType": "dano",
+      "pct_per_rank": 10
+    },
+    "nodeType": "skill",
+    "description": "Ataque físico básico, sem custo. Sobe de rank para mais dano.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_chama",
+    "name": "Lâmina Flamejante",
+    "branch": "infusao",
+    "effect": {
+      "kind": "skill",
+      "power": 56,
+      "mpCost": 7,
+      "element": "fogo",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Embainha a espada em fogo: golpe físico que aplica Queimadura.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_corte",
+    "name": "Corte Sangrento",
+    "branch": "sangramento",
+    "effect": {
+      "kind": "skill",
+      "power": 50,
+      "mpCost": 5,
+      "element": "neutro",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Corte rápido que provoca Sangramento (DoT crescente).",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_ruptura",
+    "name": "Ruptura Frontal",
+    "branch": "forca",
+    "effect": {
+      "kind": "skill",
+      "power": 64,
+      "mpCost": 6,
+      "element": "neutro",
+      "cooldown": 3,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Golpe físico pesado de alta pressão.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_for_mod1",
+    "name": "Força Bruta",
+    "branch": "forca",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "fisico",
+      "pct_per_rank": 7
+    },
+    "nodeType": "passive",
+    "description": "+7% de dano físico por rank.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_inf_mod1",
+    "name": "Brasa na Lâmina",
+    "branch": "infusao",
+    "effect": {
+      "mod": "element_dmg",
+      "kind": "mod",
+      "element": "fogo",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano de Fogo por rank.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_sang_mod1",
+    "name": "Lâminas Afiadas",
+    "branch": "sangramento",
+    "effect": {
+      "mod": "vs_status_dmg",
+      "kind": "mod",
+      "status": "bleeding",
+      "pct_per_rank": 10
+    },
+    "nodeType": "passive",
+    "description": "+10% de dano contra alvos Sangrando por rank.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_for_mod2",
+    "name": "Algoz",
+    "branch": "forca",
+    "effect": {
+      "mod": "vs_status_dmg",
+      "kind": "mod",
+      "status": "bleeding",
+      "pct_per_rank": 10
+    },
+    "nodeType": "passive",
+    "description": "+10% de dano contra alvos Sangrando por rank.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_inf_mod2",
+    "name": "Fogo Persistente",
+    "branch": "infusao",
+    "effect": {
+      "mod": "status_dur",
+      "kind": "mod",
+      "status": "burning",
+      "turns_per_rank": 1
+    },
+    "nodeType": "passive",
+    "description": "Queimadura dura +1 turno por rank.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_sang_mod2",
+    "name": "Brutalidade",
+    "branch": "sangramento",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "fisico",
+      "pct_per_rank": 7
+    },
+    "nodeType": "passive",
+    "description": "+7% de dano físico por rank.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_for_var",
+    "name": "Devastar",
+    "branch": "forca",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 50,
+      "transform": "devastar"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Ruptura Frontal num golpe devastador de dano massivo.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_inf_var",
+    "name": "Espada Vulcânica",
+    "branch": "infusao",
+    "effect": {
+      "aoe": true,
+      "kind": "variant",
+      "bonus_pct": 45,
+      "transform": "vulcanica"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Lâmina Flamejante numa erupção: dano de fogo em área.",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "g_sang_var",
+    "name": "Dança das Lâminas",
+    "branch": "sangramento",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 45,
+      "transform": "danca_laminas"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Corte Sangrento numa flurry de golpes (vários cortes).",
+    "tree": "guerreiro"
+  },
+  {
+    "id": "m_dardo",
+    "name": "Dardo Arcano",
+    "branch": "tronco",
+    "effect": {
+      "kind": "skill",
+      "power": 30,
+      "mpCost": 0,
+      "element": "arcano",
+      "cooldown": 1,
+      "effectType": "dano",
+      "pct_per_rank": 10
+    },
+    "nodeType": "skill",
+    "description": "Projétil arcano básico, sem custo de MP. Sobe de rank para mais dano.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_bola_fogo",
+    "name": "Bola de Fogo",
+    "branch": "fogo",
+    "effect": {
+      "kind": "skill",
+      "power": 60,
+      "mpCost": 8,
+      "element": "fogo",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Lança uma bola de fogo que aplica Queimadura (DoT).",
+    "tree": "mago"
+  },
+  {
+    "id": "m_corrente_raio",
+    "name": "Corrente de Raio",
+    "branch": "raio",
+    "effect": {
+      "kind": "skill",
+      "power": 56,
+      "mpCost": 8,
+      "element": "raio",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Descarga elétrica; brilha contra alvos Molhados (combo Choque).",
+    "tree": "mago"
+  },
+  {
+    "id": "m_estouro",
+    "name": "Estouro Arcano",
+    "branch": "arcano",
+    "effect": {
+      "kind": "skill",
+      "power": 62,
+      "mpCost": 9,
+      "element": "arcano",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Explosão de energia arcana pura.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_lanca_gelo",
+    "name": "Lança de Gelo",
+    "branch": "gelo",
+    "effect": {
+      "kind": "skill",
+      "power": 58,
+      "mpCost": 8,
+      "element": "gelo",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Estaca de gelo que pode Congelar o alvo.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_arc_mod1",
+    "name": "Foco Arcano",
+    "branch": "arcano",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "magico",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano mágico por rank.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_fogo_mod1",
+    "name": "Chamas Voláteis",
+    "branch": "fogo",
+    "effect": {
+      "mod": "element_dmg",
+      "kind": "mod",
+      "element": "fogo",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano de Fogo por rank.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_gelo_mod1",
+    "name": "Frio Cortante",
+    "branch": "gelo",
+    "effect": {
+      "mod": "element_dmg",
+      "kind": "mod",
+      "element": "gelo",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano de Gelo por rank.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_raio_mod1",
+    "name": "Alta Tensão",
+    "branch": "raio",
+    "effect": {
+      "mod": "element_dmg",
+      "kind": "mod",
+      "element": "raio",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano de Raio por rank.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_arc_mod2",
+    "name": "Penetração Arcana",
+    "branch": "arcano",
+    "effect": {
+      "mod": "vs_status_dmg",
+      "kind": "mod",
+      "status": "vulnerable",
+      "pct_per_rank": 10
+    },
+    "nodeType": "passive",
+    "description": "+10% de dano contra alvos Vulneráveis por rank.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_fogo_mod2",
+    "name": "Brasa Persistente",
+    "branch": "fogo",
+    "effect": {
+      "mod": "status_dur",
+      "kind": "mod",
+      "status": "burning",
+      "turns_per_rank": 1
+    },
+    "nodeType": "passive",
+    "description": "Queimadura dura +1 turno por rank.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_gelo_mod2",
+    "name": "Geada Profunda",
+    "branch": "gelo",
+    "effect": {
+      "mod": "status_dur",
+      "kind": "mod",
+      "status": "frozen",
+      "turns_per_rank": 1
+    },
+    "nodeType": "passive",
+    "description": "Congelado dura +1 turno por rank.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_raio_mod2",
+    "name": "Sobrecarga",
+    "branch": "raio",
+    "effect": {
+      "mod": "combo_dmg",
+      "kind": "mod",
+      "combo": "shock",
+      "pct_per_rank": 12
+    },
+    "nodeType": "passive",
+    "description": "+12% no combo Choque por rank.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_arc_var",
+    "name": "Singularidade Arcana",
+    "branch": "arcano",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 60,
+      "transform": "singularidade"
+    },
+    "nodeType": "variant",
+    "description": "Colapsa a energia num ponto: dano arcano devastador de alvo único.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_fogo_var",
+    "name": "Meteoro",
+    "branch": "fogo",
+    "effect": {
+      "aoe": true,
+      "kind": "variant",
+      "bonus_pct": 40,
+      "transform": "meteoro"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Bola de Fogo em Meteoro: dano em área massivo.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_gelo_var",
+    "name": "Nova Gélida",
+    "branch": "gelo",
+    "effect": {
+      "aoe": true,
+      "kind": "variant",
+      "bonus_pct": 40,
+      "transform": "nova_gelida"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Lança de Gelo em Nova Gélida: explosão de gelo em área.",
+    "tree": "mago"
+  },
+  {
+    "id": "m_raio_var",
+    "name": "Tornado",
+    "branch": "raio",
+    "effect": {
+      "aoe": true,
+      "kind": "variant",
+      "bonus_pct": 40,
+      "transform": "tornado"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Corrente de Raio em Tornado: vendaval que atinge em área.",
+    "tree": "mago"
+  },
+  {
+    "id": "n_golpe",
+    "name": "Golpe de Bastão",
+    "branch": "tronco",
+    "effect": {
+      "kind": "skill",
+      "power": 30,
+      "mpCost": 0,
+      "element": "neutro",
+      "cooldown": 1,
+      "effectType": "dano",
+      "pct_per_rank": 10
+    },
+    "nodeType": "skill",
+    "description": "Ataque físico básico, sem custo. Sobe de rank para mais dano.",
+    "tree": "novato"
+  },
+  {
+    "id": "n_cura",
+    "name": "Cura Menor",
+    "branch": "suporte",
+    "effect": {
+      "kind": "skill",
+      "power": 40,
+      "mpCost": 8,
+      "element": "sagrado",
+      "cooldown": 3,
+      "effectType": "heal",
+      "pct_per_rank": 12
+    },
+    "nodeType": "skill",
+    "description": "Restaura HP do herói. Sobe de rank para curar mais.",
+    "tree": "novato"
+  },
+  {
+    "id": "n_luz",
+    "name": "Luz Purificadora",
+    "branch": "sagrado",
+    "effect": {
+      "kind": "skill",
+      "power": 50,
+      "mpCost": 7,
+      "element": "sagrado",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "nodeType": "skill",
+    "description": "Magia sagrada — dano elevado contra trevas e mortos-vivos.",
+    "tree": "novato"
+  },
+  {
+    "id": "n_escudo",
+    "name": "Bênção Protetora",
+    "branch": "suporte",
+    "effect": {
+      "kind": "skill",
+      "power": 45,
+      "mpCost": 7,
+      "element": "sagrado",
+      "cooldown": 3,
+      "effectType": "buff",
+      "pct_per_rank": 10
+    },
+    "nodeType": "skill",
+    "description": "Escudo que absorve parte do dano recebido no próximo golpe.",
+    "tree": "novato"
+  },
+  {
+    "id": "n_sag_mod1",
+    "name": "Fé Radiante",
+    "branch": "sagrado",
+    "effect": {
+      "mod": "element_dmg",
+      "kind": "mod",
+      "element": "sagrado",
+      "pct_per_rank": 8
+    },
+    "nodeType": "passive",
+    "description": "+8% de dano sagrado por rank.",
+    "tree": "novato"
+  },
+  {
+    "id": "n_sag_mod2",
+    "name": "Devoção",
+    "branch": "sagrado",
+    "effect": {
+      "mod": "school_dmg",
+      "kind": "mod",
+      "school": "magico",
+      "pct_per_rank": 7
+    },
+    "nodeType": "passive",
+    "description": "+7% de dano mágico por rank.",
+    "tree": "novato"
+  },
+  {
+    "id": "n_sup_var",
+    "name": "Aura Restauradora",
+    "branch": "suporte",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 40,
+      "transform": "aura_restauradora"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Cura Menor numa cura potente ao longo de vários turnos.",
+    "tree": "novato"
+  },
+  {
+    "id": "n_sag_var",
+    "name": "Julgamento",
+    "branch": "sagrado",
+    "effect": {
+      "kind": "variant",
+      "bonus_pct": 50,
+      "transform": "julgamento"
+    },
+    "nodeType": "variant",
+    "description": "Transforma Luz Purificadora num feixe sagrado de dano massivo.",
+    "tree": "novato"
+  }
+]
