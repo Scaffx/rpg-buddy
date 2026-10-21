@@ -1,0 +1,185 @@
+.bossesLate-sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 2px 1px #101420a6);
+}
+
+.bossesLate-sprite__body { fill: var(--bossesLate-body); }
+.bossesLate-sprite__accent { fill: var(--bossesLate-accent); }
+.bossesLate-sprite__silhouette { transform-origin: 50% 80%; }
+
+.bossesLate-vfx {
+  --bossesLate-color: #f1e2b2;
+  --bossesLate-glow: #eab367;
+  --bossesLate-dark: #152039;
+  --bossesLate-target-x: var(--enemy-target-x, 25%);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  color: var(--bossesLate-color);
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.bossesLate-vfx[data-target='self'] { --bossesLate-target-x: var(--enemy-source-x, 75%); }
+.bossesLate-vfx--physical { --bossesLate-color: #f5e9d3; --bossesLate-glow: #dec09b; }
+.bossesLate-vfx--arcane { --bossesLate-color: #e0c4ff; --bossesLate-glow: #ae6ce8; }
+.bossesLate-vfx--fire { --bossesLate-color: #ffe2a0; --bossesLate-glow: #f36b42; }
+.bossesLate-vfx--ice { --bossesLate-color: #d6f9ff; --bossesLate-glow: #75cde8; }
+.bossesLate-vfx--lightning { --bossesLate-color: #fff9b1; --bossesLate-glow: #d9b849; }
+.bossesLate-vfx--nature { --bossesLate-color: #d6f6af; --bossesLate-glow: #73b765; }
+.bossesLate-vfx--light { --bossesLate-color: #fff4ba; --bossesLate-glow: #e4b85f; }
+.bossesLate-vfx--water { --bossesLate-color: #c5f8ff; --bossesLate-glow: #65b9df; }
+.bossesLate-vfx--earth { --bossesLate-color: #d6f5d7; --bossesLate-glow: #7eb78d; }
+.bossesLate-vfx--shadow { --bossesLate-color: #dac7f4; --bossesLate-glow: #8c5cba; }
+.bossesLate-vfx--poison { --bossesLate-color: #def4ac; --bossesLate-glow: #98ba4f; }
+.bossesLate-vfx--wind { --bossesLate-color: #ecfbf4; --bossesLate-glow: #8ed0b2; }
+
+.bossesLate-vfx__prepare,
+.bossesLate-vfx__flight,
+.bossesLate-vfx__impact {
+  position: absolute;
+  top: var(--enemy-line-y, 62%);
+  display: block;
+  transform: translate(-50%, -50%);
+}
+
+.bossesLate-vfx__prepare {
+  left: var(--enemy-source-x, 75%);
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--bossesLate-color);
+  border-radius: 50%;
+  box-shadow: 0 0 13px var(--bossesLate-glow), inset 0 0 12px var(--bossesLate-glow);
+  opacity: 0;
+  animation: bossesLate-prepare 1.2s ease-out both;
+}
+
+.bossesLate-vfx__prepare > span {
+  position: absolute;
+  inset: 8px;
+  border: 1px dashed currentColor;
+  border-radius: 50%;
+}
+
+.bossesLate-vfx__trail {
+  position: absolute;
+  top: var(--enemy-line-y, 62%);
+  left: var(--bossesLate-target-x);
+  width: calc(var(--enemy-source-x, 75%) - var(--bossesLate-target-x));
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--bossesLate-glow));
+  box-shadow: 0 0 10px var(--bossesLate-glow);
+  transform-origin: right center;
+  opacity: 0;
+  animation: bossesLate-trail 1.2s ease-in-out both;
+}
+
+.bossesLate-vfx__flight {
+  left: var(--enemy-source-x, 75%);
+  width: 54px;
+  height: 54px;
+  filter: drop-shadow(0 0 5px var(--bossesLate-glow));
+  opacity: 0;
+  animation: bossesLate-flight 1.2s cubic-bezier(.35,.02,.68,.97) both;
+}
+
+.bossesLate-vfx__flight svg,
+.bossesLate-vfx__impact svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.bossesLate-vfx__impact {
+  left: var(--bossesLate-target-x);
+  width: 72px;
+  height: 72px;
+  filter: drop-shadow(0 0 9px var(--bossesLate-glow));
+  opacity: 0;
+  animation: bossesLate-impact 1.2s ease-out both;
+}
+
+.bossesLate-vfx__impact svg { position: relative; z-index: 1; }
+.bossesLate-vfx__halo {
+  position: absolute;
+  inset: 3px;
+  display: block;
+  border: 2px solid var(--bossesLate-color);
+  border-radius: 50%;
+  box-shadow: 0 0 17px var(--bossesLate-glow), inset 0 0 12px var(--bossesLate-glow);
+}
+
+.bossesLate-vfx--claw .bossesLate-vfx__halo,
+.bossesLate-vfx--fang .bossesLate-vfx__halo,
+.bossesLate-vfx--spear .bossesLate-vfx__halo,
+.bossesLate-vfx--scythe .bossesLate-vfx__halo,
+.bossesLate-vfx--duel .bossesLate-vfx__halo { border-radius: 45% 8% 45% 8%; transform: rotate(-20deg); }
+
+.bossesLate-vfx--crystal .bossesLate-vfx__halo,
+.bossesLate-vfx--ward .bossesLate-vfx__halo,
+.bossesLate-vfx--core .bossesLate-vfx__halo { border-radius: 4px; transform: rotate(45deg) scale(.7); }
+
+.bossesLate-vfx--flame .bossesLate-vfx__halo,
+.bossesLate-vfx--pillar .bossesLate-vfx__halo,
+.bossesLate-vfx--rebirth .bossesLate-vfx__halo { border-radius: 70% 0 70% 35%; transform: rotate(-35deg) scale(.75); }
+
+.bossesLate-vfx--tide .bossesLate-vfx__impact,
+.bossesLate-vfx--quake .bossesLate-vfx__impact,
+.bossesLate-vfx--eclipse .bossesLate-vfx__impact,
+.bossesLate-vfx--reality .bossesLate-vfx__impact { width: 108px; height: 86px; }
+
+.bossesLate-vfx--beam .bossesLate-vfx__flight,
+.bossesLate-vfx--breath .bossesLate-vfx__flight,
+.bossesLate-vfx--tide .bossesLate-vfx__flight { width: 90px; height: 66px; }
+
+.bossesLate-vfx--pillar .bossesLate-vfx__impact { width: 62px; height: 110px; }
+.bossesLate-vfx--spear .bossesLate-vfx__flight,
+.bossesLate-vfx--hammer .bossesLate-vfx__flight,
+.bossesLate-vfx--dive .bossesLate-vfx__flight { width: 72px; height: 72px; }
+.bossesLate-vfx[data-target='self'] .bossesLate-vfx__trail { display: none; }
+.bossesLate-vfx[data-target='self'] .bossesLate-vfx__flight { animation-name: bossesLate-self-flight; }
+
+@keyframes bossesLate-prepare {
+  0% { opacity: 0; scale: .4; }
+  12%, 31% { opacity: .9; scale: 1; }
+  50%, 100% { opacity: 0; scale: 1.25; }
+}
+
+@keyframes bossesLate-trail {
+  0%, 28% { opacity: 0; transform: scaleX(0); }
+  45%, 68% { opacity: .8; transform: scaleX(1); }
+  84%, 100% { opacity: 0; transform: scaleX(1); }
+}
+
+@keyframes bossesLate-flight {
+  0%, 26% { left: var(--enemy-source-x, 75%); opacity: 0; scale: .4; }
+  38% { opacity: 1; scale: .95; }
+  68% { left: var(--bossesLate-target-x); opacity: 1; scale: 1.1; }
+  78%, 100% { left: var(--bossesLate-target-x); opacity: 0; scale: .5; }
+}
+
+@keyframes bossesLate-self-flight {
+  0%, 20% { opacity: 0; scale: .45; rotate: -24deg; }
+  45%, 68% { opacity: 1; scale: 1.1; rotate: 22deg; }
+  84%, 100% { opacity: 0; scale: .5; rotate: 42deg; }
+}
+
+@keyframes bossesLate-impact {
+  0%, 61% { opacity: 0; scale: .35; }
+  73%, 90% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.35; }
+}
+
+.adventure-still .bossesLate-vfx *,
+.adventure-still .bossesLate-vfx *::before,
+.adventure-still .bossesLate-vfx *::after { animation: none !important; transition: none !important; }
+.adventure-still .bossesLate-vfx__prepare,
+.adventure-still .bossesLate-vfx__trail,
+.adventure-still .bossesLate-vfx__flight { display: none; }
+.adventure-still .bossesLate-vfx__impact { opacity: 1; scale: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bossesLate-vfx *, .bossesLate-vfx *::before, .bossesLate-vfx *::after { animation: none !important; transition: none !important; }
+  .bossesLate-vfx__prepare, .bossesLate-vfx__trail, .bossesLate-vfx__flight { display: none; }
+  .bossesLate-vfx__impact { opacity: 1; scale: 1; }
+}
