@@ -36,7 +36,7 @@ const user = (id: string, appRole = 'user', metadataRole?: string) => ({
   app_metadata: { role: appRole },
   user_metadata: metadataRole ? { role: metadataRole } : {},
 }) as unknown as User;
-const session = (member: User) => ({ user: member, access_token: 'test-token' }) as Session;
+const session = (member: User, token = 'test-token') => ({ user: member, access_token: token }) as Session;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -130,34 +130,149 @@ describe('auth loading recovery', () => {
     expect(auth.signOut).not.toHaveBeenCalled();
   });
 
-  it('keeps a fresh login over a late initial result and ignores stale INITIAL_SESSION', async () => {
+  it('verifies storage-recovery SIGNED_IN before showing admin and ignores stale initial data', async () => {
     const initial = deferred<{ data: { session: Session }; error: null }>();
+    const verification = deferred<{ data: { user: User }; error: null }>();
     auth.getSession.mockReturnValue(initial.promise);
+    auth.getUser.mockReturnValue(verification.promise);
     const oldSession = session(user('old', 'admin'));
-    const newSession = session(user('new'));
+    const newSession = session(user('new', 'admin'), 'new-token');
     await mount();
     await act(async () => {
       auth.listeners[0]('SIGNED_IN', newSession);
       auth.listeners[0]('INITIAL_SESSION', oldSession);
     });
+    expect(read('auth')).toBe('loading');
+    expect(read('admin')).toBe('denied');
+    expect(auth.getUser).toHaveBeenCalledWith('new-token');
     initial.resolve({ data: { session: oldSession }, error: null });
+    verification.resolve({ data: { user: user('new') }, error: null });
     await settle();
     expect(read('auth')).toBe('new');
     expect(read('admin')).toBe('denied');
-    expect(auth.getUser).not.toHaveBeenCalled();
+    expect(auth.getUser).toHaveBeenCalledOnce();
   });
 
-  it('keeps a fresh logout over a late getUser failure', async () => {
-    const pendingUser = deferred<never>();
+  it('lets a confirmed login finish while the initial session read is still pending', async () => {
+    auth.getSession.mockReturnValue(new Promise(() => {}));
+    auth.getUser.mockResolvedValue({ data: { user: user('logged-in', 'admin') }, error: null });
+    await mount();
+    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('logged-in', 'admin'), 'login-token')));
+    await settle();
+    expect(read('auth')).toBe('logged-in');
+    expect(read('admin')).toBe('admin');
+    expect(auth.getUser).toHaveBeenCalledWith('login-token');
+  });
+
+  it('also verifies a non-null INITIAL_SESSION instead of trusting storage metadata', async () => {
+    const verification = deferred<{ data: { user: User }; error: null }>();
+    auth.getSession.mockReturnValue(new Promise(() => {}));
+    auth.getUser.mockReturnValue(verification.promise);
+    await mount();
+    await act(async () => auth.listeners[0]('INITIAL_SESSION', session(user('stored', 'admin'))));
+    expect(read('auth')).toBe('loading');
+    expect(read('admin')).toBe('denied');
+    verification.resolve({ data: { user: user('stored') }, error: null });
+    await settle();
+    expect(read('auth')).toBe('stored');
+    expect(read('admin')).toBe('denied');
+  });
+
+  it('confirms TOKEN_REFRESHED metadata with Auth before changing admin', async () => {
+    const verification = deferred<{ data: { user: User }; error: null }>();
+    auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+    auth.getUser.mockReturnValue(verification.promise);
+    await mount();
+    await settle();
+    expect(read('auth')).toBe('guest');
+
+    await act(async () => auth.listeners[0]('TOKEN_REFRESHED', session(user('member', 'admin'), 'refreshed')));
+    expect(read('auth')).toBe('loading');
+    expect(read('admin')).toBe('denied');
+    expect(auth.getUser).toHaveBeenCalledWith('refreshed');
+    verification.resolve({ data: { user: user('member') }, error: null });
+    await settle();
+    expect(read('auth')).toBe('member');
+    expect(read('admin')).toBe('denied');
+  });
+
+  it('lets the latest repeated focus event win older verification', async () => {
+    const first = deferred<{ data: { user: User }; error: null }>();
+    const second = deferred<{ data: { user: User }; error: null }>();
+    auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+    auth.getUser.mockImplementation((token: string) => token === 'first' ? first.promise : second.promise);
+    await mount();
+    await settle();
+    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('one', 'admin'), 'first')));
+    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('two', 'admin'), 'second')));
+    first.resolve({ data: { user: user('one', 'admin') }, error: null });
+    await settle();
+    expect(read('auth')).toBe('loading');
+    expect(read('admin')).toBe('denied');
+    second.resolve({ data: { user: user('two') }, error: null });
+    await settle();
+    expect(read('auth')).toBe('two');
+    expect(read('admin')).toBe('denied');
+  });
+
+  it('keeps a fresh logout over a late successful verification', async () => {
+    const pendingUser = deferred<{ data: { user: User }; error: null }>();
     auth.getSession.mockResolvedValue({ data: { session: session(user('old', 'admin')) }, error: null });
     auth.getUser.mockReturnValue(pendingUser.promise);
     await mount();
     await settle();
     expect(read('auth')).toBe('loading');
     await act(async () => auth.listeners[0]('SIGNED_OUT', null));
-    pendingUser.reject(new Error('AbortError'));
+    pendingUser.resolve({ data: { user: user('old', 'admin') }, error: null });
     await settle();
     expect(read('auth')).toBe('guest');
+    expect(read('admin')).toBe('denied');
+  });
+
+  it('fails closed on rejected event verification and recovers with explicit retry', async () => {
+    const confirmed = user('member');
+    auth.getSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+    auth.getSession.mockResolvedValueOnce({ data: { session: session(confirmed) }, error: null });
+    auth.getUser.mockRejectedValueOnce(new Error('AbortError'));
+    auth.getUser.mockResolvedValueOnce({ data: { user: confirmed }, error: null });
+    await mount();
+    await settle();
+    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('member', 'admin'))));
+    await settle();
+    expect(read('auth')).toBe('retry');
+    expect(read('admin')).toBe('denied');
+    await act(async () => container!.querySelector('button')!.click());
+    await settle();
+    expect(read('auth')).toBe('member');
+    expect(read('admin')).toBe('denied');
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when event token resolves to a different user', async () => {
+    auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+    auth.getUser.mockResolvedValue({ data: { user: user('other', 'admin') }, error: null });
+    await mount();
+    await settle();
+    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('cached', 'admin'))));
+    await settle();
+    expect(read('auth')).toBe('retry');
+    expect(read('admin')).toBe('denied');
+  });
+
+  it('times out a hanging event verification without restoring cached admin', async () => {
+    vi.useFakeTimers();
+    auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+    auth.getUser.mockReturnValue(new Promise(() => {}));
+    await mount();
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => {
+      auth.listeners[0]('TOKEN_REFRESHED', session(user('cached', 'admin')));
+      await Promise.resolve();
+    });
+    expect(read('auth')).toBe('loading');
+    expect(read('admin')).toBe('denied');
+    await act(async () => vi.advanceTimersByTime(15_000));
+    expect(read('auth')).toBe('retry');
     expect(read('admin')).toBe('denied');
   });
 

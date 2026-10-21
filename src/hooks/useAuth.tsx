@@ -27,25 +27,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    let freshEventVersion = 0;
-    const startedAtVersion = freshEventVersion;
-    let bootstrapTimedOut = false;
+    let version = 0;
+    let sawNonInitialEvent = false;
+    let confirmationTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const acceptSession = (nextSession: Session | null, nextUser: User | null) => {
-      if (!mounted) return;
+    const isCurrent = (requestVersion: number) => mounted && version === requestVersion;
+    const clearWatchdog = () => clearTimeout(confirmationTimer);
+
+    const acceptSession = (requestVersion: number, nextSession: Session | null, nextUser: User | null) => {
+      if (!isCurrent(requestVersion)) return;
+      clearWatchdog();
       setSession(nextSession);
       setUser(nextUser);
       setAuthError(false);
       setLoading(false);
     };
 
-    const failConfirmation = () => {
-      if (!mounted) return;
+    const failConfirmation = (requestVersion: number) => {
+      if (!isCurrent(requestVersion)) return;
+      clearWatchdog();
+      version += 1; // A failed request must never restore access later.
       // Do not sign out or touch stored credentials on a transient auth failure.
       setSession(null);
       setUser(null);
       setAuthError(true);
       setLoading(false);
+    };
+
+    const armWatchdog = (requestVersion: number) => {
+      clearWatchdog();
+      confirmationTimer = setTimeout(() => failConfirmation(requestVersion), AUTH_BOOTSTRAP_TIMEOUT_MS);
+    };
+
+    const confirmSession = (candidate: Session, requestVersion: number, resetWatchdog: boolean) => {
+      if (!isCurrent(requestVersion)) return;
+      // A session event may originate from storage. Hide its user until Auth
+      // confirms the token and identity, including on SIGNED_IN and refresh.
+      setSession(null);
+      setUser(null);
+      setAuthError(false);
+      setLoading(true);
+      if (resetWatchdog) armWatchdog(requestVersion);
+
+      // GoTrue awaits its subscribers while holding the auth lock. Defer the
+      // network request until the synchronous callback has returned.
+      queueMicrotask(() => {
+        void (async () => {
+          try {
+            if (!isCurrent(requestVersion)) return;
+            const token = candidate.access_token;
+            const claimedUserId = candidate.user?.id;
+            if (!token || !claimedUserId) throw new Error('Session identity is incomplete');
+            const result = await supabase.auth.getUser(token);
+            if (!isCurrent(requestVersion)) return;
+            if (result.error) throw result.error;
+            const verifiedUser = result.data.user;
+            if (!verifiedUser || verifiedUser.id !== claimedUserId) {
+              throw new Error('Session user could not be confirmed');
+            }
+            acceptSession(requestVersion, { ...candidate, user: verifiedUser }, verifiedUser);
+          } catch {
+            failConfirmation(requestVersion);
+          }
+        })();
+      });
     };
 
     setAuthError(false);
@@ -57,55 +102,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     //    A sessão resultante entra pelo onAuthStateChange abaixo.
     initDeepLinkAuth();
 
-    const bootstrapTimer = setTimeout(() => {
-      if (!mounted || freshEventVersion !== startedAtVersion) return;
-      bootstrapTimedOut = true;
-      failConfirmation();
-    }, AUTH_BOOTSTRAP_TIMEOUT_MS);
+    const bootstrapVersion = ++version;
+    armWatchdog(bootstrapVersion);
 
-    // Subscribe before the initial read so fresh login/logout events can win it.
+    // Subscribe before the initial read; every session event requires remote
+    // confirmation because SIGNED_IN can also come from persisted storage.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (!mounted || event === 'INITIAL_SESSION') return;
-      freshEventVersion += 1;
-      clearTimeout(bootstrapTimer);
-      acceptSession(nextSession, nextSession?.user ?? null);
+      if (!mounted) return;
+      if (event === 'INITIAL_SESSION') {
+        if (!nextSession || sawNonInitialEvent) return;
+      } else {
+        sawNonInitialEvent = true;
+      }
+      const eventVersion = ++version;
+      if (!nextSession) {
+        acceptSession(eventVersion, null, null);
+        return;
+      }
+      confirmSession(nextSession, eventVersion, true);
     });
 
-    // getSession reads storage. Confirm its user once with the Auth server before
-    // exposing app_metadata to the UI; never call Auth methods inside the listener.
+    // getSession reads storage; its user gets the same confirmation as events.
     void (async () => {
       try {
         const sessionResult = await supabase.auth.getSession();
-        if (!mounted || bootstrapTimedOut || freshEventVersion !== startedAtVersion) return;
+        if (!isCurrent(bootstrapVersion)) return;
         if (sessionResult.error) throw sessionResult.error;
 
         const initialSession = sessionResult.data.session;
         if (!initialSession) {
-          acceptSession(null, null);
+          acceptSession(bootstrapVersion, null, null);
           return;
         }
-        if (!initialSession.access_token) {
-          throw new Error('Session token could not be confirmed');
-        }
-
-        const userResult = await supabase.auth.getUser(initialSession.access_token);
-        if (!mounted || bootstrapTimedOut || freshEventVersion !== startedAtVersion) return;
-        if (userResult.error) throw userResult.error;
-        const verifiedUser = userResult.data.user;
-        if (!verifiedUser || verifiedUser.id !== initialSession.user.id) {
-          throw new Error('Session user could not be confirmed');
-        }
-        acceptSession({ ...initialSession, user: verifiedUser }, verifiedUser);
+        confirmSession(initialSession, bootstrapVersion, false);
       } catch {
-        if (!bootstrapTimedOut && freshEventVersion === startedAtVersion) failConfirmation();
-      } finally {
-        clearTimeout(bootstrapTimer);
+        failConfirmation(bootstrapVersion);
       }
     })();
 
     return () => {
       mounted = false;
-      clearTimeout(bootstrapTimer);
+      clearWatchdog();
       subscription.unsubscribe();
     };
   }, [retryCount]);
