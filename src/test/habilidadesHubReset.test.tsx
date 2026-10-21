@@ -134,6 +134,8 @@ describe('Habilidades hub e reset', () => {
   });
 
   it('shows a persisted level-1 mage skill without a false class-choice warning', async () => {
+    state.level = 1;
+    state.profile.level = 1;
     state.treeKey = 'mago';
     state.hasClass = true;
     state.profile.starter_class = 'mago';
