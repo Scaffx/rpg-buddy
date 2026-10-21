@@ -134,7 +134,8 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
     const inner = node.node_type === 'variant' ? '-rotate-45' : '';
     const elIcon = node.node_type === 'skill' ? meta.emoji : node.node_type === 'variant' ? '◆' : '•';
     const directDamage = node.node_type === 'skill' && ['dano', 'damage'].includes(String(node.effect?.effectType || 'dano'));
-    const description = `${node.name} — ${node.description}${directDamage ? ` ${t('app.habhub.direct_damage_only')}` : ''}`;
+    const adventureNote = directDamage ? t('app.habhub.direct_damage_only') : node.node_type !== 'skill' ? t('app.skilltree.legend_phase2') : '';
+    const description = `${node.name} — ${node.description}${adventureNote ? ` ${adventureNote}` : ''}`;
     return (
       <div className="flex flex-col items-center gap-1 w-[88px]">
         <button

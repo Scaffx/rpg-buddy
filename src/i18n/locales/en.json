@@ -824,7 +824,7 @@
       "legend_skill": "Skill",
       "legend_passive": "Passive",
       "legend_variant": "Variant",
-      "legend_phase2": "Combat bonuses coming soon",
+      "legend_phase2": "Passives and variants do not affect automatic adventure yet",
       "points_available": "Available points",
       "points_spent": "Spent",
       "respec": "Reset",

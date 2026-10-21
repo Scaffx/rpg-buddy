@@ -824,7 +824,7 @@
       "legend_skill": "Habilidade",
       "legend_passive": "Passiva",
       "legend_variant": "Variante",
-      "legend_phase2": "Bônus no combate em breve",
+      "legend_phase2": "Passivos e variantes ainda não alteram a aventura automática",
       "points_available": "Pontos disponíveis",
       "points_spent": "Gastos",
       "respec": "Resetar",
