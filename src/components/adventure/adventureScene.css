@@ -41,7 +41,7 @@
 .adventure-projectile { left:29%; top:47%; width:20px; height:20px; animation:adventure-launch 1.2s ease-in both; }
 .adventure-impact { left:73%; top:49%; width:42px; height:42px; animation:adventure-impact 1.2s ease-out both; }
 .adventure-effect-enemy .adventure-impact { left:19%; }
-.adventure-effect-self-heal .adventure-impact { left:26%; }
+.adventure-effect-sequence.adventure-effect-self-support .adventure-impact { left:26%; }
 .adventure-effect-melee .adventure-impact { left:72%; }
 .adventure-effect-arcane { --effect:#d3a5ff; --glow:#873de1; }
 .adventure-effect-arcane .adventure-impact::before { content:''; position:absolute; inset:5px; border:3px solid #e5d6ff; transform:rotate(45deg); }

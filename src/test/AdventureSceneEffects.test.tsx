@@ -31,6 +31,14 @@ afterEach(() => {
 });
 
 describe('AdventureScene effects', () => {
+  it('casts protection on the hero without firing it at the enemy', () => {
+    const page = renderScene({ id: 'guard', actor: 'hero', kind: 'skill', skillName: 'Bênção Protetora',
+      skillType: 'buff', effect: 'light', damage: 0, mpCost: 7, effectNote: 'guard' }, 'clerico');
+    expect(page.querySelector('.adventure-effect-self-support')).not.toBeNull();
+    expect(page.querySelector('.adventure-projectile')).toBeNull();
+    expect(page.querySelector('.adventure-action-strip')?.textContent).toContain('Proteção aplicada ao próximo golpe recebido');
+  });
+
   it('renders server skill, mana spend, healing and resistance evidence outside the sprites', () => {
     const page = renderScene({
       id: 'cast-1', actor: 'hero', kind: 'skill', skillName: 'Dardo Arcano', effect: 'fire',

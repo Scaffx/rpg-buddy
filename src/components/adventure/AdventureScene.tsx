@@ -118,7 +118,10 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
   const motionClass = still ? 'adventure-still' : '';
   const actionEffect = visualAction?.effect ?? 'physical';
   const projectile = heroAttack && (cast || bow);
-  const selfHeal = heroAttack && typeof visualAction?.healing === 'number' && visualAction.healing > 0 && !visualAction.damage;
+  const selfSupport = heroAttack && !visualAction.damage && (
+    (typeof visualAction.healing === 'number' && visualAction.healing > 0)
+    || visualAction.skillType === 'heal' || visualAction.skillType === 'buff'
+  );
   return <div className="adventure-scene-layout">
     <div className="adventure-combat-hud">
       <div className="adventure-combat-hud-hero">
@@ -151,9 +154,9 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
         </motion.div>
       </div>
     </div>
-    {visualAction && <div key={visualAction.id} className={`adventure-effect-sequence adventure-effect-${actionEffect} adventure-vfx-${actionEffect} adventure-effect-${actionStyle} ${selfHeal ? 'adventure-effect-self-heal' : ''}`} aria-hidden="true">
+    {visualAction && <div key={visualAction.id} className={`adventure-effect-sequence adventure-effect-${actionEffect} adventure-vfx-${actionEffect} adventure-effect-${actionStyle} ${selfSupport ? 'adventure-effect-self-support' : ''}`} aria-hidden="true">
       {cast && <><span className="adventure-cast-particles" /><span className="adventure-cast-orb" /></>}
-      {projectile && !selfHeal && <span className="adventure-projectile" />}
+      {projectile && !selfSupport && <span className="adventure-projectile" />}
       <span className="adventure-impact" />
     </div>}
     {frame.status === 'transition' && <div className="adventure-transition-banner">Nova etapa</div>}
