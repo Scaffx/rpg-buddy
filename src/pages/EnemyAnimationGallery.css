@@ -1,0 +1,6 @@
+.enemy-gallery-layout { display:grid; grid-template-columns:260px minmax(0,1fr); gap:22px; align-items:start; }
+.enemy-gallery-catalog { min-width:0; }
+.enemy-gallery .skill-gallery-skill-list { margin-bottom:0; }
+.enemy-gallery-toolbar { margin-bottom:18px; }
+@media (max-width:900px) { .enemy-gallery-layout { grid-template-columns:minmax(0,1fr); } .enemy-gallery-catalog .skill-gallery-skill-list { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:400px) { .enemy-gallery-toolbar label { flex-basis:100%; min-width:0; } .enemy-gallery select { width:100%; min-width:0; } .enemy-gallery-catalog .skill-gallery-skill-list button { min-width:0; overflow-wrap:anywhere; } }

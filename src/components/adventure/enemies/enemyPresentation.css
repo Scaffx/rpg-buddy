@@ -1,0 +1,13 @@
+.adventure-enemy-skill-layer { --enemy-source-x:75%; --enemy-target-x:25%; --enemy-line-y:62%; position:absolute; inset:0; z-index:3; pointer-events:none; }
+.adventure-enemy-skill-layer[data-enemy-target="self"] { --enemy-target-x:var(--enemy-source-x); }
+.adventure-enemy-skill-layer > div { position:absolute; inset:0; }
+.adventure-enemy-skill-layer svg { overflow:visible; }
+.adventure-still .adventure-enemy-skill-layer *, .adventure-still .adventure-enemy-skill-layer *::before, .adventure-still .adventure-enemy-skill-layer *::after { animation-play-state:paused !important; }
+.adventure-enemy-cast .adventure-enemy-body { transform-box:fill-box; transform-origin:50% 90%; animation:enemy-present-cast 1.2s ease-in-out both; }
+.adventure-enemy-roar .adventure-enemy-body { transform-box:fill-box; transform-origin:50% 90%; animation:enemy-present-roar 1.2s ease-in-out both; }
+.adventure-enemy-guard .adventure-enemy-body { transform-box:fill-box; transform-origin:50% 90%; animation:enemy-present-guard 1.2s ease-in-out both; }
+@keyframes enemy-present-cast { 0%,100% {transform:rotate(0);} 35% {transform:rotate(-9deg) translateY(-2px);} 65% {transform:rotate(9deg);} }
+@keyframes enemy-present-roar { 0%,100% {transform:scale(1);} 40% {transform:scale(1.08) translateY(-2px);} 70% {transform:scale(1.02);} }
+@keyframes enemy-present-guard { 0%,100% {transform:scale(1);} 45%,65% {transform:scale(.95,1.04);} }
+.adventure-still .adventure-enemy-body { animation:none; }
+@media (prefers-reduced-motion:reduce) { .adventure-enemy-body { animation:none !important; } }

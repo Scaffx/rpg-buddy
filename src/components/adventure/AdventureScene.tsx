@@ -5,6 +5,9 @@ import { BIOME_LABELS, enemyVisualVariant, type AdventureBiome, type AdventureHe
 import './adventureScene.css';
 import { findSkillAnimation } from './skills/registry';
 import { AdventureSkillEffect } from './skills/AdventureSkillEffect';
+import { findEnemyAnimation, resolveEnemyPresentation } from './enemies/registry';
+import { AdventureEnemyEffect } from './enemies/AdventureEnemyEffect';
+import { AdventureEnemyPortrait } from './enemies/AdventureEnemyPortrait';
 
 export type AdventureSceneAction = {
   id: string;
@@ -41,6 +44,7 @@ type Props = {
   heroName: string;
   enemyName: string;
   isBoss: boolean;
+  bossId?: string | null;
   frame: AdventureSceneFrame;
   paused: boolean;
   announceActions?: boolean;
@@ -90,7 +94,7 @@ function ActionReadout({ action, heroAttack, announce = true }: { action: Advent
   </div>;
 }
 
-export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, isBoss, frame, paused, announceActions = true }: Props) {
+export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, isBoss, bossId, frame, paused, announceActions = true }: Props) {
   const sceneRef = useRef<HTMLDivElement>(null);
   const [sceneWidth, setSceneWidth] = useState(320);
   useEffect(() => {
@@ -106,12 +110,16 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
   const reducedMotion = useReducedMotion();
   const still = paused || reducedMotion;
   const action = frame.status === 'fighting' ? frame.action : null;
-  const visualAction = frame.animateAction === false ? null : action;
+  const blockedEnemy = action?.actor === 'enemy' && (action.effectNote === 'stunned' || action.damageMultiplier === 0);
+  const visualAction = frame.animateAction === false || blockedEnemy ? null : action;
   const heroAttack = visualAction?.actor === 'hero';
   const enemyAttack = visualAction?.actor === 'enemy';
   const specific = heroAttack && visualAction?.kind === 'skill' ? findSkillAnimation(visualAction.skillId, heroClass) : null;
+  const enemy = resolveEnemyPresentation({ bossId, isBoss, enemyName, biome });
+  const enemyAction = enemyAttack ? { kind: visualAction.kind ?? 'attack', skillId: visualAction.skillId, skillName: visualAction.skillName } : null;
+  const enemySpecific = enemy && enemyAction ? findEnemyAnimation(enemy.key, enemyAction) : null;
   const defaultStyle = heroAttack ? visualAction?.kind === 'skill' && (heroClass === 'mago' || heroClass === 'clerico') ? 'cast' : heroClass === 'arqueiro' ? 'bow' : 'melee' : enemyAttack ? 'enemy' : 'idle';
-  const actionStyle = specific?.definition.motion ?? defaultStyle;
+  const actionStyle = enemySpecific ? `enemy-${enemySpecific.definition.motion}` : specific?.definition.motion ?? defaultStyle;
   const cast = actionStyle === 'cast' || actionStyle === 'support';
   const bow = actionStyle === 'bow';
   const melee = heroAttack && ['melee', 'slam', 'lunge'].includes(actionStyle);
@@ -120,7 +128,9 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
   const heroMotion = heroAttack ? { x: [0, gap * (melee ? .7 : actionStyle === 'support' ? 0 : .08), 0], y: [0, actionStyle === 'slam' ? -18 : actionStyle === 'lunge' ? diagonal - 9 : melee ? diagonal - 5 : -3, 0] }
     : frame.status === 'exploring' ? { x: [0, gap * .25, 0], y: [0, diagonal, 0] }
     : { x: 0, y: 0 };
-  const enemyMotion = enemyAttack ? { x: [0, -gap * .6, 0], y: [0, -5, 0] } : { x: 0, y: 0 };
+  const enemyGesture = enemySpecific?.definition.motion;
+  const enemyStationary = enemyGesture === 'cast' || enemyGesture === 'roar' || enemyGesture === 'guard';
+  const enemyMotion = enemyAttack ? { x: [0, -gap * (enemyStationary ? .04 : enemyGesture === 'flight' ? .35 : .6), 0], y: [0, enemyGesture === 'flight' ? -28 : enemyGesture === 'slam' ? -15 : -5, 0] } : { x: 0, y: 0 };
   const motionClass = still ? 'adventure-still' : '';
   const actionEffect = visualAction?.effect ?? 'physical';
   const projectile = heroAttack && (cast || bow);
@@ -136,7 +146,7 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
       </div>
       <ResourceBar label={enemyName} value={frame.enemyHp} max={frame.enemyMaxHp} resource="HP" />
     </div>
-    <div ref={sceneRef} role="group" aria-label={`Cena da etapa ${stage}: ${heroName} e ${enemyName}`} className={`adventure-scene adventure-biome-${biome} ${motionClass}`} data-biome={biome} data-hero-class={heroClass} data-status={frame.status} data-stage={stage} data-action-style={actionStyle}>
+    <div ref={sceneRef} role="group" aria-label={`Cena da etapa ${stage}: ${heroName} e ${enemyName}`} className={`adventure-scene adventure-biome-${biome} ${motionClass}`} data-biome={biome} data-hero-class={heroClass} data-enemy-key={enemy?.key} data-status={frame.status} data-stage={stage} data-action-style={actionStyle}>
     <div className="adventure-scene-sky" aria-hidden="true"><span className="adventure-sun" /><span className="adventure-cloud cloud-one" /><span className="adventure-cloud cloud-two" /></div>
     <div className="adventure-scene-far" aria-hidden="true" /><div className="adventure-scene-middle" aria-hidden="true" />
     <div className="adventure-scene-ground" aria-hidden="true"><span className="adventure-path" /><span className="adventure-ground-detail detail-one" /><span className="adventure-ground-detail detail-two" /><span className="adventure-ground-detail detail-three" /></div>
@@ -153,14 +163,14 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
         </motion.div>
       </div>
       <div className="adventure-fighter adventure-fighter-enemy">
-        <motion.div key={enemyAttack ? visualAction.id : 'enemy-idle'} className={`adventure-sprite-track ${enemyAttack ? 'adventure-enemy-attack' : ''} ${frame.status === 'defeated' ? 'adventure-enemy-victory' : ''}`}
+        <motion.div key={enemyAttack ? visualAction.id : 'enemy-idle'} className={`adventure-sprite-track ${enemyAttack ? `adventure-enemy-attack adventure-${actionStyle}` : ''} ${frame.status === 'defeated' ? 'adventure-enemy-victory' : ''}`}
             animate={still ? { x: 0, y: 0 } : enemyMotion}
           transition={still ? { duration: 0 } : { duration: 1.1, ease: 'easeInOut', repeat: 0 }}>
-          <AdventureEnemySprite biome={biome} variant={enemyVisualVariant(stage, isBoss)} className="adventure-enemy-svg" />
+          {enemy ? <AdventureEnemyPortrait enemyKey={enemy.key} className="adventure-enemy-svg" /> : <AdventureEnemySprite biome={biome} variant={enemyVisualVariant(stage, isBoss)} className="adventure-enemy-svg" />}
         </motion.div>
       </div>
     </div>
-    {visualAction && specific ? <AdventureSkillEffect key={visualAction.id} skillId={visualAction.skillId!} heroClass={heroClass} target={selfSupport ? 'self' : specific.definition.target} /> : visualAction && <div key={visualAction.id} className={`adventure-effect-sequence adventure-effect-${actionEffect} adventure-vfx-${actionEffect} adventure-effect-${actionStyle} ${selfSupport ? 'adventure-effect-self-support' : ''}`} aria-hidden="true">
+    {visualAction && enemySpecific && enemy && enemyAction ? <AdventureEnemyEffect key={visualAction.id} enemyKey={enemy.key} {...enemyAction} /> : visualAction && specific ? <AdventureSkillEffect key={visualAction.id} skillId={visualAction.skillId!} heroClass={heroClass} target={selfSupport ? 'self' : specific.definition.target} /> : visualAction && <div key={visualAction.id} className={`adventure-effect-sequence adventure-effect-${actionEffect} adventure-vfx-${actionEffect} adventure-effect-${actionStyle} ${selfSupport ? 'adventure-effect-self-support' : ''}`} aria-hidden="true">
       {cast && <><span className="adventure-cast-particles" /><span className="adventure-cast-orb" /></>}
       {projectile && !selfSupport && <span className="adventure-projectile" />}
       <span className="adventure-impact" />

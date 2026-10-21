@@ -207,7 +207,7 @@ export default function AutoAdventure() {
         </div>
         <Button size="sm" variant="outline" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Retomar animação' : 'Pausar animação'}</Button>
       </div>
-      <AdventureScene stage={stage} biome={biome} heroClass={heroClass} heroName={heroName} enemyName={enemyName} isBoss={isBoss} frame={frame} paused={paused} />
+      <AdventureScene stage={stage} biome={biome} heroClass={heroClass} heroName={heroName} enemyName={enemyName} isBoss={isBoss} bossId={battle?.boss_id} frame={frame} paused={paused} />
       <div className="flex min-w-0 flex-wrap justify-between gap-2 text-sm">
         <span className="min-w-0 break-words">{heroName} enfrenta {enemyName}</span>
         {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
