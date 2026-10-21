@@ -8,6 +8,7 @@ import { AdventureSkillEffect } from './skills/AdventureSkillEffect';
 import { findEnemyAnimation, resolveEnemyPresentation } from './enemies/registry';
 import { AdventureEnemyEffect } from './enemies/AdventureEnemyEffect';
 import { AdventureEnemyPortrait } from './enemies/AdventureEnemyPortrait';
+import { enemyActionMotion } from './enemies/enemyMotion';
 
 export type AdventureSceneAction = {
   id: string;
@@ -129,8 +130,7 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
     : frame.status === 'exploring' ? { x: [0, gap * .25, 0], y: [0, diagonal, 0] }
     : { x: 0, y: 0 };
   const enemyGesture = enemySpecific?.definition.motion;
-  const enemyStationary = enemyGesture === 'cast' || enemyGesture === 'roar' || enemyGesture === 'guard';
-  const enemyMotion = enemyAttack ? { x: [0, -gap * (enemyStationary ? .04 : enemyGesture === 'flight' ? .35 : .6), 0], y: [0, enemyGesture === 'flight' ? -28 : enemyGesture === 'slam' ? -15 : -5, 0] } : { x: 0, y: 0 };
+  const enemyMotion = enemyAttack ? enemyActionMotion(enemyGesture, enemySpecific?.definition.target, gap) : { x: 0, y: 0 };
   const motionClass = still ? 'adventure-still' : '';
   const actionEffect = visualAction?.effect ?? 'physical';
   const projectile = heroAttack && (cast || bow);

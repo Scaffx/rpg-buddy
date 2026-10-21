@@ -6,6 +6,7 @@ import { AdventureScene, type AdventureSceneFrame } from '@/components/adventure
 import { ENEMY_ANIMATION_GROUPS, ENEMY_ANIMATIONS, ENEMY_PRESENTATIONS, findEnemyAnimation, resolveEnemyPresentation } from '@/components/adventure/enemies/registry';
 import catalog from '@/components/adventure/enemies/catalog.snapshot.json';
 import EnemyAnimationGallery from '@/pages/EnemyAnimationGallery';
+import { enemyActionMotion } from '@/components/adventure/enemies/enemyMotion';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | null = null;
@@ -106,6 +107,14 @@ describe('enemy animations: catalog, identity and confirmed actions', () => {
     expect(page.querySelector('[data-enemy-target="self"]')).not.toBeNull();
     expect(page.querySelector('.adventure-still')).not.toBeNull();
     expect(page.querySelector('[aria-label="Herói: 87 de 130 HP"]')).not.toBeNull();
+  });
+
+  it('keeps self-target flight over the caster and retains an approach for offensive flight', () => {
+    expect(enemyActionMotion('flight', 'self', 200)).toEqual({ x: [0, 0, 0], y: [0, -28, 0] });
+    expect(enemyActionMotion('flight', 'hero', 200).x).toEqual([0, -70, 0]);
+    for (const item of ENEMY_ANIMATIONS.filter(item => item.target === 'self')) {
+      expect(enemyActionMotion(item.motion, item.target, 200).x[1], item.id).toBe(0);
+    }
   });
 
   it('labels specials as previews and lets visitors switch to small creatures without game mutations', () => {
