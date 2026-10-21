@@ -44,7 +44,7 @@ export default function EnemyAnimationGallery() {
     enemyHp: 100, enemyMaxHp: 100, animateAction: true,
     action: { id: `enemy-preview-${animation.id}-${serial}`, actor: 'enemy', kind: animation.kind,
       skillId: preview ? animation.id : null, skillName: preview ? animation.name : null,
-      damage: self ? 0 : 24, skillType: self ? 'buff' : 'dano',
+      damage: self ? null : 24,
       effect: currentElements.includes(animation.element) ? animation.element as AdventureSceneAction['effect'] : null },
   };
 
