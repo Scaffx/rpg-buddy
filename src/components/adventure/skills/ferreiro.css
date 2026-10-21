@@ -1,0 +1,381 @@
+.vfx-ferreiro {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+  --vfx-ferreiro-hit-x: var(--skill-target-x, 75%);
+  --vfx-ferreiro-duration: 1080ms;
+}
+
+.vfx-ferreiro[data-skill-target='self'] {
+  --vfx-ferreiro-hit-x: var(--skill-source-x, 25%);
+}
+
+.vfx-ferreiro .vfx-ferreiro-mark {
+  position: absolute;
+  left: var(--vfx-ferreiro-hit-x);
+  top: var(--skill-line-y, 62%);
+  width: clamp(62px, 11vw, 104px);
+  height: auto;
+  overflow: visible;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 2px 2px rgb(22 20 22 / 55%));
+}
+
+.vfx-ferreiro .vfx-ferreiro-rail {
+  position: absolute;
+  left: var(--skill-source-x, 25%);
+  right: calc(100% - var(--vfx-ferreiro-hit-x));
+  top: var(--skill-line-y, 62%);
+  height: 5px;
+  border-radius: 100%;
+  transform-origin: left center;
+  animation: vfx-ferreiro-rail-travel var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-rail-steel {
+  background: linear-gradient(90deg, transparent, #8facae 48%, #f7f2d8 90%, transparent);
+  box-shadow: 0 0 7px #9eb8b4;
+}
+
+.vfx-ferreiro .vfx-ferreiro-rail-ember {
+  height: 8px;
+  background: linear-gradient(90deg, transparent, #dc5028 30%, #ffc46d 85%, transparent);
+  box-shadow: 0 0 8px #ec7036;
+}
+
+.vfx-ferreiro .vfx-ferreiro-martelada-hammer {
+  animation: vfx-ferreiro-short-arc var(--vfx-ferreiro-duration) ease-in both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-ring {
+  position: absolute;
+  left: var(--vfx-ferreiro-hit-x);
+  top: var(--skill-line-y, 62%);
+  width: clamp(30px, 6vw, 55px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.vfx-ferreiro .vfx-ferreiro-ring-steel {
+  border: 3px solid #dce8de;
+  box-shadow: 0 0 7px #a9c4be;
+  animation: vfx-ferreiro-ring-burst var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-chip {
+  position: absolute;
+  left: var(--vfx-ferreiro-hit-x);
+  top: var(--skill-line-y, 62%);
+  width: 10px;
+  height: 5px;
+  background: #e4e4d4;
+  clip-path: polygon(0 50%, 65% 0, 100% 100%);
+  transform: translate(var(--vfx-ferreiro-chip-x), -12px);
+  animation: vfx-ferreiro-chip-scatter var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-chip-two { --vfx-ferreiro-chip-x: -22px; }
+.vfx-ferreiro .vfx-ferreiro-chip-one { --vfx-ferreiro-chip-x: 22px; }
+
+.vfx-ferreiro .vfx-ferreiro-chama-hammer {
+  animation: vfx-ferreiro-flame-arc var(--vfx-ferreiro-duration) ease-in both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-chama-flame {
+  width: clamp(55px, 10vw, 90px);
+  transform: translate(-50%, -43%);
+  animation: vfx-ferreiro-flame-rise var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-ember,
+.vfx-ferreiro .vfx-ferreiro-cinder {
+  position: absolute;
+  left: var(--vfx-ferreiro-hit-x);
+  top: var(--skill-line-y, 62%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffe29a;
+  box-shadow: 0 0 5px #f3672e;
+  transform: translate(var(--vfx-ferreiro-ember-x), var(--vfx-ferreiro-ember-y));
+  animation: vfx-ferreiro-ember-scatter var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-ember-one { --vfx-ferreiro-ember-x: -38px; --vfx-ferreiro-ember-y: -32px; }
+.vfx-ferreiro .vfx-ferreiro-ember-two { --vfx-ferreiro-ember-x: 30px; --vfx-ferreiro-ember-y: -42px; }
+.vfx-ferreiro .vfx-ferreiro-ember-three { --vfx-ferreiro-ember-x: 40px; --vfx-ferreiro-ember-y: -13px; }
+
+.vfx-ferreiro .vfx-ferreiro-impacto-block {
+  animation: vfx-ferreiro-block-crush var(--vfx-ferreiro-duration) cubic-bezier(.2,.8,.25,1) both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-impacto-crack {
+  width: clamp(85px, 16vw, 145px);
+  top: calc(var(--skill-line-y, 62%) + 24px);
+  animation: vfx-ferreiro-crack-open var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-dust,
+.vfx-ferreiro .vfx-ferreiro-bigorna-dust {
+  position: absolute;
+  left: var(--vfx-ferreiro-hit-x);
+  top: calc(var(--skill-line-y, 62%) + 28px);
+  width: clamp(22px, 5vw, 42px);
+  height: 13px;
+  border: 3px solid #c9bca3;
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0;
+  transform: translateX(calc(-50% + var(--vfx-ferreiro-dust-offset)));
+  animation: vfx-ferreiro-dust-spread var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-dust-left,
+.vfx-ferreiro .vfx-ferreiro-bigorna-dust-left { --vfx-ferreiro-dust-offset: -38px; }
+.vfx-ferreiro .vfx-ferreiro-dust-right,
+.vfx-ferreiro .vfx-ferreiro-bigorna-dust-right { --vfx-ferreiro-dust-offset: 38px; }
+
+.vfx-ferreiro .vfx-ferreiro-pancada-hammer {
+  animation: vfx-ferreiro-vertical-tap var(--vfx-ferreiro-duration) cubic-bezier(.2,.9,.3,1) both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-orbit {
+  position: absolute;
+  left: var(--vfx-ferreiro-hit-x);
+  top: calc(var(--skill-line-y, 62%) - 15px);
+  border: 3px dashed #f5d381;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  animation: vfx-ferreiro-orbit-turn var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-orbit-outer { width: clamp(65px, 11vw, 100px); height: 34px; }
+.vfx-ferreiro .vfx-ferreiro-orbit-inner { width: clamp(40px, 7vw, 62px); height: 22px; }
+.vfx-ferreiro .vfx-ferreiro-pancada-stars {
+  width: clamp(78px, 13vw, 116px);
+  top: calc(var(--skill-line-y, 62%) - 17px);
+  animation: vfx-ferreiro-stars-appear var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-bigorna {
+  width: clamp(92px, 16vw, 144px);
+  animation: vfx-ferreiro-anvil-drop var(--vfx-ferreiro-duration) cubic-bezier(.25,.8,.35,1) both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-bigorna-shadow {
+  position: absolute;
+  left: var(--vfx-ferreiro-hit-x);
+  top: calc(var(--skill-line-y, 62%) + 26px);
+  width: clamp(65px, 12vw, 110px);
+  height: 12px;
+  border-radius: 50%;
+  background: rgb(38 38 44 / 55%);
+  transform: translateX(-50%);
+  animation: vfx-ferreiro-shadow-grow var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-bigorna-dust {
+  top: calc(var(--skill-line-y, 62%) + 24px);
+  border-color: #d6c9b1;
+  animation: vfx-ferreiro-dust-spread var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-bigorna-notch {
+  position: absolute;
+  left: var(--vfx-ferreiro-hit-x);
+  top: calc(var(--skill-line-y, 62%) + 30px);
+  width: 38px;
+  height: 3px;
+  background: #d6c9b1;
+  transform-origin: center;
+  transform: translateX(calc(-50% + var(--vfx-ferreiro-notch-offset)));
+  animation: vfx-ferreiro-notch-open var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-bigorna-notch-left { --vfx-ferreiro-notch-offset: -28px; }
+.vfx-ferreiro .vfx-ferreiro-bigorna-notch-right { --vfx-ferreiro-notch-offset: 28px; }
+
+.vfx-ferreiro .vfx-ferreiro-volcano-forge {
+  width: clamp(105px, 20vw, 165px);
+  top: calc(var(--skill-line-y, 62%) + 10px);
+  animation: vfx-ferreiro-forge-ignite var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-lava {
+  position: absolute;
+  left: calc(var(--vfx-ferreiro-hit-x) + var(--vfx-ferreiro-lava-x));
+  top: calc(var(--skill-line-y, 62%) - 8px);
+  width: clamp(8px, 1.8vw, 15px);
+  height: var(--vfx-ferreiro-lava-height);
+  border-radius: 75% 75% 42% 42%;
+  background: linear-gradient(#ffe398, #ff9c39 45%, #c74631);
+  box-shadow: 0 0 7px #ef6b32;
+  transform-origin: center bottom;
+  transform: translate(-50%, -90%);
+  animation: vfx-ferreiro-lava-erupt var(--vfx-ferreiro-duration) ease-out both;
+}
+
+.vfx-ferreiro .vfx-ferreiro-lava-left { --vfx-ferreiro-lava-x: -35px; --vfx-ferreiro-lava-height: 43px; }
+.vfx-ferreiro .vfx-ferreiro-lava-center { --vfx-ferreiro-lava-x: -4px; --vfx-ferreiro-lava-height: 68px; }
+.vfx-ferreiro .vfx-ferreiro-lava-right { --vfx-ferreiro-lava-x: 27px; --vfx-ferreiro-lava-height: 52px; }
+.vfx-ferreiro .vfx-ferreiro-cinder-one { --vfx-ferreiro-ember-x: -50px; --vfx-ferreiro-ember-y: -72px; }
+.vfx-ferreiro .vfx-ferreiro-cinder-two { --vfx-ferreiro-ember-x: 16px; --vfx-ferreiro-ember-y: -90px; }
+.vfx-ferreiro .vfx-ferreiro-cinder-three { --vfx-ferreiro-ember-x: 48px; --vfx-ferreiro-ember-y: -62px; }
+
+@keyframes vfx-ferreiro-rail-travel {
+  0%, 34% { opacity: 0; transform: scaleX(0); }
+  45% { opacity: .9; }
+  74% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+
+@keyframes vfx-ferreiro-short-arc {
+  0%, 33% { opacity: 0; transform: translate(-85%, -90%) rotate(-72deg) scale(.7); }
+  43% { opacity: 1; }
+  74% { opacity: 1; transform: translate(-60%, -80%) rotate(-40deg); }
+  82% { opacity: 1; transform: translate(-50%, -50%) rotate(8deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(8deg); }
+}
+
+@keyframes vfx-ferreiro-ring-burst {
+  0%, 74% { opacity: 0; transform: translate(-50%, -50%) scale(.25); }
+  82% { opacity: .9; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+}
+
+@keyframes vfx-ferreiro-chip-scatter {
+  0%, 75% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  82% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--vfx-ferreiro-chip-x), -24px) rotate(110deg); }
+}
+
+@keyframes vfx-ferreiro-flame-arc {
+  0%, 34% { opacity: 0; transform: translate(-85%, -65%) rotate(-100deg) scale(.65); }
+  47% { opacity: 1; }
+  74% { opacity: 1; transform: translate(-58%, -75%) rotate(-35deg); }
+  82% { opacity: 1; transform: translate(-50%, -50%) rotate(12deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(12deg); }
+}
+
+@keyframes vfx-ferreiro-flame-rise {
+  0%, 74% { opacity: 0; transform: translate(-50%, -15%) scale(.35); }
+  84% { opacity: .95; transform: translate(-50%, -43%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -85%) scale(1.15); }
+}
+
+@keyframes vfx-ferreiro-ember-scatter {
+  0%, 74% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  82% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--vfx-ferreiro-ember-x), var(--vfx-ferreiro-ember-y)) scale(.8); }
+}
+
+@keyframes vfx-ferreiro-block-crush {
+  0%, 35% { opacity: 0; transform: translate(-50%, -130%) scale(1.05); }
+  51% { opacity: 1; }
+  74% { transform: translate(-50%, -85%) scale(1.05); }
+  82% { opacity: 1; transform: translate(-50%, -44%) scaleX(1.12) scaleY(.88); }
+  100% { opacity: 0; transform: translate(-50%, -44%); }
+}
+
+@keyframes vfx-ferreiro-crack-open {
+  0%, 75% { opacity: 0; transform: translate(-50%, -50%) scaleX(.2); }
+  84% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1); }
+}
+
+@keyframes vfx-ferreiro-dust-spread {
+  0%, 76% { opacity: 0; transform: translateX(-50%) scale(.2); }
+  85% { opacity: .85; }
+  100% { opacity: 0; transform: translateX(calc(-50% + var(--vfx-ferreiro-dust-offset))) scale(1.3); }
+}
+
+@keyframes vfx-ferreiro-vertical-tap {
+  0%, 35% { opacity: 0; transform: translate(-50%, -150%) scale(.7); }
+  54% { opacity: 1; }
+  74% { transform: translate(-50%, -95%); }
+  81% { opacity: 1; transform: translate(-50%, -42%) scaleY(.9); }
+  100% { opacity: 0; transform: translate(-50%, -42%); }
+}
+
+@keyframes vfx-ferreiro-orbit-turn {
+  0%, 75% { opacity: 0; transform: translate(-50%, -50%) rotate(-30deg) scale(.6); }
+  85% { opacity: .95; }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(32deg) scale(1.15); }
+}
+
+@keyframes vfx-ferreiro-stars-appear {
+  0%, 75% { opacity: 0; transform: translate(-50%, -50%) rotate(-25deg) scale(.5); }
+  86% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(15deg) scale(1.15); }
+}
+
+@keyframes vfx-ferreiro-anvil-drop {
+  0%, 35% { opacity: 0; transform: translate(-50%, -200%) scale(.68); }
+  55% { opacity: 1; }
+  74% { transform: translate(-50%, -135%) scale(.9); }
+  82% { opacity: 1; transform: translate(-50%, -50%) scaleX(1.08) scaleY(.9); }
+  100% { opacity: 0; transform: translate(-50%, -50%); }
+}
+
+@keyframes vfx-ferreiro-shadow-grow {
+  0%, 35% { opacity: 0; transform: translateX(-50%) scale(.2); }
+  74% { opacity: .5; }
+  82% { opacity: .9; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; }
+}
+
+@keyframes vfx-ferreiro-notch-open {
+  0%, 76% { opacity: 0; transform: translateX(-50%) scaleX(.1); }
+  86% { opacity: .95; }
+  100% { opacity: 0; transform: translateX(calc(-50% + var(--vfx-ferreiro-notch-offset))) scaleX(1); }
+}
+
+@keyframes vfx-ferreiro-forge-ignite {
+  0%, 35% { opacity: 0; transform: translate(-50%, -30%) scale(.6); }
+  55% { opacity: .85; }
+  74% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+@keyframes vfx-ferreiro-lava-erupt {
+  0%, 55% { opacity: 0; transform: translate(-50%, 0) scaleY(.1); }
+  74% { opacity: .9; transform: translate(-50%, -20%) scaleY(.65); }
+  83% { opacity: 1; transform: translate(-50%, -100%) scaleY(1); }
+  100% { opacity: 0; transform: translate(-50%, -115%) scaleY(.7); }
+}
+
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-rail,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-mark,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-ring,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-chip,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-ember,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-cinder,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-dust,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-orbit,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-bigorna-shadow,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-bigorna-dust,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-bigorna-notch,
+:is(.adventure-still .vfx-ferreiro, .vfx-ferreiro.adventure-still) .vfx-ferreiro-lava {
+  animation: none;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vfx-ferreiro .vfx-ferreiro-rail,
+  .vfx-ferreiro .vfx-ferreiro-mark,
+  .vfx-ferreiro .vfx-ferreiro-ring,
+  .vfx-ferreiro .vfx-ferreiro-chip,
+  .vfx-ferreiro .vfx-ferreiro-ember,
+  .vfx-ferreiro .vfx-ferreiro-cinder,
+  .vfx-ferreiro .vfx-ferreiro-dust,
+  .vfx-ferreiro .vfx-ferreiro-orbit,
+  .vfx-ferreiro .vfx-ferreiro-bigorna-shadow,
+  .vfx-ferreiro .vfx-ferreiro-bigorna-dust,
+  .vfx-ferreiro .vfx-ferreiro-bigorna-notch,
+  .vfx-ferreiro .vfx-ferreiro-lava {
+    animation: none;
+    opacity: 1;
+  }
+}
