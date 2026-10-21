@@ -1,0 +1,23 @@
+# Revisão independente Auth — REPROVADO local
+
+## Alvo e alcance
+
+[Certo] Alvo auditado: commit do autor `2acc64d28626f56ab3e6f3efd8b8f9424e4f60de` em `rpg-portais-coop-20261020`, comparado à base `9a8033829c3f6dea546b4709e569958c0a046e61`. O root informou integração em `3a34cf9`. O worktree CENA usado para este relatório ainda contém o `useAuth` antigo; o teste foi executado **no worktree do autor**, contra o produto de `2acc64d`, por cópia temporária somente do teste, removida após a execução. Nenhum arquivo de produto do autor foi editado.
+
+## Achado P1: evento de storage vence a confirmação
+
+[Certo] Em `src/hooks/useAuth.tsx:67-71`, qualquer evento diferente de `INITIAL_SESSION` incrementa `freshEventVersion`, cancela o watchdog de 15 segundos e aceita imediatamente `nextSession.user`. Em `:79` e `:92`, o bootstrap abandona sua confirmação se essa versão mudou. `src/hooks/useIsAdmin.ts:8-11` usa `app_metadata.role` desse usuário exposto para o sinal visual de admin, e `src/App.tsx:113-116` usa esse sinal na isenção de assinatura da rota protegida.
+
+[Certo] A versão instalada de `@supabase/auth-js` permite esse gatilho sem login novo: `GoTrueClient.ts:4464-4510` lê a sessão do storage em `_recoverAndRefresh`; no caminho de sessão ainda válida e não expirada, `:4573` emite `SIGNED_IN` com o `currentSession` lido. A própria documentação no código (`:3801-3803`) diz que `SIGNED_IN` também ocorre quando a sessão é restabelecida, inclusive ao focar a aba. Portanto, o nome do evento não prova que `session.user` foi confirmado no servidor nessa passagem.
+
+[Certo] Teste independente `src/test/authRecoveryIndependent.test.tsx`: `getSession` fica pendente, o listener recebe `SIGNED_IN` com usuário de sessão local cujo `app_metadata.role=admin`, e nenhuma confirmação de usuário concluiu. Esperado `loading:denied`; observado `cached:admin`. O teste de `getUser` com ID diferente do usuário armazenado passou (`retry:denied`). Com o evento de storage, o watchdog é cancelado e o bootstrap atrasado é descartado pela versão, então o estado não se autocorrige pelo fluxo inicial. A prova usa somente sessão e token fictícios em mock; nenhum token real foi lido ou manipulado.
+
+[Certo] Severidade P1 para o gate de release solicitado: viola o requisito explícito de não usar sessão cacheada sem confirmação para admin e pode liberar o fluxo visual de isenção de assinatura. Isto **não demonstra** bypass de RLS, privilégio no backend, reprodução em GoTrue real ou sessão publicada; essas camadas não foram exercitadas.
+
+## Execução e verificações adjacentes
+
+[Certo] No worktree do autor, `npx --no-install vitest run src/test/authRecoveryIndependent.test.tsx`: exit 1, dois testes, um passou e um falhou em `expected 'cached:admin' to be 'loading:denied'`. O teste foi copiado temporariamente para o mesmo caminho em `rpg-portais-coop-20261020/src/test`, porque Vitest não coleta um arquivo externo ao root (`vitest run <caminho absoluto do CENA>`: exit 1, “No test files found”). O arquivo temporário foi removido e `git status --short` no autor ficou vazio. Após a rodada, retirei do teste próprio a expectativa desnecessária de que `getUser` jamais seja chamado no evento: uma correção pode confirmá-lo fora do callback e manter a UI em loading; a asserção principal que reprovou permaneceu igual. Essa versão ajustada fica para o reteste do novo SHA, sem alegar nova execução sobre o autor. `npx --no-install eslint src/test/authRecoveryIndependent.test.tsx` e `git diff --check` no CENA: exit 0 ambos; TSC nesse worktree não exercitaria o Auth alvo e não foi executado.
+
+[Certo] A leitura focal do diff mostra tratamento de rejeição e erro retornado em `getSession`/`getUser`, timeout, recovery nos três guards antes do splash, `getUser(token)` sequencial no bootstrap, negação de ID divergente, e checks de `mounted`/versão para respostas tardias. O listener não chama métodos Auth de dentro do callback. `initDeepLinkAuth`, sign-up, sign-in, sign-out e onboarding não sofreram alteração neste commit. Os seis testes do autor e o lint/TSC baseline foram relatados por ele e pelo root; não foram reivindicados como execução independente aqui.
+
+[Certo] Escalação com gatilho, severidade e saída do teste foi enviada ao root via Orca. O envio direto ao dispatch antigo do autor foi recusado pelo Orca por já estar concluído; o root informou que abrirá nova correção no autor. Não houve browser, escrita no Primary/Notion, alteração de dependência ou lockfile. O bloqueio deste review permanece até um novo SHA corrigir a exposição prematura e este mesmo cenário adversarial passar, seguido da validação integrada do root.
