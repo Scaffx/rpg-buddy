@@ -62,7 +62,7 @@ describe('adventure damage reaction', () => {
     expect(container?.querySelector('.adventure-fighter-hero [data-hit-id]')).toBeNull();
     expect(hit()?.querySelector('.adventure-damage-marks')).not.toBeNull();
 
-    act(() => vi.advanceTimersByTime(521));
+    act(() => vi.advanceTimersByTime(1121));
     expect(hit()).toBeNull();
     render({ ...action }, { animateAction: true, enemyHp: 50 });
     expect(hit()).toBeNull();
@@ -77,7 +77,7 @@ describe('adventure damage reaction', () => {
     const action: AdventureSceneAction = { id: 'strict-hit', actor: 'enemy', damage: 2 };
     render(action, { animateAction: true, strict: true });
     expect(hit()?.getAttribute('data-hit-id')).toBe('strict-hit');
-    act(() => vi.advanceTimersByTime(521));
+    act(() => vi.advanceTimersByTime(1121));
     expect(hit()).toBeNull();
     render(action, { animateAction: true, strict: true });
     expect(hit()).toBeNull();

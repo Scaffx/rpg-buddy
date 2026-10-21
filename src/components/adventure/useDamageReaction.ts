@@ -10,7 +10,8 @@ type DamageEvent = {
 
 export type DamageReaction = { id: string; target: 'hero' | 'enemy' };
 
-const REACTION_MS = 520;
+// Includes the wind-up so recoil coincides with the attack VFX impact.
+const REACTION_MS = 1120;
 
 /** Each server event is consumed once, including events first seen while motion is disabled. */
 export function useDamageReaction(
