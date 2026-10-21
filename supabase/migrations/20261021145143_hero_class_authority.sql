@@ -215,7 +215,7 @@ BEGIN
   SELECT * INTO v_identity FROM app_private.hero_class_identity WHERE user_id = p_user_id;
   IF NOT FOUND THEN
     IF v_profile.current_class_id = '00000001-0000-0000-0000-000000000001'::uuid
-       AND v_profile.level BETWEEN 1 AND 4 THEN RETURN 'aprendiz'; END IF;
+       AND v_profile.level >= 1 THEN RETURN 'aprendiz'; END IF;
     RETURN NULL;
   END IF;
   IF (v_profile.starter_class,v_profile.current_class_id,v_profile.starter_item)
@@ -224,7 +224,7 @@ BEGIN
   THEN RETURN NULL; END IF;
   IF v_identity.current_class_id IS NOT NULL THEN
     IF v_identity.current_class_id = '00000001-0000-0000-0000-000000000001'::uuid
-       AND v_profile.level BETWEEN 1 AND 4 THEN RETURN 'aprendiz'; END IF;
+       AND v_profile.level >= 1 THEN RETURN 'aprendiz'; END IF;
     IF NOT app_private.class_path_matches(
       v_identity.current_class_id,v_identity.starter_class,v_profile.level
     ) THEN RETURN NULL; END IF;
