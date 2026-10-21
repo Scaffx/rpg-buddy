@@ -38,6 +38,19 @@ export function useSkillTreeNodes(tree = 'mago') {
   });
 }
 
+/** Costs across every tree, including Apprentice points retained after class choice. */
+export function useAllSkillTreeNodes() {
+  return useQuery({
+    queryKey: ['skill_tree_nodes', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('skill_tree_nodes').select('*');
+      if (error) throw error;
+      return (data || []) as SkillTreeNode[];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 /** Alocações do jogador (node_id -> rank). */
 export function usePlayerSkillNodes() {
   const { user } = useAuth();
@@ -77,11 +90,15 @@ export function useResetSkillTree() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc('reset_skill_tree');
+      const { data, error } = await supabase.rpc('reset_skill_tree');
       if (error) throw error;
+      return data as { ok: boolean; charged: number; refunded_points?: number; removed_skills?: number };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['player_skill_nodes', user?.id] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+      qc.invalidateQueries({ queryKey: ['gold-balance', user?.id] });
+      qc.invalidateQueries({ queryKey: ['gold-history'] });
     },
   });
 }
