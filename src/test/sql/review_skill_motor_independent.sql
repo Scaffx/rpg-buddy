@@ -504,4 +504,36 @@ BEGIN
 END;
 $probe$;
 
+-- Final SHA contract: authenticated RPC limit matches this payload's battle timeline.
+SET LOCAL ROLE authenticated;
+SET LOCAL request.jwt.claim.sub = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaab';
+DO $probe$
+DECLARE
+  payload jsonb;
+  battle jsonb;
+  limit_seconds numeric;
+  timeline_seconds numeric;
+BEGIN
+  IF current_user <> 'authenticated' THEN
+    RAISE EXCEPTION 'duration probe did not run as authenticated';
+  END IF;
+  payload := public.sync_auto_adventure();
+  battle := payload->'battle';
+  IF battle IS NULL OR battle = 'null'::jsonb THEN
+    RAISE EXCEPTION 'duration probe requires a current battle in the RPC payload';
+  END IF;
+  limit_seconds := (payload->'limits'->>'interval_minutes')::numeric * 60;
+  timeline_seconds := EXTRACT(EPOCH FROM
+    ((battle->>'ends_at')::timestamptz - (battle->>'started_at')::timestamptz));
+  IF limit_seconds IS NULL OR timeline_seconds IS NULL
+    OR abs(limit_seconds - timeline_seconds) > 0.003 THEN
+    RAISE EXCEPTION 'RPC limit/timeline mismatch: limit_seconds=%, timeline_seconds=%',
+      limit_seconds, timeline_seconds;
+  END IF;
+  RAISE NOTICE 'independent authenticated limit/timeline PASS: limit_seconds=%, timeline_seconds=%',
+    limit_seconds, timeline_seconds;
+END;
+$probe$;
+RESET ROLE;
+
 ROLLBACK;
