@@ -828,7 +828,7 @@
       "points_available": "Pontos disponíveis",
       "points_spent": "Gastos",
       "respec": "Resetar",
-      "hint": "Ganhe 1 ponto por nível. Áreas avançadas só abrem com pontos suficientes gastos na árvore. Os bônus passam a valer no combate em breve.",
+      "hint": "Ganhe 1 ponto por nível. Áreas avançadas só abrem com pontos suficientes gastos na árvore. Habilidades ativas equipadas com efeito suportado já funcionam na aventura; passivos e variantes ainda não têm efeito na aventura.",
       "area_fisico": "Físico / Sangramento",
       "area_fogo": "Fogo",
       "area_gelo": "Gelo",

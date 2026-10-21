@@ -828,7 +828,7 @@
       "points_available": "Available points",
       "points_spent": "Spent",
       "respec": "Reset",
-      "hint": "Earn 1 point per level. Advanced areas only unlock once you've spent enough points in the tree. Passive bonuses start affecting combat soon.",
+      "hint": "Earn 1 point per level. Advanced areas only unlock once you've spent enough points in the tree. Equipped active skills with supported effects already work in adventure; passives and variants do not yet affect adventure.",
       "area_fisico": "Physical / Bleed",
       "area_fogo": "Fire",
       "area_gelo": "Ice",

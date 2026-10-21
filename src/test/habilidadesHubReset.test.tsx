@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
   level: 10,
   treeKey: 'aprendiz',
   hasClass: false,
-  profile: { level: 10, current_class_id: null as string | null, starter_class: 'mago',
+  profile: { level: 10, current_class_id: null as string | null, starter_class: null as string | null,
     pontos_talento: 2, combat_skill_loadout: [{ id: 'skill_a' }, { id: 'skill_b' }] },
   saved: null as unknown,
   reset: vi.fn(),
@@ -87,6 +87,7 @@ beforeEach(() => {
   state.level = 10;
   state.profile.level = 10;
   state.profile.current_class_id = null;
+  state.profile.starter_class = null;
   state.profile.combat_skill_loadout = [{ id: 'skill_a' }, { id: 'skill_b' }];
   state.treeKey = 'aprendiz';
   state.hasClass = false;
@@ -132,15 +133,38 @@ describe('Habilidades hub e reset', () => {
     expect(page.querySelector('[data-tour="feats-tree"]')).not.toBeNull();
   });
 
-  it('keeps a mage skill allocated without claiming an unchosen class can cast it', async () => {
+  it('shows a persisted level-1 mage skill without a false class-choice warning', async () => {
     state.treeKey = 'mago';
     state.hasClass = true;
+    state.profile.starter_class = 'mago';
     state.profile.combat_skill_loadout = [{ id: 'm_dardo' }];
     const page = render(<CombatLoadout />);
     expect(page.textContent).toContain('Dardo Arcano');
-    expect(page.textContent).toContain('app.habhub.class_choice_required');
+    expect(page.querySelector('[aria-label="app.habhub.ordered_skills"]')?.textContent).toContain('Dardo Arcano');
+    expect(page.textContent).not.toContain('app.habhub.class_choice_required');
     await act(async () => page.querySelector<HTMLButtonElement>('button[class*="bg-primary/90"]')!.click());
     expect((state.saved as { combat_skill_loadout: { id: string }[] }).combat_skill_loadout[0].id).toBe('m_dardo');
+  });
+
+  it('does not expose a class tree from a loadout when no class was chosen', async () => {
+    state.treeKey = 'mago';
+    state.hasClass = false;
+    state.profile.combat_skill_loadout = [{ id: 'm_dardo' }];
+    const page = render(<CombatLoadout />);
+    expect(page.textContent).not.toContain('Dardo Arcano');
+    expect(page.querySelector('[aria-label="app.habhub.ordered_skills"]')).toBeNull();
+    await act(async () => page.querySelector<HTMLButtonElement>('button[class*="bg-primary/90"]')!.click());
+    expect((state.saved as { combat_skill_loadout: { id: string }[] }).combat_skill_loadout).toEqual([]);
+  });
+
+  it('keeps allocated Aprendiz skills available before a class choice', async () => {
+    state.treeKey = 'aprendiz';
+    state.hasClass = false;
+    state.profile.combat_skill_loadout = [{ id: 'skill_a' }];
+    const page = render(<CombatLoadout />);
+    expect(page.querySelector('[aria-label="app.habhub.ordered_skills"]')?.textContent).toContain('A');
+    await act(async () => page.querySelector<HTMLButtonElement>('button[class*="bg-primary/90"]')!.click());
+    expect((state.saved as { combat_skill_loadout: { id: string }[] }).combat_skill_loadout[0].id).toBe('skill_a');
   });
 
   it('treats level 10 as free and confirms the 150 gold cost at level 11', () => {
