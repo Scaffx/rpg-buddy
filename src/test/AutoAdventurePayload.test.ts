@@ -30,6 +30,19 @@ const snapshot: Json = {
 };
 
 describe('auto adventure RPC contract', () => {
+  it('accepts optional enemy mana without inventing it for the current engine', () => {
+    const base = (snapshot as Record<string, Json>).battle as Record<string, Json>;
+    const event = (base.events as Json[])[0] as Record<string, Json>;
+    expect(parseAdventureSnapshot(snapshot).battle?.enemy_max_mp).toBeUndefined();
+    const battle = parseAdventureSnapshot({ ...snapshot, battle: { ...base,
+      enemy_max_mp: 50, enemy_mp: 12, events: [{ ...event, enemy_mp: 12 }],
+    } }).battle;
+    expect(battle?.enemy_max_mp).toBe(50);
+    expect(battle?.events[0].enemy_mp).toBe(12);
+    expect(parseAdventureSnapshot({ ...snapshot, battle: { ...base, enemy_max_mp: null, enemy_mp: null } }).battle?.enemy_max_mp).toBeUndefined();
+    expect(() => parseAdventureSnapshot({ ...snapshot, battle: { ...base, enemy_max_mp: -1 } })).toThrow('AUTO_ADVENTURE_INVALID_RESPONSE');
+    expect(() => parseAdventureSnapshot({ ...snapshot, battle: { ...base, events: [{ ...event, enemy_mp: '12' }] } })).toThrow('AUTO_ADVENTURE_INVALID_RESPONSE');
+  });
   it('accepts the five realm names and historical ruins without changing battle identity', () => {
     const base = (snapshot as Record<string, Json>).battle as Record<string, Json>;
     for (const biome of ['forest', 'desert', 'aquatic', 'ice', 'volcanic', 'ruins']) {

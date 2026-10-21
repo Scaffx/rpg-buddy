@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { AdventureBiome } from '@/lib/adventureVisuals';
 import './adventureScenery.css';
+import { AdventureAmbience } from './AdventureAmbience';
 
 const LANDSCAPES: Record<AdventureBiome, ReactNode> = {
   floresta: <>
@@ -66,5 +67,6 @@ export function AdventureScenery({ biome }: { biome: AdventureBiome }) {
     <circle className="realm-sun" cx="728" cy="87" r="33" />
     <g className="realm-clouds" fill="none" strokeLinecap="round"><path d="M78 80h81m-61-14h36M480 51h66m-49-13h29"/></g>
     {LANDSCAPES[biome]}
+    <AdventureAmbience biome={biome} />
   </svg>;
 }

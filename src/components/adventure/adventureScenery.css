@@ -7,3 +7,35 @@
 .scenery-gelo { --realm-sky: #d9e5f0; --realm-sun: #f0f5ef; --realm-clouds: #f4f9f7; }
 .scenery-vulcanico { --realm-sky: #d8b1ad; --realm-sun: #f4cf9e; --realm-clouds: #ebcebd; }
 .scenery-ruinas { --realm-sky: #dce2db; --realm-sun: #ebe5bd; }
+
+.realm-clouds { animation: realm-cloud-drift 24s ease-in-out infinite alternate; }
+.realm-mote { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.realm-mote-leaf { animation: realm-leaf-fall 11s linear infinite; }
+.realm-mote-snow { animation: realm-snow-fall 12s linear infinite; }
+.realm-mote-ember { animation: realm-ember-rise 8s linear infinite; }
+.realm-mote-dust { animation: realm-dust-drift 14s ease-in-out infinite; }
+.realm-fireflies { opacity: .25; animation: realm-firefly-glow 7s ease-in-out infinite alternate; }
+.realm-sand-wisp { opacity: 0; animation: realm-sand-drift 9s ease-in-out infinite; }
+.realm-wave { opacity: .5; animation: realm-water-roll 6s ease-in-out infinite alternate; }
+.realm-wave-back { animation-delay: -3s; animation-duration: 8s; }
+.realm-sea-sparkles { opacity: .3; animation: realm-firefly-glow 6s ease-in-out infinite alternate; }
+.realm-frost-wind { opacity: 0; animation: realm-sand-drift 13s ease-in-out infinite; }
+.realm-smoke { opacity: .2; animation: realm-smoke-rise 12s ease-in-out infinite; }
+.realm-lava-glow { opacity: .25; animation: realm-lava-breathe 5s ease-in-out infinite alternate; }
+
+@keyframes realm-cloud-drift { from { transform: translateX(-12px); } to { transform: translateX(18px); } }
+@keyframes realm-leaf-fall { 0% { opacity: 0; transform: translate(-12px,-40px) rotate(-20deg); } 18%,72% { opacity: .6; } 100% { opacity: 0; transform: translate(45px,105px) rotate(100deg); } }
+@keyframes realm-snow-fall { 0% { opacity: 0; transform: translate(-12px,-75px); } 16%,78% { opacity: .75; } 100% { opacity: 0; transform: translate(22px,120px); } }
+@keyframes realm-ember-rise { 0% { opacity: 0; transform: translate(0,8px) scale(.6); } 18%,62% { opacity: .7; } 100% { opacity: 0; transform: translate(24px,-210px) scale(.3); } }
+@keyframes realm-dust-drift { 0%,100% { opacity: 0; transform: translate(-20px,5px); } 50% { opacity: .35; transform: translate(18px,-12px); } }
+@keyframes realm-firefly-glow { from { opacity: .16; } to { opacity: .65; } }
+@keyframes realm-sand-drift { 0%,100% { opacity: 0; transform: translateX(-45px); } 40% { opacity: .5; } 80% { opacity: 0; transform: translateX(65px); } }
+@keyframes realm-water-roll { from { opacity: .35; transform: translate(-5px,0); } to { opacity: .8; transform: translate(7px,2px); } }
+@keyframes realm-smoke-rise { 0% { opacity: 0; transform: translateY(10px); } 35%,60% { opacity: .25; } 100% { opacity: 0; transform: translateY(-25px); } }
+@keyframes realm-lava-breathe { from { opacity: .18; } to { opacity: .65; } }
+
+.adventure-still .realm-ambience { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .adventure-scenery * { animation: none !important; }
+  .realm-ambience { display: none; }
+}

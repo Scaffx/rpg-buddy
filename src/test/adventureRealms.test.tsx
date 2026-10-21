@@ -33,4 +33,13 @@ describe('five adventure realms', () => {
     }
     expect(creaturesEnemies.filter(enemy => enemy.biome === 'ruinas')).toHaveLength(3);
   });
+
+  it('gives every realm distinct decorative ambience with bounded particle counts', () => {
+    const kinds = { floresta: 'leaves', deserto: 'sand', aquatico: 'water', gelo: 'snow', vulcanico: 'embers', ruinas: 'dust' } as const;
+    for (const [biome, kind] of Object.entries(kinds)) {
+      const markup = renderToStaticMarkup(<AdventureScenery biome={biome as keyof typeof kinds} />);
+      expect(markup).toContain(`data-ambient-kind="${kind}"`);
+      expect((markup.match(/class="realm-mote /g) ?? []).length).toBeLessThanOrEqual(12);
+    }
+  });
 });

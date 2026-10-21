@@ -213,6 +213,27 @@ describe('AutoAdventure', () => {
     expect(page.querySelector('[data-hit-id]')).toBeNull();
   });
 
+  it('uses confirmed enemy mana inside the scene without exposing a future event or final snapshot', () => {
+    const now = Date.now();
+    const future = { at: new Date(now + 5000).toISOString(), actor: 'enemy', kind: 'attack', damage: 1, hero_hp: 98, enemy_hp: 80, enemy_mp: 2 };
+    const battle = { ...liveBattleTimes(), id: 'mana-battle', stage: 2, attempt: 0, kind: 'normal', status: 'fighting',
+      enemy_name: 'Javali', hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 98, enemy_hp: 80, enemy_max_mp: 40, enemy_mp: 2,
+      events: [{ ...future, at: new Date(now - 500).toISOString(), enemy_mp: 31 }, future] };
+    const data = { stage: 2, server_now: new Date(now).toISOString(), next_at: new Date(now + 12_000).toISOString(),
+      boss: { stage: 10, id: 'boss', name: 'Chefe', icon: null }, encounters: [], gold_today: 0, loot_today: 0,
+      limits: { gold_per_day: 120, items_per_day: 2 }, battle };
+    mocked.value = { data, dataUpdatedAt: now, isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
+    const page = renderAdventure();
+    expect(page.querySelector('.adventure-scene [aria-label="Mana de Javali: 31 de 40 MP"]')).not.toBeNull();
+    expect(page.querySelector('[aria-label="Mana de Javali: 2 de 40 MP"]')).toBeNull();
+    mocked.value = { ...mocked.value as object, data: { ...data, battle: { ...battle, events: [future] } } };
+    renderAdventure();
+    expect(page.querySelector('.adventure-combat-hud-enemy .adventure-resource-unknown')?.textContent).toContain('MP —');
+    mocked.value = { ...mocked.value as object, data: { ...data, battle: { ...battle, events: [] } } };
+    renderAdventure();
+    expect(page.querySelector('.adventure-scene [aria-label="Mana de Javali: 2 de 40 MP"]')).not.toBeNull();
+  });
+
   it('após derrota na 10 permanece na 9 até solicitar avanço pela batalha atual', async () => {
     const refetch = vi.fn();
     mocked.value = {
