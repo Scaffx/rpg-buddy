@@ -57,12 +57,12 @@ export default function SkillAnimationGallery() {
       <p>Escolha um personagem e veja como ele prepara, lança e acerta cada habilidade.</p>
       <div className="skill-gallery-notice" role="note"><strong>Demonstração visual.</strong> Vida, mana e dano são ilustrativos. A prévia não equipa habilidades nem altera seu personagem.</div>
     </header>
-    <div className="skill-gallery-layout">
-      <section className="skill-gallery-stage" aria-labelledby="skill-gallery-selection">
-        <div className="skill-gallery-toolbar">
+    <div className="skill-gallery-toolbar">
           <label>Personagem<select value={heroClass} onChange={event => selectClass(event.target.value as SkillAnimationClass)}>{classKeys.map(key => <option key={key} value={key}>{CLASS_ANIMATIONS[key].label}</option>)}</select></label>
           <label>Cenário<select value={biome} onChange={event => setBiome(event.target.value as AdventureBiome)}>{biomes.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-        </div>
+    </div>
+    <div className="skill-gallery-layout">
+      <section className="skill-gallery-stage" aria-labelledby="skill-gallery-selection">
         <div className="skill-gallery-selected">
           <span className="skill-gallery-eyebrow">{group.label} · {skill.nodeType === 'variant' ? 'VARIANTE · PRÉVIA VISUAL' : 'HABILIDADE ATIVA'}</span>
           <h2 id="skill-gallery-selection">{skill.name}</h2><p>{skill.description}</p>
