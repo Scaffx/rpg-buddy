@@ -1,0 +1,1827 @@
+{
+  "observedAt": "2026-10-21",
+  "bosses": [
+    {
+      "id": "25d00c14-9a56-4a7e-af25-05f9c5510f1a",
+      "name": "Goblin Feroz",
+      "level": 1,
+      "skills": [
+        {
+          "desc": "Avança rapidamente em linha reta, causando dano e empurrando o alvo.",
+          "name": "Investida Selvagem",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Emite um grito que causa medo, reduzindo temporariamente velocidade de ataque.",
+          "name": "Grito Ameaçador",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Neutro",
+      "description": "Um goblin maior e mais agressivo que o normal, servindo como o primeiro grande desafio.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "8a69a67e-12e1-45e7-9702-e4d488ff5f8b",
+      "name": "Lobo Cinzento",
+      "level": 2,
+      "skills": [
+        {
+          "desc": "Dois ataques rápidos consecutivos no mesmo alvo.",
+          "name": "Ataque Duplo Selvagem",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Invoca 1-2 filhotes de lobo para auxiliá-lo no combate.",
+          "name": "Uivo da Alcateia",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Neutro",
+      "description": "Um predador astuto que coordena seus ataques com sua matilha.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "c9671615-c624-405e-8b15-dff2573f3efd",
+      "name": "Orc Selvagem",
+      "level": 3,
+      "skills": [
+        {
+          "desc": "Golpe lento mas extremamente poderoso em área frontal.",
+          "name": "Pancada Devastadora",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Salta e gira, atingindo todos em um pequeno raio.",
+          "name": "Salto Giratório",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Abaixo de 30% HP: aumenta dano e velocidade, perde defesa.",
+          "name": "Estado Berserker",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Neutro",
+      "description": "Um guerreiro orc brutal que se torna mais perigoso à medida que é ferido.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "8c38e29f-d6f9-48f4-9441-5f864aea32fc",
+      "name": "Aranha Gigante",
+      "level": 4,
+      "skills": [
+        {
+          "desc": "Prende o alvo, imobilizando e causando dano de veneno.",
+          "name": "Teia Venenosa",
+          "effects": [
+            "slow"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Aplica veneno forte, reduzindo a cura recebida.",
+          "name": "Mordida Envenenada",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Reduz dano recebido mas não pode se mover.",
+          "name": "Postura Defensiva",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Terra",
+      "description": "Usa veneno e o ambiente para prender e enfraquecer seus oponentes.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "261eb9c8-1c93-427f-bbe3-be0b4f15d868",
+      "name": "Dragão Jovem",
+      "level": 5,
+      "skills": [
+        {
+          "desc": "Rajada de fogo em cone com queimadura.",
+          "name": "Sopro de Fogo",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Alça voo, imune a corpo a corpo, lança bolas de fogo.",
+          "name": "Voo Tático",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Em voo, carrega ataque de área ao pousar.",
+          "name": "Fúria Elemental",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Fogo",
+      "description": "Um dragão em crescimento, com ataques elementais e capacidade de voar.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "87310d35-57de-4551-9996-525b33e27fd5",
+      "name": "Esqueleto Campeão",
+      "level": 6,
+      "skills": [
+        {
+          "desc": "Ataque corpo a corpo que quebra guarda.",
+          "name": "Golpe de Osso",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Sacrifica armadura para dano em área.",
+          "name": "Explosão Óssea",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Cura-se perto de lápides intactas.",
+          "name": "Regeneração Óssea",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Morto-Vivo",
+      "description": "Guerreiro esquelético que utiliza seus próprios ossos como arma e defesa.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "56140abf-2450-4585-a7fa-a8c43446ac0f",
+      "name": "Feiticeira das Sombras",
+      "level": 7,
+      "skills": [
+        {
+          "desc": "Projétil de energia sombria com dano mágico.",
+          "name": "Raio de Escuridão",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Cria 2-3 cópias ilusórias que atacam.",
+          "name": "Clones de Sombra",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Reduz visão e eficácia de habilidades.",
+          "name": "Maldição da Escuridão",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Escuridão",
+      "description": "Maga sombria que manipula luz e trevas com clones e maldições.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "8138387e-7ebe-4911-8789-5e3d4a84e14c",
+      "name": "Centauro Ferido",
+      "level": 8,
+      "skills": [
+        {
+          "desc": "Carrega em linha reta, empalando o primeiro inimigo.",
+          "name": "Investida de Lança",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Saraivada de flechas em área designada.",
+          "name": "Salva de Flechas",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Corre pela arena causando dano no caminho.",
+          "name": "Galope Selvagem",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Neutro",
+      "description": "Centauro que usa terreno para encurralar e esmagar oponentes.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "c40f91fb-0e5b-47f5-ad8c-f8dd50b50aef",
+      "name": "Golem de Pedra",
+      "level": 9,
+      "skills": [
+        {
+          "desc": "Golpe lento e pesado com dano massivo.",
+          "name": "Soco de Rocha",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Bate no chão causando dano em área e atordoamento.",
+          "name": "Tremor Sísmico",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Reduz drasticamente dano físico recebido.",
+          "name": "Pele de Pedra",
+          "effects": [
+            "stone_skin"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Terra",
+      "description": "Criatura maciça de pedra com alta defesa e sistema de rachaduras.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "0325b151-2fa8-41e0-9949-ab30fd10335c",
+      "name": "Fênix Renascente",
+      "level": 10,
+      "skills": [
+        {
+          "desc": "Projéteis de fogo que perseguem jogadores.",
+          "name": "Chama Carmesim",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Ao morrer, vira brasa. Se não destruída, renasce.",
+          "name": "Renascimento Parcial",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Cria tornado de fogo que percorre a arena.",
+          "name": "Tornado de Fogo",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Fogo",
+      "description": "Criatura mítica que desafia a morte com ciclo de renascimento.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "0737240b-f2fd-42d7-9068-0d07e6aad191",
+      "name": "Salamandra das Chamas",
+      "level": 11,
+      "skills": [
+        {
+          "desc": "Colunas surgem do chão em locais aleatórios.",
+          "name": "Colunas de Fogo",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Dano de fogo contínuo a inimigos próximos.",
+          "name": "Aura Infernal",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Imune a ataques de fogo e se cura com eles.",
+          "name": "Imunidade ao Fogo",
+          "effects": [
+            "fire_aura"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Fogo",
+      "description": "Reptiliana que domina fogo e prospera em ambientes vulcânicos.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "7f03c2fd-1f9d-4bc7-97f1-de623a48680b",
+      "name": "Sereia da Geleira",
+      "level": 12,
+      "skills": [
+        {
+          "desc": "Congela o alvo por alguns segundos.",
+          "name": "Jato de Gelo Congelante",
+          "effects": [
+            "slow"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Área de gelo que faz jogadores escorregarem.",
+          "name": "Deslizamento no Gelo",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Cura-se perto de cristais de gelo intactos.",
+          "name": "Regeneração da Geleira",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Gelo",
+      "description": "Beleza gélida que congela inimigos e manipula o gelo.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "11a5dc5e-dc3e-4d61-b283-57cea59449de",
+      "name": "Minotauro do Labirinto",
+      "level": 13,
+      "skills": [
+        {
+          "desc": "Investe em linha reta empurrando todos.",
+          "name": "Carga do Chifre",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Aumenta defesa e atrai atenção.",
+          "name": "Grito de Defesa",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Série de cargas rápidas em diferentes direções.",
+          "name": "Investida Múltipla",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Terra",
+      "description": "Fera territorial que usa força bruta e labirinto para encurralar.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "d86e56c3-97cb-4a78-a52d-e0635f03a4d3",
+      "name": "Sphinx do Deserto",
+      "level": 14,
+      "skills": [
+        {
+          "desc": "Pede enigma. Resposta errada causa dano massivo.",
+          "name": "Enigma Fatal",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Voa, imune corpo a corpo, lança raios de luz.",
+          "name": "Voo Sagrado",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Aumenta resistência a controle de grupo.",
+          "name": "Aura de Sabedoria",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Sagrado",
+      "description": "Criatura mística que desafia mente e corpo com enigmas mortais.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "69a4f488-e865-430f-9386-c5b483778d69",
+      "name": "Titã da Antiga Floresta",
+      "level": 15,
+      "skills": [
+        {
+          "desc": "Raízes do chão que prendem e causam dano.",
+          "name": "Raízes Aprisionadoras",
+          "effects": [
+            "slow"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Saraivada de espinhos em área ampla.",
+          "name": "Chuva de Espinhos",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Cura-se e invoca elementais de madeira.",
+          "name": "Crescimento Selvagem",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Natureza",
+      "description": "Guardião ancestral da floresta que manipula a natureza.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "24ba8beb-851d-4450-ad58-30e24e1f009c",
+      "name": "Guerreiro Imortal",
+      "level": 16,
+      "skills": [
+        {
+          "desc": "Dano sagrado que pode atordoar.",
+          "name": "Golpe de Espada Sagrada",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Invulnerável a todo dano por alguns segundos.",
+          "name": "Escudo Imortal",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Ao morrer, renasce com 20% HP se altares intactos.",
+          "name": "Ressurreição Parcial",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Sagrado",
+      "description": "Campeão abençoado com imortalidade que desafia a morte.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "9d13d4a1-9b83-4aec-8d3e-05a148fd2f3b",
+      "name": "Rancor Sombrio",
+      "level": 17,
+      "skills": [
+        {
+          "desc": "Dano de escuridão com debuff Desespero.",
+          "name": "Toque da Perdição",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Reduz visão e eficácia de cura.",
+          "name": "Campo de Escuridão Absoluta",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Causa confusão, fazendo atacar aliados.",
+          "name": "Sussurros Inebriantes",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Escuridão",
+      "description": "Entidade de pura escuridão que se alimenta do medo.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "1400a3e3-3e47-4d1a-bc8a-1c20944d742e",
+      "name": "Manticora Venenosa",
+      "level": 18,
+      "skills": [
+        {
+          "desc": "Dano massivo com veneno que drena HP.",
+          "name": "Ferrão Mortal",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Nuvem de esporos cria poças de veneno.",
+          "name": "Distribuição de Esporos",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Cura-se dentro de poças de veneno.",
+          "name": "Regeneração em Poça",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Veneno",
+      "description": "Besta híbrida com ferrão letal que transforma arena em pântano tóxico.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "bbfee4e5-7954-4605-8794-d61df900e45e",
+      "name": "Lorde Daemon",
+      "level": 19,
+      "skills": [
+        {
+          "desc": "Ataque de longo alcance que puxa jogadores.",
+          "name": "Golpe de Tridente",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Invoca 2-4 pequenos demônios.",
+          "name": "Invocação de Minions",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Reduz defesa dos inimigos e aumenta dano dos minions.",
+          "name": "Aura Demoníaca",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Demônio",
+      "description": "Poderoso demônio que invoca lacaios e domina a arena.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "bdac936d-ff09-40f8-a477-b68e0a786c57",
+      "name": "Leviatã Primitivo",
+      "level": 20,
+      "skills": [
+        {
+          "desc": "Onda gigante que varre arena com dano massivo.",
+          "name": "Tsunami",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Prende jogador em mandíbulas, dano contínuo.",
+          "name": "Enrolar Devorador",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Zonas de alta pressão com dano contínuo e lentidão.",
+          "name": "Pressão Abissal",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Água",
+      "description": "Criatura colossal das profundezas que manipula água e ambiente aquático.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "546c3ca9-55ec-4b5f-9053-23bfed06edeb",
+      "name": "Hidra das Profundezas",
+      "level": 21,
+      "skills": [
+        {
+          "desc": "Ataca com 3 cabeças simultaneamente.",
+          "name": "Mordida Tripla",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Regenera cabeças cortadas com HP parcial.",
+          "name": "Regeneração de Cabeça",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Poças de veneno surgem onde as cabeças caem.",
+          "name": "Veneno Aquático",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Água",
+      "description": "Serpente de múltiplas cabeças que regenera quando cortada.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "b378b916-088e-485a-b647-d425f62ba76a",
+      "name": "Cavaleiro do Vazio",
+      "level": 22,
+      "skills": [
+        {
+          "desc": "Corte que atravessa barreiras e defesas.",
+          "name": "Lâmina Dimensional",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Teleporta atrás do alvo para ataque surpresa.",
+          "name": "Passo do Vazio",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Cria zonas onde o tempo desacelera.",
+          "name": "Fenda Temporal",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Escuridão",
+      "description": "Guerreiro espectral preso entre dimensões.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "4d2ee5e0-6077-4cb4-9f3e-a2bfe30d44e5",
+      "name": "Wyvern Relâmpago",
+      "level": 23,
+      "skills": [
+        {
+          "desc": "Mergulha do ar com dano elétrico em área.",
+          "name": "Mergulho Elétrico",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Carrega a arena com eletricidade condutiva.",
+          "name": "Tempestade Estática",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Dobra velocidade de ataque por curto período.",
+          "name": "Velocidade Relâmpago",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Raio",
+      "description": "Dragão menor que domina eletricidade e voa com velocidade absurda.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "ebc7c507-4a1b-43d9-9d4b-715f456416e1",
+      "name": "Necromante Eterno",
+      "level": 24,
+      "skills": [
+        {
+          "desc": "Invoca 4-6 esqueletos guerreiros.",
+          "name": "Exército dos Mortos",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Rouba HP dos jogadores para se curar.",
+          "name": "Dreno Vital",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Marca um jogador: se morrer, vira esqueleto inimigo.",
+          "name": "Maldição da Morte",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Morto-Vivo",
+      "description": "Mago da morte que comanda um exército de mortos-vivos.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "56ed20e1-c3d8-4806-866e-8562c4f13b1a",
+      "name": "Quimera Ancestral",
+      "level": 25,
+      "skills": [
+        {
+          "desc": "Cada cabeça usa elemento diferente simultaneamente.",
+          "name": "Sopro Triplo",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Abaixo de 25% HP, todas as cabeças atacam juntas.",
+          "name": "Fúria da Quimera",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Alça voo e bombardeia com ataques elementais.",
+          "name": "Voo Predatório",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Fogo",
+      "description": "Besta mítica com cabeças de leão, cabra e serpente.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "19eedb7c-4c7a-4ab1-8b6b-85e6747b02f0",
+      "name": "Elemental Primordial",
+      "level": 26,
+      "skills": [
+        {
+          "desc": "Alterna entre Fogo, Água, Terra e Ar a cada fase.",
+          "name": "Ciclo Elemental",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Combina dois elementos para ataque devastador.",
+          "name": "Convergência",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Explosão de energia quando troca de elemento.",
+          "name": "Instabilidade",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Neutro",
+      "description": "Fusão caótica dos quatro elementos primordiais.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "8e85d753-ba1b-4102-832b-2b679b2f6a7d",
+      "name": "Dragão Sombrio",
+      "level": 27,
+      "skills": [
+        {
+          "desc": "Cone de escuridão que cega e causa dano.",
+          "name": "Sopro das Trevas",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Cria escuridão total na arena por 10s.",
+          "name": "Asas da Noite",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Ataques que ignoram parte da defesa.",
+          "name": "Garras Sombrias",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Escuridão",
+      "description": "Dragão corrompido pela escuridão absoluta.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "95cb0311-078f-4321-ac5c-df179c882cb0",
+      "name": "Guardião Celestial",
+      "level": 28,
+      "skills": [
+        {
+          "desc": "Raio de luz que causa dano sagrado massivo.",
+          "name": "Julgamento Divino",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Escudo impenetrável que reflete ataques.",
+          "name": "Barreira Celestial",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Restaura 15% do HP quando abaixo de 40%.",
+          "name": "Cura Sagrada",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Sagrado",
+      "description": "Anjo caído que protege um artefato sagrado.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "276b7306-0a0f-4843-acfd-87932f185e6d",
+      "name": "Kraken Abissal",
+      "level": 29,
+      "skills": [
+        {
+          "desc": "Agarra e esmaga múltiplos alvos.",
+          "name": "Tentáculos Esmagadores",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Cega todos os jogadores em grande área.",
+          "name": "Tinta Abissal",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Cria redemoinho que puxa jogadores ao centro.",
+          "name": "Maelstrom",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Água",
+      "description": "Monstro marinho colossal das profundezas abissais.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "e9d872a2-6549-4463-b1c2-9ef613d2a13c",
+      "name": "Imperador Draconiano",
+      "level": 30,
+      "skills": [
+        {
+          "desc": "Atordoa todos e reduz defesa por 10s.",
+          "name": "Rugido Imperial",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Fogo azul que ignora resistência a fogo.",
+          "name": "Chama do Imperador",
+          "effects": [
+            "fire_aura"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Transforma-se em dragão colossal abaixo de 30% HP.",
+          "name": "Forma Ancestral",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Fogo",
+      "description": "Rei dos dragões com poder sobre todos os elementos.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "feb99014-c70d-4261-9403-5bcac31f890f",
+      "name": "Lich Supremo",
+      "level": 31,
+      "skills": [
+        {
+          "desc": "Explosão necrótica que drena vida em grande área.",
+          "name": "Necrova",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Invoca 6-8 mortos-vivos de diferentes tipos.",
+          "name": "Invocação Massiva",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Revive com 50% HP se filactéria não for destruída.",
+          "name": "Filactéria Oculta",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Morto-Vivo",
+      "description": "Mago morto-vivo de poder imenso com filactéria oculta.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "4da38fc9-542a-4625-9270-46fb0a178aff",
+      "name": "Wyrm de Gelo Eterno",
+      "level": 32,
+      "skills": [
+        {
+          "desc": "Dano de gelo contínuo em toda arena.",
+          "name": "Nevasca Perpétua",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Encapsula jogador em bloco de gelo sólido.",
+          "name": "Prisão de Gelo",
+          "effects": [
+            "slow"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Reflete 20% do dano físico recebido.",
+          "name": "Escamas Glaciais",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Gelo",
+      "description": "Serpente de gelo que congela tudo ao seu redor.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "77cc0fc5-136d-498a-b06b-c2c728f0a87e",
+      "name": "Demônio da Fome",
+      "level": 33,
+      "skills": [
+        {
+          "desc": "Absorve parte do poder do alvo permanentemente.",
+          "name": "Devorar Alma",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Fica maior e mais forte a cada alma devorada.",
+          "name": "Crescimento Infernal",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Abre portais que liberam ondas de fogo.",
+          "name": "Portal do Inferno",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Demônio",
+      "description": "Entidade demoníaca que devora almas e cresce em poder.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "1a05cebb-528f-4691-a046-6e85e83d8253",
+      "name": "Golem de Adamantina",
+      "level": 34,
+      "skills": [
+        {
+          "desc": "Golpe que causa terremoto em toda arena.",
+          "name": "Punho Sísmico",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Reduz 80% de todo dano por 5s.",
+          "name": "Blindagem Total",
+          "effects": [
+            "stone_skin"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Modo berserker com dano triplicado mas sem defesa.",
+          "name": "Sobrecarga",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Terra",
+      "description": "Construto indestrutível feito do metal mais resistente.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "c9da0e9a-e939-4a02-b32c-c283d1ee2332",
+      "name": "Árvore Maldita",
+      "level": 35,
+      "skills": [
+        {
+          "desc": "Raízes emergem em toda arena prendendo todos.",
+          "name": "Raízes do Abismo",
+          "effects": [
+            "slow"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Confunde jogadores fazendo-os atacar aliados.",
+          "name": "Esporos da Loucura",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Cura 5% do HP por turno enquanto raízes ativas.",
+          "name": "Regeneração Profunda",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Natureza",
+      "description": "Ent corrompido por magia negra que domina a floresta.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "6463f1ff-f523-492c-9db0-5721292d1688",
+      "name": "Crononauta",
+      "level": 36,
+      "skills": [
+        {
+          "desc": "Desfaz os últimos 5s de dano recebido.",
+          "name": "Reverter Tempo",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Dobra velocidade de todos os ataques.",
+          "name": "Aceleração Temporal",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Cria cópia temporal de si mesmo do passado.",
+          "name": "Paradoxo",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Sagrado",
+      "description": "Ser que manipula o fluxo do tempo em combate.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "ce4a9c05-13b8-4cde-8681-8039bedd72b7",
+      "name": "Basilisco Imperial",
+      "level": 37,
+      "skills": [
+        {
+          "desc": "Petrifica quem olhar diretamente por 5s.",
+          "name": "Olhar Petrificante",
+          "effects": [
+            "stone_skin"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Veneno que reduz velocidade em 50%.",
+          "name": "Mordida Venenosa",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Varredura que destrói cobertura na arena.",
+          "name": "Cauda Destruidora",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Terra",
+      "description": "Réptil gigante cujo olhar petrifica instantaneamente.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "d2cd2ae6-7b6f-4cee-8b8c-685073e553e9",
+      "name": "Fenrir, Lobo do Ragnarok",
+      "level": 38,
+      "skills": [
+        {
+          "desc": "Dano que ignora toda defesa e escudos.",
+          "name": "Mordida do Fim",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Causa medo e reduz todos os atributos em 30%.",
+          "name": "Uivo do Ragnarok",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "A cada 20% HP perdido, fica mais rápido e forte.",
+          "name": "Corrente Partida",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Escuridão",
+      "description": "Lobo divino destinado a devorar o mundo.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "afed68a1-72df-4cff-8f68-419addfdde6c",
+      "name": "Djinn do Deserto Infinito",
+      "level": 39,
+      "skills": [
+        {
+          "desc": "Transforma buffs dos jogadores em debuffs.",
+          "name": "Desejo Invertido",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Reduz visão e causa dano contínuo.",
+          "name": "Tempestade de Areia",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Cria 4 cópias perfeitas de si mesmo.",
+          "name": "Ilusão Perfeita",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Fogo",
+      "description": "Gênio maligno que distorce a realidade com desejos.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "bb94dc2d-9ca4-4994-bd0a-d3255e6eea38",
+      "name": "Titã de Obsidiana",
+      "level": 40,
+      "skills": [
+        {
+          "desc": "Explode magma de seu corpo em todas as direções.",
+          "name": "Erupção Corporal",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Cada passo causa mini-terremoto.",
+          "name": "Passo Sísmico",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Modo enrage: dano de fogo constante em toda arena.",
+          "name": "Núcleo Vulcânico",
+          "effects": [
+            "fire_aura"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Fogo",
+      "description": "Colosso de rocha vulcânica com magma correndo nas veias.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "ed95af86-63c1-4fb1-8785-3919590d2314",
+      "name": "Esfinge Guardiã",
+      "level": 41,
+      "skills": [
+        {
+          "desc": "Enigma que mata instantaneamente se errado.",
+          "name": "Enigma da Morte",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Ataque híbrido físico e mágico.",
+          "name": "Garras de Ouro",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Prevê e contra-ataca o próximo movimento.",
+          "name": "Sabedoria Ancestral",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Sagrado",
+      "description": "Guardiã ancestral com domínio sobre corpo e mente.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "d6fca873-8606-4f31-8345-728d64ce725c",
+      "name": "Dragão Espectral",
+      "level": 42,
+      "skills": [
+        {
+          "desc": "Atravessa barreiras e escudos.",
+          "name": "Sopro Espectral",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Torna-se intangível, imune a físico.",
+          "name": "Fase Etérea",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Dano mágico em área que reduz MP.",
+          "name": "Grito do Além",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Escuridão",
+      "description": "Espírito de um dragão antigo preso entre mundos.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "bbaef0c2-92d7-4f9f-b607-b314e1c669f9",
+      "name": "Behemoth de Cristal",
+      "level": 43,
+      "skills": [
+        {
+          "desc": "Explode cristais que se tornam projéteis.",
+          "name": "Fragmentação",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Refrata ataques mágicos de volta ao atacante.",
+          "name": "Prisma de Dor",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Absorve minerais da arena para se curar.",
+          "name": "Regeneração Cristalina",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Terra",
+      "description": "Besta colossal feita de cristais vivos que refratam energia.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "407eef76-3cfd-40b7-8254-0283b95a1577",
+      "name": "Serpente do Caos",
+      "level": 44,
+      "skills": [
+        {
+          "desc": "Inverte gravidade na arena.",
+          "name": "Inversão Gravitacional",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Dano aleatório entre todos os elementos.",
+          "name": "Mordida do Caos",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Puxa todos ao centro com força crescente.",
+          "name": "Espiral Dimensional",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Neutro",
+      "description": "Serpente cósmica que distorce as leis da física.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "bc571fd0-f6a3-4ab9-87b0-175a4faeb50d",
+      "name": "Fênix Sombria",
+      "level": 45,
+      "skills": [
+        {
+          "desc": "Fogo sombrio que não pode ser apagado.",
+          "name": "Chama Negra",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Renasce com 30% HP e dano aumentado.",
+          "name": "Renascimento Sombrio",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Escurece arena e causa dano massivo.",
+          "name": "Eclipse Total",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Escuridão",
+      "description": "Fênix corrompida que renasce mais forte a cada morte.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "64d3d822-fc38-41ac-9be6-deb7cf8ffba5",
+      "name": "Tiamat, Mãe dos Dragões",
+      "level": 46,
+      "skills": [
+        {
+          "desc": "Cada cabeça cospe um elemento diferente.",
+          "name": "Cinco Sopros",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Imune ao elemento que a atacou por último.",
+          "name": "Escamas Ancestrais",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Invoca dragões menores para protegê-la.",
+          "name": "Fúria Materna",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Fogo",
+      "description": "A matriarca de todos os dragões com cinco cabeças elementais.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "9b71e815-8c2b-4262-b1bc-0c96de2b2f36",
+      "name": "Odin, o Pai de Todos",
+      "level": 47,
+      "skills": [
+        {
+          "desc": "Lança que nunca erra e causa dano sagrado crítico.",
+          "name": "Gungnir",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Ativa runas que concedem diferentes poderes.",
+          "name": "Runas Antigas",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Huginn e Muninn revelam posições e fraquezas.",
+          "name": "Corvos de Odin",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Thor entra na luta: martelada de trovão com dano pesado.",
+          "name": "Mjölnir de Thor",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Loki lança ilusões e maldições das sombras que enfraquecem seu próximo golpe.",
+          "name": "Trapaça de Loki",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Sagrado",
+      "description": "O Pai de Todos não luta sozinho: convoca Thor e Loki para a batalha final de Asgard.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "4b94c3dc-c952-4f84-9f86-4bc3949ef681",
+      "name": "Anúbis, Guardião dos Mortos",
+      "level": 48,
+      "skills": [
+        {
+          "desc": "Pesa o coração: dano baseado nos pecados do alvo.",
+          "name": "Julgamento da Alma",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Invoca múmias que explodem ao morrer.",
+          "name": "Exército de Múmias",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Debuff que aumenta todo dano recebido em 50%.",
+          "name": "Maldição do Faraó",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Morto-Vivo",
+      "description": "Deus egípcio que julga as almas e comanda os mortos.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "66981ad9-16af-4374-b309-fe9b7bf23ed1",
+      "name": "Poseidon, Senhor dos Mares",
+      "level": 49,
+      "skills": [
+        {
+          "desc": "Ataque triplo de água com dano colossal.",
+          "name": "Tridente Divino",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Inunda arena completamente por 8s.",
+          "name": "Maremoto",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Destrói plataformas e altera terreno.",
+          "name": "Terremoto Oceânico",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Água",
+      "description": "Deus dos oceanos com poder sobre marés e terremotos.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "752441c6-5307-4855-954a-3587e64d9124",
+      "name": "Bahamut, Rei dos Dragões",
+      "level": 50,
+      "skills": [
+        {
+          "desc": "Explosão de energia pura que cobre toda a arena.",
+          "name": "Mega Flare",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Imune a todo dano abaixo de certo limiar.",
+          "name": "Escamas Divinas",
+          "effects": [
+            "damage_reduction"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Abaixo de 10% HP, ataque que pode matar instantaneamente.",
+          "name": "Julgamento Final",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Sagrado",
+      "description": "O dragão supremo, lenda entre lendas, guardião do equilíbrio.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "da4080e6-8fed-412d-9825-daff6b1b8203",
+      "name": "Shinigami",
+      "level": 51,
+      "skills": [
+        {
+          "desc": "Ataque que reduz HP máximo do alvo.",
+          "name": "Foice da Morte",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Marca alvo com contagem regressiva fatal.",
+          "name": "Relógio da Morte",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Transporta 1 jogador para dimensão solo.",
+          "name": "Mundo dos Mortos",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Escuridão",
+      "description": "Ceifador divino que colhe almas com precisão absoluta.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "93c0c357-84d1-4e5e-ab9a-aa24349cba8b",
+      "name": "Ifrit, Senhor do Fogo",
+      "level": 52,
+      "skills": [
+        {
+          "desc": "Arena inteira em chamas por 10s.",
+          "name": "Inferno Absoluto",
+          "effects": [
+            "fire_aura"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Transforma-se em magma puro, imune a físico.",
+          "name": "Forma de Magma",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Colunas de fogo que perseguem jogadores.",
+          "name": "Pilar de Fogo",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Fogo",
+      "description": "Djinn supremo do fogo com poder para derreter montanhas.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "a2453fde-e20e-4563-ba24-5a502284ce5c",
+      "name": "Valquíria Suprema",
+      "level": 53,
+      "skills": [
+        {
+          "desc": "Projétil sagrado que atravessa múltiplos alvos.",
+          "name": "Lança de Luz",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Seleciona 1 jogador para duelo obrigatório.",
+          "name": "Escolha da Valquíria",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Ressuscita minions como einherjar.",
+          "name": "Bênção de Valhalla",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Sagrado",
+      "description": "Líder das valquírias com domínio sobre vida e morte.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "d9b464e9-0b6f-4b8e-9f49-6400f14fb4d7",
+      "name": "Leviathan Cósmico",
+      "level": 54,
+      "skills": [
+        {
+          "desc": "Engole parte da arena, reduzindo espaço.",
+          "name": "Devorar Continente",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Dano crescente quanto mais tempo na água.",
+          "name": "Pressão Oceânica",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Vórtice que suga tudo ao centro.",
+          "name": "Redemoinho Abissal",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Água",
+      "description": "Serpente marinha de proporções planetárias.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "81dfd521-17a7-4209-b8c4-bdc907ca29b9",
+      "name": "Archlich Eterno",
+      "level": 55,
+      "skills": [
+        {
+          "desc": "Transforma toda a arena em terra morta.",
+          "name": "Necroapocalipse",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Controla 1 jogador por 8s.",
+          "name": "Controle Mental",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "5 filactérias escondidas que devem ser destruídas.",
+          "name": "Imortalidade Verdadeira",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Morto-Vivo",
+      "description": "O lich mais poderoso já existente, mestre da necromancia suprema.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "59ead268-b0fe-4023-bdc4-a73747b86ea8",
+      "name": "Lúcifer, Anjo Caído",
+      "level": 56,
+      "skills": [
+        {
+          "desc": "Mistura sagrado e sombrio em ataque dual.",
+          "name": "Graça Corrompida",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Oferece poder: aceitar causa dano massivo.",
+          "name": "Tentação",
+          "effects": [
+            "dark_curse"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Mergulho do céu com impacto que destrói arena.",
+          "name": "Queda Celestial",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Escuridão",
+      "description": "O mais belo e poderoso dos anjos, corrompido pelo orgulho.",
+      "isFinalBoss": false,
+      "isWorldEvent": false
+    },
+    {
+      "id": "8791d10c-90aa-4906-b023-47fd59cf58b9",
+      "name": "Chronos, Deus do Tempo",
+      "level": 57,
+      "skills": [
+        {
+          "desc": "Congela todos os jogadores por 3s.",
+          "name": "Parar o Tempo",
+          "effects": [
+            "slow"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Reverte a batalha 30s no tempo.",
+          "name": "Reversão Total",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Envelhece alvo, reduzindo todos os stats em 40%.",
+          "name": "Envelhecimento",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Sagrado",
+      "description": "Titan primordial que controla todo o fluxo temporal.",
+      "isFinalBoss": true,
+      "isWorldEvent": false
+    },
+    {
+      "id": "905c8616-bd83-4697-b0f5-7755cdf6ae96",
+      "name": "Entidade do Vazio Absoluto",
+      "level": 60,
+      "skills": [
+        {
+          "desc": "Remove buffs, itens e habilidades temporariamente.",
+          "name": "Apagar Existência",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Zona que causa dano por simplesmente existir nela.",
+          "name": "Vazio Absoluto",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Todas as mecânicas anteriores combinadas aleatoriamente.",
+          "name": "Paradoxo Final",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Neutro",
+      "description": "A personificação do nada. O desafio supremo que testa tudo que o jogador aprendeu.",
+      "isFinalBoss": false,
+      "isWorldEvent": true
+    },
+    {
+      "id": "fd95d733-d696-4634-b178-f24d34f714a4",
+      "name": "Gaia Corrompida",
+      "level": 60,
+      "skills": [
+        {
+          "desc": "Terremotos, tsunamis e erupções simultâneas.",
+          "name": "Cataclismo Global",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Drena energia de todos os seres vivos.",
+          "name": "Absorção Planetária",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        },
+        {
+          "desc": "Ponto fraco que aparece brevemente entre ataques.",
+          "name": "Núcleo Exposto",
+          "damage_multiplier": 1.2
+        }
+      ],
+      "element": "Natureza",
+      "description": "O próprio planeta tornado hostil pela corrupção.",
+      "isFinalBoss": false,
+      "isWorldEvent": true
+    },
+    {
+      "id": "99d55ad6-e29b-4690-b199-d0aa32cdecf5",
+      "name": "Ragnarök, Destruidor de Mundos",
+      "level": 60,
+      "skills": [
+        {
+          "desc": "Dano percentual baseado no HP máximo de todos.",
+          "name": "Fim dos Tempos",
+          "damage_multiplier": 1.25
+        },
+        {
+          "desc": "Remove parte da arena permanentemente.",
+          "name": "Consumir Realidade",
+          "damage_multiplier": 1.2
+        },
+        {
+          "desc": "Ao morrer, transforma-se em forma final.",
+          "name": "Renascimento Cósmico",
+          "effects": [
+            "regen"
+          ],
+          "damage_multiplier": 1
+        }
+      ],
+      "element": "Neutro",
+      "description": "Encarnação do fim dos tempos que consome realidades.",
+      "isFinalBoss": false,
+      "isWorldEvent": true
+    }
+  ],
+  "creatures": [
+    {
+      "icon": "🐺",
+      "name": "Lobo da mata",
+      "slot": 0,
+      "biome": 0,
+      "resistances": {}
+    },
+    {
+      "icon": "🐗",
+      "name": "Javali selvagem",
+      "slot": 1,
+      "biome": 0,
+      "resistances": {}
+    },
+    {
+      "icon": "🌿",
+      "name": "Espírito da floresta",
+      "slot": 2,
+      "biome": 0,
+      "resistances": {}
+    },
+    {
+      "icon": "🐟",
+      "name": "Criatura marinha",
+      "slot": 0,
+      "biome": 1,
+      "resistances": {}
+    },
+    {
+      "icon": "🦅",
+      "name": "Ave costeira",
+      "slot": 1,
+      "biome": 1,
+      "resistances": {}
+    },
+    {
+      "icon": "🐍",
+      "name": "Serpente aquática",
+      "slot": 2,
+      "biome": 1,
+      "resistances": {}
+    },
+    {
+      "icon": "💀",
+      "name": "Esqueleto antigo",
+      "slot": 0,
+      "biome": 2,
+      "resistances": {}
+    },
+    {
+      "icon": "🦇",
+      "name": "Morcego das ruínas",
+      "slot": 1,
+      "biome": 2,
+      "resistances": {}
+    },
+    {
+      "icon": "🗿",
+      "name": "Sentinela de pedra",
+      "slot": 2,
+      "biome": 2,
+      "resistances": {}
+    },
+    {
+      "icon": "🔥",
+      "name": "Criatura de fogo",
+      "slot": 0,
+      "biome": 3,
+      "resistances": {}
+    },
+    {
+      "icon": "🦅",
+      "name": "Asa de brasa",
+      "slot": 1,
+      "biome": 3,
+      "resistances": {
+        "fire": 0.5
+      }
+    },
+    {
+      "icon": "🌋",
+      "name": "Golem vulcânico",
+      "slot": 2,
+      "biome": 3,
+      "resistances": {}
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+.bosses-middle-sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+  filter: drop-shadow(0 2px 1px #171326b0);
+}
+
+.bosses-middle-sprite__body {
+  fill: var(--bosses-middle-color, #b0a4a0);
+  stroke: #242433;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bosses-middle-sprite .shade { fill: #343343; }
+.bosses-middle-sprite .line { fill: none; stroke: #26313b; stroke-width: 1.15; }
+.bosses-middle-sprite .glow { fill: #fff0b6; stroke: none; }
+.bosses-middle-sprite--wyrm .glow,
+.bosses-middle-sprite--chrononaut .glow { fill: #ecffff; }
+.bosses-middle-sprite--demon .glow,
+.bosses-middle-sprite--titan .glow { fill: #ffc17b; }
+
+.bosses-middle-vfx {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--bosses-middle-color, #e8d1a1);
+  --bosses-middle-y: var(--enemy-line-y, 62%);
+}
+
+.bosses-middle-vfx > span {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+}
+
+.bosses-middle-vfx__charge {
+  left: var(--enemy-source-x, 75%);
+  top: var(--bosses-middle-y);
+  width: clamp(34px, 5vw, 65px);
+  aspect-ratio: 1;
+  border: 3px solid currentColor;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 18px currentColor, inset 0 0 12px currentColor;
+  animation: bosses-middle-charge 1200ms ease-out both;
+}
+
+.bosses-middle-vfx__travel {
+  left: var(--enemy-target-x, 25%);
+  top: var(--bosses-middle-y);
+  width: clamp(45px, 7vw, 82px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 7px currentColor);
+  animation: bosses-middle-travel 1200ms cubic-bezier(.35, .02, .54, .98) both;
+}
+
+.bosses-middle-vfx__impact {
+  left: var(--enemy-target-x, 25%);
+  top: var(--bosses-middle-y);
+  width: clamp(70px, 12vw, 140px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 10px currentColor);
+  animation: bosses-middle-impact 1200ms ease-out both;
+}
+
+.bosses-middle-vfx svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.bosses-middle-vfx svg g {
+  fill: color-mix(in srgb, currentColor 34%, transparent);
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bosses-middle-vfx--lunge .bosses-middle-vfx__travel,
+.bosses-middle-vfx--flight .bosses-middle-vfx__travel { width: clamp(52px, 8vw, 98px); }
+.bosses-middle-vfx--slam .bosses-middle-vfx__impact { width: clamp(90px, 15vw, 165px); }
+.bosses-middle-vfx--roar .bosses-middle-vfx__impact { width: clamp(100px, 16vw, 180px); }
+.bosses-middle-vfx--guard .bosses-middle-vfx__travel { opacity: 0; }
+.bosses-middle-vfx--guard .bosses-middle-vfx__impact { width: clamp(68px, 11vw, 126px); }
+
+.bosses-middle-vfx--triple-fang .bosses-middle-vfx__impact,
+.bosses-middle-vfx--triple-breath .bosses-middle-vfx__impact,
+.bosses-middle-vfx--tentacles .bosses-middle-vfx__impact { width: clamp(105px, 18vw, 195px); }
+.bosses-middle-vfx--puddle .bosses-middle-vfx__impact,
+.bosses-middle-vfx--ink .bosses-middle-vfx__impact,
+.bosses-middle-vfx--spores .bosses-middle-vfx__impact { transform: translate(-50%, -42%) scale(1.3, .72); }
+.bosses-middle-vfx--judgment .bosses-middle-vfx__impact,
+.bosses-middle-vfx--ice-prison .bosses-middle-vfx__impact { width: clamp(62px, 10vw, 110px); }
+.bosses-middle-vfx--storm .bosses-middle-vfx__impact,
+.bosses-middle-vfx--blizzard .bosses-middle-vfx__impact,
+.bosses-middle-vfx--sandstorm .bosses-middle-vfx__impact { width: clamp(130px, 23vw, 240px); }
+.bosses-middle-vfx--night-wings .bosses-middle-vfx__impact,
+.bosses-middle-vfx--ancestral .bosses-middle-vfx__impact,
+.bosses-middle-vfx--growth .bosses-middle-vfx__impact { width: clamp(120px, 19vw, 210px); }
+
+@keyframes bosses-middle-charge {
+  0% { opacity: 0; scale: .2; }
+  12% { opacity: .8; scale: .65; }
+  26% { opacity: 1; scale: 1; }
+  45%, 100% { opacity: 0; scale: 1.25; }
+}
+
+@keyframes bosses-middle-travel {
+  0%, 18% { left: var(--enemy-source-x, 75%); opacity: 0; scale: .3; rotate: -20deg; }
+  28% { opacity: 1; scale: 1; }
+  69% { left: var(--enemy-target-x, 25%); opacity: 1; scale: 1.15; rotate: 10deg; }
+  78%, 100% { left: var(--enemy-target-x, 25%); opacity: 0; scale: .4; rotate: 20deg; }
+}
+
+@keyframes bosses-middle-impact {
+  0%, 62% { opacity: 0; scale: .35; }
+  73% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.28; }
+}
+
+.adventure-still .bosses-middle-vfx *,
+.adventure-still .bosses-middle-vfx *::before,
+.adventure-still .bosses-middle-vfx *::after { animation: none !important; transition: none !important; }
+.adventure-still .bosses-middle-vfx__charge,
+.adventure-still .bosses-middle-vfx__travel { display: none; }
+.adventure-still .bosses-middle-vfx__impact { opacity: 1; scale: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bosses-middle-vfx *,
+  .bosses-middle-vfx *::before,
+  .bosses-middle-vfx *::after { animation: none !important; transition: none !important; }
+  .bosses-middle-vfx__charge,
+  .bosses-middle-vfx__travel { display: none; }
+  .bosses-middle-vfx__impact { opacity: 1; scale: 1; }
+}

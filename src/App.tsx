@@ -35,6 +35,7 @@ const FeatsTree = lazy(() => import("./pages/FeatsTree"));
 const SkillTreePage = lazy(() => import("./pages/SkillTreePage"));
 const HabilidadesHub = lazy(() => import("./pages/HabilidadesHub"));
 const SkillAnimationGallery = lazy(() => import("./pages/SkillAnimationGallery"));
+const EnemyAnimationGallery = lazy(() => import("./pages/EnemyAnimationGallery"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const PrioridadePage = lazy(() => import("./pages/PrioridadePage"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -159,6 +160,7 @@ function AppRoutes() {
         <Route path="/landing" element={<LandingRoute />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/previa-habilidades" element={<SkillAnimationGallery />} />
+        <Route path="/previa-inimigos" element={<EnemyAnimationGallery />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/refund" element={<RefundPage />} />
         {/* Pública de propósito: a Google Play exige URL de exclusão sem login. */}

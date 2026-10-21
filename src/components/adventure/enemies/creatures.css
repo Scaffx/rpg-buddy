@@ -1,0 +1,147 @@
+.vfx-creatures {
+  --creature-source: var(--enemy-source-x, 75%);
+  --creature-target: var(--enemy-target-x, 25%);
+  --creature-line: var(--enemy-line-y, 62%);
+  --creature-ink: #f4e6bd;
+  --creature-glow: #fff1c4;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.vfx-creatures__trail {
+  position: absolute;
+  top: var(--creature-line);
+  left: var(--creature-target);
+  width: calc(var(--creature-source) - var(--creature-target));
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--creature-ink), transparent);
+  box-shadow: 0 0 7px var(--creature-glow);
+  transform: translateY(-50%);
+  animation: creature-trail 1.2s ease-out both;
+}
+
+.vfx-creatures__strike {
+  position: absolute;
+  left: var(--creature-source);
+  top: var(--creature-line);
+  width: 24px;
+  height: 24px;
+  background: var(--creature-ink);
+  filter: drop-shadow(0 0 5px var(--creature-glow));
+  transform: translate(-50%, -50%);
+  animation: creature-strike 1.2s cubic-bezier(.2,.65,.2,1) both;
+}
+
+.vfx-creatures__strike::before,
+.vfx-creatures__strike::after {
+  content: '';
+  position: absolute;
+  display: block;
+}
+
+.vfx-creatures__impact {
+  position: absolute;
+  left: var(--creature-target);
+  top: var(--creature-line);
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--creature-ink);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--creature-glow), transparent 65%);
+  box-shadow: 0 0 10px var(--creature-glow);
+  transform: translate(-50%, -50%);
+  animation: creature-impact 1.2s ease-out both;
+}
+
+.vfx-creatures__impact::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 2px solid var(--creature-ink);
+  transform: rotate(45deg);
+}
+
+/* Every motif is a physical hit. Water, leaves and embers are presentation only. */
+.vfx-creatures--bite { --creature-ink: #dce4db; --creature-glow: #aebdbd; }
+.vfx-creatures--bite .vfx-creatures__strike { background: transparent; }
+.vfx-creatures--bite .vfx-creatures__strike::before,
+.vfx-creatures--bite .vfx-creatures__strike::after { left: 1px; width: 22px; height: 10px; background: var(--creature-ink); clip-path: polygon(0 0,100% 0,80% 100%,65% 35%,47% 100%,28% 35%,12% 100%); }
+.vfx-creatures--bite .vfx-creatures__strike::before { top: 1px; }
+.vfx-creatures--bite .vfx-creatures__strike::after { bottom: 1px; transform: rotate(180deg); }
+
+.vfx-creatures--tusk { --creature-ink: #fff0ce; --creature-glow: #d7a76d; }
+.vfx-creatures--tusk .vfx-creatures__strike { background: transparent; border: 6px solid var(--creature-ink); border-top-color: transparent; border-left-color: transparent; border-radius: 50%; transform: translate(-50%,-50%) rotate(35deg); }
+.vfx-creatures--tusk .vfx-creatures__strike::after { right: -7px; top: -5px; width: 10px; height: 12px; background: var(--creature-ink); clip-path: polygon(0 100%,100% 100%,75% 0); }
+
+.vfx-creatures--leaf { --creature-ink: #a8dc72; --creature-glow: #72b96b; }
+.vfx-creatures--leaf .vfx-creatures__strike { border-radius: 90% 0 90% 0; transform: translate(-50%,-50%) rotate(-35deg); }
+.vfx-creatures--leaf .vfx-creatures__strike::after { inset: 3px 11px; border-left: 2px solid #37784a; transform: rotate(42deg); }
+.vfx-creatures--leaf .vfx-creatures__impact { border-radius: 90% 0 90% 0; }
+
+.vfx-creatures--fin { --creature-ink: #91dbe0; --creature-glow: #d2fff4; }
+.vfx-creatures--fin .vfx-creatures__strike { clip-path: polygon(0 52%,55% 0,65% 42%,100% 50%,65% 68%,48% 100%); }
+.vfx-creatures--fin .vfx-creatures__impact { border-style: dashed; }
+
+.vfx-creatures--dive { --creature-ink: #f3e8c4; --creature-glow: #c6e7e9; }
+.vfx-creatures--dive .vfx-creatures__strike { clip-path: polygon(0 15%,48% 52%,95% 5%,75% 75%,50% 100%,25% 75%); }
+.vfx-creatures--dive .vfx-creatures__impact::after { border-radius: 50% 0 50% 0; }
+
+.vfx-creatures--tail { --creature-ink: #8fe1c8; --creature-glow: #94d8ef; }
+.vfx-creatures--tail .vfx-creatures__strike { background: transparent; border: 6px solid var(--creature-ink); border-top-color: transparent; border-right-color: transparent; border-radius: 50%; transform: translate(-50%,-50%) rotate(-45deg); }
+.vfx-creatures--tail .vfx-creatures__strike::after { left: -8px; top: -4px; width: 13px; height: 12px; background: var(--creature-ink); clip-path: polygon(0 0,100% 50%,0 100%); }
+
+.vfx-creatures--bone { --creature-ink: #ede7d1; --creature-glow: #c8c0ab; }
+.vfx-creatures--bone .vfx-creatures__strike { width: 27px; height: 7px; border-radius: 5px; transform: translate(-50%,-50%) rotate(-35deg); }
+.vfx-creatures--bone .vfx-creatures__strike::before,
+.vfx-creatures--bone .vfx-creatures__strike::after { top: -4px; width: 9px; height: 15px; border-radius: 50%; background: var(--creature-ink); }
+.vfx-creatures--bone .vfx-creatures__strike::before { left: -4px; }
+.vfx-creatures--bone .vfx-creatures__strike::after { right: -4px; }
+
+.vfx-creatures--wing { --creature-ink: #ae94b8; --creature-glow: #d9bbdf; }
+.vfx-creatures--wing .vfx-creatures__strike { clip-path: polygon(0 9%,48% 46%,100% 9%,89% 85%,70% 65%,50% 100%,30% 65%,12% 85%); }
+.vfx-creatures--wing .vfx-creatures__impact { border-radius: 50% 50% 10% 10%; }
+
+.vfx-creatures--stone { --creature-ink: #bdb09c; --creature-glow: #eee0c5; }
+.vfx-creatures--stone .vfx-creatures__strike { clip-path: polygon(20% 0,75% 7%,100% 40%,83% 94%,28% 100%,0 60%); }
+.vfx-creatures--stone .vfx-creatures__impact { border-style: dotted; border-radius: 18%; }
+
+.vfx-creatures--claw { --creature-ink: #ffbe6e; --creature-glow: #f67645; }
+.vfx-creatures--claw .vfx-creatures__strike { background: transparent; }
+.vfx-creatures--claw .vfx-creatures__strike::before { inset: 1px 2px; background: var(--creature-ink); clip-path: polygon(0 8%,23% 8%,30% 90%,38% 0,57% 0,61% 91%,77% 7%,100% 7%,80% 100%,0 100%); }
+.vfx-creatures--claw .vfx-creatures__impact { border-radius: 10% 50% 10% 50%; }
+
+.vfx-creatures--feather { --creature-ink: #ffd079; --creature-glow: #ff7947; }
+.vfx-creatures--feather .vfx-creatures__strike { clip-path: polygon(0 20%,90% 0,100% 58%,18% 100%,42% 58%); }
+.vfx-creatures--feather .vfx-creatures__strike::after { left: 0; top: 14px; width: 22px; border-top: 2px solid #9d3d3d; transform: rotate(-28deg); }
+.vfx-creatures--feather .vfx-creatures__impact { border-radius: 80% 0 80% 0; }
+
+.vfx-creatures--magma { --creature-ink: #ed8750; --creature-glow: #ffd777; }
+.vfx-creatures--magma .vfx-creatures__strike { clip-path: polygon(15% 0,83% 8%,100% 45%,82% 100%,12% 90%,0 35%); background: linear-gradient(130deg,#554147 15%,var(--creature-ink) 34%,#594347 57%,#ffca6d 70%); }
+.vfx-creatures--magma .vfx-creatures__impact { border-style: double; border-width: 6px; border-radius: 20%; }
+
+@keyframes creature-strike {
+  0%, 15% { left: var(--creature-source); opacity: 0; scale: .65; }
+  24%, 42% { opacity: 1; scale: 1; }
+  73% { left: var(--creature-target); opacity: 1; scale: 1.15; }
+  85%, 100% { left: var(--creature-target); opacity: 0; scale: .7; }
+}
+@keyframes creature-trail { 0%, 20% { opacity: 0; } 40%, 68% { opacity: .85; } 83%, 100% { opacity: 0; } }
+@keyframes creature-impact { 0%, 66% { opacity: 0; scale: .3; } 78% { opacity: 1; scale: .7; } 100% { opacity: 0; scale: 1.5; } }
+
+:is(.adventure-still .vfx-creatures, .vfx-creatures.adventure-still) .vfx-creatures__trail,
+:is(.adventure-still .vfx-creatures, .vfx-creatures.adventure-still) .vfx-creatures__strike,
+:is(.adventure-still .vfx-creatures, .vfx-creatures.adventure-still) .vfx-creatures__impact {
+  animation: none !important;
+}
+:is(.adventure-still .vfx-creatures, .vfx-creatures.adventure-still) .vfx-creatures__trail { opacity: .5; }
+:is(.adventure-still .vfx-creatures, .vfx-creatures.adventure-still) .vfx-creatures__strike { left: var(--creature-target); opacity: 1; }
+:is(.adventure-still .vfx-creatures, .vfx-creatures.adventure-still) .vfx-creatures__impact { opacity: .85; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vfx-creatures__trail, .vfx-creatures__strike, .vfx-creatures__impact { animation: none !important; }
+  .vfx-creatures__trail { opacity: .5; }
+  .vfx-creatures__strike { left: var(--creature-target); opacity: 1; }
+  .vfx-creatures__impact { opacity: .85; }
+}

@@ -52,6 +52,7 @@ export default function SkillAnimationGallery() {
   return <main className="skill-gallery">
     <header className="skill-gallery-header">
       <Link to="/habilidades" className="skill-gallery-back">← Habilidades</Link>
+      <Link to="/previa-inimigos" className="skill-gallery-back" style={{ marginLeft: 20 }}>Bosses e criaturas →</Link>
       <p className="skill-gallery-eyebrow">ATELIÊ DA AVENTURA · {total} ANIMAÇÕES</p>
       <h1>Animações de habilidades</h1>
       <p>Escolha um personagem e veja como ele prepara, lança e acerta cada habilidade.</p>

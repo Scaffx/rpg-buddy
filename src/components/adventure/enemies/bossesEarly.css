@@ -1,0 +1,160 @@
+.bossesEarly-vfx {
+  --bossesEarly-source: var(--enemy-source-x, 75%);
+  --bossesEarly-target: var(--enemy-target-x, 25%);
+  --bossesEarly-line: var(--enemy-line-y, 62%);
+  --bossesEarly-ink: #e7e9ee;
+  --bossesEarly-glow: #7b879d;
+  --bossesEarly-size: clamp(48px, 11vw, 86px);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  color: var(--bossesEarly-ink);
+}
+
+.bossesEarly-vfx[data-target='self'] { --bossesEarly-target: var(--bossesEarly-source); }
+.bossesEarly-vfx[data-element='physical'] { --bossesEarly-ink: #f5e2ca; --bossesEarly-glow: #c18c68; }
+.bossesEarly-vfx[data-element='arcane'] { --bossesEarly-ink: #e2c6ff; --bossesEarly-glow: #885bc7; }
+.bossesEarly-vfx[data-element='fire'] { --bossesEarly-ink: #ffe0a1; --bossesEarly-glow: #f05d27; }
+.bossesEarly-vfx[data-element='ice'] { --bossesEarly-ink: #d9f9ff; --bossesEarly-glow: #5bbbdc; }
+.bossesEarly-vfx[data-element='lightning'] { --bossesEarly-ink: #fcf3a0; --bossesEarly-glow: #d6b640; }
+.bossesEarly-vfx[data-element='nature'] { --bossesEarly-ink: #c8f4a4; --bossesEarly-glow: #65a341; }
+.bossesEarly-vfx[data-element='light'] { --bossesEarly-ink: #fff1b1; --bossesEarly-glow: #d5aa48; }
+.bossesEarly-vfx[data-element='water'] { --bossesEarly-ink: #d2f6ff; --bossesEarly-glow: #4797c3; }
+.bossesEarly-vfx[data-element='earth'] { --bossesEarly-ink: #e5d4ae; --bossesEarly-glow: #987b50; }
+.bossesEarly-vfx[data-element='shadow'] { --bossesEarly-ink: #dabdf6; --bossesEarly-glow: #674184; }
+.bossesEarly-vfx[data-element='poison'] { --bossesEarly-ink: #d7ffa4; --bossesEarly-glow: #71b743; }
+.bossesEarly-vfx[data-element='wind'] { --bossesEarly-ink: #daf7e8; --bossesEarly-glow: #77bca4; }
+
+.bossesEarly-vfx svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: color-mix(in srgb, var(--bossesEarly-glow) 15%, transparent);
+  stroke: currentColor;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px var(--bossesEarly-glow));
+}
+
+.bossesEarly-vfx__source,
+.bossesEarly-vfx__impact,
+.bossesEarly-vfx__glyph {
+  position: absolute;
+  width: var(--bossesEarly-size);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.bossesEarly-vfx__source {
+  left: var(--bossesEarly-source);
+  top: var(--bossesEarly-line);
+  width: calc(var(--bossesEarly-size) * .65);
+  opacity: 0;
+  animation: bossesEarly-gather 1200ms ease-out both;
+}
+
+.bossesEarly-vfx__travel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: bossesEarly-travel 1200ms ease-in-out both;
+}
+
+.bossesEarly-vfx__glyph {
+  left: var(--bossesEarly-source);
+  top: var(--bossesEarly-line);
+  animation: bossesEarly-swing 1200ms ease-in-out both;
+}
+
+.bossesEarly-vfx__impact {
+  left: var(--bossesEarly-target);
+  top: var(--bossesEarly-line);
+  width: calc(var(--bossesEarly-size) * 1.2);
+  opacity: 0;
+  animation: bossesEarly-hit 1200ms ease-out both;
+}
+
+.bossesEarly-vfx[data-motion='roar'] .bossesEarly-vfx__glyph { --bossesEarly-tilt: 0deg; }
+.bossesEarly-vfx[data-motion='guard'] .bossesEarly-vfx__glyph { --bossesEarly-tilt: 0deg; }
+.bossesEarly-vfx[data-motion='flight'] .bossesEarly-vfx__glyph { --bossesEarly-tilt: -15deg; }
+.bossesEarly-vfx[data-motif='web'] { --bossesEarly-size: clamp(70px, 16vw, 120px); }
+.bossesEarly-vfx[data-motif='tsunami'] { --bossesEarly-size: clamp(88px, 22vw, 170px); }
+.bossesEarly-vfx[data-motif='fire-tornado'],
+.bossesEarly-vfx[data-motif='fire-pillars'],
+.bossesEarly-vfx[data-motif='thorns'] { --bossesEarly-size: clamp(76px, 18vw, 132px); }
+.bossesEarly-vfx[data-motif='clones'],
+.bossesEarly-vfx[data-motif='summon'],
+.bossesEarly-vfx[data-motif='rebirth'],
+.bossesEarly-vfx[data-motif='resurrection'] { --bossesEarly-size: clamp(70px, 15vw, 118px); }
+
+@keyframes bossesEarly-gather {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-35deg); }
+  12%, 28% { opacity: .85; transform: translate(-50%, -50%) scale(1) rotate(0); }
+  50%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+}
+
+@keyframes bossesEarly-travel {
+  0%, 22% { opacity: 0; transform: translateX(0); }
+  30% { opacity: 1; transform: translateX(0); }
+  72% { opacity: 1; transform: translateX(calc(var(--bossesEarly-target) - var(--bossesEarly-source))); }
+  83%, 100% { opacity: 0; transform: translateX(calc(var(--bossesEarly-target) - var(--bossesEarly-source))); }
+}
+
+@keyframes bossesEarly-swing {
+  0%, 20% { transform: translate(-50%, -50%) scale(.45) rotate(-25deg); }
+  62% { transform: translate(-50%, -50%) scale(1.05) rotate(var(--bossesEarly-tilt, 10deg)); }
+  100% { transform: translate(-50%, -50%) scale(1.25) rotate(22deg); }
+}
+
+@keyframes bossesEarly-hit {
+  0%, 65% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  76% { opacity: 1; transform: translate(-50%, -50%) scale(.8); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.45); }
+}
+
+.adventure-still .bossesEarly-vfx *,
+.adventure-still .bossesEarly-vfx *::before,
+.adventure-still .bossesEarly-vfx *::after {
+  animation: none !important;
+  transition: none !important;
+}
+.adventure-still .bossesEarly-vfx__source { opacity: .35; }
+.adventure-still .bossesEarly-vfx__travel {
+  opacity: 1;
+  transform: translateX(calc(var(--bossesEarly-target) - var(--bossesEarly-source)));
+}
+.adventure-still .bossesEarly-vfx__glyph { transform: translate(-50%, -50%); }
+.adventure-still .bossesEarly-vfx__impact { opacity: .48; transform: translate(-50%, -50%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bossesEarly-vfx *, .bossesEarly-vfx *::before, .bossesEarly-vfx *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .bossesEarly-vfx__source { opacity: .35; }
+  .bossesEarly-vfx__travel {
+    opacity: 1;
+    transform: translateX(calc(var(--bossesEarly-target) - var(--bossesEarly-source)));
+  }
+  .bossesEarly-vfx__glyph { transform: translate(-50%, -50%); }
+  .bossesEarly-vfx__impact { opacity: .48; transform: translate(-50%, -50%); }
+}
+
+.bossesEarly-sprite {
+  display: block;
+  overflow: visible;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 1px #10202caa);
+}
+.bossesEarly-sprite__body { transform-origin: 16px 25px; animation: bossesEarly-breathe 1200ms ease-out both; }
+.bossesEarly-sprite__accent { transform-origin: 18px 18px; animation: bossesEarly-accent 1200ms ease-out both; }
+@keyframes bossesEarly-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+@keyframes bossesEarly-accent { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
+.adventure-still .bossesEarly-sprite *, .adventure-still .bossesEarly-sprite *::before, .adventure-still .bossesEarly-sprite *::after { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .bossesEarly-sprite *, .bossesEarly-sprite *::before, .bossesEarly-sprite *::after { animation: none !important; }
+}
