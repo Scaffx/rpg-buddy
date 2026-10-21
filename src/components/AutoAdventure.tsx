@@ -13,7 +13,7 @@ type BattleEvent = {
   at: string; actor: 'hero' | 'enemy'; kind: 'attack' | 'skill'; damage: number;
   hero_hp: number; enemy_hp: number; skill_id: string | null; skill_name: string | null;
   effect?: string | null;
-  hero_mp?: number | null; mp_cost?: number | null; skill_type?: string | null;
+  hero_mp?: number | null; enemy_mp?: number | null; mp_cost?: number | null; skill_type?: string | null;
   healing?: number | null; raw_damage?: number | null; damage_multiplier?: number | null;
   effect_note?: string | null;
 };
@@ -23,6 +23,7 @@ type LiveBattle = {
   hero_class?: string;
   hero_hp: number; hero_max_hp: number; enemy_hp: number; enemy_max_hp: number;
   hero_mp?: number | null; hero_max_mp?: number | null;
+  enemy_mp?: number | null; enemy_max_mp?: number | null;
   enemy_name: string; enemy_icon: string | null; boss_id: string | null;
   events: BattleEvent[]; biome?: string | null;
 };
@@ -165,6 +166,10 @@ export default function AutoAdventure() {
     heroMaxMp: battle?.hero_max_mp,
     enemyHp: battle ? lastEvent?.enemy_hp ?? battle.enemy_max_hp : null,
     enemyMaxHp: battle?.enemy_max_hp,
+    // A terminal battle snapshot may contain future mana; prefer confirmed timeline events.
+    enemyMp: [...visibleEvents].reverse().find(event => typeof event.enemy_mp === 'number')?.enemy_mp
+      ?? (battle?.events.length === 0 ? battle.enemy_mp : null),
+    enemyMaxMp: battle?.enemy_max_mp,
     animateAction: Boolean(activeEvent),
     actionElapsedMs,
     action: lastEvent ? {

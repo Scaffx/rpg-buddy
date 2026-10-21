@@ -1,15 +1,15 @@
 .adventure-scene-layout { min-width:0; display:grid; gap:8px; }
-.adventure-combat-hud { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; align-items:start; }
-.adventure-combat-hud-hero { display:grid; gap:4px; min-width:0; }
-.adventure-resource { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:3px 6px; padding:5px 7px; border:1px solid #b99a6580; border-radius:7px; background:#111a2a; color:#fff7e5; font-size:clamp(10px,2.4vw,12px); font-weight:700; }
+.adventure-combat-hud { position:absolute; top:44px; left:10px; right:10px; z-index:5; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:clamp(8px,4%,28px); align-items:start; pointer-events:none; }
+.adventure-combat-hud-hero,.adventure-combat-hud-enemy { display:grid; gap:4px; min-width:0; }
+.adventure-resource { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:3px 6px; padding:5px 7px; border:1px solid #d9c8a080; border-radius:7px; background:#111a2ae8; box-shadow:0 2px 7px #07101c33; color:#fff7e5; font-size:clamp(10px,2.4vw,12px); font-weight:700; }
 .adventure-resource-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .adventure-resource-track { grid-column:1/-1; height:6px; overflow:hidden; border-radius:6px; background:#38232f; }
 .adventure-resource-track > div { height:100%; background:linear-gradient(90deg,#54bc72,#b2e47a); transition:width .35s; }
 .adventure-resource-mp .adventure-resource-track { background:#20314b; }
 .adventure-resource-mp .adventure-resource-track > div { background:linear-gradient(90deg,#4b8bdd,#9ad9fa); }
-.adventure-combat-hud > .adventure-resource .adventure-resource-track > div { background:linear-gradient(90deg,#dd7349,#f2b362); }
+.adventure-combat-hud-enemy .adventure-resource-hp .adventure-resource-track > div { background:linear-gradient(90deg,#dd7349,#f2b362); }
 .adventure-resource-unknown { color:#dededb; }
-.adventure-scene { --sky-top:#233d5d; --sky-bottom:#8296a0; --far:#466b60; --middle:#325d4c; --ground:#2b493a; --path:#aa9875; position:relative; isolation:isolate; width:100%; min-width:0; height:clamp(230px,48vw,390px); overflow:hidden; border:2px solid #b99a65; border-radius:16px; color:#fff9e9; background:linear-gradient(var(--sky-top),var(--sky-bottom)); box-shadow:inset 0 0 45px #08162599,0 12px 32px #050d184d; }
+.adventure-scene { --sky-top:#233d5d; --sky-bottom:#8296a0; --far:#466b60; --middle:#325d4c; --ground:#2b493a; --path:#aa9875; position:relative; isolation:isolate; width:100%; min-width:0; height:clamp(300px,50vw,430px); overflow:hidden; border:2px solid #b99a65; border-radius:16px; color:#fff9e9; background:linear-gradient(var(--sky-top),var(--sky-bottom)); box-shadow:inset 0 0 45px #08162599,0 12px 32px #050d184d; }
 .adventure-biome-aquatico { --sky-top:#285a7b; --sky-bottom:#88bec3; --far:#397d93; --middle:#246c83; --ground:#285f73; --path:#c5b99a; }
 .adventure-biome-ruinas { --sky-top:#474866; --sky-bottom:#a39d9a; --far:#777685; --middle:#56586d; --ground:#4e4e60; --path:#99918b; }
 .adventure-biome-vulcanico { --sky-top:#391f36; --sky-bottom:#a75c52; --far:#743d49; --middle:#572d39; --ground:#3a2935; --path:#8a6260; }
@@ -29,7 +29,7 @@
 .adventure-scene-top { position:absolute; top:10px; left:10px; right:10px; display:flex; align-items:center; gap:6px; justify-content:space-between; z-index:4; }
 .adventure-stage-badge,.adventure-boss-badge { padding:4px 8px; border:1px solid #fff7; border-radius:6px; background:#111c2abf; box-shadow:0 2px 6px #0006; font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
 .adventure-boss-badge { color:#fff1c2; border-color:#eab86e; background:#742d39e0; }
-.adventure-scene-fighters { position:absolute; inset:13% 2% 8%; display:grid; grid-template-columns:1fr 1fr; align-items:end; z-index:2; }
+.adventure-scene-fighters { position:absolute; inset:31% 2% 8%; display:grid; grid-template-columns:1fr 1fr; align-items:end; z-index:2; }
 .adventure-fighter { min-width:0; height:100%; display:flex; align-items:flex-end; justify-content:center; }
 .adventure-sprite-track { height:78%; width:min(72%,165px); min-width:0; display:flex; align-items:flex-end; justify-content:center; filter:drop-shadow(0 7px 3px #081a1baa); }
 .adventure-hero-svg,.adventure-enemy-svg { width:100%; height:100%; max-height:190px; overflow:visible; image-rendering:pixelated; }
@@ -98,4 +98,4 @@
 @keyframes adventure-impact { 0%,76% { opacity:0; scale:.2; } 83% { opacity:1; scale:.65; } 100% { opacity:0; scale:1.6; } }
 .adventure-still *, .adventure-still *::before, .adventure-still *::after { animation:none !important; transition:none !important; }
 @media (prefers-reduced-motion:reduce) { .adventure-scene *, .adventure-scene *::before, .adventure-scene *::after { animation:none !important; transition:none !important; } .adventure-resource-track > div { transition:none !important; } }
-@media (max-width:360px) { .adventure-scene { height:238px; } .adventure-sprite-track { width:82%; height:72%; } .adventure-scene-fighters { inset:20% 2% 8%; } .adventure-stage-badge,.adventure-boss-badge { font-size:9px; } .adventure-impact { width:30px; height:30px; } }
+@media (max-width:360px) { .adventure-scene { height:300px; } .adventure-combat-hud { left:7px; right:7px; gap:8px; top:40px; } .adventure-resource { padding:4px 5px; column-gap:4px; font-size:9px; } .adventure-sprite-track { width:82%; height:78%; } .adventure-scene-fighters { inset:35% 2% 8%; } .adventure-stage-badge,.adventure-boss-badge { font-size:9px; } .adventure-impact { width:30px; height:30px; } }

@@ -28,6 +28,7 @@ export type AdventureAttack = {
   skill_name: string | null;
   effect: 'physical' | 'arcane' | 'fire' | 'ice' | 'lightning' | 'nature' | 'light';
   hero_mp?: number;
+  enemy_mp?: number;
   mp_cost?: number;
   skill_type?: 'dano' | 'heal' | 'buff' | 'debuff' | 'cc' | null;
   healing?: number;
@@ -58,6 +59,8 @@ export type AdventureBattle = {
   boss_id: string | null;
   events: AdventureAttack[];
   hero_max_mp?: number;
+  enemy_max_mp?: number;
+  enemy_mp?: number;
   hero_mp?: number;
   hero_attack?: number;
   hero_defense?: number;
@@ -137,6 +140,13 @@ function optionalNumber(value: Json | undefined): number | undefined {
   return value === undefined ? undefined : number(value);
 }
 
+function optionalMana(value: Json | undefined): number | undefined {
+  if (value == null) return undefined;
+  const parsed = number(value);
+  if (parsed < 0) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  return parsed;
+}
+
 function optionalNullableString(value: Json | undefined): string | null | undefined {
   return value === undefined ? undefined : nullableString(value);
 }
@@ -172,6 +182,7 @@ function attack(value: Json): AdventureAttack {
     skill_id: nullableString(row.skill_id), skill_name: nullableString(row.skill_name),
     effect: row.effect as AdventureAttack['effect'],
     hero_mp: optionalNumber(row.hero_mp), mp_cost: optionalNumber(row.mp_cost),
+    enemy_mp: optionalMana(row.enemy_mp),
     skill_type: row.skill_type === undefined ? undefined
       : row.skill_type === null || ['dano', 'heal', 'buff', 'debuff', 'cc'].includes(String(row.skill_type))
         ? row.skill_type as AdventureAttack['skill_type']
@@ -199,6 +210,7 @@ function battle(value: Json): AdventureBattle {
     enemy_name: string(row.enemy_name), enemy_icon: nullableString(row.enemy_icon),
     boss_id: nullableString(row.boss_id), events: row.events.map(attack),
     hero_max_mp: optionalNumber(row.hero_max_mp), hero_mp: optionalNumber(row.hero_mp),
+    enemy_max_mp: optionalMana(row.enemy_max_mp), enemy_mp: optionalMana(row.enemy_mp),
     hero_attack: optionalNumber(row.hero_attack), hero_defense: optionalNumber(row.hero_defense),
     engine_version: row.engine_version === undefined ? undefined : string(row.engine_version),
     enemy_resistances: optionalResistances(row.enemy_resistances),

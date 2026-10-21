@@ -59,7 +59,7 @@ describe('AdventureScene effects', () => {
     expect(readout.textContent).toContain('Dano após efeitos: ×0.6');
     expect(readout.textContent).toContain('Asa de Brasa resiste ao fogo');
     expect(page.querySelector('.adventure-scene')?.textContent).not.toContain('12 de dano');
-    expect(page.querySelector('.adventure-scene')?.textContent).not.toContain('Herói');
+    expect(page.querySelector('.adventure-scene-fighters')?.textContent).not.toContain('Herói');
   });
 
   it('distinguishes all seven effects and basic class attacks from a cast', () => {
