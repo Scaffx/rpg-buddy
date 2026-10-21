@@ -1,4 +1,4 @@
-# Revisão independente Auth — REPROVADO local
+# Revisão independente Auth — `2acc64d` reprovado; `6623c4f` PASS local
 
 ## Alvo e alcance
 
@@ -20,4 +20,18 @@
 
 [Certo] A leitura focal do diff mostra tratamento de rejeição e erro retornado em `getSession`/`getUser`, timeout, recovery nos três guards antes do splash, `getUser(token)` sequencial no bootstrap, negação de ID divergente, e checks de `mounted`/versão para respostas tardias. O listener não chama métodos Auth de dentro do callback. `initDeepLinkAuth`, sign-up, sign-in, sign-out e onboarding não sofreram alteração neste commit. Os seis testes do autor e o lint/TSC baseline foram relatados por ele e pelo root; não foram reivindicados como execução independente aqui.
 
-[Certo] Escalação com gatilho, severidade e saída do teste foi enviada ao root via Orca. O envio direto ao dispatch antigo do autor foi recusado pelo Orca por já estar concluído; o root informou que abrirá nova correção no autor. Não houve browser, escrita no Primary/Notion, alteração de dependência ou lockfile. O bloqueio deste review permanece até um novo SHA corrigir a exposição prematura e este mesmo cenário adversarial passar, seguido da validação integrada do root.
+[Certo] Escalação com gatilho, severidade e saída do teste foi enviada ao root via Orca. O envio direto ao dispatch antigo do autor foi recusado pelo Orca por já estar concluído; o root abriu a correção que produziu o SHA retestado abaixo. Não houve browser, escrita no Primary/Notion, alteração de dependência ou lockfile.
+
+## Reteste independente do autor `6623c4f`
+
+[Certo] Target final `6623c4fb7bc892818f82f1280ea984564ab35ae9`, parent `2acc64d28626f56ab3e6f3efd8b8f9424e4f60de`. Para executar contra o produto correto, materializei ambos no CENA por `git cherry-pick` na ordem: exits 0, commits locais de transporte `11744f9cbd212c2772fcbd44d8deea1d8d0803c6` e `abdf539c5118687f8a75027d9fbc3f3b9abec15f`. `git hash-object` de `useAuth.tsx` (`ad3b0b923379a0fe575cd7ccb2d907d0f459d1ce`) e do teste autoral (`32a543229d7d9def588220b4a0716a1cee94c44a`) coincidiu com os blobs de `6623c4f`. Esses commits transportam autoria alheia e não são a entrega da auditoria. Os temporários não rastreados `.qa-effects.html` e `src/qa-effects.tsx` permaneceram intactos.
+
+[Certo] A correção altera o ponto que falhou: `confirmSession` esconde `user`/`session`, mantém `loading=true`, e só publica usuário e metadados devolvidos por `getUser(candidate.access_token)` após conferir o mesmo ID. `SIGNED_IN` do storage, `INITIAL_SESSION` com sessão e `TOKEN_REFRESHED` seguem essa confirmação. A chamada Auth sai do callback síncrono por microtask; na versão local do SDK, `getUser(jwt)` explícito vai a `_getUser(jwt)` sem tomar o segundo lock local. `SIGNED_OUT` limpa o contexto de imediato; cada evento/retentativa tem versão própria e watchdog de 15 segundos. `failConfirmation` invalida a versão, evitando que resposta após erro ou timeout restaure acesso; cleanup marca o efeito desmontado e remove a assinatura no StrictMode.
+
+[Certo] `npx --no-install vitest run src/test/authRecoveryIndependent.test.tsx`: exit 0, **3/3 PASS** contra o produto materializado de `6623c4f`. O cenário antes reprovado segura `loading:denied` com `getSession` pendente e `SIGNED_IN` cacheado como admin; o callback não chama Auth sincronicamente; a confirmação usa o token fictício explícito, e usuário retornado com mesmo ID e papel comum substitui os metadados cacheados (`cached:denied`). Os outros testes confirmam `retry:denied` quando `getUser` devolve ID divergente e que uma sessão inicial antiga não restaura admin após timeout, retry e nova resposta guest. Nenhuma expectativa proíbe `getUser` após o callback.
+
+[Certo] `npx --no-install vitest run src/test/authLoadingRecovery.test.tsx`: exit 0, **13/13 PASS**. Além do caso cacheado, os testes do autor cobrem rejeição/retry de `getSession`/`getUser`, `INITIAL_SESSION`, `TOKEN_REFRESHED`, eventos repetidos com resultado antigo, logout durante verificação, divergência, timeout e StrictMode/unmount. A revisão da fonte confirma que guards em `App.tsx` exibem recuperação antes do splash se `authError=true`, que `useIsAdmin` deriva do usuário confirmado e falha fechado, e que os contratos de `nativeAuth`, assinatura e onboarding não foram modificados por `6623c4f`.
+
+[Certo] `npx --no-install eslint src/hooks/useAuth.tsx src/hooks/useIsAdmin.ts src/App.tsx src/test/authLoadingRecovery.test.tsx src/test/authRecoveryIndependent.test.tsx`: exit 0, zero erros e um aviso preexistente de `react-refresh/only-export-components` em `useAuth.tsx`. `git diff --check`: exit 0. O autor/root relataram TSC com 44 diagnósticos de baseline; **não executei TSC** nesta revisão. Não rodei suíte global nem build, reservados ao root.
+
+[Certo] Parecer: **PASS local para o bloqueio Auth de `6623c4f`**. A prova é de código e React/jsdom com mocks; não certifica GoTrue real, lock em navegador/Capacitor, sessão publicada, RLS em produção ou rollout. RLS do backend não mudou, e o antigo achado P1 era de exposição visual antes de confirmação. Root fará a suíte/build final e observação publicada antes da liberação.

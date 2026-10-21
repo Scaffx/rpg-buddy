@@ -38,11 +38,14 @@ let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
 function Probe() {
-  const { user, loading, authError } = useAuth();
+  const { user, loading, authError, retryAuth } = useAuth();
   const { isAdmin } = useIsAdmin();
-  return <output data-testid="state">
-    {`${loading ? 'loading' : authError ? 'retry' : user?.id ?? 'guest'}:${isAdmin ? 'admin' : 'denied'}`}
-  </output>;
+  return <>
+    <output data-testid="state">
+      {`${loading ? 'loading' : authError ? 'retry' : user?.id ?? 'guest'}:${isAdmin ? 'admin' : 'denied'}`}
+    </output>
+    <button onClick={retryAuth}>Retry</button>
+  </>;
 }
 
 async function mount() {
@@ -67,6 +70,7 @@ afterEach(() => {
   host?.remove();
   root = null;
   host = null;
+  vi.useRealTimers();
 });
 
 describe('independent auth recovery review', () => {
@@ -79,15 +83,44 @@ describe('independent auth recovery review', () => {
     expect(auth.getUser).toHaveBeenCalledWith('local-test-token');
   });
 
-  it('does not grant admin from a storage recovery SIGNED_IN before user confirmation', async () => {
+  it('waits for Auth and replaces cached admin metadata with the confirmed user', async () => {
     // Auth-js can emit SIGNED_IN from a valid non-expiring session in storage.
     auth.getSession.mockReturnValue(new Promise(() => {}));
-    // A safe implementation may start explicit-token confirmation outside the
-    // callback; keep that request pending so only premature UI exposure fails.
-    auth.getUser.mockReturnValue(new Promise(() => {}));
+    let confirm!: (value: { data: { user: User }; error: null }) => void;
+    const pendingConfirmation = new Promise<{ data: { user: User }; error: null }>(resolve => {
+      confirm = resolve;
+    });
+    auth.getUser.mockReturnValue(pendingConfirmation);
     await mount();
     expect(state()).toBe('loading:denied');
-    await act(async () => auth.listeners[0]('SIGNED_IN', stored(member('cached', 'admin'))));
+    await act(async () => {
+      auth.listeners[0]('SIGNED_IN', stored(member('cached', 'admin')));
+      expect(auth.getUser).not.toHaveBeenCalled(); // listener itself stays synchronous
+    });
     expect(state()).toBe('loading:denied');
+    expect(auth.getUser).toHaveBeenCalledWith('local-test-token');
+    confirm({ data: { user: member('cached', 'user') }, error: null });
+    await act(async () => { await pendingConfirmation; });
+    expect(state()).toBe('cached:denied');
+  });
+
+  it('does not restore an old bootstrap after timeout and retry', async () => {
+    vi.useFakeTimers();
+    let resolveOld!: (value: { data: { session: Session }; error: null }) => void;
+    const oldBootstrap = new Promise<{ data: { session: Session }; error: null }>(resolve => {
+      resolveOld = resolve;
+    });
+    auth.getSession.mockReturnValueOnce(oldBootstrap)
+      .mockResolvedValueOnce({ data: { session: null }, error: null });
+    await mount();
+    expect(state()).toBe('loading:denied');
+    await act(async () => vi.advanceTimersByTime(15_000));
+    expect(state()).toBe('retry:denied');
+    await act(async () => host!.querySelector('button')!.click());
+    expect(state()).toBe('guest:denied');
+    resolveOld({ data: { session: stored(member('old', 'admin')) }, error: null });
+    await act(async () => { await oldBootstrap; });
+    expect(state()).toBe('guest:denied');
+    expect(auth.getUser).not.toHaveBeenCalled();
   });
 });
