@@ -1210,5 +1210,131 @@
     "nodeType": "variant",
     "description": "Transforma Luz Purificadora num feixe sagrado de dano massivo.",
     "tree": "novato"
+  },
+  {
+    "id": "weapon_98bc20de-6d2f-44fd-8c8c-725dc9d3f004",
+    "name": "Corte Veloz",
+    "nodeType": "skill",
+    "branch": "armas",
+    "description": "Talho rápido que provoca Sangramento.",
+    "effect": {
+      "desc": "Talho rápido que provoca Sangramento.",
+      "name": "Corte Veloz",
+      "power": 38,
+      "mpCost": 4,
+      "element": "neutro",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "tree": "armas",
+    "sourceItem": "Adaga de Sombra"
+  },
+  {
+    "id": "weapon_3eff6bd5-bdef-496f-91b8-de248c6acf9f",
+    "name": "Estocada",
+    "nodeType": "skill",
+    "branch": "armas",
+    "description": "Investida simples de treino.",
+    "effect": {
+      "desc": "Investida simples de treino.",
+      "name": "Estocada",
+      "power": 34,
+      "mpCost": 3,
+      "element": "neutro",
+      "cooldown": 1,
+      "effectType": "dano"
+    },
+    "tree": "armas",
+    "sourceItem": "Adaga de Treino"
+  },
+  {
+    "id": "weapon_c432ec67-be07-4c4b-b618-fd2b0fd189b3",
+    "name": "Flecha Perfurante",
+    "nodeType": "skill",
+    "branch": "armas",
+    "description": "Disparo penetrante de longo alcance.",
+    "effect": {
+      "desc": "Disparo penetrante de longo alcance.",
+      "name": "Flecha Perfurante",
+      "power": 40,
+      "mpCost": 4,
+      "element": "neutro",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "tree": "armas",
+    "sourceItem": "Arco Curto"
+  },
+  {
+    "id": "weapon_72bd4265-a0ba-430e-a4d9-054a3d5b0e33",
+    "name": "Raio Sereno",
+    "nodeType": "skill",
+    "branch": "armas",
+    "description": "Feixe de luz sagrada (forte vs mortos-vivos).",
+    "effect": {
+      "desc": "Feixe de luz sagrada (forte vs mortos-vivos).",
+      "name": "Raio Sereno",
+      "power": 36,
+      "mpCost": 5,
+      "element": "sagrado",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "tree": "armas",
+    "sourceItem": "Cajado de Luz"
+  },
+  {
+    "id": "weapon_6806d958-c6b8-4f82-9373-8b26954ccaed",
+    "name": "Corte Brutal",
+    "nodeType": "skill",
+    "branch": "armas",
+    "description": "Golpe cortante que provoca Sangramento.",
+    "effect": {
+      "desc": "Golpe cortante que provoca Sangramento.",
+      "name": "Corte Brutal",
+      "power": 42,
+      "mpCost": 4,
+      "element": "neutro",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "tree": "armas",
+    "sourceItem": "Espada Curta"
+  },
+  {
+    "id": "weapon_a08f4e9c-004f-4975-8e9f-ef499f1c3909",
+    "name": "Dardo Arcano",
+    "nodeType": "skill",
+    "branch": "armas",
+    "description": "Projétil de energia arcana.",
+    "effect": {
+      "desc": "Projétil de energia arcana.",
+      "name": "Dardo Arcano",
+      "power": 40,
+      "mpCost": 5,
+      "element": "arcano",
+      "cooldown": 2,
+      "effectType": "dano"
+    },
+    "tree": "armas",
+    "sourceItem": "Grimório Básico"
+  },
+  {
+    "id": "weapon_db3d7bca-7d31-4445-aeb6-aa415758be1e",
+    "name": "Pancada",
+    "nodeType": "skill",
+    "branch": "armas",
+    "description": "Golpe pesado que esmaga a guarda.",
+    "effect": {
+      "desc": "Golpe pesado que esmaga a guarda.",
+      "name": "Pancada",
+      "power": 50,
+      "mpCost": 5,
+      "element": "neutro",
+      "cooldown": 3,
+      "effectType": "dano"
+    },
+    "tree": "armas",
+    "sourceItem": "Martelo de Aço"
   }
 ]

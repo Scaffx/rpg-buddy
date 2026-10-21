@@ -6,6 +6,7 @@ import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import SkillTreePage from '@/pages/SkillTreePage';
 import FeatsTree from '@/pages/FeatsTree';
 import CombatLoadout from '@/components/CombatLoadout';
+import { Link } from 'react-router-dom';
 
 type Tab = 'arvore' | 'loadout' | 'talentos';
 
@@ -24,6 +25,7 @@ export default function HabilidadesHub() {
     <AppLayout>
       <div className="space-y-5">
         <h1 data-tour="skills-hub-header" className="text-2xl font-display font-bold text-primary text-glow">{t('app.habhub.title')}</h1>
+        <Link to="/previa-habilidades" className="inline-flex min-h-11 items-center rounded-lg border border-primary/40 px-3 py-2 text-sm text-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Ver animações de todas as classes</Link>
 
         <div data-tour="skills-hub-tabs" className="flex gap-2 flex-wrap border-b border-border/50 pb-2">
           {tabs.map(({ id, icon: Icon, label }) => (

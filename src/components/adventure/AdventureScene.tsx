@@ -3,12 +3,15 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { AdventureEnemySprite, AdventureHeroSprite } from './AdventureSprites';
 import { BIOME_LABELS, enemyVisualVariant, type AdventureBiome, type AdventureHeroClass } from '@/lib/adventureVisuals';
 import './adventureScene.css';
+import { findSkillAnimation } from './skills/registry';
+import { AdventureSkillEffect } from './skills/AdventureSkillEffect';
 
 export type AdventureSceneAction = {
   id: string;
   actor: 'hero' | 'enemy';
   kind?: 'attack' | 'skill';
   skillName?: string | null;
+  skillId?: string | null;
   damage?: number | null;
   effect?: 'physical' | 'arcane' | 'fire' | 'ice' | 'lightning' | 'nature' | 'light' | null;
   mpCost?: number | null;
@@ -40,6 +43,7 @@ type Props = {
   isBoss: boolean;
   frame: AdventureSceneFrame;
   paused: boolean;
+  announceActions?: boolean;
 };
 
 const ELEMENT_NAMES: Record<NonNullable<AdventureSceneAction['effect']>, string> = {
@@ -69,9 +73,9 @@ function ResourceBar({ label, value, max, resource }: { label: string; value?: n
   </div>;
 }
 
-function ActionReadout({ action, heroAttack }: { action: AdventureSceneAction; heroAttack: boolean }) {
+function ActionReadout({ action, heroAttack, announce = true }: { action: AdventureSceneAction; heroAttack: boolean; announce?: boolean }) {
   const skill = action.kind === 'skill';
-  return <div className="adventure-action-strip" key={action.id} role="status" aria-live="polite">
+  return <div className="adventure-action-strip" key={action.id} role="status" aria-live={announce ? 'polite' : 'off'}>
     <strong>{skill ? action.skillName || 'Habilidade' : heroAttack ? 'Ataque básico do herói' : 'Ataque básico do inimigo'}</strong>
     <div className="adventure-action-details">
       {skill && action.effect && <span>{ELEMENT_NAMES[action.effect]}</span>}
@@ -86,7 +90,7 @@ function ActionReadout({ action, heroAttack }: { action: AdventureSceneAction; h
   </div>;
 }
 
-export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, isBoss, frame, paused }: Props) {
+export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, isBoss, frame, paused, announceActions = true }: Props) {
   const sceneRef = useRef<HTMLDivElement>(null);
   const [sceneWidth, setSceneWidth] = useState(320);
   useEffect(() => {
@@ -105,13 +109,15 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
   const visualAction = frame.animateAction === false ? null : action;
   const heroAttack = visualAction?.actor === 'hero';
   const enemyAttack = visualAction?.actor === 'enemy';
-  const cast = heroAttack && visualAction?.kind === 'skill' && (heroClass === 'mago' || heroClass === 'clerico');
-  const bow = heroAttack && heroClass === 'arqueiro';
-  const melee = heroAttack && !cast && !bow;
-  const actionStyle = cast ? 'cast' : bow ? 'bow' : melee ? 'melee' : enemyAttack ? 'enemy' : 'idle';
+  const specific = heroAttack && visualAction?.kind === 'skill' ? findSkillAnimation(visualAction.skillId, heroClass) : null;
+  const defaultStyle = heroAttack ? visualAction?.kind === 'skill' && (heroClass === 'mago' || heroClass === 'clerico') ? 'cast' : heroClass === 'arqueiro' ? 'bow' : 'melee' : enemyAttack ? 'enemy' : 'idle';
+  const actionStyle = specific?.definition.motion ?? defaultStyle;
+  const cast = actionStyle === 'cast' || actionStyle === 'support';
+  const bow = actionStyle === 'bow';
+  const melee = heroAttack && ['melee', 'slam', 'lunge'].includes(actionStyle);
   const gap = Math.max(80, sceneWidth * .54);
   const diagonal = ((stage % 3) - 1) * 7;
-  const heroMotion = heroAttack ? { x: [0, gap * (melee ? .7 : .08), 0], y: [0, melee ? diagonal - 5 : -3, 0] }
+  const heroMotion = heroAttack ? { x: [0, gap * (melee ? .7 : actionStyle === 'support' ? 0 : .08), 0], y: [0, actionStyle === 'slam' ? -18 : actionStyle === 'lunge' ? diagonal - 9 : melee ? diagonal - 5 : -3, 0] }
     : frame.status === 'exploring' ? { x: [0, gap * .25, 0], y: [0, diagonal, 0] }
     : { x: 0, y: 0 };
   const enemyMotion = enemyAttack ? { x: [0, -gap * .6, 0], y: [0, -5, 0] } : { x: 0, y: 0 };
@@ -154,7 +160,7 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
         </motion.div>
       </div>
     </div>
-    {visualAction && <div key={visualAction.id} className={`adventure-effect-sequence adventure-effect-${actionEffect} adventure-vfx-${actionEffect} adventure-effect-${actionStyle} ${selfSupport ? 'adventure-effect-self-support' : ''}`} aria-hidden="true">
+    {visualAction && specific ? <AdventureSkillEffect key={visualAction.id} skillId={visualAction.skillId!} heroClass={heroClass} target={selfSupport ? 'self' : specific.definition.target} /> : visualAction && <div key={visualAction.id} className={`adventure-effect-sequence adventure-effect-${actionEffect} adventure-vfx-${actionEffect} adventure-effect-${actionStyle} ${selfSupport ? 'adventure-effect-self-support' : ''}`} aria-hidden="true">
       {cast && <><span className="adventure-cast-particles" /><span className="adventure-cast-orb" /></>}
       {projectile && !selfSupport && <span className="adventure-projectile" />}
       <span className="adventure-impact" />
@@ -164,6 +170,6 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
     {frame.status === 'victory' && <div className="adventure-transition-banner">Vitória</div>}
     {frame.status === 'draw' && <div className="adventure-transition-banner">Sem vencedor · nova tentativa</div>}
     </div>
-    {action && <ActionReadout action={action} heroAttack={action.actor === 'hero'} />}
+    {action && <ActionReadout action={action} heroAttack={action.actor === 'hero'} announce={announceActions} />}
   </div>;
 }

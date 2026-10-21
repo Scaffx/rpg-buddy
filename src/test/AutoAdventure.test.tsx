@@ -154,7 +154,7 @@ describe('AutoAdventure', () => {
           enemy_name: 'Javali', enemy_icon: null, boss_id: null,
           hero_max_hp: 100, hero_max_mp: 30, hero_mp: 10, enemy_max_hp: 100, hero_hp: 100, enemy_hp: 88,
           events: [
-            { at: new Date(now - 250).toISOString(), actor: 'hero', kind: 'skill', skill_id: 'skill-1', skill_name: 'Tiro Vetor', effect: 'ice', damage: 12, mp_cost: 8, hero_mp: 22, raw_damage: 16, damage_multiplier: .75, effect_note: 'Resistência ao gelo', hero_hp: 100, enemy_hp: 88 },
+            { at: new Date(now - 250).toISOString(), actor: 'hero', kind: 'skill', skill_id: 'm_lanca_gelo', skill_name: 'Lança de Gelo', effect: 'ice', damage: 12, mp_cost: 8, hero_mp: 22, raw_damage: 16, damage_multiplier: .75, effect_note: 'Resistência ao gelo', hero_hp: 100, enemy_hp: 88 },
             { at: new Date(now + 8000).toISOString(), actor: 'enemy', kind: 'attack', skill_id: null, skill_name: null, damage: 40, hero_mp: 10, hero_hp: 60, enemy_hp: 88 },
           ],
         },
@@ -162,14 +162,14 @@ describe('AutoAdventure', () => {
       isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
     };
     const page = renderAdventure();
-    expect(page.textContent).toContain('Tiro Vetor');
+    expect(page.textContent).toContain('Lança de Gelo');
     expect(page.textContent).toContain('12 de dano');
     expect(page.textContent).toContain('−8 MP');
     expect(page.textContent).toContain('Resistência ao gelo');
     expect(page.textContent).not.toContain('40 de dano');
     expect(page.querySelector('[aria-label="Mana: 22 de 30 MP"]')).not.toBeNull();
     expect(page.querySelector('[aria-label="Mana: 10 de 30 MP"]')).toBeNull();
-    expect(page.querySelector('.adventure-vfx-ice')).not.toBeNull();
+    expect(page.querySelector('[data-animation-skill="m_lanca_gelo"]')).not.toBeNull();
     expect(page.querySelector('[data-hero-class=mago]')).not.toBeNull();
     expect(page.querySelector('[data-biome=aquatico]')).not.toBeNull();
     expect(page.textContent).toContain('Em combate · Mago');
