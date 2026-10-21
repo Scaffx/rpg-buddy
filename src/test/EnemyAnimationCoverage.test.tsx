@@ -34,6 +34,9 @@ describe('enemy animations: catalog, identity and confirmed actions', () => {
     expect(ENEMY_PRESENTATIONS.filter(item => item.kind === 'boss')).toHaveLength(60);
     expect(ENEMY_PRESENTATIONS.filter(item => item.kind === 'creature')).toHaveLength(12);
     expect(ENEMY_ANIMATIONS.filter(item => item.kind === 'skill')).toHaveLength(180);
+    const expectedEnemies = [...catalog.bosses.map(item => ({ key: `boss:${item.id}`, name: item.name })), ...catalog.creatures.map(item => ({ key: `creature:${item.biome}:${item.slot}`, name: item.name }))];
+    expect(ENEMY_PRESENTATIONS.map(item => ({ key: item.key, name: item.name })).sort((a, b) => a.key.localeCompare(b.key))).toEqual(expectedEnemies.sort((a, b) => a.key.localeCompare(b.key)));
+    expect(ENEMY_ANIMATIONS.filter(item => item.kind === 'attack').every(item => item.element === 'physical')).toBe(true);
     for (const [key, group] of Object.entries(ENEMY_ANIMATION_GROUPS)) {
       const Effect = group.Effect;
       const Sprite = group.Sprite;
