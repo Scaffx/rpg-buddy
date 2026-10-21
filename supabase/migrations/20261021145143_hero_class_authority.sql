@@ -107,15 +107,18 @@ $$;
 REVOKE ALL ON FUNCTION app_private.starter_item_for_class(text) FROM PUBLIC, anon, authenticated;
 
 -- Check every ancestor, including the base and Aprendiz, against the catalog.
+-- A historical chain must climb exactly one column at each parent edge.
 CREATE FUNCTION app_private.class_path_matches(p_current uuid, p_starter text, p_level integer)
 RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER
 SET search_path = pg_catalog AS $$
   WITH RECURSIVE path AS (
     SELECT c.id, c.parent_class_id, c.column_index, c.level_min,
+           true AS adjacent,
            ARRAY[c.id] AS visited, 1 AS hops
     FROM public.classes c WHERE c.id = p_current
     UNION ALL
     SELECT c.id, c.parent_class_id, c.column_index, c.level_min,
+           path.adjacent AND ((path.column_index = c.column_index + 1) IS TRUE),
            path.visited || c.id, path.hops + 1
     FROM path JOIN public.classes c ON c.id = path.parent_class_id
     WHERE path.hops < 16 AND NOT c.id = ANY(path.visited)
@@ -123,6 +126,7 @@ SET search_path = pg_catalog AS $$
   SELECT EXISTS (
     SELECT 1 FROM path
     HAVING bool_and(level_min <= p_level)
+       AND bool_and(adjacent)
        AND count(*) FILTER (WHERE id = app_private.base_class_id(p_starter)
                            AND column_index = 2) = 1
        AND count(*) FILTER (WHERE id = '00000001-0000-0000-0000-000000000001'::uuid

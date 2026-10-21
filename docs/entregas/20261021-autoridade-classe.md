@@ -40,3 +40,23 @@ Exits: 0, 0, 0 com `HERO_CLASS_AUTHORITY_PASS`, e 0 com `HERO_CLASS_CONCURRENCY_
 - `npx --no-install tsc --noEmit -p tsconfig.app.json`: exit 1 por erros globais preexistentes; nos arquivos alterados apareceu apenas o `Settings` duplicado em ProfilePage. Lint do conjunto de arquivos grandes: exit 1 por `no-explicit-any` disseminado e por `prefer-const` preexistente em ProfilePage; não declarado verde.
 - Teste com fixture reduzida não prova aplicação sobre todo o esquema vivo nem comportamento do motor após integração. Primary não foi alterado. Root fará Cua; worker não fez browser QA. Arquivos `.qa-effects.html` e `src/qa-effects.tsx` permanecem não rastreados para QA do root.
 - Necessário antes de rollout: revalidar hashes/ACL/catálogo no Primary e aplicar migrations na ordem MOTOR → CENA em ambiente apropriado, com revisão root. Alterações de skill/equipamento chegam à próxima luta após sync do servidor; nenhum resultado foi simulado como autoridade no cliente.
+
+## Correção estreita: lacuna histórica de coluna
+
+O revisor reproduziu Bruxo com `column_index=4`, `level_min=35` e pai Mago na coluna 2: a cadeia/nível passavam no seed e `hero_class_key` retornava `mago`. `class_path_matches` agora acumula a condição `filho.column_index = pai.column_index + 1` em cada aresta e exige que todas sejam verdadeiras. A regra anterior continua exigindo a raiz Aprendiz única, a base correta, o nível de todos os nós, ausência de ciclos e alcance da raiz em no máximo 16 nós; portanto uma cadeia truncada também falha. Nenhum perfil, ponto, nó, item ou XP é reparado ou reatribuído.
+
+Teste próprio PostgreSQL 17 no cluster isolado existente `%TEMP%\hero-class-pg-task_718aa1f13c4c`, porta 55438, com bancos novos `skills_class_gap_negative` e `skills_class_gap_positive`; o cluster do root na porta 55621 não foi tocado. Arquivos novos: `hero_class_historical_gap_setup.sql`, `hero_class_historical_gap_rollback_assert.sql` e `hero_class_historical_gap_helper_assert.sql`. Sufixos dos comandos `& $psql`, com `$psql='C:\Program Files\PostgreSQL\17\bin\psql.exe'` e flags comuns `-X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 55438 -U postgres`:
+
+| Banco | Sufixo do comando | Exit | Evidência |
+| --- | --- | ---: | --- |
+| negativo | `-d skills_class_gap_negative -f src/test/sql/hero_class_authority_fixture.sql` | 0 | fixture |
+| negativo | `-d skills_class_gap_negative -f src/test/sql/hero_class_historical_gap_setup.sql` | 0 | perfil Lv35 e salto 2→4 |
+| negativo | `-d skills_class_gap_negative -1 -f supabase/migrations/20261021145143_hero_class_authority.sql` | 3 esperado | `HERO_CLASS_HISTORICAL_REVIEW_REQUIRED` antes do INSERT de identidade |
+| negativo | `-d skills_class_gap_negative -f src/test/sql/hero_class_historical_gap_rollback_assert.sql` | 0 | `HERO_CLASS_GAP_ROLLBACK_PASS`: ledger/helper ausentes, perfil/catálogo preservados |
+| positivo | `-d skills_class_gap_positive -f src/test/sql/hero_class_authority_fixture.sql` | 0 | fixture |
+| positivo | `-d skills_class_gap_positive -1 -f supabase/migrations/20261021145143_hero_class_authority.sql` | 0 | seed legítimo |
+| positivo | `-d skills_class_gap_positive -f src/test/sql/hero_class_authority_assert.sql` | 0 | `HERO_CLASS_AUTHORITY_PASS` |
+| positivo | `-d skills_class_gap_positive -f src/test/sql/hero_class_historical_gap_helper_assert.sql` | 0 | `HERO_CLASS_GAP_HELPER_PASS`: helper/has_hero_class negam catálogo com gap |
+| positivo | `pwsh -NoProfile -File src/test/sql/hero_class_authority_concurrency.ps1 -Port 55438 -Database skills_class_gap_positive` | 0 | `HERO_CLASS_CONCURRENCY_PASS` |
+
+`git diff --check`: exit 0. SHA256 dos arquivos (bytes locais): migration `8B97F20E84516294033A9DABE4975486A85D9ECB025F36676431E2A678690AFE`; setup `BD7A16715F2F2A468C734F2DADE38DAA8974AEF11A035F0DD28B7D05C3550418`; rollback `9F85DF171EE3636FACF5696FBA3B2E22F84DD83598913C5721F6AD51AF9A3242`; helper `82836CBFC927A2F663CBF92F92FBA01924437D0C891653F08D21FD20077B6CC2`. Teardown: `pg_ctl -D %TEMP%\hero-class-pg-task_718aa1f13c4c stop -m fast -w`, exit 0; `status`, exit 3 (`no server running`). Bancos e arquivos temporários preservados para reprodução, sem delete. Esta prova local não substitui a prova composta do root nem uma promoção remota; Primary permaneceu somente leitura e não houve browser QA.
