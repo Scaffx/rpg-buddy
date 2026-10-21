@@ -54,6 +54,15 @@ describe('enemy animations: catalog, identity and confirmed actions', () => {
     }
   });
 
+  it('rejects inherited object keys as unknown sprites in every group', () => {
+    for (const group of Object.values(ENEMY_ANIMATION_GROUPS)) {
+      const Sprite = group.Sprite;
+      for (const enemyKey of ['__proto__', 'constructor', 'toString']) {
+        expect(render(<Sprite enemyKey={enemyKey} />).childElementCount, enemyKey).toBe(0);
+      }
+    }
+  });
+
   it('requires exact boss identity or exact known creature name with biome', () => {
     expect(resolveEnemyPresentation({ ...props })?.key).toBe(bossKey);
     expect(resolveEnemyPresentation({ ...props, bossId: null })).toBeNull();

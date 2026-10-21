@@ -169,6 +169,7 @@ const CREATURE_ARTWORK: Record<string, ReactNode> = {
 };
 
 export function CreaturesSprite({ enemyKey, className }: EnemySpriteProps) {
+  if (!Object.prototype.hasOwnProperty.call(CREATURE_ARTWORK, enemyKey)) return null;
   const body = CREATURE_ARTWORK[enemyKey];
   if (!body) return null;
   return <svg className={className} viewBox="0 0 32 32" aria-hidden="true" focusable="false" data-enemy-key={enemyKey} data-art-version="bestiary-2">
