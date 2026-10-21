@@ -47,8 +47,8 @@ describe('AdventureScene effects', () => {
     expect(readout.textContent).toContain('−8 MP');
     expect(readout.textContent).toContain('12 de dano');
     expect(readout.textContent).toContain('+3 HP curado');
-    expect(readout.textContent).toContain('Dano bruto: 20');
-    expect(readout.textContent).toContain('Multiplicador: ×0.6');
+    expect(readout.textContent).toContain('Antes dos efeitos: 20 de dano');
+    expect(readout.textContent).toContain('Dano após efeitos: ×0.6');
     expect(readout.textContent).toContain('Asa de Brasa resiste ao fogo');
     expect(page.querySelector('.adventure-scene')?.textContent).not.toContain('12 de dano');
     expect(page.querySelector('.adventure-scene')?.textContent).not.toContain('Herói');

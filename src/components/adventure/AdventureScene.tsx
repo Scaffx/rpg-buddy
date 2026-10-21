@@ -47,6 +47,18 @@ const ELEMENT_NAMES: Record<NonNullable<AdventureSceneAction['effect']>, string>
   lightning: 'Raio', nature: 'Natureza', light: 'Luz',
 };
 
+const SKILL_TYPE_NAMES: Record<string, string> = {
+  dano: 'Dano', heal: 'Cura', buff: 'Proteção', debuff: 'Vulnerabilidade', cc: 'Controle',
+};
+
+function effectDescription(note: string, heroAttack: boolean) {
+  if (note === 'heal') return 'Vida recuperada';
+  if (note === 'guard') return 'Proteção aplicada aos próximos 2 golpes recebidos';
+  if (note === 'vulnerable') return 'Alvo recebe mais dano por 2 turnos';
+  if (note === 'stunned') return heroAttack ? 'Alvo impedido de atacar no próximo turno' : 'Inimigo impedido de atacar neste turno';
+  return note;
+}
+
 function ResourceBar({ label, value, max, resource }: { label: string; value?: number | null; max?: number | null; resource: 'HP' | 'MP' }) {
   const known = typeof value === 'number' && Number.isFinite(value) && typeof max === 'number' && Number.isFinite(max) && max >= 0;
   if (!known) return <div className="adventure-resource adventure-resource-unknown"><span className="adventure-resource-name">{label}</span><span>{resource} —</span></div>;
@@ -66,10 +78,10 @@ function ActionReadout({ action, heroAttack }: { action: AdventureSceneAction; h
       {skill && typeof action.mpCost === 'number' && <span>−{action.mpCost} MP</span>}
       {typeof action.damage === 'number' && (action.damage > 0 || !action.healing) && <span>{action.damage} de dano</span>}
       {typeof action.healing === 'number' && action.healing > 0 && <span>+{action.healing} HP curado</span>}
-      {typeof action.rawDamage === 'number' && <span>Dano bruto: {action.rawDamage}</span>}
-      {typeof action.damageMultiplier === 'number' && <span>Multiplicador: ×{action.damageMultiplier}</span>}
-      {action.skillType && <span>Tipo: {action.skillType}</span>}
-      {action.effectNote && <span className="adventure-effect-note">{action.effectNote}</span>}
+      {typeof action.rawDamage === 'number' && action.rawDamage > 0 && action.damageMultiplier !== 1 && <span>Antes dos efeitos: {action.rawDamage} de dano</span>}
+      {typeof action.damageMultiplier === 'number' && action.damageMultiplier !== 1 && action.damageMultiplier > 0 && <span>Dano após efeitos: ×{action.damageMultiplier}</span>}
+      {action.skillType && SKILL_TYPE_NAMES[action.skillType] && <span>{SKILL_TYPE_NAMES[action.skillType]}</span>}
+      {action.effectNote && <span className="adventure-effect-note">{effectDescription(action.effectNote, heroAttack)}</span>}
     </div>
   </div>;
 }
