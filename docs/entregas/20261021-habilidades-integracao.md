@@ -30,7 +30,7 @@ O banco composto aplicou reset, motor e autoridade de classe em sequência com o
 
 Revisões independentes: motor `fe0b81c`, relatório em `docs/audits/20261021-motor-review.md`; classe final `d640691`, relatório em `docs/audits/20261021-class-review.md`. Cobrem relógio, ACL, concorrência, rollback, drift de RPC/catálogo, cursor offline e recibos. O motor admite até 320 eventos; empate preserva ambos vivos, sem recompensa e sem recuo. Uma derrota em modo de permanência não provoca recuos sucessivos.
 
-Suíte integrada antes da revisão final de Auth: 318 testes/47 arquivos, exit 0; build exit 0. TypeScript permanece com os mesmos 44 diagnósticos da base `9a803382`, sem novo diagnóstico na comparação normalizada. O aviso de chunks grandes do Vite também permanece.
+Suíte integrada com a correção final de Auth `6623c4`: 325 testes/47 arquivos, exit 0; build exit 0. TypeScript permanece com os mesmos 44 diagnósticos da base `9a803382`, sem novo diagnóstico na comparação normalizada. O aviso de chunks grandes do Vite também permanece.
 
 ## Personas de verificação
 
@@ -40,7 +40,7 @@ São cenários técnicos simulados, não pesquisa com pessoas reais: iniciante q
 
 Os efeitos secundários de queimadura, congelamento, sangramento, área e sinergias, além dos bônus de nós passivos/variantes, não foram implementados nesta rodada. A interface explicita esse limite. A aparência de acessórios equipados está registrada em `docs/roadmap/20261021-acessorios-visuais.md` para uma próxima etapa.
 
-O bloqueio de autenticação observado no produto publicado foi incluído na rodada. A primeira proposta `2acc64d` foi reprovada pela revisão independente: um evento SIGNED_IN de recuperação do storage podia expor o usuário antes da confirmação pelo Auth. O relatório final de Auth e a revisão da correção devem ser consultados antes do rollout. Essa prova não demonstra bypass de RLS.
+O bloqueio de autenticação observado no produto publicado foi incluído na rodada. A primeira proposta `2acc64d` foi reprovada pela revisão independente: um evento SIGNED_IN de recuperação do storage podia expor o usuário antes da confirmação pelo Auth. A correção `6623c4` confirma também os eventos e passou 13 testes autorais, além da suíte integrada. O relatório final de Auth e o reteste independente devem ser consultados antes do rollout. Essa prova não demonstra bypass de RLS.
 
 ## Rollout
 
