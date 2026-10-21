@@ -17,6 +17,7 @@ function recordSummary(queryClient: ReturnType<typeof useQueryClient>, userId: s
     to_stage: next.to_stage,
     wins: (previous?.wins ?? 0) + next.wins,
     defeats: (previous?.defeats ?? 0) + next.defeats,
+    draws: (previous?.draws ?? 0) + (next.draws ?? 0),
     retreats: (previous?.retreats ?? 0) + next.retreats,
     gold: (previous?.gold ?? 0) + next.gold,
     items: [...(previous?.items ?? []), ...next.items],
