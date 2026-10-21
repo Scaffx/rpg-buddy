@@ -326,13 +326,9 @@ export function useSelectClass() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ classId, starterClass }: { classId: string; starterClass?: string }) => {
-      const updates: Record<string, unknown> = { current_class_id: classId };
-      if (starterClass) updates.starter_class = starterClass;
-      const { error } = await supabase
-        .from("profiles")
-        .update(updates)
-        .eq("user_id", user!.id);
+    mutationFn: async ({ classId }: { classId: string; starterClass?: string }) => {
+      if (!user) throw new Error("NOT_AUTHENTICATED");
+      const { error } = await supabase.rpc("advance_hero_class" as any, { p_class_id: classId });
       if (error) throw error;
     },
     onSuccess: () => {

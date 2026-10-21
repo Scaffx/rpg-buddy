@@ -1,0 +1,2 @@
+src/test/sql/hero_class_live_allocate.sql -text whitespace=cr-at-eol
+src/test/sql/hero_class_live_respec.sql -text whitespace=cr-at-eol

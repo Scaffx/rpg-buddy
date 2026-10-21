@@ -84,12 +84,10 @@ export default function ClassesPage() {
     baseName: string;
   } | null>(null);
 
-  // Get starter_class from profile or localStorage
+  // O ramo apresentado segue a classe persistida pelo servidor.
   const starterClass = useMemo(() => {
     if (!user) return null;
-    const fromProfile = profile?.starter_class;
-    if (fromProfile) return fromProfile as string;
-    return localStorage.getItem(`starter_class_v1_${user.id}`);
+    return profile?.starter_class || null;
   }, [profile, user]);
 
   // Check if class reward was already claimed
