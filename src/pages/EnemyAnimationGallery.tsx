@@ -45,7 +45,7 @@ export default function EnemyAnimationGallery() {
   const self = animation.target === 'self';
   const frame: AdventureSceneFrame = {
     status: 'fighting', heroHp: self ? 100 : 76, heroMaxHp: 100, heroMp: 40, heroMaxMp: 40,
-    enemyHp: 100, enemyMaxHp: 100, animateAction: true,
+    enemyHp: 100, enemyMaxHp: 100, animateAction: true, actionElapsedMs: 0,
     action: { id: `enemy-preview-${animation.id}-${serial}`, actor: 'enemy', kind: animation.kind,
       skillId: preview ? animation.id : null, skillName: preview ? animation.name : null,
       damage: self ? null : 24,

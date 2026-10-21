@@ -135,6 +135,7 @@ describe('enemy animations: catalog, identity and confirmed actions', () => {
     act(() => { groupSelect.value = 'creatures'; groupSelect.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(page.querySelector('[data-enemy-key]')?.getAttribute('data-enemy-key')).toBe(creatureKey);
     expect(page.querySelector('[data-enemy-effect]')?.getAttribute('data-enemy-effect')).toBe(`${creatureKey}:attack`);
+    expect((page.querySelector('.adventure-fighter-hero [data-hit-id]') as HTMLElement)?.style.animationDelay).toBe('0ms');
     expect(page.textContent).toContain('Esta galeria não inicia combates nem altera seu personagem');
   });
 });

@@ -40,7 +40,7 @@ export default function SkillAnimationGallery() {
   const support = skill.target === 'self';
   const frame: AdventureSceneFrame = {
     status: 'fighting', heroHp: 90, heroMaxHp: 120, heroMp: 40 - (mpCost ?? 0), heroMaxMp: 40,
-    enemyHp: support ? 100 : 76, enemyMaxHp: 100, animateAction: true,
+    enemyHp: support ? 100 : 76, enemyMaxHp: 100, animateAction: true, actionElapsedMs: 0,
     action: { id: `preview-${skill.id}-${serial}`, actor: 'hero', kind: 'skill', skillId: skill.id,
       skillName: skill.name, effect: skill.element, damage: support ? null : 24, mpCost,
       healing: heal ? 20 : null, skillType: heal ? 'heal' : support ? 'buff' : effect.effectType ?? null },

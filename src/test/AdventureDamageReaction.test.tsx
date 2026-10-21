@@ -15,6 +15,7 @@ let container: HTMLDivElement | null = null;
 
 function render(action: AdventureSceneAction | null, options: {
   animateAction?: boolean;
+  actionElapsedMs?: number;
   paused?: boolean;
   heroHp?: number;
   enemyHp?: number;
@@ -31,6 +32,7 @@ function render(action: AdventureSceneAction | null, options: {
     heroHp: options.heroHp ?? 80, heroMaxHp: 100,
     enemyHp: options.enemyHp ?? 70, enemyMaxHp: 100,
     animateAction: options.animateAction,
+    actionElapsedMs: 'actionElapsedMs' in options ? options.actionElapsedMs : 0,
     action,
   };
   const scene = <AdventureScene stage={3} biome="floresta" heroClass="guerreiro"
@@ -53,6 +55,36 @@ afterEach(() => {
 });
 
 describe('adventure damage reaction', () => {
+  it('places a late hit on the server timeline and does not restart it on a 250ms tick', () => {
+    vi.useFakeTimers();
+    const action: AdventureSceneAction = { id: 'late-hit', actor: 'hero', damage: 9 };
+    render(action, { animateAction: true, actionElapsedMs: 800 });
+    const shell = hit() as HTMLElement;
+    expect(shell?.style.animationDelay).toBe('-800ms');
+    expect(shell?.querySelector('.adventure-damage-marks')).not.toBeNull();
+    // The CSS impact peak is 6.4ms away at this server age.
+    act(() => vi.advanceTimersByTime(250));
+    render({ ...action }, { animateAction: true, actionElapsedMs: 1050 });
+    expect(hit()).toBe(shell);
+    expect((hit() as HTMLElement).style.animationDelay).toBe('-800ms');
+    act(() => vi.advanceTimersByTime(69));
+    expect(hit()).toBe(shell);
+    act(() => vi.advanceTimersByTime(1));
+    expect(hit()).toBeNull();
+    render(action, { animateAction: true, actionElapsedMs: 1070 });
+    expect(hit()).toBeNull();
+  });
+
+  it('consumes expired, negative and invalid event ages without later replay', () => {
+    const action: AdventureSceneAction = { id: 'expired-hit', actor: 'enemy', damage: 9 };
+    for (const age of [undefined, 1120, 1300, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      render({ ...action, id: `${action.id}-${age}` }, { animateAction: true, actionElapsedMs: age });
+      expect(hit()).toBeNull();
+      render({ ...action, id: `${action.id}-${age}` }, { animateAction: true, actionElapsedMs: 0 });
+      expect(hit()).toBeNull();
+    }
+  });
+
   it('reacts once on the damaged enemy, then ends without replay on the same event or HP changes', () => {
     vi.useFakeTimers();
     const action: AdventureSceneAction = { id: 'battle-1-event-0', actor: 'hero', damage: 9 };

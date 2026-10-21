@@ -21,6 +21,7 @@
   mix-blend-mode: screen;
   pointer-events: none;
   animation: adventure-damage-flash 1120ms ease-out both;
+  animation-delay: inherit;
 }
 
 .adventure-damage-marks {
@@ -36,6 +37,7 @@
   transform: rotate(25deg);
   pointer-events: none;
   animation: adventure-damage-marks 1120ms ease-out both;
+  animation-delay: inherit;
 }
 
 @keyframes adventure-damage-recoil {
