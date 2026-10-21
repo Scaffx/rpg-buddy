@@ -19,14 +19,20 @@ type BattleEvent = {
 };
 type LiveBattle = {
   id: string; stage: number; attempt: number; kind: 'normal' | 'boss';
-  status: 'fighting' | 'defeated' | 'won'; replay?: boolean; started_at: string; ends_at: string;
+  status: 'fighting' | 'defeated' | 'won' | 'draw'; end_reason?: string | null; replay?: boolean; started_at: string; ends_at: string;
   hero_class?: string;
   hero_hp: number; hero_max_hp: number; enemy_hp: number; enemy_max_hp: number;
   hero_mp?: number | null; hero_max_mp?: number | null;
   enemy_name: string; enemy_icon: string | null; boss_id: string | null;
   events: BattleEvent[]; biome?: string | null;
 };
-type Catchup = { battles: number; wins: number; defeats?: number; retreats?: number; gold: number; items: string[]; defeated?: boolean; pending: boolean; from_stage?: number | null; to_stage?: number | null };
+type Catchup = { battles: number; wins: number; draws?: number; defeats?: number; retreats?: number; gold: number; items: string[]; defeated?: boolean; pending: boolean; from_stage?: number | null; to_stage?: number | null };
+function isDraw(encounter: { status?: string; end_reason?: string | null }) {
+  return encounter.status === 'draw' || encounter.end_reason === 'turn_limit';
+}
+function encounterResult(encounter: AdventureEncounter & { status?: string; end_reason?: string | null }) {
+  return isDraw(encounter) ? 'Sem vencedor · nova tentativa nesta etapa' : encounter.won ? 'Vitória' : 'Derrota sem perda';
+}
 function encounterName(encounter: AdventureEncounter) {
   return encounter.kind === 'boss' ? encounter.boss_name || `Chefe da etapa ${encounter.stage}` : `Inimigo da etapa ${encounter.stage}`;
 }
@@ -86,6 +92,7 @@ export default function AutoAdventure() {
     setCatchupSummary(previous => ({
       battles: (previous?.battles ?? 0) + catchup.battles,
       wins: (previous?.wins ?? 0) + catchup.wins,
+      draws: (previous?.draws ?? 0) + (catchup.draws ?? 0),
       defeats: (previous?.defeats ?? 0) + (catchup.defeats ?? (catchup.defeated ? 1 : 0)),
       retreats: (previous?.retreats ?? 0) + (catchup.retreats ?? (catchup.defeated ? 1 : 0)),
       gold: (previous?.gold ?? 0) + catchup.gold,
@@ -107,7 +114,7 @@ export default function AutoAdventure() {
     previousStage.current = currentStage;
   }, [currentStage]);
   useEffect(() => {
-    if (!lastBattle || lastBattle.status !== 'defeated') {
+    if (!lastBattle || (lastBattle.status !== 'defeated' && lastBattle.status !== 'draw')) {
       if (defeatTimer.current !== null) window.clearTimeout(defeatTimer.current);
       defeatTimer.current = null;
       setDisplayedDefeat(null);
@@ -147,10 +154,10 @@ export default function AutoAdventure() {
   const heroClassName = battle?.hero_class ? starterClassDisplayName(battle.hero_class) : currentClassName || starterClassDisplayName(starterClass);
   const biome = adventureBiome(stage, battle?.biome);
   const heroClass = battle?.hero_class ? adventureHeroClass(battle.hero_class) : adventureHeroClass(starterClass, heroClassName);
-  const status: AdventureSceneFrame['status'] = battle?.status === 'defeated' ? 'defeated' : battle?.status === 'won' ? 'victory' : battle ? 'fighting' : 'exploring';
+  const status: AdventureSceneFrame['status'] = battle?.status === 'draw' ? 'draw' : battle?.status === 'defeated' ? 'defeated' : battle?.status === 'won' ? 'victory' : battle ? 'fighting' : 'exploring';
   // Future events must never leak damage or HP into the current frame.
   const frame: AdventureSceneFrame = {
-    status: displayedDefeat ? 'defeated' : stageTransition ? 'transition' : status,
+    status: displayedDefeat ? displayedDefeat.status === 'draw' ? 'draw' : 'defeated' : stageTransition ? 'transition' : status,
     heroHp: battle ? lastEvent?.hero_hp ?? battle.hero_max_hp : null,
     heroMaxHp: battle?.hero_max_hp,
     heroMp: battle?.hero_max_mp == null ? null : [...visibleEvents].reverse().find(event => typeof event.hero_mp === 'number')?.hero_mp ?? battle.hero_max_mp,
@@ -185,7 +192,8 @@ export default function AutoAdventure() {
       <strong>{shownSummary.pending ? 'Atualizando sua aventura...' : 'Resumo da aventura'}</strong>
       {shownSummary.from_stage != null && shownSummary.to_stage != null && <p>{shownSummary.from_stage === shownSummary.to_stage ? `Etapa ${shownSummary.from_stage}` : shownSummary.to_stage < shownSummary.from_stage ? `Da etapa ${shownSummary.from_stage} para a ${shownSummary.to_stage}` : `Etapas ${shownSummary.from_stage} a ${shownSummary.to_stage}`}</p>}
       <p>{shownSummary.battles} {shownSummary.battles === 1 ? 'combate' : 'combates'} · {shownSummary.wins} {shownSummary.wins === 1 ? 'vitória' : 'vitórias'} · +{shownSummary.gold} ouro · {shownSummary.items.length} {shownSummary.items.length === 1 ? 'item' : 'itens'}.</p>
-      {shownSummary.defeated && <p>{shownSummary.retreats ? `${shownSummary.retreats} ${shownSummary.retreats === 1 ? 'recuo' : 'recuos'}. ` : ''}Após a derrota, seu herói recuou e continuou explorando.</p>}
+      {shownSummary.defeated && <p>{shownSummary.retreats ? `${shownSummary.retreats} ${shownSummary.retreats === 1 ? 'recuo' : 'recuos'}. Após a derrota, seu herói recuou e continuou explorando.` : 'Após a derrota, seu herói permaneceu na etapa escolhida.'}</p>}
+      {(shownSummary.draws ?? 0) > 0 && <p>{shownSummary.draws} {shownSummary.draws === 1 ? 'luta sem vencedor' : 'lutas sem vencedor'}. O herói tenta novamente na mesma etapa, sem prêmio por essas lutas.</p>}
       {!shownSummary.pending && acknowledgeSummary && <Button size="sm" variant="ghost" onClick={acknowledgeSummary}>Fechar resumo</Button>}
     </div>}
     <div className="rpg-card-glow min-w-0 space-y-4 border-primary/30">
@@ -193,7 +201,7 @@ export default function AutoAdventure() {
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Aventura automática</p>
           <h2 className="font-display text-2xl font-bold text-primary">Etapa {mode === 'holding' ? holdingStage : stage}</h2>
-          <p className="text-sm text-muted-foreground">{mode === 'holding' ? 'Permanecendo' : status === 'defeated' ? 'Derrotado' : status === 'victory' ? 'Vitória' : status === 'fighting' ? 'Em combate' : 'Explorando'} · {heroClassName}</p>
+          <p className="text-sm text-muted-foreground">{mode === 'holding' ? 'Permanecendo' : status === 'draw' ? 'Sem vencedor' : status === 'defeated' ? 'Derrotado' : status === 'victory' ? 'Vitória' : status === 'fighting' ? 'Em combate' : 'Explorando'} · {heroClassName}</p>
           {mode !== 'holding' && status === 'victory' && data.stage > stage && <p className="text-xs text-emerald-300">Próxima etapa: {data.stage}</p>}
         </div>
         <Button size="sm" variant="outline" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Retomar animação' : 'Pausar animação'}</Button>
@@ -203,17 +211,17 @@ export default function AutoAdventure() {
         <span className="min-w-0 break-words">{heroName} enfrenta {enemyName}</span>
         {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
       </div>
-      {mode === 'holding' && <AdventureHoldNotice stage={holdingStage} advanceToStage={holdingStage + 1} retreatedFromStage={data.encounters.find(encounter => !encounter.won && encounter.stage === holdingStage + 1)?.stage} pending={advanceMutation.isPending} accepted={Boolean(advanceRequested || (currentBattle && acceptedBattleId === currentBattle.id))} canAdvance={canRequestAdvance} error={advanceMutation.isError && attemptedBattleId.current === currentBattle?.id} onAdvance={() => void advance()} />}
+      {mode === 'holding' && <AdventureHoldNotice stage={holdingStage} advanceToStage={holdingStage + 1} retreatedFromStage={data.encounters.find(encounter => !encounter.won && !isDraw(encounter) && encounter.stage === holdingStage + 1)?.stage} pending={advanceMutation.isPending} accepted={Boolean(advanceRequested || (currentBattle && acceptedBattleId === currentBattle.id))} canAdvance={canRequestAdvance} error={advanceMutation.isError && attemptedBattleId.current === currentBattle?.id} onAdvance={() => void advance()} />}
       <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Alterações em equipamentos e habilidades passam a valer na próxima luta iniciada. Combates podem dar ouro e itens; rotinas concluídas dão XP e atributos. Recompensas são periódicas e têm limites diários.</p>
     </div>
     <div className="grid min-w-0 gap-3 sm:grid-cols-3">
       <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Ouro da aventura hoje</p><p className="text-xl font-bold text-amber-300">{data.gold_today} / {data.limits.gold_per_day}</p></div>
       <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Itens da aventura hoje</p><p className="text-xl font-bold">{data.loot_today} / {data.limits.items_per_day}</p></div>
-      <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Último resultado</p><p className="text-sm font-semibold">{latest ? latest.won ? 'Vitória' : 'Derrota sem perda' : 'Aguardando'}</p></div>
+      <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Último resultado</p><p className="text-sm font-semibold">{latest ? encounterResult(latest) : 'Aguardando'}</p></div>
     </div>
     <div className="rpg-card min-w-0 space-y-3">
       <div className="flex items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-display font-bold"><Trophy className="h-4 w-4" /> Confrontos recentes</h3><Button size="sm" variant="ghost" disabled={isFetching} onClick={() => void refetch()} aria-label="Atualizar aventura"><RotateCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /></Button></div>
-      {data.encounters.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum confronto ainda.</p> : <ol className="space-y-2">{data.encounters.map(encounter => <li key={`${encounter.stage}-${encounter.attempt}`} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/40 px-3 py-2 text-sm"><span className="min-w-0 break-words">{encounterName(encounter)}</span><span className={encounter.won ? 'text-emerald-300' : 'text-amber-300'}>{encounter.won ? `Vitória · ${encounter.gold > 0 ? `+${encounter.gold} ouro` : 'sem ouro nesta luta'}${encounter.item_id ? ' · item no inventário' : ''}` : 'Derrota · sem perda'}</span></li>)}</ol>}
+      {data.encounters.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum confronto ainda.</p> : <ol className="space-y-2">{data.encounters.map(encounter => <li key={`${encounter.stage}-${encounter.attempt}`} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/40 px-3 py-2 text-sm"><span className="min-w-0 break-words">{encounterName(encounter)}</span><span className={encounter.won ? 'text-emerald-300' : 'text-amber-300'}>{isDraw(encounter) ? encounterResult(encounter) : encounter.won ? `Vitória · ${encounter.gold > 0 ? `+${encounter.gold} ouro` : 'sem ouro nesta luta'}${encounter.item_id ? ' · item no inventário' : ''}` : 'Derrota · sem perda'}</span></li>)}</ol>}
     </div>
   </section>;
 }

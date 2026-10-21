@@ -20,7 +20,7 @@ export type AdventureSceneAction = {
 };
 
 export type AdventureSceneFrame = {
-  status: 'exploring' | 'fighting' | 'defeated' | 'victory' | 'transition';
+  status: 'exploring' | 'fighting' | 'defeated' | 'victory' | 'transition' | 'draw';
   heroHp?: number | null;
   heroMaxHp?: number | null;
   heroMp?: number | null;
@@ -53,7 +53,7 @@ const SKILL_TYPE_NAMES: Record<string, string> = {
 
 function effectDescription(note: string, heroAttack: boolean) {
   if (note === 'heal') return 'Vida recuperada';
-  if (note === 'guard') return 'Proteção aplicada aos próximos 2 golpes recebidos';
+  if (note === 'guard') return 'Proteção aplicada ao próximo golpe recebido';
   if (note === 'vulnerable') return 'Alvo recebe mais dano por 2 turnos';
   if (note === 'stunned') return heroAttack ? 'Alvo impedido de atacar no próximo turno' : 'Inimigo impedido de atacar neste turno';
   return note;
@@ -159,6 +159,7 @@ export function AdventureScene({ stage, biome, heroClass, heroName, enemyName, i
     {frame.status === 'transition' && <div className="adventure-transition-banner">Nova etapa</div>}
     {frame.status === 'defeated' && <div className="adventure-transition-banner">Herói derrotado</div>}
     {frame.status === 'victory' && <div className="adventure-transition-banner">Vitória</div>}
+    {frame.status === 'draw' && <div className="adventure-transition-banner">Sem vencedor · nova tentativa</div>}
     </div>
     {action && <ActionReadout action={action} heroAttack={action.actor === 'hero'} />}
   </div>;

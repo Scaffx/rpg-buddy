@@ -45,6 +45,32 @@ afterEach(() => {
 });
 
 describe('AutoAdventure', () => {
+  it('shows an inconclusive fight without a death or retreat and keeps its real HP', () => {
+    const now = Date.now();
+    mocked.value = {
+      data: {
+        stage: 10, mode: 'progressing', server_now: new Date(now).toISOString(), next_at: new Date(now + 1000).toISOString(),
+        boss: { stage: 10, id: 'boss', name: 'Chefe', icon: null },
+        encounters: [{ stage: 10, attempt: 0, kind: 'boss', status: 'draw', end_reason: 'turn_limit', won: false, gold: 0, item_id: null }],
+        gold_today: 0, loot_today: 0, limits: { gold_per_day: 120, items_per_day: 2 },
+        catchup: { battles: 1, wins: 0, draws: 1, defeats: 0, retreats: 0, gold: 0, items: [], pending: false },
+        last_battle: {
+          id: 'draw-10', stage: 10, attempt: 0, kind: 'boss', status: 'draw', end_reason: 'turn_limit', hero_class: 'mago',
+          ...liveBattleTimes(), hero_max_hp: 300, hero_hp: 266, enemy_max_hp: 150, enemy_hp: 54, enemy_name: 'Chefe',
+          events: [{ at: new Date(now - 100).toISOString(), actor: 'enemy', kind: 'attack', damage: 1, hero_hp: 266, enemy_hp: 54 }],
+        },
+      },
+      isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
+    };
+    const page = renderAdventure();
+    expect(page.querySelector('[data-status=draw]')).not.toBeNull();
+    expect(page.querySelector('[aria-label="Murillo: 266 de 300 HP"]')).not.toBeNull();
+    expect(page.textContent).toContain('Sem vencedor · nova tentativa nesta etapa');
+    expect(page.textContent).toContain('sem prêmio por essas lutas');
+    expect(page.textContent).not.toContain('Derrota');
+    expect(page.textContent).not.toContain('recuou');
+  });
+
   it('keeps the page useful while the RPC is absent or loading', () => {
     mocked.value = { data: undefined, isLoading: true, error: null, isFetching: true, refetch: vi.fn() };
     expect(renderAdventure().querySelector('[role=status]')?.textContent).toContain('Preparando sua aventura');

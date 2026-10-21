@@ -133,12 +133,15 @@ export default function SkillTreePage({ embedded }: { embedded?: boolean } = {})
       : 'rounded-full w-14 h-14';
     const inner = node.node_type === 'variant' ? '-rotate-45' : '';
     const elIcon = node.node_type === 'skill' ? meta.emoji : node.node_type === 'variant' ? '◆' : '•';
+    const directDamage = node.node_type === 'skill' && ['dano', 'damage'].includes(String(node.effect?.effectType || 'dano'));
+    const description = `${node.name} — ${node.description}${directDamage ? ` ${t('app.habhub.direct_damage_only')}` : ''}`;
     return (
       <div className="flex flex-col items-center gap-1 w-[88px]">
         <button
           type="button"
           onClick={() => handleAllocate(node)}
-          title={`${node.name} — ${node.description}`}
+          title={description}
+          aria-label={description}
           className={`relative flex items-center justify-center border-2 transition select-none ${shape} ${
             s.rank > 0
               ? `bg-primary/20 border-primary ring-2 ${meta.ring}`
