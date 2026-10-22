@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const AdventureChestsPanel = lazy(() => import('@/components/AdventureChestsPanel'));
+const AdventureChestsPanel = lazy(() => import('@/components/adventure/AdventureChestsPanel'));
 const CraftingPanel = lazy(() => import('@/components/CraftingPanel'));
 
 export default function AdventureRewards() {
