@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,6 +83,7 @@ export default function ShopPage() {
   const [buying, setBuying] = useState<string | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const historyTriggerRef = useRef<HTMLButtonElement>(null);
   const { data: purchases = [], isPending: isHistoryPending, error: historyError } = usePurchaseHistory(historyOpen);
   const refreshPurchaseHistory = () => {
     void queryClient.invalidateQueries({ queryKey: ['purchase-history', user?.id] });
@@ -330,6 +331,7 @@ export default function ShopPage() {
 
           <div className="flex justify-end">
             <button
+              ref={historyTriggerRef}
               type="button"
               onClick={() => setHistoryOpen(true)}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -341,7 +343,11 @@ export default function ShopPage() {
         </div>
 
         <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-          <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              historyTriggerRef.current?.focus();
+            }}>
             <DialogHeader>
               <DialogTitle>{t('app.shop.link_purchase_history')}</DialogTitle>
               <DialogDescription>Suas 20 compras mais recentes na loja, em ordem da mais nova para a mais antiga.</DialogDescription>

@@ -41,7 +41,7 @@ vi.mock('@/integrations/supabase/client', () => ({
       const query = {
         eq: (column: string, value: unknown) => { state.calls.push(['eq', [column, value]]); return query; },
         in: (column: string, value: unknown) => { state.calls.push(['in', [column, value]]); return query; },
-        lt: (column: string, value: unknown) => { state.calls.push(['lt', [column, value]]); return query; },
+        lte: (column: string, value: unknown) => { state.calls.push(['lte', [column, value]]); return query; },
         order: (column: string, value: unknown) => { state.calls.push(['order', [column, value]]); return query; },
         limit: (value: number) => {
           state.calls.push(['limit', value]);
@@ -74,6 +74,7 @@ async function settleQueries() {
 async function openHistory() {
   const button = [...container.querySelectorAll('button')]
     .find((candidate) => candidate.textContent?.includes('app.shop.link_purchase_history'))!;
+  button.focus();
   await act(async () => button.click());
   await settleQueries();
   return document.querySelector('[role="dialog"]')!;
@@ -108,17 +109,30 @@ describe('histórico de compras da loja', () => {
       ['select', 'id, type, amount, reason, created_at'],
       ['eq', ['user_id', 'user-1']],
       ['in', ['type', ['compra_loja', 'compra_equipamento', 'compra_pet']]],
-      ['lt', ['amount', 0]],
+      ['lte', ['amount', 0]],
       ['order', ['created_at', { ascending: false }]],
       ['limit', 20],
     ]);
     await act(async () => {
       [...dialog.querySelectorAll('button')].find((button) => button.textContent === 'Fechar')!.click();
     });
+    await settleQueries();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement?.textContent).toContain('app.shop.link_purchase_history');
     await openHistory();
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    await settleQueries();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement?.textContent).toContain('app.shop.link_purchase_history');
+  });
+
+  it('inclui compras legítimas gratuitas da Loja do Tempo', async () => {
+    state.rows = [{ id: 'purchase-free', type: 'compra_loja', amount: 0,
+      reason: 'Comprou Estado de Fluxo', created_at: '2026-10-22T12:00:00Z' }];
+    await renderPage();
+    const dialog = await openHistory();
+    expect(dialog.textContent).toContain('Comprou Estado de Fluxo');
+    expect(dialog.textContent).toContain('0 🪙');
   });
 
   it('mostra estado vazio e erro de consulta persistente', async () => {

@@ -18,7 +18,7 @@ export function usePurchaseHistory(open: boolean) {
         .select('id, type, amount, reason, created_at')
         .eq('user_id', user.id)
         .in('type', PURCHASE_TYPES)
-        .lt('amount', 0)
+        .lte('amount', 0)
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;

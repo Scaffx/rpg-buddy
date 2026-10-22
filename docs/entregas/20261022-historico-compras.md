@@ -5,7 +5,7 @@ Base: `73a763bc80b4445f57a1efca509097fc8548e608` (PR 71). Escopo: somente UI e l
 ## Mudança
 
 - O botão **Ver histórico de compras** abre um diálogo com título, descrição, estados de carregamento, vazio e erro persistente (`role="alert"`), lista das 20 compras mais recentes, botão **Fechar** e fechamento por Escape.
-- A consulta autenticada lê somente `gold_history` do próprio usuário, com filtros no servidor `type IN ('compra_loja', 'compra_equipamento', 'compra_pet')` e `amount < 0`, ordenação por `created_at DESC` e `LIMIT 20`. A chave de cache inclui o ID do usuário. Compras confirmadas de Loja do Tempo, equipamento e pet invalidam essa chave.
+- A consulta autenticada lê somente `gold_history` do próprio usuário, com filtros no servidor `type IN ('compra_loja', 'compra_equipamento', 'compra_pet')` e `amount <= 0`, ordenação por `created_at DESC` e `LIMIT 20`. A chave de cache inclui o ID do usuário. Compras confirmadas de Loja do Tempo, equipamento e pet invalidam essa chave. Compras gratuitas legítimas, como Estado de Fluxo, também aparecem.
 - Os três tipos vêm dos escritores `buy_shop_item`, `purchase_game_item` e `buy_pet` nas migrações atuais. `inventory_purchase_requests` não é consultada: a migração de autoria revoga todas as permissões de cliente nessa tabela. Não há `user_purchases` nos tipos/esquema deste commit.
 
 ## Verificação local
@@ -17,3 +17,5 @@ Base: `73a763bc80b4445f57a1efca509097fc8548e608` (PR 71). Escopo: somente UI e l
 - `git diff --check`: passou.
 
 Não houve consulta autenticada ou teste de navegador pelo worker, nem alteração no banco. Integração, revisão independente e publicação ficam com o coordenador.
+
+Na revisão de integração, o coordenador incluiu compras gratuitas no filtro e retorno de foco ao botão após Fechar/Escape. O teste adicional cobre custo zero; os testes de fechamento também verificam o foco. São ajustes posteriores ao commit do worker, sem alteração no banco.
