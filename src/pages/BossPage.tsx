@@ -17,6 +17,7 @@ import DungeonArena, { type PotionItem, type SessionPlayer } from '@/components/
 import { useAuth } from '@/hooks/useAuth';
 import { useInventory, getEquipmentBonuses, type InventoryItem } from '@/hooks/useInventory';
 import AutoAdventure from '@/components/AutoAdventure';
+import AdventureRewards from '@/components/AdventureRewards';
 
 const REGION_LABELS: Record<string, string> = {
   south_america: 'América do Sul',
@@ -458,7 +459,12 @@ export default function BossPage() {
         </div>
 
         {/* Aventura solo automatica; modos coletivo e ranking continuam abaixo. */}
-        {activeTab === "aventura" && <AutoAdventure />}
+        {activeTab === "aventura" && (
+          <div className="space-y-6">
+            <AutoAdventure />
+            <AdventureRewards />
+          </div>
+        )}
         {/* ========== ABA: MASMORRA COLETIVA ========== */}
         {activeTab === "coletiva" && (
           <div className="space-y-6">

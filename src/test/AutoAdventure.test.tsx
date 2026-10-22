@@ -110,7 +110,9 @@ describe('AutoAdventure', () => {
     expect(page.textContent).toContain('Cavaleiro');
     expect(page.querySelector('.adventure-hero-svg')).not.toBeNull();
     expect(page.querySelector('[data-biome=floresta]')).not.toBeNull();
-    expect(page.textContent).toContain('Combates podem dar ouro e itens; rotinas concluídas dão XP e atributos');
+    expect(page.textContent).toContain('Cada vitória dá ouro');
+    expect(page.textContent).toContain('Rotinas concluídas dão XP e atributos');
+    expect(page.textContent).toContain('Sem teto diário de ouro');
     expect(page.textContent).toContain('Vitória · +4 ouro');
     expect([...page.querySelectorAll('button')].some(button => /atacar|poção|resgatar/i.test(button.textContent || ''))).toBe(false);
   });

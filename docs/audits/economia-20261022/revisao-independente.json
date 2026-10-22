@@ -1,0 +1,110 @@
+{
+  "review_date": "2026-10-22",
+  "base_sha": "37d9f9f6b6d9b310382b9a650a820cdb06b42344",
+  "frozen_sha": "284db263f03e5d4a73dde43389f8a386f033910b",
+  "verdict": {
+    "local_composition": "accepted",
+    "production": "not_approved",
+    "new_blocking_findings": 0,
+    "reason": "Five real LF migrations and composed/independent PG17 assertions passed; live schema and authenticated deployment remain unverified."
+  },
+  "migration_order": [
+    "20261022022416_boss_recipes_crafting_salvage.sql",
+    "20261022022614_economy_victory_shop.sql",
+    "20261022022726_adventure_chests_offline.sql",
+    "20261022030906_recipe_class_transition.sql",
+    "20261022032246_adventure_encounters_gold_range.sql"
+  ],
+  "migration_sha256_lf": {
+    "20261022022416_boss_recipes_crafting_salvage.sql": "0C56E076B3CEEDC34F9CCBEC4DAC1DA0D19C4CDF0A75D84CDEBF45F83264E79A",
+    "20261022022614_economy_victory_shop.sql": "0F127536FFD3A884A148C4BE3DE9F22D3A4BBB13F1F7DF0A52D74A35FA5E111F",
+    "20261022022726_adventure_chests_offline.sql": "32116EA170AEE83B4421F8D42C5BC945E07ED24E883EA58B466488A5DE682885",
+    "20261022030906_recipe_class_transition.sql": "CEF329F6AE5B6707ECC091D843F59FAA1A4D372FCFCF1EA6978340FDC1D298B3",
+    "20261022032246_adventure_encounters_gold_range.sql": "B2935C8697FD0AE4092B0E0A9955FD40E7C9645ACAC5774C73C273E2B6B1053F"
+  },
+  "final_function_md5": {
+    "app_private.sync_auto_adventure()": "59914430e3b78e96f69deaf770f82910",
+    "app_private.register_boss_recipe(app_private.adventure_battles,boolean)": "92be0172cfc9edf835b3057326183540",
+    "app_private.advance_auto_adventure(uuid)": "09c5c400405def35917f1c63e4f58ac8"
+  },
+  "executed": {
+    "postgres_version": "17",
+    "fixture": "12 PR70 replay files, economy extension and balance seed, four exact source definitions, synthetic supplement, five actual migrations normalized to LF; reduced schema",
+    "chain_exit": 0,
+    "checks": [
+      {"name": "composed_assert", "exit": 0},
+      {"name": "independent_assert", "exit": 0},
+      {"name": "economy_gold_range_bounds", "exit": 0},
+      {"name": "economy_gold_range_flow", "exit": 0},
+      {"name": "recipe_class_transition_composed_assert", "exit": 0},
+      {"name": "craft_purchase_two_session_race", "rpc_exits": [0, 0], "deadlock": false},
+      {"name": "claim_sync_two_session_race", "rpc_exits": [0, 0], "deadlock": false},
+      {"name": "dual_claim_two_session_race", "rpc_exits": [0, 0], "first_replayed": false, "second_replayed": true, "claim_receipts": 1}
+    ],
+    "benchmark_24h": {
+      "rpc_mode": "autocommit",
+      "calls": 130,
+      "wins": 33225,
+      "db_wall_ms": 14598.834,
+      "p95_rpc_ms": 118.391,
+      "max_rpc_ms": 153.747,
+      "chest_receipts": 48,
+      "chests_in_slots": 4,
+      "overflow_gold": 2240,
+      "ending_gold": 35565,
+      "pr70_reference": "approximately 33000 battles, 130 RPC, 29s DB; not a causal comparison",
+      "network_overhead_measured": false
+    },
+    "frontend": {
+      "source": "git archive of frozen SHA with local dependency junction",
+      "build_exit": 0,
+      "typescript_exit": 2,
+      "typescript_diagnostics": 44,
+      "baseline_diagnostics": 44,
+      "normalized_diagnostic_delta": 0,
+      "selected_vitest_passed": 18,
+      "selected_vitest_total": 18,
+      "authenticated_browser": false
+    }
+  },
+  "known_fixed_not_duplicated": [
+    {
+      "id": "BUG-48",
+      "priority": "P1",
+      "file_line": "supabase/migrations/20261022030906_recipe_class_transition.sql:98",
+      "scenario": "Aprendiz boss 10, switch to Mago, revisit boss 10",
+      "previous_impact": "Mago recipe entitlement blocked by stage-only uniqueness",
+      "expected": "Retain prior recipe and grant class-specific Mago recipe",
+      "final_sha_result": "passed",
+      "notion": "https://app.notion.com/p/401812ac94d881ea8e4ac86297f1e362"
+    },
+    {
+      "id": "BUG-49",
+      "priority": "P1",
+      "file_line": "supabase/migrations/20261022032246_adventure_encounters_gold_range.sql:90",
+      "scenario": "Normal and boss first clear awarding 13 gold",
+      "previous_impact": "Legacy encounter CHECK <=12 rolled back battle settlement",
+      "expected": "Persist encounter, gold, item and receipts atomically up to 48",
+      "final_sha_result": "passed",
+      "notion": "https://app.notion.com/p/401812ac94d8812ba5ffe55027a311ca"
+    }
+  ],
+  "limits": [
+    "Fixture is reduced and is not a live-schema replay.",
+    "No remote migration, PostgREST gateway, authenticated browser or production deployment was exercised.",
+    "The negative drift matrix was inspected but not fully rerun by this auditor in separate pre-migration clusters.",
+    "The class test changes protected identity in synthetic fixture because public class advancement RPC is absent there.",
+    "Pet timelines are simulations, not observed player research or telemetry.",
+    "PR70 and composed benchmark wall times are local and not causally comparable or an SLA."
+  ],
+  "teardown": {
+    "ports_owned": [55790, 55791, 55792, 55793, 55794, 55795, 55796],
+    "pg_ctl_stop_exit": 0,
+    "pg_isready_after_stop_exit": 2,
+    "root_port_55783_untouched": true,
+    "logs_preserved": [
+      "C:/Users/Murillo/AppData/Local/Temp/rpg-economy-independent-20261022-final-55795/logs",
+      "C:/Users/Murillo/AppData/Local/Temp/rpg-economy-independent-20261022-final-55796/logs"
+    ]
+  }
+}
