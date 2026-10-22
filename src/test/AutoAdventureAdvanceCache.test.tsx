@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 describe('avanço e resumo no cache da aventura', () => {
-  it('preserva ouro do snapshot de advance quando o sync seguinte retorna delta zero', async () => {
+  it('invalida o ouro de advance sem iniciar um resumo offline para uma luta ao vivo', async () => {
     const rewarded = { ...initial, advance_pending: true, gold_today: 4,
       catchup: { ...emptyCatchup, battles: 1, wins: 1, gold: 4, from_stage: 9, to_stage: 9 } };
     state.rpc.mockImplementation(async (name: string) => {
@@ -67,14 +67,15 @@ describe('avanço e resumo no cache da aventura', () => {
     await act(async () => { await advance!({ battleId }); });
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
     expect(state.rpc).toHaveBeenCalledWith('advance_auto_adventure', { p_battle_id: battleId });
-    expect(queryClient.getQueryData(['auto-adventure-summary', state.user.id])).toMatchObject({ wins: 1, gold: 4 });
-    expect(container.textContent).toBe('9:1:4');
+    expect(queryClient.getQueryData(['auto-adventure', state.user.id])).toMatchObject({ gold_today: 4, catchup: { wins: 1, gold: 4 } });
+    expect(queryClient.getQueryData(['auto-adventure-summary', state.user.id])).toBeNull();
+    expect(container.textContent).toBe('9:0:0');
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['gold-balance', state.user.id] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inventory', state.user.id] });
 
     await act(async () => { await queryClient.refetchQueries({ queryKey: ['auto-adventure', state.user.id] }); });
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
-    expect(container.textContent).toBe('9:1:4');
-    expect(queryClient.getQueryData(['auto-adventure-summary', state.user.id])).toMatchObject({ wins: 1, gold: 4 });
+    expect(container.textContent).toBe('9:0:0');
+    expect(queryClient.getQueryData(['auto-adventure-summary', state.user.id])).toBeNull();
   });
 });

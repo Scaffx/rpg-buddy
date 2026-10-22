@@ -90,7 +90,9 @@ export default function AutoAdventure() {
     const key = `${dataUpdatedAt ?? 0}:${data.server_now}`;
     if (processedBatch.current === key) return;
     processedBatch.current = key;
-    setCatchupSummary(previous => ({
+    setCatchupSummary(previous => {
+      if (!previous?.pending && !catchup.pending && catchup.battles <= 1) return previous;
+      return {
       battles: (previous?.battles ?? 0) + catchup.battles,
       wins: (previous?.wins ?? 0) + catchup.wins,
       draws: (previous?.draws ?? 0) + (catchup.draws ?? 0),
@@ -102,7 +104,8 @@ export default function AutoAdventure() {
       pending: catchup.pending,
       from_stage: previous?.from_stage ?? catchup.from_stage,
       to_stage: catchup.to_stage ?? previous?.to_stage,
-    }));
+      };
+    });
   }, [catchup, data, dataUpdatedAt, hasCachedSummary]);
   useEffect(() => {
     if (currentStage == null) return;
@@ -131,7 +134,7 @@ export default function AutoAdventure() {
     }, 1400);
   }, [lastBattle]);
   useEffect(() => () => { if (defeatTimer.current !== null) window.clearTimeout(defeatTimer.current); }, []);
-  const serverTime = useServerClock(data?.server_now, dataUpdatedAt, currentBattle?.status === 'fighting');
+  const serverTime = useServerClock(data?.server_now, dataUpdatedAt, !catchup?.pending && currentBattle?.status === 'fighting');
 
   if (isLoading) return <div className="rpg-card" role="status">{t('app.autoAdventure.loading', { defaultValue: 'Preparando sua aventura...' })}</div>;
   if (error || !data) return <div className="rpg-card space-y-3 border-amber-500/40" role="alert">
@@ -140,7 +143,8 @@ export default function AutoAdventure() {
     <Button variant="outline" onClick={() => void refetch()}><RotateCw className="mr-2 h-4 w-4" /> Tentar novamente</Button>
   </div>;
 
-  const battle = displayedDefeat ?? currentBattle ?? null;
+  const recovering = Boolean(catchup?.pending);
+  const battle = recovering ? null : displayedDefeat ?? currentBattle ?? null;
   const visibleEvents = battle?.events.filter(event => Date.parse(event.at) <= serverTime) ?? [];
   const lastEvent = visibleEvents.at(-1);
   const actionElapsedMs = lastEvent ? serverTime - Date.parse(lastEvent.at) : undefined;
@@ -197,9 +201,10 @@ export default function AutoAdventure() {
 
   return <section className="min-w-0 space-y-4" aria-label="Aventura automática">
     {shownSummary && shownSummary.battles > 0 && <div className="rpg-card border-primary/30 text-sm" role="status">
-      <strong>{shownSummary.pending ? 'Atualizando sua aventura...' : 'Resumo da aventura'}</strong>
+      <strong>{shownSummary.pending ? 'Recuperando o período em que você esteve fora...' : 'Resumo do período ausente'}</strong>
       {shownSummary.from_stage != null && shownSummary.to_stage != null && <p>{shownSummary.from_stage === shownSummary.to_stage ? `Etapa ${shownSummary.from_stage}` : shownSummary.to_stage < shownSummary.from_stage ? `Da etapa ${shownSummary.from_stage} para a ${shownSummary.to_stage}` : `Etapas ${shownSummary.from_stage} a ${shownSummary.to_stage}`}</p>}
       <p>{shownSummary.battles} {shownSummary.battles === 1 ? 'combate' : 'combates'} · {shownSummary.wins} {shownSummary.wins === 1 ? 'vitória' : 'vitórias'} · +{shownSummary.gold} ouro · {shownSummary.items.length} {shownSummary.items.length === 1 ? 'item' : 'itens'}.</p>
+      <p className="text-muted-foreground">Este total reúne lutas recuperadas. Cada linha em confrontos recentes representa uma luta.</p>
       {shownSummary.defeated && <p>{shownSummary.retreats ? `${shownSummary.retreats} ${shownSummary.retreats === 1 ? 'recuo' : 'recuos'}. Após a derrota, seu herói recuou e continuou explorando.` : 'Após a derrota, seu herói permaneceu na etapa escolhida.'}</p>}
       {(shownSummary.draws ?? 0) > 0 && <p>{shownSummary.draws} {shownSummary.draws === 1 ? 'luta sem vencedor' : 'lutas sem vencedor'}. O herói tenta novamente na mesma etapa, sem prêmio por essas lutas.</p>}
       {!shownSummary.pending && acknowledgeSummary && <Button size="sm" variant="ghost" onClick={acknowledgeSummary}>Fechar resumo</Button>}
@@ -212,13 +217,17 @@ export default function AutoAdventure() {
           <p className="text-sm text-muted-foreground">{mode === 'holding' ? 'Permanecendo' : status === 'draw' ? 'Sem vencedor' : status === 'defeated' ? 'Derrotado' : status === 'victory' ? 'Vitória' : status === 'fighting' ? 'Em combate' : 'Explorando'} · {heroClassName}</p>
           {mode !== 'holding' && status === 'victory' && data.stage > stage && <p className="text-xs text-emerald-300">Próxima etapa: {data.stage}</p>}
         </div>
-        <Button size="sm" variant="outline" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Retomar animação' : 'Pausar animação'}</Button>
+        <Button size="sm" variant="outline" disabled={recovering} aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Retomar animação' : 'Pausar animação'}</Button>
       </div>
-      <AdventureScene stage={stage} biome={biome} heroClass={heroClass} heroName={heroName} enemyName={enemyName} isBoss={isBoss} bossId={battle?.boss_id} frame={frame} paused={paused} />
-      <div className="flex min-w-0 flex-wrap justify-between gap-2 text-sm">
+      {recovering ? <div className="rounded-xl border border-primary/30 bg-card/50 p-6 text-sm" role="status">
+        <p className="font-semibold">Sincronizando suas lutas anteriores</p>
+        <p className="mt-2 text-muted-foreground">A cena ao vivo retorna quando a recuperação terminar.</p>
+        <p className="mt-2 text-muted-foreground">{catchup?.battles ?? 0} combates recuperados nesta atualização.</p>
+      </div> : <AdventureScene stage={stage} biome={biome} heroClass={heroClass} heroName={heroName} enemyName={enemyName} isBoss={isBoss} bossId={battle?.boss_id} frame={frame} paused={paused} />}
+      {!recovering && <div className="flex min-w-0 flex-wrap justify-between gap-2 text-sm">
         <span className="min-w-0 break-words">{heroName} enfrenta {enemyName}</span>
         {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
-      </div>
+      </div>}
       {mode === 'holding' && <AdventureHoldNotice stage={holdingStage} advanceToStage={holdingStage + 1} retreatedFromStage={data.encounters.find(encounter => !encounter.won && !isDraw(encounter) && encounter.stage === holdingStage + 1)?.stage} pending={advanceMutation.isPending} accepted={Boolean(advanceRequested || (currentBattle && acceptedBattleId === currentBattle.id))} canAdvance={canRequestAdvance} error={advanceMutation.isError && attemptedBattleId.current === currentBattle?.id} onAdvance={() => void advance()} />}
       <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Alterações em equipamentos e habilidades passam a valer na próxima luta iniciada. Combates podem dar ouro e itens; rotinas concluídas dão XP e atributos. Recompensas são periódicas e têm limites diários.</p>
     </div>

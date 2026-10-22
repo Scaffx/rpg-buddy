@@ -67,7 +67,7 @@ describe('AutoAdventure', () => {
     expect(page.querySelector('[data-status=draw]')).not.toBeNull();
     expect(page.querySelector('[aria-label="Murillo: 266 de 300 HP"]')).not.toBeNull();
     expect(page.textContent).toContain('Sem vencedor · nova tentativa nesta etapa');
-    expect(page.textContent).toContain('sem prêmio por essas lutas');
+    expect(page.textContent).not.toContain('Resumo do período ausente');
     expect(page.textContent).not.toContain('Derrota');
     expect(page.textContent).not.toContain('recuou');
   });
@@ -382,6 +382,31 @@ describe('AutoAdventure', () => {
     expect(acknowledgeSummary).not.toHaveBeenCalled();
     act(() => [...page.querySelectorAll('button')].find(button => button.textContent === 'Fechar resumo')!.click());
     expect(acknowledgeSummary).toHaveBeenCalledOnce();
+  });
+
+  it('oculta a batalha histórica durante recuperação e retorna à cena com resumo concluído', () => {
+    const now = Date.now();
+    const base = {
+      stage: 79, mode: 'holding', server_now: new Date(now).toISOString(), next_at: new Date(now).toISOString(),
+      boss: { stage: 80, id: 'boss', name: 'Chefe', icon: null }, encounters: [], gold_today: 4, loot_today: 0,
+      limits: { gold_per_day: 120, items_per_day: 2 },
+      battle: { id: 'past', stage: 79, attempt: 1, kind: 'normal', status: 'fighting',
+        started_at: new Date(now - 30_000).toISOString(), ends_at: new Date(now - 10_000).toISOString(),
+        hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 42, enemy_hp: 0, enemy_name: 'Criatura marinha', events: [] },
+    };
+    mocked.value = { data: { ...base, catchup: { battles: 24, wins: 24, gold: 4, items: [], pending: true } },
+      isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
+    const page = renderAdventure();
+    expect(page.querySelector('.adventure-scene')).toBeNull();
+    expect(page.textContent).toContain('Sincronizando suas lutas anteriores');
+    expect(page.textContent).toContain('24 combates');
+    mocked.value = { ...mocked.value as object, data: { ...base, battle: { ...base.battle,
+      id: 'live', ...liveBattleTimes(), hero_hp: 100, enemy_hp: 100 }, catchup: {
+      battles: 0, wins: 0, gold: 0, items: [], pending: false } }, dataUpdatedAt: 2 };
+    renderAdventure();
+    expect(page.querySelector('.adventure-scene')).not.toBeNull();
+    expect(page.textContent).not.toContain('Sincronizando suas lutas anteriores');
+    expect(page.textContent).toContain('Resumo do período ausente');
   });
 
   it('acumula resumo de retorno entre lotes e não descreve prêmio como garantido', () => {
