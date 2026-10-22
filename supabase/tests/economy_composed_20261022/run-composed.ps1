@@ -16,6 +16,12 @@ function Get-CanonicalSha256([string]$Path) {
   $hash = ([Security.Cryptography.SHA256]::Create()).ComputeHash($bytes)
   return (($hash | ForEach-Object { $_.ToString('X2') }) -join '')
 }
+function Write-CanonicalSqlCopy([string]$Path) {
+  $copy = Join-Path $logs ('lf-' + (Split-Path $Path -Leaf))
+  $sql = [IO.File]::ReadAllText($Path).Replace("`r`n", "`n")
+  [IO.File]::WriteAllText($copy, $sql, [Text.UTF8Encoding]::new($false))
+  return $copy
+}
 $manifest = Get-Content -LiteralPath (Join-Path $here 'sha256.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 foreach ($entry in $manifest.PSObject.Properties) {
   $path = (Resolve-Path -LiteralPath (Join-Path $here $entry.Name)).Path
@@ -35,8 +41,9 @@ try {
   foreach ($relative in $plan) {
     $file = Join-Path $here $relative
     $name = Split-Path $file -Leaf
+    $inputFile = Write-CanonicalSqlCopy $file
     $ErrorActionPreference = 'Continue'
-    & "$bin/psql.exe" -X -h 127.0.0.1 -p $Port -U postgres -d $Database -v ON_ERROR_STOP=1 -f $file *> (Join-Path $logs "$name.log")
+    & "$bin/psql.exe" -X -h 127.0.0.1 -p $Port -U postgres -d $Database -v ON_ERROR_STOP=1 -f $inputFile *> (Join-Path $logs "$name.log")
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     Write-Output "$relative exit=$code"
@@ -67,8 +74,9 @@ try {
   foreach ($relative in $plan) {
     $file = (Resolve-Path -LiteralPath (Join-Path $here $relative)).Path
     $name = Split-Path $file -Leaf
+    $inputFile = Write-CanonicalSqlCopy $file
     $ErrorActionPreference = 'Continue'
-    & "$bin/psql.exe" -X -h 127.0.0.1 -p $Port -U postgres -d $Database -v ON_ERROR_STOP=1 -f $file *> (Join-Path $logs "$name.log")
+    & "$bin/psql.exe" -X -h 127.0.0.1 -p $Port -U postgres -d $Database -v ON_ERROR_STOP=1 -f $inputFile *> (Join-Path $logs "$name.log")
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     Write-Output "$relative exit=$code"
