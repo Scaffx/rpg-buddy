@@ -1,14 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoldBalance, useBuyItem, useAdventureIncome7d } from '@/hooks/useGold';
 import { useProfile } from '@/hooks/useProfile';
 import { useShopItems, useBuyEquipment, useInventory, type GameItem, type InventoryItem } from '@/hooks/useInventory';
 import { useShopPets, useBuyPet, useAllCompanions } from '@/hooks/useCompanion';
+import { useAuth } from '@/hooks/useAuth';
+import { usePurchaseHistory } from '@/hooks/usePurchaseHistory';
 import { isForagePet } from '@/lib/pets';
 import AppLayout from '@/components/AppLayout';
 import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -41,11 +44,10 @@ const COLOR_GLOW: Record<string, string> = {
   red: 'shadow-red-500/20',
 };
 
-function shopErrorMessage(error: unknown): string {
+function shopErrorMessage(error: unknown, fallback = 'O servidor recusou a ação. Tente novamente.'): string {
   const message = typeof error === 'string' ? error
     : error && typeof error === 'object' && 'message' in error ? error.message : null;
-  return typeof message === 'string' && message.trim()
-    ? message.trim() : 'O servidor recusou a ação. Tente novamente.';
+  return typeof message === 'string' && message.trim() ? message.trim() : fallback;
 }
 
 function normalizeCategory(rawCategory: string | null | undefined): 'consumable' | 'weapon' | 'armor' | 'accessory' | null {
@@ -76,8 +78,15 @@ function normalizeCategory(rawCategory: string | null | undefined): 'consumable'
 
 export default function ShopPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [buying, setBuying] = useState<string | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const { data: purchases = [], isPending: isHistoryPending, error: historyError } = usePurchaseHistory(historyOpen);
+  const refreshPurchaseHistory = () => {
+    void queryClient.invalidateQueries({ queryKey: ['purchase-history', user?.id] });
+  };
   const { data: balance } = useGoldBalance();
   const { data: profile } = useProfile();
   const { data: adventureIncome } = useAdventureIncome7d();
@@ -150,7 +159,10 @@ export default function ShopPage() {
   const handleBuyPet = (pet: any) => {
     setPurchaseError(null);
     buyPet.mutate(pet.pet_type, {
-      onSuccess: () => toast.success(t('app.shop.toast_pet_bought', { name: pet.name })),
+      onSuccess: () => {
+        refreshPurchaseHistory();
+        toast.success(t('app.shop.toast_pet_bought', { name: pet.name }));
+      },
       onError: (err: unknown) => {
         const message = shopErrorMessage(err);
         setPurchaseError(message);
@@ -208,6 +220,7 @@ export default function ShopPage() {
     setBuying(item.id);
     buyMutation.mutate(item, {
       onSuccess: () => {
+        refreshPurchaseHistory();
         toast.success(t('app.shop.toast_buy_success_time', { name: item.name }));
         setBuying(null);
       },
@@ -316,12 +329,62 @@ export default function ShopPage() {
           </p>
 
           <div className="flex justify-end">
-            <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
               <History className="w-4 h-4 text-orange-400" />
               {t('app.shop.link_purchase_history')}
             </button>
           </div>
         </div>
+
+        <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+          <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t('app.shop.link_purchase_history')}</DialogTitle>
+              <DialogDescription>Suas 20 compras mais recentes na loja, em ordem da mais nova para a mais antiga.</DialogDescription>
+            </DialogHeader>
+            {!user ? (
+              <p role="alert" className="text-sm text-destructive">Faça login para consultar suas compras.</p>
+            ) : isHistoryPending ? (
+              <p role="status" className="text-sm text-muted-foreground">Carregando compras...</p>
+            ) : historyError ? (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <p className="font-semibold">Não foi possível carregar o histórico de compras.</p>
+                <p>{shopErrorMessage(historyError, 'Tente novamente mais tarde.')}</p>
+              </div>
+            ) : purchases.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Você ainda não fez compras na loja.</p>
+            ) : (
+              <ol className="divide-y divide-border" aria-label="Compras recentes">
+                {purchases.map((purchase) => (
+                  <li key={purchase.id} className="flex flex-wrap items-start justify-between gap-2 py-3 text-sm">
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {purchase.reason?.trim() || ({
+                          compra_loja: 'Compra na Loja do Tempo',
+                          compra_equipamento: 'Compra de equipamento',
+                          compra_pet: 'Compra de pet',
+                        }[purchase.type] || 'Compra na loja')}
+                      </p>
+                      <time dateTime={purchase.created_at} className="text-xs text-muted-foreground">
+                        {new Date(purchase.created_at).toLocaleString()}
+                      </time>
+                    </div>
+                    <span className="font-semibold text-yellow-400">{purchase.amount} 🪙</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <DialogClose asChild>
+              <button type="button" className="justify-self-end rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                Fechar
+              </button>
+            </DialogClose>
+          </DialogContent>
+        </Dialog>
 
         {hasShopError && (
           <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive flex items-start gap-2">
@@ -564,6 +627,7 @@ export default function ShopPage() {
                                       setBuying(item.id);
                                       buyEquipMutation.mutate(item, {
                                         onSuccess: () => {
+                                          refreshPurchaseHistory();
                                           toast.success(t('app.shop.toast_buy_success_equip', { name: item.name }));
                                           setBuying(null);
                                         },
