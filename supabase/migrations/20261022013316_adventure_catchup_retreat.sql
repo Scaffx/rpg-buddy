@@ -255,8 +255,14 @@ BEGIN
   -- remains behind the server clock when more offline battles are pending.
   IF v_state.current_battle_id IS NULL AND v_now >= v_state.last_tick_at THEN
     v_start := least(v_now,greatest(v_state.last_tick_at,v_now-interval '24 hours'));
-    SELECT * INTO v_prior FROM app_private.adventure_battles
-      WHERE user_id=v_uid ORDER BY created_at DESC,id DESC LIMIT 1;
+    -- A settled row is already the exact preceding server snapshot. Reuse it
+    -- instead of sorting every retained timeline again for each offline fight.
+    IF v_battle.id IS NOT NULL THEN
+      v_prior := v_battle;
+    ELSE
+      SELECT * INTO v_prior FROM app_private.adventure_battles
+        WHERE user_id=v_uid ORDER BY started_at DESC,id DESC LIMIT 1;
+    END IF;
     IF v_prior.id IS NOT NULL AND v_start < v_now-interval '30 seconds' THEN
       v_level := v_prior.hero_level;
       v_hero := v_prior.hero_power;
@@ -606,4 +612,3 @@ END;
 $function$
 
 -- CREATE OR REPLACE preserves the guarded ownership and EXECUTE grants.
-
