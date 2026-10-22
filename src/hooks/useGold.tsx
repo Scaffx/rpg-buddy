@@ -28,6 +28,36 @@ export function useGoldBalance() {
   });
 }
 
+export type AdventureIncome7d = {
+  gold: number;
+  wins: number;
+  days: number;
+  dailyGold: number;
+};
+
+export function useAdventureIncome7d() {
+  const { user } = useAuth();
+  return useQuery<AdventureIncome7d>({
+    queryKey: ['adventure-income-7d', user?.id],
+    enabled: !!user,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_adventure_income_7d');
+      if (error) throw error;
+      const value = requireRpcObject(data, 'get_adventure_income_7d');
+      const gold = Number(value.gold);
+      const wins = Number(value.wins);
+      const days = Number(value.days);
+      const dailyGold = Number(value.daily_gold);
+      if (![gold, wins, days, dailyGold].every(Number.isFinite) || days !== 7
+        || gold < 0 || wins < 0 || dailyGold < 0) {
+        throw new Error('Renda da aventura inválida no servidor.');
+      }
+      return { gold, wins, days, dailyGold };
+    },
+  });
+}
+
 export function useClaimClassGoldReward() {
   const { user } = useAuth();
   const queryClient = useQueryClient();

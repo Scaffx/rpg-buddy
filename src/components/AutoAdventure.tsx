@@ -229,10 +229,10 @@ export default function AutoAdventure() {
         {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
       </div>}
       {mode === 'holding' && <AdventureHoldNotice stage={holdingStage} advanceToStage={holdingStage + 1} retreatedFromStage={data.encounters.find(encounter => !encounter.won && !isDraw(encounter) && encounter.stage === holdingStage + 1)?.stage} pending={advanceMutation.isPending} accepted={Boolean(advanceRequested || (currentBattle && acceptedBattleId === currentBattle.id))} canAdvance={canRequestAdvance} error={advanceMutation.isError && attemptedBattleId.current === currentBattle?.id} onAdvance={() => void advance()} />}
-      <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Alterações em equipamentos e habilidades passam a valer na próxima luta iniciada. Combates podem dar ouro e itens; rotinas concluídas dão XP e atributos. Recompensas são periódicas e têm limites diários.</p>
+      <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Alterações em equipamentos e habilidades passam a valer na próxima luta iniciada. Cada vitória dá ouro; itens diretos seguem um intervalo e limite diário. Rotinas concluídas dão XP e atributos.</p>
     </div>
     <div className="grid min-w-0 gap-3 sm:grid-cols-3">
-      <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Ouro da aventura hoje</p><p className="text-xl font-bold text-amber-300">{data.gold_today} / {data.limits.gold_per_day}</p></div>
+      <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Ouro da aventura hoje</p><p className="text-xl font-bold text-amber-300">{data.gold_today}</p><p className="text-xs text-muted-foreground">Sem teto diário de ouro</p></div>
       <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Itens da aventura hoje</p><p className="text-xl font-bold">{data.loot_today} / {data.limits.items_per_day}</p></div>
       <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Último resultado</p><p className="text-sm font-semibold">{latest ? encounterResult(latest) : 'Aguardando'}</p></div>
     </div>

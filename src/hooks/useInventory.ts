@@ -156,19 +156,24 @@ const RARITY_ORDER: Record<string, number> = {
 };
 
 export function useShopItems() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['shop-game-items'],
+    queryKey: ['shop-game-items', user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('game_items')
-        .select('*')
-        .gt('shop_price', 0)
-        .eq('is_starter', false)
-        .is('boss_drop_level', null)
-        .in('category', ['weapon', 'armor', 'accessory', 'consumable'])
-        .order('category')
-        .order('shop_price');
+      // The server selects current class/level offers and one next-tier preview.
+      // Reading the raw catalog would expose items the purchase RPC rejects.
+      const { data, error } = await (supabase as any).rpc('get_economy_shop');
       if (error) throw error;
+      if (!Array.isArray(data) || data.some((item: unknown) => !item || typeof item !== 'object'
+        || !('id' in item) || typeof item.id !== 'string'
+        || !('category' in item) || typeof item.category !== 'string'
+        || !('level_required' in item) || typeof item.level_required !== 'number'
+        || !Number.isInteger(item.level_required)
+        || !('shop_price' in item) || typeof item.shop_price !== 'number'
+        || !Number.isInteger(item.shop_price) || item.shop_price <= 0)) {
+        throw new Error('A vitrine enviada pelo servidor é inválida.');
+      }
       return (data as GameItem[]).sort((a, b) => {
         if (a.category !== b.category) return a.category.localeCompare(b.category);
         const ra = RARITY_ORDER[a.rarity?.toLowerCase() ?? 'comum'] ?? 0;

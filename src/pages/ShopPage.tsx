@@ -2,10 +2,11 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useGoldBalance, useBuyItem } from '@/hooks/useGold';
+import { useGoldBalance, useBuyItem, useAdventureIncome7d } from '@/hooks/useGold';
+import { useProfile } from '@/hooks/useProfile';
 import { useShopItems, useBuyEquipment, useInventory, type GameItem, type InventoryItem } from '@/hooks/useInventory';
 import { useShopPets, useBuyPet, useAllCompanions } from '@/hooks/useCompanion';
-import { getPetBonus, petBonusLabel, getSustainEffect, sustainLabel, isForagePet } from '@/lib/pets';
+import { isForagePet } from '@/lib/pets';
 import AppLayout from '@/components/AppLayout';
 import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { toast } from 'sonner';
@@ -40,6 +41,13 @@ const COLOR_GLOW: Record<string, string> = {
   red: 'shadow-red-500/20',
 };
 
+function shopErrorMessage(error: unknown): string {
+  const message = typeof error === 'string' ? error
+    : error && typeof error === 'object' && 'message' in error ? error.message : null;
+  return typeof message === 'string' && message.trim()
+    ? message.trim() : 'O servidor recusou a ação. Tente novamente.';
+}
+
 function normalizeCategory(rawCategory: string | null | undefined): 'consumable' | 'weapon' | 'armor' | 'accessory' | null {
   const normalized = String(rawCategory || '')
     .toLowerCase()
@@ -69,7 +77,10 @@ function normalizeCategory(rawCategory: string | null | undefined): 'consumable'
 export default function ShopPage() {
   const { t } = useTranslation();
   const [buying, setBuying] = useState<string | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const { data: balance } = useGoldBalance();
+  const { data: profile } = useProfile();
+  const { data: adventureIncome } = useAdventureIncome7d();
   const buyMutation = useBuyItem();
   const buyEquipMutation = useBuyEquipment();
   const { data: inventory = [] } = useInventory();
@@ -121,8 +132,11 @@ export default function ShopPage() {
   });
 
   const currentGold = (balance as any)?.gold ?? 100;
+  const currentLevel = Number(profile?.level ?? 1);
+  // Approximate a daily useful upgrade; only observed adventure gold is counted.
+  const estimatedNetDailyGold = Math.max(0, (adventureIncome?.dailyGold ?? 0) - 2500);
 
-  const { data: shopPets = [] } = useShopPets();
+  const { data: shopPets = [], error: petError, isLoading: isPetLoading } = useShopPets();
   const buyPet = useBuyPet();
   const { data: allCompanions = [] } = useAllCompanions();
   const ownedPetTypes = useMemo(
@@ -134,9 +148,14 @@ export default function ShopPage() {
     : role === 'support' ? t('app.shop.pet_role_support')
     : t('app.shop.pet_role_physical');
   const handleBuyPet = (pet: any) => {
+    setPurchaseError(null);
     buyPet.mutate(pet.pet_type, {
       onSuccess: () => toast.success(t('app.shop.toast_pet_bought', { name: pet.name })),
-      onError: (err: any) => toast.error(err?.message || t('app.shop.toast_pet_error')),
+      onError: (err: unknown) => {
+        const message = shopErrorMessage(err);
+        setPurchaseError(message);
+        toast.error(message);
+      },
     });
   };
 
@@ -185,14 +204,17 @@ export default function ShopPage() {
   ];
 
   const handleBuy = (item: any) => {
+    setPurchaseError(null);
     setBuying(item.id);
     buyMutation.mutate(item, {
       onSuccess: () => {
         toast.success(t('app.shop.toast_buy_success_time', { name: item.name }));
         setBuying(null);
       },
-      onError: (err: Error) => {
-        toast.error(err.message);
+      onError: (err: unknown) => {
+        const message = shopErrorMessage(err);
+        setPurchaseError(message);
+        toast.error(message);
         setBuying(null);
       },
     });
@@ -261,7 +283,9 @@ export default function ShopPage() {
     );
   };
 
-  const hasShopError = Boolean(timeShopError || equipError);
+  const hasShopError = Boolean(timeShopError || equipError || petError || purchaseError);
+  const currentError = purchaseError || (timeShopError && shopErrorMessage(timeShopError))
+    || (equipError && shopErrorMessage(equipError)) || (petError && shopErrorMessage(petError));
 
   return (
     <AppLayout>
@@ -300,17 +324,17 @@ export default function ShopPage() {
         </div>
 
         {hasShopError && (
-          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive flex items-start gap-2">
+          <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 mt-0.5" />
             <div>
               <p className="font-semibold">{t('app.shop.error_title')}</p>
-              <p className="text-xs opacity-90">{t('app.shop.error_desc')}</p>
+              <p className="text-xs opacity-90">{currentError || t('app.shop.error_desc')}</p>
             </div>
           </div>
         )}
 
         {/* Tabs */}
-        <Tabs data-tour="shop-tabs" defaultValue="tempo" className="w-full">
+        <Tabs data-tour="shop-tabs" defaultValue="equipamentos" className="w-full">
           <TabsList className="grid w-full max-w-xl grid-cols-3 bg-secondary/50 border border-border rounded-lg p-1">
             <TabsTrigger value="tempo" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <Clock className="w-4 h-4 mr-2" />
@@ -327,7 +351,7 @@ export default function ShopPage() {
           </TabsList>
 
           {/* Loja do Tempo */}
-          <TabsContent data-tour="shop-items" value="tempo" className="space-y-4 mt-6">
+          <TabsContent value="tempo" className="space-y-4 mt-6">
             <div className="space-y-2">
               <h2 className="text-lg font-display font-bold text-cyan-400">{t('app.shop.section_time_shop_title')}</h2>
               <p className="text-sm text-muted-foreground italic">
@@ -344,7 +368,7 @@ export default function ShopPage() {
           </TabsContent>
 
           {/* Loja de Equipamentos */}
-          <TabsContent value="equipamentos" className="space-y-4 mt-6">
+          <TabsContent data-tour="shop-items" value="equipamentos" className="space-y-4 mt-6">
             <div className="space-y-2">
               <h2 className="text-lg font-display font-bold text-purple-400">{t('app.shop.section_equip_title')}</h2>
               <p className="text-sm text-muted-foreground italic">
@@ -412,9 +436,9 @@ export default function ShopPage() {
                             const rarityKey = String(item.rarity || 'comum').toLowerCase();
                             const rarityColor = RARITY_COLORS[rarityKey] || 'text-slate-400';
                             const glowClass = RARITY_GLOW[rarityKey] || '';
-                            const isOwned    = ownedItemIds.has(item.id);
+                            const isOwned    = !item.stackable && ownedItemIds.has(item.id);
                             const isEquipped = equippedItemIds.has(item.id);
-                            const isLocked   = (item.level_required || 1) > 1;
+                            const isLocked   = currentLevel < (item.level_required || 1);
 
                             // Stat rows: only show non-zero stats
                             type StatRow = { label: string; icon: string; value: number; delta: number | null };
@@ -513,7 +537,8 @@ export default function ShopPage() {
                                 {(item.level_required || 1) > 1 && (
                                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                     <Lock className="w-3 h-3" />
-                                    Nível {item.level_required} requerido
+                                    {isLocked ? `Disponível no nível ${item.level_required} (seu nível: ${currentLevel})`
+                                      : `Requer nível ${item.level_required}`}
                                   </div>
                                 )}
 
@@ -535,19 +560,22 @@ export default function ShopPage() {
                                   </div>
                                   <button
                                     onClick={() => {
+                                      setPurchaseError(null);
                                       setBuying(item.id);
                                       buyEquipMutation.mutate(item, {
                                         onSuccess: () => {
                                           toast.success(t('app.shop.toast_buy_success_equip', { name: item.name }));
                                           setBuying(null);
                                         },
-                                        onError: (err: Error) => {
-                                          toast.error(err.message);
+                                        onError: (err: unknown) => {
+                                          const message = shopErrorMessage(err);
+                                          setPurchaseError(message);
+                                          toast.error(message);
                                           setBuying(null);
                                         },
                                       });
                                     }}
-                                    disabled={!canAfford || buying === item.id || isOwned}
+                                    disabled={!canAfford || isLocked || buying === item.id || isOwned}
                                     className="w-full py-2.5 rounded-xl font-bold text-sm text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                                     style={{
                                       background: isOwned
@@ -561,6 +589,8 @@ export default function ShopPage() {
                                       ? t('app.shop.button_buying')
                                       : isOwned
                                       ? '✅ Já adquirido'
+                                      : isLocked
+                                      ? `Nível ${item.level_required} requerido`
                                       : !canAfford
                                       ? t('app.shop.button_no_gold')
                                       : t('app.shop.button_buy')}
@@ -579,7 +609,7 @@ export default function ShopPage() {
 
             {!isEquipLoading && (shopEquipItems?.length || 0) === 0 && (
               <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">
-                {t('app.shop.empty_equip')}
+                Escolha uma classe no perfil para ver as ofertas de equipamento da sua faixa.
               </div>
             )}
           </TabsContent>
@@ -589,11 +619,18 @@ export default function ShopPage() {
             <div className="space-y-1">
               <h2 className="text-lg font-display font-bold text-fuchsia-400">{t('app.shop.section_pets_title')}</h2>
               <p className="text-sm text-muted-foreground italic">{t('app.shop.section_pets_desc')}</p>
+              <p className="text-xs text-muted-foreground">Companheiros de coleção: na aventura automática, eles não alteram atributos nem rendimentos.</p>
+              <p className="text-xs text-muted-foreground">Tempo estimado com sua média de ouro da aventura nos últimos 7 dias, reservando 2.500 ouro por dia para uma melhoria útil. Derrotas, baús e novas compras mudam essa conta; o chefe exigido continua obrigatório.</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {isPetLoading ? <p className="text-sm text-muted-foreground">Carregando companheiros...</p>
+            : shopPets.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum companheiro disponível no catálogo.</p>
+            : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(shopPets as any[]).map((pet) => {
                 const owned = ownedPetTypes.has(pet.pet_type) || pet.owned;
                 const canAfford = currentGold >= pet.price;
+                const estimatedDays = estimatedNetDailyGold > 0
+                  ? Math.ceil(Math.max(0, Number(pet.price) - currentGold) / estimatedNetDailyGold)
+                  : null;
                 // Enquanto a criatura grande não cair, o mini é só uma silhueta:
                 // o pet é troféu, não item de prateleira.
                 const locked = pet.unlocked === false;
@@ -622,23 +659,11 @@ export default function ShopPage() {
                         ⚔️ {t('app.shop.pet_locked_hint', { boss: pet.unlock_boss })}
                       </p>
                     )}
-                    {/* O pet não luta: mostrar atk/def/hp/mp dele era resquício da era
-                        do pet-combatente e só levantava a pergunta "pra que serve isso?".
-                        Aqui vai o que o pet de fato entrega. */}
-                    {/* A ficha só aparece depois da vitória: parte da recompensa
-                        de derrotar a criatura é descobrir o que o mini dela faz. */}
                     {!locked && (
                       <div className="flex flex-wrap gap-1.5 text-[10px]">
-                        {petBonusLabel(getPetBonus(pet.pet_type)) && (
-                          <span className="bg-emerald-950/40 border border-emerald-500/30 rounded px-1.5 py-0.5 text-emerald-300">
-                            ✨ {petBonusLabel(getPetBonus(pet.pet_type))}
-                          </span>
-                        )}
-                        {sustainLabel(getSustainEffect(pet.pet_type)) && (
-                          <span className="bg-cyan-950/40 border border-cyan-500/30 rounded px-1.5 py-0.5 text-cyan-300">
-                            ⚔️ {sustainLabel(getSustainEffect(pet.pet_type))}
-                          </span>
-                        )}
+                        <span className="bg-emerald-950/40 border border-emerald-500/30 rounded px-1.5 py-0.5 text-emerald-300">
+                          🐾 Companheiro de coleção
+                        </span>
                         {isForagePet(pet.pet_type) && (
                           <span className="bg-amber-950/40 border border-amber-500/30 rounded px-1.5 py-0.5 text-amber-300">
                             🎒 {t('app.shop.pet_forage')}
@@ -664,10 +689,17 @@ export default function ShopPage() {
                           : t('app.shop.pet_buy')}
                       </button>
                     </div>
+                    {!owned && <p className="text-[11px] text-muted-foreground">
+                      {estimatedDays === null
+                        ? 'Estimativa de prazo aparece após acumular vitórias regulares.'
+                        : estimatedDays === 0
+                        ? 'Ouro suficiente; ainda é preciso cumprir o requisito do chefe.'
+                        : `Com a renda observada: cerca de ${estimatedDays} ${estimatedDays === 1 ? 'dia' : 'dias'} para juntar o ouro.`}
+                    </p>}
                   </div>
                 );
               })}
-            </div>
+            </div>}
           </TabsContent>
         </Tabs>
       </div>

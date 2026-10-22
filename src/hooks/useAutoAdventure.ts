@@ -66,6 +66,7 @@ export function useAutoAdventure({ background = false }: { background?: boolean 
     if (!background || !hasRecordedWin) return;
     void queryClient.invalidateQueries({ queryKey: ['gold-balance', user?.id] });
     void queryClient.invalidateQueries({ queryKey: ['gold-history'] });
+    void queryClient.invalidateQueries({ queryKey: ['adventure-income-7d', user?.id] });
     void queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] });
   }, [background, query.dataUpdatedAt, hasRecordedWin, queryClient, user?.id]);
 
@@ -73,6 +74,7 @@ export function useAutoAdventure({ background = false }: { background?: boolean 
     if (!background || !hasRecordedBossWin) return;
     void queryClient.invalidateQueries({ queryKey: ['pet_catalog', user?.id] });
     void queryClient.invalidateQueries({ queryKey: ['boss_battles'] });
+    void queryClient.invalidateQueries({ queryKey: ['crafting-state', user?.id] });
   }, [background, query.dataUpdatedAt, hasRecordedBossWin, queryClient, user?.id]);
 
   return {
@@ -100,6 +102,7 @@ export function useAdvanceAutoAdventure() {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['gold-balance', user?.id] }),
           queryClient.invalidateQueries({ queryKey: ['gold-history'] }),
+          queryClient.invalidateQueries({ queryKey: ['adventure-income-7d', user?.id] }),
           queryClient.invalidateQueries({ queryKey: ['inventory', user?.id] }),
         ]);
       }
@@ -107,6 +110,7 @@ export function useAdvanceAutoAdventure() {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['pet_catalog', user?.id] }),
           queryClient.invalidateQueries({ queryKey: ['boss_battles'] }),
+          queryClient.invalidateQueries({ queryKey: ['crafting-state', user?.id] }),
         ]);
       }
     },
