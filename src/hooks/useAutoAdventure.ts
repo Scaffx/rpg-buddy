@@ -10,11 +10,13 @@ type Catchup = AdventureSnapshot['catchup'];
 
 function recordSummary(queryClient: ReturnType<typeof useQueryClient>, userId: string, snapshot: AdventureSnapshot) {
   const next = snapshot.catchup;
-  if (next.battles === 0) return;
-  queryClient.setQueryData<Catchup | null>(['auto-adventure-summary', userId], previous => ({
+  queryClient.setQueryData<Catchup | null>(['auto-adventure-summary', userId], previous => {
+    // A live fight belongs in recent encounters, not in an endless offline recap.
+    if (!previous?.pending && !next.pending && next.battles <= 1) return previous ?? null;
+    return {
     battles: (previous?.battles ?? 0) + next.battles,
     from_stage: previous?.from_stage ?? next.from_stage,
-    to_stage: next.to_stage,
+    to_stage: next.to_stage ?? previous?.to_stage ?? null,
     wins: (previous?.wins ?? 0) + next.wins,
     defeats: (previous?.defeats ?? 0) + next.defeats,
     draws: (previous?.draws ?? 0) + (next.draws ?? 0),
@@ -23,7 +25,8 @@ function recordSummary(queryClient: ReturnType<typeof useQueryClient>, userId: s
     items: [...(previous?.items ?? []), ...next.items],
     defeated: (previous?.defeated ?? false) || next.defeated,
     pending: next.pending,
-  }));
+    };
+  });
 }
 
 export function useAutoAdventure({ background = false }: { background?: boolean } = {}) {
@@ -42,7 +45,9 @@ export function useAutoAdventure({ background = false }: { background?: boolean 
     },
     staleTime: 10_000,
     refetchInterval: background
-      ? current => nextAdventureRefetchDelay(current.state.data, current.state.dataUpdatedAt)
+      ? current => current.state.error && current.state.data
+        ? 10_000
+        : nextAdventureRefetchDelay(current.state.data, current.state.dataUpdatedAt)
       : false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: background,

@@ -90,7 +90,7 @@ describe('authenticated shell adventure synchronization', () => {
     expect(container.textContent).toBe('2:0:0');
   });
 
-  it('keeps advance rewards after the next zero-delta sync and invalidates balances without a shell observer', async () => {
+  it('invalidates advance rewards without treating a live fight as an offline recap', async () => {
     state.user = { id: '22222222-2222-2222-2222-222222222222' };
     const advanceSnapshot = { ...snapshot, stage: 3, catchup: { ...snapshot.catchup,
       battles: 1, wins: 1, gold: 4, items: ['item-1'] } };
@@ -107,10 +107,29 @@ describe('authenticated shell adventure synchronization', () => {
     </QueryClientProvider>));
     await act(async () => container!.querySelector('button')!.click());
     expect(state.rpc).toHaveBeenNthCalledWith(2, 'advance_auto_adventure', { p_battle_id: 'battle-current' });
-    expect(container.textContent).toContain('3:1:0');
+    expect(container.textContent).toContain('3:0:0');
     expect(invalidations).toHaveBeenCalledWith({ queryKey: ['gold-balance', state.user.id] });
     expect(invalidations).toHaveBeenCalledWith({ queryKey: ['inventory', state.user.id] });
     await act(async () => { await queryClient.invalidateQueries({ queryKey: ['auto-adventure', state.user!.id] }); });
-    expect(container.textContent).toContain('3:1:0');
+    expect(container.textContent).toContain('3:0:0');
+  });
+
+  it('closes pending on a zero-battle response and stops adding subsequent live victories', async () => {
+    state.user = { id: '22222222-2222-2222-2222-222222222222' };
+    state.rpc.mockResolvedValueOnce({ data: { ...snapshot, catchup: { ...snapshot.catchup,
+      battles: 24, wins: 24, gold: 4, pending: true, from_stage: 79, to_stage: 79 } }, error: null })
+      .mockResolvedValueOnce({ data: snapshot, error: null })
+      .mockResolvedValue({ data: { ...snapshot, catchup: { ...snapshot.catchup,
+        battles: 1, wins: 1 } }, error: null });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => root!.render(<QueryClientProvider client={queryClient}><ArenaObserver /></QueryClientProvider>));
+    expect(queryClient.getQueryData(['auto-adventure-summary', state.user.id])).toMatchObject({ battles: 24, pending: true });
+    await act(async () => { await queryClient.invalidateQueries({ queryKey: ['auto-adventure', state.user!.id] }); });
+    expect(queryClient.getQueryData(['auto-adventure-summary', state.user.id])).toMatchObject({ battles: 24, wins: 24, gold: 4, pending: false, to_stage: 79 });
+    await act(async () => { await queryClient.invalidateQueries({ queryKey: ['auto-adventure', state.user!.id] }); });
+    expect(queryClient.getQueryData(['auto-adventure-summary', state.user.id])).toMatchObject({ battles: 24, wins: 24, gold: 4, pending: false });
   });
 });
