@@ -52,7 +52,7 @@ export default function CraftingPanel() {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">Receitas</h3>
           {data.recipe_count > 30 && <p className="text-xs text-muted-foreground">Mostrando as 30 receitas desbloqueadas mais recentes de {formatNumber(data.recipe_count)}.</p>}
-          {data.recipes.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma receita descoberta ainda. Vença o primeiro chefe para começar.</p>}
+          {data.recipes.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma receita descoberta ainda. Vença um chefe na aventura para descobrir uma receita.</p>}
           {data.recipes.map((recipe) => {
             const missingLevel = data.level < recipe.level_required;
             const wrongClass = data.craft_class !== recipe.hero_class;
