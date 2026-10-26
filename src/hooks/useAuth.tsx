@@ -17,18 +17,34 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 15_000;
 
-function confirmedTokenExpiry(token: string): number | null {
+function tokenClaims(token: string): Record<string, unknown> | null {
   try {
     const payload = token.split('.')[1];
     if (!payload) return null;
     const padded = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=');
-    const { exp } = JSON.parse(atob(padded)) as { exp?: unknown };
-    return typeof exp === 'number' && Number.isSafeInteger(exp) && exp > 0 && exp <= Number.MAX_SAFE_INTEGER / 1000
-      ? exp * 1000
-      : null;
+    const claims: unknown = JSON.parse(atob(padded));
+    return claims && typeof claims === 'object' && !Array.isArray(claims)
+      ? claims as Record<string, unknown> : null;
   } catch {
     return null;
   }
+}
+
+function confirmedTokenExpiry(token: string): number | null {
+  const exp = tokenClaims(token)?.exp;
+  return typeof exp === 'number' && Number.isSafeInteger(exp) && exp > 0 && exp <= Number.MAX_SAFE_INTEGER / 1000
+    ? exp * 1000 : null;
+}
+
+function sameRefreshBinding(previousToken: string, candidateToken: string, confirmedUserId: string): boolean {
+  const previous = tokenClaims(previousToken);
+  const candidate = tokenClaims(candidateToken);
+  // These unverified claims can deny continuity, never grant it. getUser below
+  // remains the authority for the candidate token and its user.
+  return !!previous && !!candidate && previous.sub === confirmedUserId && candidate.sub === confirmedUserId &&
+    typeof previous.iss === 'string' && previous.iss.length > 0 && candidate.iss === previous.iss &&
+    typeof previous.session_id === 'string' && previous.session_id.length > 0 &&
+    candidate.session_id === previous.session_id;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -112,7 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       confirmationTimer = setTimeout(() => failConfirmation(requestVersion), Math.min(AUTH_BOOTSTRAP_TIMEOUT_MS, deadline));
     };
 
-    const confirmSession = (candidate: Session, requestVersion: number, resetWatchdog: boolean, keepVisible = false) => {
+    const confirmSession = (
+      candidate: Session,
+      requestVersion: number,
+      resetWatchdog: boolean,
+      keepVisible = false,
+      expectedRefreshUserId: string | null = null,
+      refreshBindingValid = true,
+    ) => {
       if (!isCurrent(requestVersion)) return;
       const token = candidate.access_token;
       const claimedUserId = candidate.user?.id;
@@ -145,6 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!verifiedUser || verifiedUser.id !== claimedUserId) {
               throw new Error('Session user could not be confirmed');
             }
+            if (expectedRefreshUserId && verifiedUser.id !== expectedRefreshUserId) {
+              throw new Error('Refreshed session changed identity');
+            }
+            if (!refreshBindingValid) {
+              throw new Error('Refreshed session changed binding');
+            }
             const tokenExpiry = confirmedTokenExpiry(token);
             if (tokenExpiry !== null && tokenExpiry <= Date.now()) {
               throw new Error('Session token expired');
@@ -152,7 +181,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (keepVisible && confirmedExpiresAt !== null && confirmedExpiresAt <= Date.now()) {
               throw new Error('Confirmed session expired during revalidation');
             }
-            const acceptedSession = keepVisible && confirmedSession ? confirmedSession : candidate;
+            // Focus revalidation keeps the exact confirmed session; a renewed
+            // token becomes visible only after Auth has verified its own bytes.
+            const acceptedSession = keepVisible && token === confirmedToken && confirmedSession
+              ? confirmedSession : candidate;
             acceptSession(requestVersion, { ...acceptedSession, user: verifiedUser }, verifiedUser);
           } catch {
             failConfirmation(requestVersion);
@@ -192,15 +224,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Focus can re-emit the same pending session. Keep its original deadline and result.
         return;
       }
-      const keepVisible = event === 'SIGNED_IN' && !!token && !!claimedUserId &&
-        token === confirmedToken && claimedUserId === confirmedUserId &&
-        confirmedExpiresAt !== null && confirmedExpiresAt > Date.now();
+      if (event === 'SIGNED_IN' && pendingConfirmation?.version === version &&
+          pendingConfirmation.token !== confirmedToken && token === confirmedToken &&
+          claimedUserId === confirmedUserId && confirmedExpiresAt !== null && confirmedExpiresAt > Date.now()) {
+        // A delayed focus notification must not supersede a newer refresh.
+        return;
+      }
+      const expectedRefreshUserId = event === 'TOKEN_REFRESHED' ? confirmedUserId : null;
+      const refreshBindingValid = event !== 'TOKEN_REFRESHED' || !confirmedToken || !confirmedUserId ||
+        (!!token && sameRefreshBinding(confirmedToken, token, confirmedUserId));
+      const keepVisible = (event === 'TOKEN_REFRESHED' || (event === 'SIGNED_IN' && token === confirmedToken)) &&
+        !!token && !!claimedUserId && !!confirmedToken && claimedUserId === confirmedUserId &&
+        confirmedExpiresAt !== null && confirmedExpiresAt > Date.now() && refreshBindingValid;
       const eventVersion = ++version;
       if (!nextSession) {
         acceptSession(eventVersion, null, null);
         return;
       }
-      confirmSession(nextSession, eventVersion, true, keepVisible);
+      confirmSession(nextSession, eventVersion, true, keepVisible, expectedRefreshUserId, refreshBindingValid);
     });
 
     // getSession reads storage; its user gets the same confirmation as events.

@@ -29,7 +29,7 @@ vi.mock('@/lib/nativeAuth', () => ({ initDeepLinkAuth: vi.fn() }));
 
 const person = (id: string, role = 'user') => ({ id, app_metadata: { role } }) as unknown as User;
 const jwt = (id: string, seconds: number) =>
-  `header.${btoa(JSON.stringify({ sub: id, exp: Math.floor(Date.now() / 1000) + seconds })).replace(/=/g, '')}.sig`;
+  `header.${btoa(JSON.stringify({ sub: id, iss: 'https://project.supabase.co/auth/v1', session_id: 'session-a', exp: Math.floor(Date.now() / 1000) + seconds })).replace(/=/g, '')}.sig`;
 const candidate = (token: string, id: string, role = 'user', claimedExpiry?: number) => ({
   access_token: token,
   user: person(id, role),
@@ -140,12 +140,16 @@ describe('final auth focus expiry review', () => {
       .mockReturnValueOnce(oldFocus.promise)
       .mockReturnValueOnce(newVerification.promise);
     await mount(candidate(oldToken, 'hero'));
+    const scene = host!.querySelector('[data-testid="scene"]');
     await event('SIGNED_IN', candidate(oldToken, 'hero'));
     await event('TOKEN_REFRESHED', candidate(newToken, 'hero', 'admin'));
-    expect(state()).toBe('loading');
+    expect(state()).toBe('hero');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe(oldToken);
+    expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
     oldFocus.resolve(verified('hero'));
     await act(async () => { await Promise.resolve(); });
-    expect(state()).toBe('loading');
+    expect(state()).toBe('hero');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe(oldToken);
     newVerification.resolve(verified('hero'));
     await act(async () => { await Promise.resolve(); });
     expect(state()).toBe('hero');

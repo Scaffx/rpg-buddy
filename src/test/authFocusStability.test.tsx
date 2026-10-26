@@ -31,7 +31,7 @@ vi.mock('@/lib/nativeAuth', () => ({ initDeepLinkAuth: vi.fn() }));
 
 const member = (id: string, role = 'user') => ({ id, app_metadata: { role } }) as unknown as User;
 const tokenFor = (id: string, exp = Math.floor(Date.now() / 1000) + 3600) =>
-  `header.${btoa(JSON.stringify({ sub: id, exp })).replace(/=/g, '')}.signature`;
+  `header.${btoa(JSON.stringify({ sub: id, iss: 'https://project.supabase.co/auth/v1', session_id: 'session-a', exp })).replace(/=/g, '')}.signature`;
 const session = (user: User, token = 'same-token', expiresAt = Math.floor(Date.now() / 1000) + 3600) => ({
   user,
   access_token: token,
@@ -251,7 +251,7 @@ describe('auth focus stability', () => {
     expect(read('auth')).toBe('hero');
   });
 
-  it('blocks a changed refresh token and replaces forged admin metadata after confirmation', async () => {
+  it('keeps a confirmed scene during refresh and replaces forged admin metadata after confirmation', async () => {
     const current = member('hero');
     const firstToken = tokenFor('hero');
     const nextToken = tokenFor('hero', Math.floor(Date.now() / 1000) + 7200);
@@ -260,15 +260,17 @@ describe('auth focus stability', () => {
     auth.getUser.mockResolvedValueOnce(verified(current)).mockReturnValueOnce(refresh.promise);
     await mount();
     await settle();
+    const scene = host!.querySelector('[data-testid="scene"]');
     await event('TOKEN_REFRESHED', session(member('hero', 'admin'), nextToken));
-    expect(read('auth')).toBe('loading');
+    expect(read('auth')).toBe('hero');
     expect(read('admin')).toBe('denied');
-    expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
+    expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
     expect(auth.getUser).toHaveBeenLastCalledWith(nextToken);
     refresh.resolve(verified(current));
     await settle();
     expect(read('auth')).toBe('hero');
     expect(read('admin')).toBe('denied');
+    expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
   });
 
   it('does not let an old focus response replace a newer token', async () => {
@@ -283,9 +285,11 @@ describe('auth focus stability', () => {
     await settle();
     await event('SIGNED_IN', session(current, firstToken));
     await event('TOKEN_REFRESHED', session(current, nextToken));
+    const scene = host!.querySelector('[data-testid="scene"]');
     focus.resolve(verified(current));
     await settle();
-    expect(read('auth')).toBe('loading');
+    expect(read('auth')).toBe('hero');
+    expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
     refresh.resolve(verified(current));
     await settle();
     expect(read('auth')).toBe('hero');
