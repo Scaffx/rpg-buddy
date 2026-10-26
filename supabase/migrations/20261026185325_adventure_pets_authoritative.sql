@@ -21,9 +21,39 @@ BEGIN
   LEFT JOIN pg_proc p ON p.oid=to_regprocedure(e.signature)
   WHERE p.oid IS NULL OR md5(replace(pg_get_functiondef(p.oid),chr(13)||chr(10),chr(10)))<>e.body_md5
      OR p.proowner<>'postgres'::regrole OR p.prosecdef<>e.security_definer
-     OR p.provolatile<>e.volatility::"char" OR p.proacl::text<>e.acl
+     OR p.provolatile<>e.volatility::"char" OR p.proacl::text IS DISTINCT FROM e.acl
   LIMIT 1;
   IF v_bad IS NOT NULL THEN RAISE EXCEPTION 'PET_SOURCE_OR_ACL_DRIFT: %',v_bad USING ERRCODE='22023'; END IF;
+  -- CREATE OR REPLACE would leave a pre-existing overload callable, and a
+  -- fresh RPC name must not already have a conflicting implementation.
+  IF EXISTS (
+    SELECT 1 FROM (VALUES
+      ('app_private','sync_auto_adventure'),
+      ('app_private','advance_auto_adventure'),
+      ('app_private','adventure_simulate_v3'),
+      ('app_private','adventure_battle_payload'),
+      ('public','buy_pet'),
+      ('public','choose_level3_companion'),
+      ('public','_guard_inventory_forage_pet'),
+      ('public','_record_inventory_forage_pet')
+    ) e(schema_name,function_name)
+    JOIN pg_namespace n ON n.nspname=e.schema_name
+    LEFT JOIN pg_proc p ON p.pronamespace=n.oid AND p.proname=e.function_name
+    GROUP BY e.schema_name,e.function_name
+    HAVING count(p.oid)<>1
+  ) OR EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE (n.nspname,p.proname) IN (VALUES
+      ('app_private','adventure_pet_gate_clock'),
+      ('app_private','adventure_pet_gate_record'),
+      ('app_private','adventure_pet_catalog'),
+      ('app_private','adventure_pet_sustain'),
+      ('app_private','adventure_pet_at'),
+      ('public','get_adventure_pet_state'),
+      ('public','set_active_adventure_pet')
+    )
+  ) THEN RAISE EXCEPTION 'PET_FUNCTION_OVERLOAD_DRIFT' USING ERRCODE='22023'; END IF;
   IF EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid IN (
       to_regprocedure('app_private.sync_auto_adventure()'),
       to_regprocedure('app_private.advance_auto_adventure(uuid)'),

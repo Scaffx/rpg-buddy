@@ -71,7 +71,8 @@ try {
   $started = $true
   Invoke-Sql $base 'live-identity-fixture' (Join-Path $here 'live_identity_fixture.sql')
   foreach ($name in @('pets_positive','pets_drift_body','pets_drift_trigger',
-    'pets_drift_acl','pets_drift_columns','pets_drift_owner')) { Create-Clone $name }
+    'pets_drift_acl','pets_drift_acl_null','pets_drift_overload',
+    'pets_drift_columns','pets_drift_owner')) { Create-Clone $name }
   Invoke-Sql 'pets_positive' 'migration' $migration
   foreach ($name in @('assert','identity_guard','matrix','offline','magic_legacy')) {
     Invoke-Sql 'pets_positive' $name (Join-Path $here "$name.sql")
@@ -80,10 +81,14 @@ try {
   Run-ConcurrentPair 'concurrent_duplicate_a.sql' 'concurrent_duplicate_b.sql'
   Run-ConcurrentPair 'concurrent_switch_a.sql' 'concurrent_switch_b.sql'
   Invoke-Sql 'pets_positive' 'concurrency-assert' (Join-Path $here 'concurrency_assert.sql')
-  foreach ($kind in @('body','trigger','acl','columns','owner')) {
+  foreach ($kind in @('body','trigger','acl','acl_null','overload','columns','owner')) {
     $db = "pets_drift_$kind"
     Invoke-Sql $db "mutate-$kind" (Join-Path $here "drift_$kind.sql")
     Invoke-Sql $db "reject-$kind" $migration 3
+    if ($kind -eq 'acl_null' -and -not (Select-String -LiteralPath (Join-Path $logs "$db-reject-$kind.log") `
+        -Pattern 'PET_SOURCE_OR_ACL_DRIFT' -Quiet)) { throw 'NULL ACL rejected for the wrong reason' }
+    if ($kind -eq 'overload' -and -not (Select-String -LiteralPath (Join-Path $logs "$db-reject-$kind.log") `
+        -Pattern 'PET_FUNCTION_OVERLOAD_DRIFT' -Quiet)) { throw 'overload rejected for the wrong reason' }
     $check = & "$bin/psql.exe" -X -At -h 127.0.0.1 -p $Port -U postgres -d $db `
       -c "select to_regclass('app_private.adventure_pet_rollout') is null"
     if ($LASTEXITCODE -ne 0 -or $check -ne 't') { throw "drift $kind mutated schema" }
@@ -93,8 +98,9 @@ try {
   if (Test-Path -LiteralPath (Join-Path $data 'postmaster.pid')) {
     & "$bin/pg_ctl.exe" -D $data stop -m fast -w
     Write-Output "pg_ctl_stop_exit=$LASTEXITCODE"
+    if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL teardown failed' }
     & "$bin/pg_isready.exe" -h 127.0.0.1 -p $Port -U postgres -d postgres
     Write-Output "pg_isready_after_stop_exit=$LASTEXITCODE"
-    if ($LASTEXITCODE -eq 0) { throw "listener remains on $Port" }
+    if ($LASTEXITCODE -ne 2) { throw "unexpected listener state on $Port exit=$LASTEXITCODE" }
   } elseif ($started) { throw "cluster lost postmaster.pid: $data" }
 }
