@@ -1,0 +1,13 @@
+INSERT INTO auth.users(id) VALUES
+  ('a0000000-0000-0000-0000-000000000100'),
+  ('a0000000-0000-0000-0000-000000000101');
+INSERT INTO public.profiles(user_id,level,starter_class) VALUES
+  ('a0000000-0000-0000-0000-000000000100',10,'guerreiro'),
+  ('a0000000-0000-0000-0000-000000000101',10,'guerreiro');
+INSERT INTO public.companions(id,user_id,companion_type,origin,name) VALUES
+  ('b0000000-0000-0000-0000-000000000100','a0000000-0000-0000-0000-000000000100','mini_kraken','shop','Kraken'),
+  ('b0000000-0000-0000-0000-000000000101','a0000000-0000-0000-0000-000000000101','mini_kraken','shop','Kraken'),
+  ('b0000000-0000-0000-0000-000000000102','a0000000-0000-0000-0000-000000000101','mini_leviata','shop','Leviata');
+INSERT INTO app_private.adventure_pet_allowlist(user_id) VALUES
+  ('a0000000-0000-0000-0000-000000000100'),
+  ('a0000000-0000-0000-0000-000000000101');
