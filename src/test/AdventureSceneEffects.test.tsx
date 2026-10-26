@@ -62,6 +62,31 @@ describe('AdventureScene effects', () => {
     expect(page.querySelector('.adventure-scene-fighters')?.textContent).not.toContain('Herói');
   });
 
+  it('attributes healing on an enemy attack to the hero after the attack', () => {
+    const page = renderScene({ id: 'enemy-regen', actor: 'enemy', kind: 'attack', damage: 4, healing: 6 }, 'guerreiro', false,
+      { ...baseFrame, heroHp: 92, animateAction: true });
+    const readout = page.querySelector('.adventure-action-strip')!;
+    expect(readout.textContent).toContain('Ataque básico do inimigo');
+    expect(readout.textContent).toContain('4 de dano');
+    expect(readout.textContent).toContain('+6 HP recuperado pelo herói após o ataque do inimigo');
+    expect(readout.textContent).not.toMatch(/kraken|pet/i);
+    expect(page.querySelector('[aria-label="Herói: 92 de 120 HP"]')).not.toBeNull();
+    expect(page.querySelector('.adventure-enemy-attack')).not.toBeNull();
+
+    renderScene({ id: 'enemy-skill-regen', actor: 'enemy', kind: 'skill', skillName: 'Rajada', damage: 2, healing: 6 });
+    expect(page.querySelector('.adventure-action-strip')?.textContent).toContain('+6 HP recuperado pelo herói após a habilidade do inimigo');
+  });
+
+  it('preserves the healing readout for a hero skill', () => {
+    const page = renderScene({ id: 'hero-heal', actor: 'hero', kind: 'skill', skillName: 'Prece Curativa',
+      skillType: 'heal', damage: 0, healing: 9 }, 'clerico');
+    const readout = page.querySelector('.adventure-action-strip')!;
+    expect(readout.textContent).toContain('Prece Curativa');
+    expect(readout.textContent).toContain('+9 HP curado');
+    expect(readout.textContent).not.toContain('após o ataque do inimigo');
+    expect(page.querySelector('.adventure-effect-self-support')).not.toBeNull();
+  });
+
   it('distinguishes all seven effects and basic class attacks from a cast', () => {
     const effects = ['physical', 'arcane', 'fire', 'ice', 'lightning', 'nature', 'light'] as const;
     for (const effect of effects) {
@@ -82,6 +107,9 @@ describe('AdventureScene effects', () => {
     const page = renderScene({ id: 'old', actor: 'hero', kind: 'attack', damage: 8, effect: 'physical' }, 'guerreiro', true, legacy);
     expect(page.querySelector('.adventure-resource-mp')).toBeNull();
     expect(page.querySelector('.adventure-action-strip')?.textContent).not.toContain('MP');
+    expect(page.querySelector('.adventure-action-strip')?.textContent).toContain('Ataque básico do herói');
+    expect(page.querySelector('.adventure-action-strip')?.textContent).toContain('8 de dano');
+    expect(page.querySelector('.adventure-action-strip')?.textContent).not.toContain('HP recuperado');
     expect(page.querySelector('.adventure-still')).not.toBeNull();
     expect(page.querySelector('[aria-label="Herói: 90 de 100 HP"]')).not.toBeNull();
   });
