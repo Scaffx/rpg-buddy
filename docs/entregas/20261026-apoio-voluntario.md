@@ -1,6 +1,6 @@
 # Acesso gratuito e apoio voluntário — frente pública
 
-Data: 2026-10-26  
+Data: 2026-10-26
 Base observada: `32c27d396519150f00ddbb8106aa62d1b08fb951` (`Scaffx/rpg-pets-integracao-20261026`)
 
 ## Alterações
