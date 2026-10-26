@@ -17,19 +17,44 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 15_000;
 
+function confirmedTokenExpiry(token: string): number | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const padded = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=');
+    const { exp } = JSON.parse(atob(padded)) as { exp?: unknown };
+    return typeof exp === 'number' && Number.isSafeInteger(exp) && exp > 0 && exp <= Number.MAX_SAFE_INTEGER / 1000
+      ? exp * 1000
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const retryAuth = useCallback(() => setRetryCount(count => count + 1), []);
+  const retryAuth = useCallback(() => {
+    setSession(null);
+    setUser(null);
+    setLoading(true);
+    setAuthError(false);
+    setRetryCount(count => count + 1);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
     let version = 0;
     let sawNonInitialEvent = false;
     let confirmationTimer: ReturnType<typeof setTimeout> | undefined;
+    let confirmedToken: string | null = null;
+    let confirmedUserId: string | null = null;
+    let confirmedExpiresAt: number | null = null;
+    let confirmedSession: Session | null = null;
+    let pendingConfirmation: { token: string; userId: string; version: number } | null = null;
 
     const isCurrent = (requestVersion: number) => mounted && version === requestVersion;
     const clearWatchdog = () => clearTimeout(confirmationTimer);
@@ -37,6 +62,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const acceptSession = (requestVersion: number, nextSession: Session | null, nextUser: User | null) => {
       if (!isCurrent(requestVersion)) return;
       clearWatchdog();
+      pendingConfirmation = null;
+      confirmedSession = nextSession;
+      confirmedToken = nextSession?.access_token ?? null;
+      confirmedUserId = nextUser?.id ?? null;
+      // Read exp only after getUser confirmed these exact token bytes.
+      confirmedExpiresAt = confirmedToken ? confirmedTokenExpiry(confirmedToken) : null;
       setSession(nextSession);
       setUser(nextUser);
       setAuthError(false);
@@ -47,6 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isCurrent(requestVersion)) return;
       clearWatchdog();
       version += 1; // A failed request must never restore access later.
+      pendingConfirmation = null;
+      confirmedSession = null;
+      confirmedToken = null;
+      confirmedUserId = null;
+      confirmedExpiresAt = null;
       // Do not sign out or touch stored credentials on a transient auth failure.
       setSession(null);
       setUser(null);
@@ -54,20 +90,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     };
 
-    const armWatchdog = (requestVersion: number) => {
+    const armWatchdog = (requestVersion: number, deadline = AUTH_BOOTSTRAP_TIMEOUT_MS) => {
       clearWatchdog();
-      confirmationTimer = setTimeout(() => failConfirmation(requestVersion), AUTH_BOOTSTRAP_TIMEOUT_MS);
+      confirmationTimer = setTimeout(() => failConfirmation(requestVersion), Math.min(AUTH_BOOTSTRAP_TIMEOUT_MS, deadline));
     };
 
-    const confirmSession = (candidate: Session, requestVersion: number, resetWatchdog: boolean) => {
+    const confirmSession = (candidate: Session, requestVersion: number, resetWatchdog: boolean, keepVisible = false) => {
       if (!isCurrent(requestVersion)) return;
-      // A session event may originate from storage. Hide its user until Auth
-      // confirms the token and identity, including on SIGNED_IN and refresh.
-      setSession(null);
-      setUser(null);
-      setAuthError(false);
-      setLoading(true);
-      if (resetWatchdog) armWatchdog(requestVersion);
+      const token = candidate.access_token;
+      const claimedUserId = candidate.user?.id;
+      if (!keepVisible) {
+        // A new session may originate from storage; hide it until Auth confirms it.
+        confirmedSession = null;
+        confirmedToken = null;
+        confirmedUserId = null;
+        confirmedExpiresAt = null;
+        setSession(null);
+        setUser(null);
+        setAuthError(false);
+        setLoading(true);
+      }
+      pendingConfirmation = token && claimedUserId ? { token, userId: claimedUserId, version: requestVersion } : null;
+      if (resetWatchdog) armWatchdog(requestVersion, keepVisible ? confirmedExpiresAt! - Date.now() : AUTH_BOOTSTRAP_TIMEOUT_MS);
 
       // GoTrue awaits its subscribers while holding the auth lock. Defer the
       // network request until the synchronous callback has returned.
@@ -75,8 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void (async () => {
           try {
             if (!isCurrent(requestVersion)) return;
-            const token = candidate.access_token;
-            const claimedUserId = candidate.user?.id;
             if (!token || !claimedUserId) throw new Error('Session identity is incomplete');
             const result = await supabase.auth.getUser(token);
             if (!isCurrent(requestVersion)) return;
@@ -85,7 +127,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!verifiedUser || verifiedUser.id !== claimedUserId) {
               throw new Error('Session user could not be confirmed');
             }
-            acceptSession(requestVersion, { ...candidate, user: verifiedUser }, verifiedUser);
+            const tokenExpiry = confirmedTokenExpiry(token);
+            if (tokenExpiry !== null && tokenExpiry <= Date.now()) {
+              throw new Error('Session token expired');
+            }
+            if (keepVisible && confirmedExpiresAt !== null && confirmedExpiresAt <= Date.now()) {
+              throw new Error('Confirmed session expired during revalidation');
+            }
+            const acceptedSession = keepVisible && confirmedSession ? confirmedSession : candidate;
+            acceptSession(requestVersion, { ...acceptedSession, user: verifiedUser }, verifiedUser);
           } catch {
             failConfirmation(requestVersion);
           }
@@ -95,6 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setAuthError(false);
     setLoading(true);
+    setSession(null);
+    setUser(null);
 
     // 0) No app, o retorno do OAuth chega por deep link. Registrar aqui garante
     //    que o listener exista antes de qualquer tela de login montar — se o
@@ -114,12 +166,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         sawNonInitialEvent = true;
       }
+      const token = nextSession?.access_token;
+      const claimedUserId = nextSession?.user?.id;
+      if (token && claimedUserId && pendingConfirmation?.version === version &&
+          pendingConfirmation.token === token && pendingConfirmation.userId === claimedUserId &&
+          (!confirmedToken || (confirmedExpiresAt !== null && confirmedExpiresAt > Date.now()))) {
+        // Focus can re-emit the same pending session. Keep its original deadline and result.
+        return;
+      }
+      const keepVisible = event === 'SIGNED_IN' && !!token && !!claimedUserId &&
+        token === confirmedToken && claimedUserId === confirmedUserId &&
+        confirmedExpiresAt !== null && confirmedExpiresAt > Date.now();
       const eventVersion = ++version;
       if (!nextSession) {
         acceptSession(eventVersion, null, null);
         return;
       }
-      confirmSession(nextSession, eventVersion, true);
+      confirmSession(nextSession, eventVersion, true, keepVisible);
     });
 
     // getSession reads storage; its user gets the same confirmation as events.
