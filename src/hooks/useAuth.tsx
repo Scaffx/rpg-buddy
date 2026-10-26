@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let version = 0;
     let sawNonInitialEvent = false;
     let confirmationTimer: ReturnType<typeof setTimeout> | undefined;
+    let expiryTimer: ReturnType<typeof setTimeout> | undefined;
     let confirmedToken: string | null = null;
     let confirmedUserId: string | null = null;
     let confirmedExpiresAt: number | null = null;
@@ -58,6 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isCurrent = (requestVersion: number) => mounted && version === requestVersion;
     const clearWatchdog = () => clearTimeout(confirmationTimer);
+    const watchConfirmedExpiry = () => {
+      clearTimeout(expiryTimer);
+      if (!confirmedToken || confirmedExpiresAt === null) return;
+      const remaining = confirmedExpiresAt - Date.now();
+      expiryTimer = setTimeout(() => {
+        if (!mounted) return;
+        if (confirmedExpiresAt !== null && confirmedExpiresAt <= Date.now()) {
+          failConfirmation(version);
+        } else {
+          watchConfirmedExpiry();
+        }
+      }, Math.max(0, Math.min(remaining, 2_147_483_647)));
+    };
 
     const acceptSession = (requestVersion: number, nextSession: Session | null, nextUser: User | null) => {
       if (!isCurrent(requestVersion)) return;
@@ -68,6 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       confirmedUserId = nextUser?.id ?? null;
       // Read exp only after getUser confirmed these exact token bytes.
       confirmedExpiresAt = confirmedToken ? confirmedTokenExpiry(confirmedToken) : null;
+      // Auth may retry refresh silently; expiry cannot depend on another event.
+      watchConfirmedExpiry();
       setSession(nextSession);
       setUser(nextUser);
       setAuthError(false);
@@ -78,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isCurrent(requestVersion)) return;
       clearWatchdog();
       version += 1; // A failed request must never restore access later.
+      clearTimeout(expiryTimer);
       pendingConfirmation = null;
       confirmedSession = null;
       confirmedToken = null;
@@ -105,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         confirmedToken = null;
         confirmedUserId = null;
         confirmedExpiresAt = null;
+        clearTimeout(expiryTimer);
         setSession(null);
         setUser(null);
         setAuthError(false);
@@ -206,6 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
       clearWatchdog();
+      clearTimeout(expiryTimer);
       subscription.unsubscribe();
     };
   }, [retryCount]);
