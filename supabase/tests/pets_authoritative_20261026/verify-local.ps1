@@ -71,7 +71,7 @@ try {
   $started = $true
   Invoke-Sql $base 'live-identity-fixture' (Join-Path $here 'live_identity_fixture.sql')
   foreach ($name in @('pets_positive','pets_drift_body','pets_drift_trigger',
-    'pets_drift_acl','pets_drift_acl_null','pets_drift_overload',
+    'pets_drift_acl','pets_drift_acl_null','pets_drift_overload','pets_drift_role_membership',
     'pets_drift_columns','pets_drift_owner')) { Create-Clone $name }
   Invoke-Sql 'pets_positive' 'migration' $migration
   foreach ($name in @('assert','identity_guard','matrix','offline','magic_legacy')) {
@@ -92,6 +92,21 @@ try {
     $check = & "$bin/psql.exe" -X -At -h 127.0.0.1 -p $Port -U postgres -d $db `
       -c "select to_regclass('app_private.adventure_pet_rollout') is null"
     if ($LASTEXITCODE -ne 0 -or $check -ne 't') { throw "drift $kind mutated schema" }
+  }
+  # Role membership is cluster-wide. Run it last and always restore it.
+  try {
+    Invoke-Sql 'pets_drift_role_membership' 'mutate-role-membership' (Join-Path $here 'drift_role_membership.sql')
+    Invoke-Sql 'pets_drift_role_membership' 'reject-role-membership' $migration 3
+    if (-not (Select-String -LiteralPath (Join-Path $logs 'pets_drift_role_membership-reject-role-membership.log') `
+        -Pattern 'PET_SOURCE_OR_ACL_DRIFT' -Quiet)) { throw 'effective ACL rejected for the wrong reason' }
+    $check = & "$bin/psql.exe" -X -At -h 127.0.0.1 -p $Port -U postgres -d pets_drift_role_membership `
+      -v ON_ERROR_STOP=1 -c "select to_regclass('app_private.adventure_pet_rollout') is null"
+    if ($LASTEXITCODE -ne 0 -or $check -ne 't') { throw 'effective ACL drift mutated schema' }
+  } finally {
+    Invoke-Sql 'postgres' 'restore-role-membership' (Join-Path $here 'restore_role_membership.sql')
+    $member = & "$bin/psql.exe" -X -At -h 127.0.0.1 -p $Port -U postgres -d postgres `
+      -v ON_ERROR_STOP=1 -c "select pg_has_role('anon','authenticated','member')"
+    if ($LASTEXITCODE -ne 0 -or $member -ne 'f') { throw 'role membership cleanup failed' }
   }
   Write-Output "PETS_LOCAL_PASS port=$Port database=pets_positive logs=$logs"
 } finally {

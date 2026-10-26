@@ -9,19 +9,25 @@ DO $preflight$
 DECLARE v_bad text;
 BEGIN
   SELECT e.signature INTO v_bad FROM (VALUES
-    ('app_private.sync_auto_adventure()', '59914430e3b78e96f69deaf770f82910', true, 'v', '{postgres=X/postgres,authenticated=X/postgres}'),
-    ('app_private.advance_auto_adventure(uuid)', '09c5c400405def35917f1c63e4f58ac8', true, 'v', '{postgres=X/postgres,authenticated=X/postgres}'),
-    ('app_private.adventure_simulate_v3(timestamptz,integer,integer,integer,integer,integer,integer,jsonb,jsonb,text,integer)', '0f5ed37992ae1f5d91c181ca2b93e2f7', false, 's', '{postgres=X/postgres}'),
-    ('app_private.adventure_battle_payload(app_private.adventure_battles,timestamptz)', '25fb3388b1cefaa4cb00ae45640d428b', true, 's', '{postgres=X/postgres}'),
-    ('public.buy_pet(text)', '060c6f10eef481e35fb7b31dc2d1a23b', true, 'v', '{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}'),
-    ('public.choose_level3_companion(text,text)', '1a2a9f9cf7bbedd1136cd018d2428f4d', true, 'v', '{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}'),
-    ('public._guard_inventory_forage_pet()', '423398434368af62d442377478d76e15', false, 'v', '{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}'),
-    ('public._record_inventory_forage_pet()', '418e2bcbf2f841562d70d15429fc9410', false, 'v', '{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}')
-  ) e(signature,body_md5,security_definer,volatility,acl)
+    ('app_private.sync_auto_adventure()', '59914430e3b78e96f69deaf770f82910', true, 'v', '{postgres=X/postgres,authenticated=X/postgres}', false,true,false,true,false),
+    ('app_private.advance_auto_adventure(uuid)', '09c5c400405def35917f1c63e4f58ac8', true, 'v', '{postgres=X/postgres,authenticated=X/postgres}', false,true,false,true,false),
+    ('app_private.adventure_simulate_v3(timestamptz,integer,integer,integer,integer,integer,integer,jsonb,jsonb,text,integer)', '0f5ed37992ae1f5d91c181ca2b93e2f7', false, 's', '{postgres=X/postgres}', false,false,false,true,false),
+    ('app_private.adventure_battle_payload(app_private.adventure_battles,timestamptz)', '25fb3388b1cefaa4cb00ae45640d428b', true, 's', '{postgres=X/postgres}', false,false,false,true,false),
+    ('public.buy_pet(text)', '060c6f10eef481e35fb7b31dc2d1a23b', true, 'v', '{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}', false,true,true,true,false),
+    ('public.choose_level3_companion(text,text)', '1a2a9f9cf7bbedd1136cd018d2428f4d', true, 'v', '{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}', false,true,true,true,false),
+    ('public._guard_inventory_forage_pet()', '423398434368af62d442377478d76e15', false, 'v', '{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}', true,true,true,true,true),
+    ('public._record_inventory_forage_pet()', '418e2bcbf2f841562d70d15429fc9410', false, 'v', '{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}', true,true,true,true,true)
+  ) e(signature,body_md5,security_definer,volatility,acl,anon_execute,auth_execute,service_execute,owner_execute,public_execute)
   LEFT JOIN pg_proc p ON p.oid=to_regprocedure(e.signature)
   WHERE p.oid IS NULL OR md5(replace(pg_get_functiondef(p.oid),chr(13)||chr(10),chr(10)))<>e.body_md5
      OR p.proowner<>'postgres'::regrole OR p.prosecdef<>e.security_definer
      OR p.provolatile<>e.volatility::"char" OR p.proacl::text IS DISTINCT FROM e.acl
+     OR has_function_privilege('anon',p.oid,'EXECUTE') IS DISTINCT FROM e.anon_execute
+     OR has_function_privilege('authenticated',p.oid,'EXECUTE') IS DISTINCT FROM e.auth_execute
+     OR has_function_privilege('service_role',p.oid,'EXECUTE') IS DISTINCT FROM e.service_execute
+     OR has_function_privilege('postgres',p.oid,'EXECUTE') IS DISTINCT FROM e.owner_execute
+     OR EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+       WHERE a.grantee=0 AND a.privilege_type='EXECUTE') IS DISTINCT FROM e.public_execute
   LIMIT 1;
   IF v_bad IS NOT NULL THEN RAISE EXCEPTION 'PET_SOURCE_OR_ACL_DRIFT: %',v_bad USING ERRCODE='22023'; END IF;
   -- CREATE OR REPLACE would leave a pre-existing overload callable, and a
