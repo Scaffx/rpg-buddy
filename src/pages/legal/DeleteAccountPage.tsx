@@ -7,7 +7,7 @@ import { LegalLayout } from "@/components/LegalLayout";
  */
 export default function DeleteAccountPage() {
   return (
-    <LegalLayout title="Excluir sua conta / Delete your account" lastUpdated="2026-07-30">
+    <LegalLayout title="Excluir sua conta / Delete your account" lastUpdated="2026-10-26">
       <p>
         Esta página explica como excluir sua conta do <strong>LifeOnRPG</strong> e quais dados
         são apagados.
@@ -67,7 +67,7 @@ export default function DeleteAccountPage() {
         </li>
         <li>Fotos de progresso e avatar.</li>
         <li>Amizades, mensagens trocadas, bloqueios e denúncias que você enviou.</li>
-        <li>Assinatura e identificadores do provedor de pagamento.</li>
+        <li>Identificadores de assinatura anterior ligados à conta, sujeitos às retenções legais abaixo.</li>
       </ul>
 
       <h2>4. O que pode permanecer / What may remain</h2>
@@ -84,10 +84,12 @@ export default function DeleteAccountPage() {
         </em>
       </p>
 
-      <h2>5. Cancelar a assinatura / Canceling your subscription</h2>
+      <h2>5. Cobranças anteriores / Previous billing</h2>
       <p>
-        Excluir a conta encerra seu acesso, mas cancele a assinatura na loja onde ela foi
-        contratada para garantir que não haja nova cobrança.
+        O acesso atual é gratuito. Se você contratou uma assinatura antes, confira o status com
+        o provedor indicado no comprovante. Excluir sua conta não cancela automaticamente uma
+        cobrança externa nem gera reembolso; para ajuda, escreva para{" "}
+        <a href="mailto:support@lifeonrpg.app">support@lifeonrpg.app</a>.
       </p>
 
       <h2>6. Dúvidas / Questions</h2>

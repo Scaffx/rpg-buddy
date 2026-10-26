@@ -1,0 +1,1 @@
+ALTER TABLE public.companions ALTER COLUMN name DROP NOT NULL;

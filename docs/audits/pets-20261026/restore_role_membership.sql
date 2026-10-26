@@ -1,0 +1,1 @@
+REVOKE authenticated FROM anon;

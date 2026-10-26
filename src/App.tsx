@@ -7,7 +7,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { useSubscription } from "@/hooks/useSubscription";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useClickSound } from "@/hooks/useClickSound";
 import { ShortRestStatusProvider } from "@/hooks/useShortRestStatus";
@@ -82,25 +81,25 @@ function AuthRecovery({ onRetry }: { onRetry: () => void }) {
 function ProtectedRoute({
   children,
   bypassOnboarding = false,
-  bypassSubscription = false,
+  requireAdmin = false,
 }: {
   children: React.ReactNode;
   bypassOnboarding?: boolean;
-  bypassSubscription?: boolean;
+  requireAdmin?: boolean;
 }) {
   const { user, loading, authError, retryAuth } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { isActive, isLoading: subscriptionLoading } = useSubscription();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
 
   if (authError) return <AuthRecovery onRetry={retryAuth} />;
-  if (loading || profileLoading || subscriptionLoading || adminLoading) {
+  if (loading || profileLoading || (requireAdmin && adminLoading)) {
     return (
       <LifeonRPGSplash fullscreen label="abrindo o portal" />
     );
   }
   // Visitantes deslogados vão pra Landing pública (raiz "/" passa a mostrar Landing).
   if (!user) return <Navigate to="/landing" replace />;
+  if (requireAdmin && !isAdmin) return <Navigate to="/" replace />;
 
   // Se o perfil não existe no banco (trigger falhou ou usuário migrado sem recovery),
   // redireciona para onboarding independente do localStorage.
@@ -110,12 +109,6 @@ function ProtectedRoute({
   // Verifica banco primeiro, fallback para localStorage (caso a migration não tenha sido aplicada)
   const onboardingDone = hasCompletedOnboarding((profile as Record<string, unknown> | null), user.id);
   if (!bypassOnboarding && !onboardingDone) return <Navigate to="/onboarding" replace />;
-
-  // Enforce de assinatura: após trial/vencimento, redireciona para Landing com paywall.
-  // Admins do sistema (app_metadata.role = 'admin') ficam isentos para poder operar o painel.
-  if (!bypassSubscription && !isActive && !isAdmin) {
-    return <Navigate to="/landing" replace />;
-  }
 
   return <>{children}</>;
 }
@@ -133,19 +126,15 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 function LandingRoute() {
-  // Landing pública: visitantes e usuários com assinatura expirada veem o pitch.
-  // Usuários com assinatura ativa vão direto pro app.
+  // A Landing é pública; qualquer conta autenticada entra no app.
   const { user, loading, authError, retryAuth } = useAuth();
-  const { isActive, isLoading: subLoading } = useSubscription();
   if (authError) return <AuthRecovery onRetry={retryAuth} />;
-  if (loading || (user && subLoading)) {
+  if (loading) {
     return (
       <LifeonRPGSplash fullscreen label="abrindo o portal" />
     );
   }
-  // Usuário ativo → manda pro dashboard
-  if (user && isActive) return <Navigate to="/" replace />;
-  // Expirado ou visitante → mostra Landing (com paywall modal para expirados)
+  if (user) return <Navigate to="/" replace />;
   return <Landing />;
 }
 
@@ -191,7 +180,7 @@ function AppRoutes() {
         <Route
           path="/admin/releases"
           element={
-            <ProtectedRoute bypassOnboarding bypassSubscription>
+            <ProtectedRoute bypassOnboarding requireAdmin>
               <ReleasesAdminPage />
             </ProtectedRoute>
           }

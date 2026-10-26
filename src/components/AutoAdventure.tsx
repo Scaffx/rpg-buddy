@@ -8,6 +8,9 @@ import { useTranslation } from 'react-i18next';
 import { AdventureScene, type AdventureSceneAction, type AdventureSceneFrame } from './adventure/AdventureScene';
 import { AdventureHoldNotice } from './adventure/AdventureHoldNotice';
 import { adventureBiome, adventureHeroClass } from '@/lib/adventureVisuals';
+import { useActivePet } from '@/hooks/useActivePet';
+import { AdventurePetPanel } from './AdventurePetPanel';
+import type { AdventurePetSnapshot } from '@/lib/autoAdventurePayload';
 
 type BattleEvent = {
   at: string; actor: 'hero' | 'enemy'; kind: 'attack' | 'skill'; damage: number;
@@ -26,6 +29,7 @@ type LiveBattle = {
   enemy_mp?: number | null; enemy_max_mp?: number | null;
   enemy_name: string; enemy_icon: string | null; boss_id: string | null;
   events: BattleEvent[]; biome?: string | null;
+  pet?: AdventurePetSnapshot | null;
 };
 type Catchup = { battles: number; wins: number; draws?: number; defeats?: number; retreats?: number; gold: number; items: string[]; defeated?: boolean; pending: boolean; from_stage?: number | null; to_stage?: number | null };
 function isDraw(encounter: { status?: string; end_reason?: string | null }) {
@@ -59,6 +63,7 @@ function useServerClock(serverNow?: string, dataUpdatedAt?: number, active = fal
 
 export default function AutoAdventure() {
   const adventureQuery = useAutoAdventure({ background: true });
+  const adventurePet = useActivePet();
   const advanceMutation = useAdvanceAutoAdventure();
   const { data, dataUpdatedAt, isLoading, isFetching, error, refetch } = adventureQuery;
   const { data: profile } = useProfile();
@@ -228,6 +233,7 @@ export default function AutoAdventure() {
         <span className="min-w-0 break-words">{heroName} enfrenta {enemyName}</span>
         {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
       </div>}
+      {!recovering && <AdventurePetPanel battlePet={battle?.pet} selection={adventurePet.state} selectionLoading={adventurePet.isLoading} selectionError={Boolean(adventurePet.error)} />}
       {mode === 'holding' && <AdventureHoldNotice stage={holdingStage} advanceToStage={holdingStage + 1} retreatedFromStage={data.encounters.find(encounter => !encounter.won && !isDraw(encounter) && encounter.stage === holdingStage + 1)?.stage} pending={advanceMutation.isPending} accepted={Boolean(advanceRequested || (currentBattle && acceptedBattleId === currentBattle.id))} canAdvance={canRequestAdvance} error={advanceMutation.isError && attemptedBattleId.current === currentBattle?.id} onAdvance={() => void advance()} />}
       <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Alterações em equipamentos e habilidades passam a valer na próxima luta iniciada. Cada vitória dá ouro; itens diretos seguem um intervalo e limite diário. Rotinas concluídas dão XP e atributos.</p>
     </div>

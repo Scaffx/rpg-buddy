@@ -2,7 +2,7 @@ import { LegalLayout } from "@/components/LegalLayout";
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Notice / Política de Privacidade" lastUpdated="2026-04-27">
+    <LegalLayout title="Privacy Notice / Política de Privacidade" lastUpdated="2026-10-26">
       <p>
         This Privacy Notice explains how <strong>Murillo Gabrie Scaff</strong> ("we", "us",
         "Seller") collects, uses, and protects your personal data when you use the LifeOnRPG
@@ -40,9 +40,9 @@ export default function PrivacyPage() {
           <strong>Support communications:</strong> messages you send to us via email.
         </li>
         <li>
-          <strong>Payment-related identifiers:</strong> we receive subscription status and a
-          payment customer/subscription identifier from our payment provider; we do not store full
-          card numbers or banking credentials.
+          <strong>Previous payment-related identifiers:</strong> for earlier subscriptions, we may
+          retain payment status and customer/subscription identifiers needed to review past charges
+          or meet legal obligations. We do not store full card numbers or banking credentials.
         </li>
       </ul>
 
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
       <ul>
         <li>To create and manage your account and authenticate access.</li>
         <li>To provide the Service's features (missions, attributes, ranking, analytics).</li>
-        <li>To process subscriptions, manage trials, and grant or revoke access to paid features.</li>
+        <li>To review earlier charges, respond to billing requests, and meet legal obligations.</li>
         <li>To detect, prevent, and respond to fraud, abuse, or security incidents.</li>
         <li>To improve and stabilize the Service through anonymous error metrics.</li>
         <li>To respond to your support requests.</li>
@@ -60,8 +60,8 @@ export default function PrivacyPage() {
       <h2>3. Legal Basis / Base Legal</h2>
       <ul>
         <li>
-          <strong>Performance of a contract:</strong> for account, subscription, and core
-          functionality.
+          <strong>Performance of a contract:</strong> for account access and core functionality,
+          and where relevant to resolve earlier purchases.
         </li>
         <li>
           <strong>Legitimate interests:</strong> for security, fraud prevention, service
@@ -86,10 +86,9 @@ export default function PrivacyPage() {
           instructions.
         </li>
         <li>
-          <strong>Payment provider (Merchant of Record):</strong> Paddle.com, which acts as
-          reseller and Merchant of Record for all paid subscriptions, handling checkout, billing,
-          tax compliance, invoicing, subscription management, and refunds. Paddle processes payment
-          data under its own privacy notice:{" "}
+          <strong>Previous payment provider:</strong> Paddle.com handled earlier subscription
+          transactions. Its records may be relevant to past billing and refund requests. Paddle
+          processes payment data under its own privacy notice:{" "}
           <a href="https://www.paddle.com/legal/privacy" target="_blank" rel="noreferrer">
             paddle.com/legal/privacy
           </a>
@@ -108,7 +107,8 @@ export default function PrivacyPage() {
 
       <h2>5. International Transfers / Transferências Internacionais</h2>
       <p>
-        Some of our service providers (including Paddle and our hosting provider) may process data
+        Some of our service providers (including our hosting provider and, for historical payments,
+        Paddle) may process data
         outside your country of residence, including in the United States and the European Union.
         When this happens, we rely on appropriate safeguards such as Standard Contractual Clauses
         or equivalent mechanisms recognized by applicable data protection law.

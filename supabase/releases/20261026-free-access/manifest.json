@@ -1,0 +1,42 @@
+{
+  "release": "20261026-free-access",
+  "project_id": "jfnospjxdkelxlhcwuia",
+  "source": "LIVE downloads archived with canonical LF line endings and a trailing newline; processar_turno patched from LIVE v34, ai-chat and generate-npc-challenges patched from repository HEAD for contract preservation",
+  "base_git_sha": "32c27d396519150f00ddbb8106aa62d1b08fb951",
+  "deployed": false,
+  "functions": {
+    "processar_turno": {
+      "live_version": 34,
+      "verify_jwt": true,
+      "live_file": "processar_turno.live.ts",
+      "live_sha256": "6943cd24afe689cf8fb6f4b39f9a29eeb546cedfd773c38f0f2755c3cc44feba",
+      "base_file": "processar_turno.live.ts",
+      "base_sha256": "6943cd24afe689cf8fb6f4b39f9a29eeb546cedfd773c38f0f2755c3cc44feba",
+      "patched_file": "processar_turno.patched.ts",
+      "patched_sha256": "8fe4a241bb9bd8cd35ccf0711edfba946ffba3176409b10a41449cf8380ec67e",
+      "working_file": "supabase/functions/processar_turno/index.ts"
+    },
+    "ai-chat": {
+      "live_version": 19,
+      "verify_jwt": true,
+      "live_file": "ai-chat.live.ts",
+      "live_sha256": "1fb468f03786d95bb4450399db964ccd7d0fe88cf70cec0e9a09a11ea403dfd2",
+      "base_file": "ai-chat.head.ts",
+      "base_sha256": "1fb468f03786d95bb4450399db964ccd7d0fe88cf70cec0e9a09a11ea403dfd2",
+      "patched_file": "ai-chat.patched.ts",
+      "patched_sha256": "0965931982b2fde889e8efe04e379cd9e102b14657dcbe24d90332b0a3955da9",
+      "working_file": "supabase/functions/ai-chat/index.ts"
+    },
+    "generate-npc-challenges": {
+      "live_version": 9,
+      "verify_jwt": false,
+      "live_file": "generate-npc-challenges.live.ts",
+      "live_sha256": "050744ec5f239cb97d6a1d5f4bb23510b14432ea58cadea0935968c958b118ee",
+      "base_file": "generate-npc-challenges.head.ts",
+      "base_sha256": "4ef41093ddf5c7f240aef9a112df9bb97e4d9b088eb53381db8ad6fc1801fa2a",
+      "patched_file": "generate-npc-challenges.patched.ts",
+      "patched_sha256": "27b18dd8354da0718d46199341d6374efa9ad37d089e133e0b587a706efcb327",
+      "working_file": "supabase/functions/generate-npc-challenges/index.ts"
+    }
+  }
+}

@@ -10,7 +10,6 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GOOGLE_AI_KEY = Deno.env.get("GOOGLE_AI_KEY");
-const SUBSCRIPTION_ENV = Deno.env.get("PADDLE_ENVIRONMENT") === "sandbox" ? "sandbox" : "live";
 
 const NPC_DEFINITIONS = [
   {
@@ -120,23 +119,6 @@ function extractJsonObject(text: string) {
   }
 
   return JSON.parse(text.slice(start, end + 1));
-}
-
-async function ensureActiveSubscriptionOrThrow(supabase: ReturnType<typeof createClient>, userId: string) {
-  const { data, error } = await supabase.rpc("has_active_subscription", {
-    user_uuid: userId,
-    check_env: SUBSCRIPTION_ENV,
-  });
-
-  if (error) {
-    throw new Error(`Falha ao validar assinatura: ${error.message}`);
-  }
-
-  if (!data) {
-    const err = new Error("Assinatura inativa. Assine para continuar.");
-    (err as Error & { code?: string }).code = "PAYWALL_LOCKED";
-    throw err;
-  }
 }
 
 function buildFallbackChallenges(weekToken: string, rewardItems: RewardItem[]): GeneratedChallenge[] {
@@ -350,10 +332,11 @@ serve(async (req) => {
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData?.user?.id;
     if (!userId) {
-      throw new Error("Usuário inválido.");
+      return new Response(JSON.stringify({ error: "Usuário inválido." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-
-    await ensureActiveSubscriptionOrThrow(supabase, userId);
 
     const body = await req.json().catch(() => ({}));
     const weekToken = typeof body?.weekToken === "string" && body.weekToken.trim() ? body.weekToken.trim() : new Date().toISOString().slice(0, 10);
@@ -458,12 +441,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    if (error instanceof Error && (error as Error & { code?: string }).code === "PAYWALL_LOCKED") {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 402,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
     const message = error instanceof Error ? error.message : "Erro interno ao gerar desafios NPC.";
     return new Response(JSON.stringify({ error: message }), {
       status: 500,

@@ -5,14 +5,14 @@
     "language": "Idioma"
   },
   "hero": {
-    "badge": "v1.9 disponível · Assine agora",
+    "badge": "Acesso gratuito",
     "title_part1": "Transforme cada hábito em",
     "title_highlight": "XP real",
     "subtitle_main": "Beba água, treine, estude, durma cedo, e veja seu personagem evoluir, dropar loot e enfrentar bosses.",
     "subtitle_strong": "Disciplina virou aventura.",
     "cta_signup": "Começar agora",
     "cta_login": "Já tenho conta",
-    "perk_trial": "7 dias grátis",
+    "perk_trial": "Acesso gratuito",
     "perk_apk": "Funciona no navegador",
     "perk_bosses": "60 bosses"
   },
@@ -90,10 +90,10 @@
     "title": "O que chegou nesta versão.",
     "subtitle": "Atualizações que transformam sua experiência no LifeOnRPG — já disponíveis na sua conta.",
     "items": {
-      "premium_title": "Premium ao vivo",
-      "premium_text": "Assine pelo próprio app. Plano mensal ou anual, com pagamento seguro em moeda local.",
-      "gift_title": "Chave de presente",
-      "gift_text": "Quem assina o plano anual recebe 2 meses de presente para dar a um amigo. Resgate no seu perfil.",
+      "premium_title": "Código público",
+      "premium_text": "Explore o código público do projeto no GitHub e contribua se quiser.",
+      "gift_title": "Acesso gratuito",
+      "gift_text": "Crie uma conta e jogue sem assinatura nem período de teste.",
       "battle_title": "Histórico de batalha",
       "battle_text": "Veja os rounds, rolagem de dados e dano sofrido/dado em cada combate no Dungeon.",
       "store_title": "Play Store em breve",
@@ -270,7 +270,7 @@
       "iphone_step_2": "Toque no botão Compartilhar",
       "iphone_step_3": "Escolha \"Adicionar à Tela de Início\"",
       "developer_title": "Versão de desenvolvedor",
-      "developer_desc": "O projeto usa Capacitor. Para compilar localmente: exporte para o GitHub, rode",
+      "developer_desc": "O código do projeto é público no GitHub. Para compilar localmente, rode",
       "developer_and": "e",
       "faq_title": "Perguntas frequentes",
       "footer_note": "Versão Android • Atualizações verificadas automaticamente",
@@ -1008,7 +1008,7 @@
       "status_pending": "Pendente",
       "error_already_done": "Desafio já concluído esta semana.",
       "challenge_undone": "Desafio desfeito",
-      "error_subscription": "Assinatura necessária para conversar com NPCs."
+      "error_subscription": "A conversa com NPCs está indisponível no momento."
     },
     "priority": {
       "page_title": "Prioridades",
@@ -1811,42 +1811,17 @@
     "legal_privacy": "Privacidade",
     "legal_refund": "Reembolso"
   },
-  "pricing": {
-    "eyebrow": "Preço simples",
-    "title": "Acesso ao app, no plano que fizer sentido.",
-    "subtitle": "O valor de R$ 4,90/mês é para acessar o LifeOnRPG. Você pode pagar mensalmente ou contratar o anual direto.",
-    "price_currency": "R$",
-    "access_plan_title": "Plano de acesso ao LifeOnRPG",
-    "access_plan_subtitle": "Assinatura para usar o app completo, sem travas de recurso premium separado.",
-    "access_active": "Plano ativo",
-    "access_active_desc": "Seu acesso ao app está liberado e sua jornada continua normalmente.",
-    "region_note": "Preço equivalente em USD, EUR, GBP e mais — adaptado à sua região.",
-    "monthly": {
-      "name": "Plano mensal",
-      "badge": "Acesso mensal",
-      "price_amount": "4,90",
-      "price_period": "/mês",
-      "desc": "Pague mês a mês e mantenha acesso completo ao app.",
-      "cta": "Assinar plano mensal"
-    },
-    "annual": {
-      "name": "Plano anual",
-      "badge": "Melhor escolha",
-      "price_amount": "58,80",
-      "price_period": "/ano",
-      "desc": "Mesmo valor mensal de R$ 4,90, mas pago de uma vez no anual.",
-      "bonus": "Bônus do anual: 1 chave que libera 2 meses grátis para outro usuário.",
-      "cta": "Assinar plano anual"
-    },
-    "features": {
-      "f1": "Todos os 11 atributos e 55 classes",
-      "f2": "Sistema completo de missões diárias",
-      "f3": "60 bosses temáticos e ranking mundial",
-      "f4": "Loja do Tempo, conquistas e analytics",
-      "f5": "App Android (APK) com sincronização",
-      "f6": "1 chave bônus de 2 meses para presentear outro usuário"
-    },
-    "mor_note": "Pagamento processado por Paddle.com (Merchant of Record)."
+  "project_support": {
+    "title": "Acesso gratuito e apoio opcional",
+    "description": "Crie uma conta e use o LifeOnRPG gratuitamente. O projeto é open source sob licença MIT; você pode contribuir no GitHub.",
+    "code_cta": "Ver código-fonte (MIT)",
+    "donate_cta": "Fazer doação opcional",
+    "donations_preparing": "As doações estão em preparação. Você pode apoiar contribuindo com código.",
+    "no_perks": "Doações são opcionais e não dão bônus, acesso extra ou vantagem no jogo.",
+    "pix_label": "Doação opcional por Pix (chave aleatória)",
+    "pix_copy": "Copiar chave Pix",
+    "pix_copy_success": "Chave Pix copiada. Confira o destinatário no app do banco antes de enviar.",
+    "pix_copy_error": "Não foi possível copiar a chave Pix. Selecione e copie a chave acima manualmente."
   },
   "app_profile": {
     "physicalEvolutionTitle": "🏋️ EVOLUÇÃO FÍSICA",

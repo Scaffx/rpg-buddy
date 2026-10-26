@@ -3085,6 +3085,8 @@ export type Database = {
       set_talent_equipped: { Args: { p_talent_row_id: string; p_equipped: boolean }; Returns: Json }
       sync_auto_adventure: { Args: never; Returns: Json }
       advance_auto_adventure: { Args: { p_battle_id: string }; Returns: Json }
+      get_adventure_pet_state: { Args: never; Returns: Json }
+      set_active_adventure_pet: { Args: { p_companion_id: string | null }; Returns: Json }
       complete_portal_run:
         | {
             Args: {

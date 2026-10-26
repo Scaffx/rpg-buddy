@@ -1,4 +1,16 @@
 import type { Json } from '@/integrations/supabase/types';
+import type { PetBonus, SustainEffect } from '@/lib/pets';
+
+export type AdventurePetStats = { atk: number; def: number; hp: number; mp: number };
+export type AdventurePetSnapshot = {
+  companion_id: string;
+  companion_type: string;
+  name: string;
+  bonus: PetBonus;
+  sustain: SustainEffect | null;
+  base_stats: AdventurePetStats;
+  effective_stats: AdventurePetStats;
+};
 
 export type AdventureEncounter = {
   stage: number;
@@ -67,6 +79,7 @@ export type AdventureBattle = {
   engine_version?: string;
   enemy_resistances?: Record<string, number>;
   end_reason?: 'turn_limit' | null;
+  pet?: AdventurePetSnapshot | null;
 };
 
 export type AdventureSnapshot = {
@@ -172,6 +185,34 @@ function optionalResistances(value: Json | undefined): Record<string, number> | 
   return Object.fromEntries(Object.entries(row).map(([key, multiplier]) => [key, number(multiplier)]));
 }
 
+function petStats(value: Json | undefined): AdventurePetStats {
+  const row = object(value);
+  return { atk: number(row.atk), def: number(row.def), hp: number(row.hp), mp: number(row.mp) };
+}
+
+function optionalPet(value: Json | undefined): AdventurePetSnapshot | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const row = object(value);
+  const bonus = object(row.bonus);
+  if (!['atk', 'def', 'hp', 'mp'].includes(String(bonus.stat))) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  const pct = number(bonus.pct);
+  if (pct < 0 || pct > 1) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  let sustain: SustainEffect | null = null;
+  if (row.sustain !== null) {
+    const effect = object(row.sustain);
+    if (!['regen_hp', 'regen_mp', 'mp_cost'].includes(String(effect.kind))) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+    const sustainPct = number(effect.pct);
+    if (sustainPct < 0 || sustainPct > 1) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+    sustain = { kind: effect.kind as SustainEffect['kind'], pct: sustainPct };
+  }
+  return {
+    companion_id: string(row.companion_id), companion_type: string(row.companion_type),
+    name: string(row.name), bonus: { stat: bonus.stat as PetBonus['stat'], pct }, sustain,
+    base_stats: petStats(row.base_stats), effective_stats: petStats(row.effective_stats),
+  };
+}
+
 function attack(value: Json): AdventureAttack {
   const row = object(value);
   if (row.actor !== 'hero' && row.actor !== 'enemy') throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
@@ -216,6 +257,7 @@ function battle(value: Json): AdventureBattle {
     engine_version: row.engine_version === undefined ? undefined : string(row.engine_version),
     enemy_resistances: optionalResistances(row.enemy_resistances),
     end_reason: optionalEndReason(row.end_reason),
+    pet: optionalPet(row.pet),
   };
 }
 

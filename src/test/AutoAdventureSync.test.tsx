@@ -43,9 +43,9 @@ function ArenaObserver() {
   return <span onClick={acknowledgeSummary}>{data?.stage ?? 'waiting'}:{summary?.wins ?? 0}:{summary?.defeats ?? 0}</span>;
 }
 
-function AdvanceButton() {
+function AdvanceButton({ onAdvance }: { onAdvance: (completion: Promise<unknown>) => void }) {
   const advance = useAdvanceAutoAdventure();
-  return <button onClick={() => { void advance.mutateAsync({ battleId: 'battle-current' }); }}>advance</button>;
+  return <button onClick={() => onAdvance(advance.mutateAsync({ battleId: 'battle-current' }))}>advance</button>;
 }
 
 describe('authenticated shell adventure synchronization', () => {
@@ -99,13 +99,18 @@ describe('authenticated shell adventure synchronization', () => {
       .mockResolvedValueOnce({ data: { ...snapshot, stage: 3 }, error: null });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const invalidations = vi.spyOn(queryClient, 'invalidateQueries');
+    const advance = { completion: null as Promise<unknown> | null };
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
     await act(async () => root!.render(<QueryClientProvider client={queryClient}>
-      <ArenaObserver /><AdvanceButton />
+      <ArenaObserver /><AdvanceButton onAdvance={completion => { advance.completion = completion; }} />
     </QueryClientProvider>));
-    await act(async () => container!.querySelector('button')!.click());
+    await act(async () => {
+      container!.querySelector('button')!.click();
+      if (!advance.completion) throw new Error('AdvanceButton did not start the mutation');
+      await advance.completion;
+    });
     expect(state.rpc).toHaveBeenNthCalledWith(2, 'advance_auto_adventure', { p_battle_id: 'battle-current' });
     expect(container.textContent).toContain('3:0:0');
     expect(invalidations).toHaveBeenCalledWith({ queryKey: ['gold-balance', state.user.id] });

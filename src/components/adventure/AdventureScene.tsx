@@ -92,7 +92,7 @@ function ActionReadout({ action, heroAttack, announce = true }: { action: Advent
       {skill && action.effect && <span>{ELEMENT_NAMES[action.effect]}</span>}
       {skill && typeof action.mpCost === 'number' && <span>−{action.mpCost} MP</span>}
       {typeof action.damage === 'number' && (action.damage > 0 || !action.healing) && <span>{action.damage} de dano</span>}
-      {typeof action.healing === 'number' && action.healing > 0 && <span>+{action.healing} HP curado</span>}
+      {typeof action.healing === 'number' && action.healing > 0 && <span>{heroAttack ? `+${action.healing} HP curado` : `+${action.healing} HP recuperado pelo herói após ${skill ? 'a habilidade' : 'o ataque'} do inimigo`}</span>}
       {typeof action.rawDamage === 'number' && action.rawDamage > 0 && action.damageMultiplier !== 1 && <span>Antes dos efeitos: {action.rawDamage} de dano</span>}
       {typeof action.damageMultiplier === 'number' && action.damageMultiplier !== 1 && action.damageMultiplier > 0 && <span>Dano após efeitos: ×{action.damageMultiplier}</span>}
       {action.skillType && SKILL_TYPE_NAMES[action.skillType] && <span>{SKILL_TYPE_NAMES[action.skillType]}</span>}
