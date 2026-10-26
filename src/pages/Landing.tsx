@@ -1,7 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { useEffect, useState } from "react";
 import {
   Swords,
   Sparkles,
@@ -25,8 +24,7 @@ import {
   Zap,
   LogIn,
   UserPlus,
-  Check,
-  CreditCard,
+  Github,
   Gift,
   History,
   Store,
@@ -34,11 +32,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useLocalizedPricing } from "@/hooks/useLocalizedPricing";
-import { useAuth } from "@/hooks/useAuth";
-import { useSubscription } from "@/hooks/useSubscription";
-import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { ProjectSupport } from "@/components/ProjectSupport";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -54,16 +48,6 @@ const stagger = {
 export default function Landing() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { isActive, isLoading: subLoading } = useSubscription();
-  const { monthlyFormatted, annualFormatted, monthlyUsd, loading: pricingLoading } = useLocalizedPricing();
-
-  // Usuário logado com assinatura expirada → abre paywall automaticamente
-  const isExpiredUser = !!user && !subLoading && !isActive;
-  const [paywallOpen, setPaywallOpen] = useState(false);
-  useEffect(() => {
-    if (isExpiredUser) setPaywallOpen(true);
-  }, [isExpiredUser]);
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground overflow-x-hidden">
@@ -79,36 +63,23 @@ export default function Landing() {
 
           <div className="flex items-center gap-1 sm:gap-2">
             <LanguageSwitcher />
-            {isExpiredUser ? (
-              <Button
-                size="sm"
-                onClick={() => setPaywallOpen(true)}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)]"
-              >
-                <Crown className="w-4 h-4" />
-                <span className="hidden sm:inline">{t("pricing.monthly.cta")}</span>
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/auth")}
-                  className="hover:text-primary"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span className="hidden sm:inline">{t("nav.login")}</span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => navigate("/auth?mode=signup")}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)]"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span className="hidden sm:inline">{t("nav.signup")}</span>
-                </Button>
-              </>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/auth")}
+              className="hover:text-primary"
+            >
+              <LogIn className="w-4 h-4" />
+              <span className="hidden sm:inline">{t("nav.login")}</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => navigate("/auth?mode=signup")}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[var(--glow-gold)]"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span className="hidden sm:inline">{t("nav.signup")}</span>
+            </Button>
           </div>
         </div>
       </header>
@@ -256,7 +227,7 @@ export default function Landing() {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
           <WhatsNewCard
-            icon={<CreditCard className="w-6 h-6" />}
+            icon={<Github className="w-6 h-6" />}
             title={t("whats_new.items.premium_title")}
             text={t("whats_new.items.premium_text")}
             tag="v2.0"
@@ -299,107 +270,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ============== PRICING (público) ============== */}
-      <section id="pricing" className="py-20 px-4 md:px-8 max-w-6xl mx-auto">
-        <SectionHeader
-          eyebrow={t("pricing.eyebrow")}
-          title={t("pricing.title")}
-          subtitle={t("pricing.subtitle")}
-        />
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5 }}
-          className="mt-12 max-w-2xl mx-auto"
-        >
-          <div className="grid grid-cols-2 gap-4">
-            <div className="relative rounded-2xl border-2 border-primary/40 bg-card/70 backdrop-blur-sm p-5 shadow-[var(--glow-gold)] flex flex-col">
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground font-black tracking-wider px-3 py-0.5 whitespace-nowrap">
-                {t("pricing.monthly.badge").toUpperCase()}
-              </Badge>
-
-              <h3 className="font-[var(--font-display)] text-xl font-bold text-center mt-1 mb-1">
-                {t("pricing.monthly.name")}
-              </h3>
-
-              <div className="flex items-baseline justify-center gap-1 mt-2 mb-1">
-                <span className="text-4xl font-black text-primary font-[var(--font-display)]">
-                  {pricingLoading ? "..." : monthlyFormatted}
-                </span>
-                <span className="text-sm text-muted-foreground">{t("pricing.monthly.price_period")}</span>
-              </div>
-              <p className="text-xs text-muted-foreground text-center mb-3">
-                {t("pricing.monthly.desc")} • Base: USD {monthlyUsd.toFixed(2)}
-              </p>
-
-              <ul className="space-y-2 mb-4 flex-1">
-                {(["f1", "f2", "f3", "f4", "f5"] as const).map((key) => (
-                  <li key={key} className="flex items-start gap-2 text-xs">
-                    <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>{t(`pricing.features.${key}`)}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                size="sm"
-                onClick={() => navigate("/auth?mode=signup")}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
-              >
-                <UserPlus className="w-3 h-3" />
-                {t("pricing.monthly.cta")}
-              </Button>
-            </div>
-
-            <div className="relative rounded-2xl border-2 border-accent/40 bg-card/70 backdrop-blur-sm p-5 shadow-[0_0_40px_rgba(255,184,108,0.18)] flex flex-col">
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground font-black tracking-wider px-3 py-0.5 whitespace-nowrap">
-                {t("pricing.annual.badge").toUpperCase()}
-              </Badge>
-
-              <h3 className="font-[var(--font-display)] text-xl font-bold text-center mt-1 mb-1">
-                {t("pricing.annual.name")}
-              </h3>
-
-              <div className="flex items-baseline justify-center gap-1 mt-2 mb-1">
-                <span className="text-4xl font-black text-primary font-[var(--font-display)]">
-                  {pricingLoading ? "..." : annualFormatted}
-                </span>
-                <span className="text-sm text-muted-foreground">{t("pricing.annual.price_period")}</span>
-              </div>
-              <p className="text-xs text-muted-foreground text-center mb-1">{t("pricing.annual.desc")}</p>
-              <p className="text-xs text-accent text-center font-semibold mb-3">{t("pricing.annual.bonus")}</p>
-
-              <ul className="space-y-2 mb-4 flex-1">
-                {(["f1", "f2", "f3", "f4", "f5"] as const).map((key) => (
-                  <li key={key} className="flex items-start gap-2 text-xs">
-                    <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>{t(`pricing.features.${key}`)}</span>
-                  </li>
-                ))}
-                <li className="flex items-start gap-2 text-xs">
-                  <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                  <span>{t("pricing.features.f6")}</span>
-                </li>
-              </ul>
-
-              <Button
-                size="sm"
-                onClick={() => navigate("/auth?mode=signup")}
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold"
-              >
-                <UserPlus className="w-3 h-3" />
-                {t("pricing.annual.cta")}
-              </Button>
-            </div>
-          </div>
-
-          <p className="text-[11px] text-muted-foreground text-center mt-4 leading-relaxed">
-            {t("pricing.mor_note")}
-          </p>
-        </motion.div>
-      </section>
+      <ProjectSupport />
 
       {/* ============== MOBILE / PLAY STORE ============== */}
       <section id="download" className="py-24 px-4 md:px-8">
@@ -468,7 +339,7 @@ export default function Landing() {
             <div className="flex flex-wrap gap-4 justify-center">
               <Link to="/auth" className="hover:text-primary">{t("nav.login")}</Link>
               <Link to="/auth?mode=signup" className="hover:text-primary">{t("nav.signup")}</Link>
-              <a href="#pricing" className="hover:text-primary">{t("pricing.eyebrow")}</a>
+              <a href="#support" className="hover:text-primary">{t("project_support.title")}</a>
               <a href="#download" className="hover:text-primary">Mobile</a>
             </div>
           </div>
@@ -486,24 +357,12 @@ export default function Landing() {
               </Link>
             </div>
             <div className="text-center md:text-right">
-              © {new Date().getFullYear()} Murillo Gabrie Scaff · Powered by Paddle
+              © {new Date().getFullYear()} Murillo Gabrie Scaff
             </div>
           </div>
         </div>
       </footer>
 
-      {/* ============== PAYWALL MODAL (usuário expirado) ============== */}
-      <Dialog open={paywallOpen} onOpenChange={setPaywallOpen}>
-        <DialogContent className="max-w-2xl w-full bg-background border-primary/30">
-          <DialogHeader>
-            <DialogTitle className="font-[var(--font-display)] text-xl font-black flex items-center gap-2">
-              <Crown className="w-5 h-5 text-primary" />
-              {t("pricing.access_plan_title")}
-            </DialogTitle>
-          </DialogHeader>
-          <SubscriptionPaywall />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

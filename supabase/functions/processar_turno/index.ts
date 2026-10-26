@@ -1,7 +1,6 @@
 // @ts-nocheck
 // deno-lint-ignore-file
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-const SUBSCRIPTION_ENV = Deno.env.get('PADDLE_ENVIRONMENT') === 'sandbox' ? 'sandbox' : 'live';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -106,9 +105,7 @@ type SkillResolution = {
   reduceIncomingPct: number;
   slowBossPct: number;
   effects: string[];
-  /** Element (fogo/gelo/sagrado/trevas/natureza/agua/raio/neutro) inferred from name/id */
   element: SkillElement;
-  /** Magical skills bypass physical mitigations like stone_skin */
   isMagical: boolean;
 };
 
@@ -126,31 +123,22 @@ type BossSkillResolution = {
   damageMultiplier: number;
   effects: string[];
   kind: BossSkillKind;
-  /** % de dano físico do jogador a ser ignorado neste turno (0..1) */
   physicalResistPct: number;
-  /** % de dano TOTAL do jogador a ser reduzido neste turno (0..1) */
   damageReductionPct: number;
-  /** % de HP máximo do boss a ser regenerado neste turno (0..1) */
   selfHealPct: number;
-  /** % do dano final do boss reduzido por confusão/maldição que ele aplicou em si — não, isso é debuff no PLAYER */
-  /** % de redução do dano que o BOSS irá causar (boss enfraquece a si por focar em controle, 0..1) */
   bossDamageSelfPenaltyPct: number;
-  /** % de redução de dano causado PELO PLAYER no próximo ataque (debuff persistente, 0..1) */
   playerDamageDebuffPct: number;
 };
 
 type SkillElement = 'fogo' | 'gelo' | 'sagrado' | 'trevas' | 'natureza' | 'agua' | 'raio' | 'arcano' | 'neutro';
 
-// ── Status de combate (combos) — roadmap #4 ─────────────────────────────────
-// Persistidos em combates_ativos.boss_status entre turnos. Sistema ADITIVO:
-// com o objeto vazio o combate se comporta exatamente como antes.
 type CombatStatus = {
-  burning: number;    // turnos restantes de queimadura (DoT)
-  bleeding: number;   // stacks de sangramento (DoT que decai 1/turno)
-  poison: number;     // turnos de veneno (DoT — Gatuno/natureza)
-  wet: number;        // turnos de molhado (habilita combo de raio)
-  frozen: number;     // turnos congelado (boss perde o turno; físico estilhaça)
-  vulnerable: number; // turnos vulnerável (boss recebe +20% de dano)
+  burning: number;
+  bleeding: number;
+  poison: number;
+  wet: number;
+  frozen: number;
+  vulnerable: number;
 };
 
 const parseCombatStatus = (raw: unknown): CombatStatus => {
@@ -197,29 +185,11 @@ const toNumber = (value: unknown, fallback = 0): number => {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
 };
-const ensureActiveSubscriptionOrThrow = async (supabase: ReturnType<typeof createClient>, userId: string) => {
-  const { data, error } = await supabase.rpc('has_active_subscription', {
-    user_uuid: userId,
-    check_env: SUBSCRIPTION_ENV,
-  });
-
-  if (error) {
-    throw new Error(`Falha ao validar assinatura: ${error.message}`);
-  }
-
-  if (!data) {
-    const err = new Error('Assinatura inativa. Assine para continuar.');
-    (err as Error & { code?: string }).code = 'PAYWALL_LOCKED';
-    throw err;
-  }
-};
-
 const detectSkillElement = (text: string): SkillElement => {
   const t = text.toLowerCase();
   if (/fogo|chama|igni|brasa|inferno|piro|flamej|incendi/.test(t)) return 'fogo';
   if (/gelo|frio|neve|cristal|congel|crio|glaci/.test(t)) return 'gelo';
   if (/sagrad|santo|luz|raio sereno|divino|holy|cleric/.test(t)) return 'sagrado';
-  // Raio/eletricidade: depois de "sagrado" para não capturar "raio sereno" (clérigo).
   if (/rel[âa]mpago|trov[aã]o|eletr|choque|descarga|volt|fulmin|tesla/.test(t)) return 'raio';
   if (/trevas|sombra|escurid|abismo|necro|amaldi/.test(t)) return 'trevas';
   if (/natur|raiz|seiva|verde|floresta|veneno|toxic|peçonh/.test(t)) return 'natureza';
@@ -255,17 +225,13 @@ const buildPlayerSkillResolution = (body: ProcessarTurnoBody): SkillResolution =
   };
 };
 
-/** Detect boss skill kind from explicit effect tags + name keywords. */
 const resolveBossSkillKind = (name: string, explicitEffects: string[]): BossSkillKind => {
-  // Explicit tags win
   if (explicitEffects.includes('stone_skin') || explicitEffects.includes('pele_de_pedra')) return 'stone_skin';
   if (explicitEffects.includes('regen') || explicitEffects.includes('heal') || explicitEffects.includes('cura')) return 'regen';
   if (explicitEffects.includes('dark_curse') || explicitEffects.includes('curse')) return 'dark_curse';
   if (explicitEffects.includes('fire_aura') || explicitEffects.includes('fire_immune') || explicitEffects.includes('imunidade_fogo')) return 'fire_aura';
   if (explicitEffects.includes('slow')) return 'slow';
   if (explicitEffects.includes('damage_reduction')) return 'damage_reduction';
-
-  // Name heuristics
   const t = name.toLowerCase();
   if (/pele de pedra|pele.{0,3}pedra|granito|petrif|rocha viva/.test(t)) return 'stone_skin';
   if (/regener|cura|cicatriz|sangue vivo|drenar|absor.{0,4}vital|recuper/.test(t)) return 'regen';
@@ -296,7 +262,6 @@ const parseBossSkills = (raw: unknown): BossSkillResolution[] => {
   });
 };
 
-/** Build a fully-resolved BossSkillResolution given a kind. */
 const makeBossSkill = (
   name: string,
   damageMultiplier: number,
@@ -313,41 +278,34 @@ const makeBossSkill = (
 
   switch (kind) {
     case 'stone_skin':
-      // Pele de Pedra: aguenta o golpe físico, mas ataque sai mais fraco
       physicalResistPct = 0.6;
       damageReductionPct = 0.15;
-      bossDamageSelfPenaltyPct = 0.35; // boss focado em defender
+      bossDamageSelfPenaltyPct = 0.35;
       mult = Math.min(mult, 0.85);
       if (!effects.includes('stone_skin')) effects.push('stone_skin');
       break;
     case 'damage_reduction':
-      // Postura/Barreira/Escudo: reduz dano genérico
       damageReductionPct = 0.4;
       bossDamageSelfPenaltyPct = 0.25;
       mult = Math.min(mult, 0.9);
       if (!effects.includes('damage_reduction')) effects.push('damage_reduction');
       break;
     case 'regen':
-      // Boss se cura no turno em que usa
       selfHealPct = 0.08;
-      bossDamageSelfPenaltyPct = 0.4; // gasto de turno
+      bossDamageSelfPenaltyPct = 0.4;
       mult = Math.min(mult, 0.8);
       if (!effects.includes('regen')) effects.push('regen');
       break;
     case 'dark_curse':
-      // Maldição: enfraquece o próximo dano do jogador (debuff aplicado já neste turno)
       playerDamageDebuffPct = 0.35;
       bossDamageSelfPenaltyPct = 0.2;
       if (!effects.includes('dark_curse')) effects.push('dark_curse');
       break;
     case 'fire_aura':
-      // Aura/imunidade ao fogo: se for atacado por fogo NEGA o dano e ganha cura
-      // Esses efeitos são processados na execução, não aqui
-      mult = Math.max(mult, 1.1); // ataque com fogo
+      mult = Math.max(mult, 1.1);
       if (!effects.includes('fire_aura')) effects.push('fire_aura');
       break;
     case 'slow':
-      // Lentidão: efeito mantido como antes
       bossDamageSelfPenaltyPct = 0.1;
       if (!effects.includes('slow')) effects.push('slow');
       break;
@@ -397,9 +355,6 @@ const canBossUseItem = (boss: CombatRow['bosses'], item: BossItem | null): boole
 };
 
 // ── Resolução server-authoritative da skill (Bloco 3 — Cinzas/Pergaminhos) ───────
-// Lê power/element/cost do BANCO (nunca do body). Verifica posse (player_skill_nodes)
-// e, p/ Cinzas de Guerra, a arma exigida (elemento e/ou tipo) equipada. Lança erro
-// p/ skill não autorizada. Mantém paridade de escala-por-rank com o cliente.
 const resolvePlayerSkill = async (
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -408,7 +363,6 @@ const resolvePlayerSkill = async (
   const skillId = String(body.skill_id || '');
   const power0 = Math.max(0, toNumber(body.skill_power, 0));
 
-  // Arma equipada: afinidade do básico, gate de Cinza e arte inata
   const { data: invRows } = await supabase
     .from('user_inventory')
     .select('item_id, equipped, game_items(name, category, weapon_type, weapon_element, weapon_skill)')
@@ -419,12 +373,10 @@ const resolvePlayerSkill = async (
     .find((g: any) => g && g.category === 'weapon') || null;
   const weaponElement = String(weapon?.weapon_element || 'neutro');
 
-  // Ataque básico (sem skill paga): livre, elemento = afinidade da arma equipada
   if (!skillId || power0 <= 0) {
     return { power: 0, mpCost: 0, element: weaponElement, effectType: 'dano', name: 'Ataque Basico' };
   }
 
-  // (1) Skill da árvore / Cinza de Guerra (skill_id === skill_tree_nodes.id)
   const { data: node } = await supabase
     .from('skill_tree_nodes')
     .select('effect, requires_weapon_element, requires_weapon_type')
@@ -446,7 +398,7 @@ const resolvePlayerSkill = async (
     const rank = Math.max(1, toNumber((owned as any).rank, 1));
     const pct = toNumber(e.pct_per_rank, 10);
     const basePower = Math.max(0, toNumber(e.power, 0));
-    const power = Math.round(basePower * (1 + (rank - 1) * pct / 100)); // paridade c/ cliente
+    const power = Math.round(basePower * (1 + (rank - 1) * pct / 100));
     return {
       power,
       mpCost: Math.max(0, toNumber(e.mpCost, getSkillMpCost(power))),
@@ -456,7 +408,6 @@ const resolvePlayerSkill = async (
     };
   }
 
-  // (2) Arte INATA da arma equipada (skill_id 'weapon_…'; casa pelo nome do weapon_skill)
   const ws: any = weapon?.weapon_skill || null;
   if (ws && String(ws.name || '') === String(body.skill_name || '')) {
     const power = Math.max(0, toNumber(ws.power, 0));
@@ -469,7 +420,6 @@ const resolvePlayerSkill = async (
     };
   }
 
-  // Skill paga sem posse comprovada → rejeita (sem fallback silencioso)
   throw new Error('SKILL_NOT_AUTHORIZED');
 };
 
@@ -514,8 +464,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    await ensureActiveSubscriptionOrThrow(supabase, user.id);
-
     const body = (await req.json()) as ProcessarTurnoBody;
     const combateId = body.combate_id;
     const acaoEscolhida = body.acao_escolhida;
@@ -531,10 +479,6 @@ Deno.serve(async (req) => {
     const petSustain = await resolveActivePetSustain(supabase, user.id, body.active_pet_type);
 
     // ── Bloco 3: resolução server-authoritative da skill ──────────────────────────
-    // Lê power/element/cost do banco e VERIFICA posse + arma exigida. Sobrescreve o
-    // body com os valores reais; tudo downstream passa a usar valores confiáveis.
-    // (Saldo de MP ainda vem do body — débito/regen server-side é o fix #1, separado,
-    //  pois deduzir sem regen no servidor causaria death-spiral de mana.)
     let resolvedSkill;
     try {
       resolvedSkill = await resolvePlayerSkill(supabase, user.id, body);
@@ -550,8 +494,6 @@ Deno.serve(async (req) => {
     body.skill_effect_type = resolvedSkill.effectType as ProcessarTurnoBody['skill_effect_type'];
     body.skill_name = resolvedSkill.name;
 
-    // Server-side validation: bloquear habilidades pagas com custo de MP maior que o MP atual.
-    // O cliente envia current_mp; se ausente, assumimos custo 0 (Ataque Básico).
     const requestedSkillPower = Math.max(0, toNumber(body.skill_power, 0));
     const requestedSkillCost = body.skill_mp_cost !== undefined
       ? Math.max(0, toNumber(body.skill_mp_cost, 0))
@@ -635,8 +577,6 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // ── Passivos da Árvore de Combate (Fase 2a): agrega modificadores alocados. ──
-    // Aditivo: sem alocações, os mapas ficam vazios e o combate não muda.
     const treeMods = {
       elementDmg: {} as Record<string, number>,
       schoolDmg: {} as Record<string, number>,
@@ -723,7 +663,6 @@ Deno.serve(async (req) => {
     const effectiveBossDefense =
       combat.bosses.defesa_base + (bossItemEnabled ? Math.floor(toNumber(bossItem?.def_bonus, 0) * 0.5) : 0);
 
-    // ── Debuff: habilidade do jogador reduz defesa do boss temporariamente ──────────────────
     let debuffDefenseShred = 0;
     let actualBossDefense = effectiveBossDefense;
     if (isDebuffSkill && requestedSkillPower > 0) {
@@ -738,51 +677,41 @@ Deno.serve(async (req) => {
       actualBossDefense,
       2 * playerSkill.damageMultiplier,
     );
-    // #2-lite (1.0): guarda o dano-base p/ aplicar um TETO no empilhamento de multiplicadores adiante.
     const danoBase = danoPlayer;
 
-    // ── Boss MECHANICS APPLIED TO PLAYER DAMAGE ──────────────────────────
     const bossEffectLog: string[] = [...bossSkill.effects];
     let bossSelfHeal = 0;
     let elementalReaction: 'immune' | 'absorb' | 'weak' | null = null;
 
-    // 1) Pele de Pedra: bloqueia ~60% de dano FÍSICO (não-mágico)
     if (bossSkill.physicalResistPct > 0 && !playerSkill.isMagical) {
       const before = danoPlayer;
       danoPlayer = Math.max(1, Math.floor(danoPlayer * (1 - bossSkill.physicalResistPct)));
       bossEffectLog.push(`stone_skin_blocked:${before - danoPlayer}`);
     }
 
-    // 2) Damage reduction genérica (Postura/Barreira/Escudo)
     if (bossSkill.damageReductionPct > 0) {
       const before = danoPlayer;
       danoPlayer = Math.max(1, Math.floor(danoPlayer * (1 - bossSkill.damageReductionPct)));
       bossEffectLog.push(`reduced:${before - danoPlayer}`);
     }
 
-    // 3) Elemento: matchup de afinidade (boss.element vs playerSkill.element)
-    // #4 (1.0): normaliza acento + mapeia p/ canônico. O triângulo estava MORTO porque o banco
-    // guarda 'Água'/'Escuridão'/'Demônio' e a comparação usava ASCII ('agua'/'trevas'/'demonio').
     const _normEl = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
     const _bossElRaw = _normEl(String(combat.bosses?.element || ''));
     const bossElement = ({ escuridao: 'trevas', 'morto-vivo': 'morto', mortovivo: 'morto' } as Record<string, string>)[_bossElRaw] || _bossElRaw;
     const playerElement = playerSkill.element;
 
-    // Aura/Imunidade ao Fogo: nega dano se ataque é fogo + cura o boss
     if (bossSkill.kind === 'fire_aura' && playerElement === 'fogo') {
       bossSelfHeal += Math.floor(danoPlayer * 0.5);
       danoPlayer = 0;
       elementalReaction = 'absorb';
       bossEffectLog.push('fire_immune_absorbed');
     }
-    // Boss elemental absorvendo seu próprio elemento (e.g. boss "Fogo" recebe ataque de "fogo")
     else if (bossElement && playerElement !== 'neutro' && bossElement.includes(playerElement)) {
       const before = danoPlayer;
       danoPlayer = Math.max(0, Math.floor(danoPlayer * 0.5));
       elementalReaction = 'immune';
       bossEffectLog.push(`element_resist:${playerElement}:${before - danoPlayer}`);
     }
-    // Resistência específica (#2): terra aterra o raio; veneno absorve natureza (−50%).
     else if (
       (bossElement.includes('terra')  && playerElement === 'raio') ||
       (bossElement.includes('veneno') && playerElement === 'natureza')
@@ -792,8 +721,6 @@ Deno.serve(async (req) => {
       elementalReaction = 'immune';
       bossEffectLog.push(`element_resist:${playerElement}:${before - danoPlayer}`);
     }
-    // Fraqueza elemental: trevas/morto-vivo/demônio -> sagrado, fogo<->gelo, natureza/água -> ...,
-    // terra -> natureza/água (raízes/erosão), veneno -> fogo/sagrado (queima/purifica). (+50%)
     else if (
       (bossElement.includes('trevas') || bossElement.includes('morto') || bossElement.includes('demonio')) && playerElement === 'sagrado' ||
       bossElement.includes('fogo')  && playerElement === 'gelo' ||
@@ -810,7 +737,6 @@ Deno.serve(async (req) => {
       bossEffectLog.push(`element_weak:${playerElement}:+${danoPlayer - before}`);
     }
 
-    // ── Passivos da árvore: +% dano por ELEMENTO e por ESCOLA (físico/mágico) ──
     if (danoPlayer > 0) {
       const elPct = treeMods.elementDmg[playerElement] || 0;
       const schPct = treeMods.schoolDmg[playerSkill.isMagical ? 'magico' : 'fisico'] || 0;
@@ -818,9 +744,6 @@ Deno.serve(async (req) => {
       if (schPct > 0) { danoPlayer = Math.floor(danoPlayer * (1 + schPct / 100)); }
     }
 
-    // ── COMBOS / STATUS (roadmap #4) ───────────────────────────────────────────
-    // Aditivo: usa boss_status persistido. Status existentes ticam/exploram AGORA;
-    // novos status entram em vigor a partir do próximo turno.
     const incomingStatus = parseCombatStatus(combat.boss_status);
     const nextStatus: CombatStatus = { ...incomingStatus };
     const maxBossHp = Math.max(1, toNumber(combat.bosses?.hp, combat.hp_atual_boss));
@@ -828,7 +751,6 @@ Deno.serve(async (req) => {
     const isPhysicalSkill = !playerSkill.isMagical;
     const skillText = `${String(body.skill_id || '')} ${String(body.skill_name || '')}`.toLowerCase();
 
-    // (a) DoT de status pré-existentes (queimadura/sangramento) — dano garantido ao boss
     let dotDamage = 0;
     if (incomingStatus.burning > 0) {
       const d = Math.max(1, Math.ceil(maxBossHp * 0.025));
@@ -849,17 +771,14 @@ Deno.serve(async (req) => {
       nextStatus.poison = incomingStatus.poison - 1;
     }
 
-    // (b) Combos no golpe deste turno (apenas em golpes de dano)
     let comboStun = false;
     if (danoPlayer > 0 && !isNonDamageSkill) {
-      // Estilhaçar: golpe FÍSICO em alvo CONGELADO -> bônus e quebra o gelo
       if (incomingStatus.frozen > 0 && isPhysicalSkill) {
         const before = danoPlayer;
         danoPlayer = Math.floor(danoPlayer * (1.6 + (treeMods.comboDmg.shatter || 0) / 100));
         comboLog.push(`shatter:+${danoPlayer - before}`);
         nextStatus.frozen = 0;
       }
-      // Choque: RAIO em alvo MOLHADO -> bônus e atordoa (boss perde o turno)
       if (incomingStatus.wet > 0 && playerElement === 'raio') {
         const before = danoPlayer;
         danoPlayer = Math.floor(danoPlayer * (1.5 + (treeMods.comboDmg.shock || 0) / 100));
@@ -868,14 +787,12 @@ Deno.serve(async (req) => {
         nextStatus.wet = 0;
       }
     }
-    // Vulnerável: alvo recebe +20% de dano (consome 1 turno)
     if (incomingStatus.vulnerable > 0 && danoPlayer > 0) {
       const before = danoPlayer;
       danoPlayer = Math.floor(danoPlayer * 1.2);
       comboLog.push(`vulnerable:+${danoPlayer - before}`);
     }
 
-    // Passivos da árvore: +% dano contra alvos COM status (ex.: Penetração vs Vulnerável).
     if (danoPlayer > 0) {
       for (const st of ['bleeding', 'burning', 'poison', 'wet', 'frozen', 'vulnerable'] as const) {
         const p = treeMods.vsStatusDmg[st] || 0;
@@ -883,30 +800,25 @@ Deno.serve(async (req) => {
       }
     }
 
-    // #2-lite (1.0): TETO no empilhamento multiplicativo (matchup × árvore × combo × vulnerável × vs_status).
-    // Antes, a cadeia sem teto chegava a ~3.7x e nenhuma rotação de encontro segurava. Resistências do
-    // boss (stone_skin/redução) já reduziram ANTES e ficam de fora deste teto. TETO conservador p/ 1.0.
     if (danoPlayer > 0 && danoBase > 0) {
       const DMG_STACK_CAP = 2.8;
       const teto = Math.ceil(danoBase * DMG_STACK_CAP);
       if (danoPlayer > teto) { danoPlayer = teto; bossEffectLog.push(`dmg_cap:${DMG_STACK_CAP}x`); }
     }
 
-    // (c) Decaimento natural dos status NÃO consumidos por combo
     if (nextStatus.frozen === incomingStatus.frozen && incomingStatus.frozen > 0) nextStatus.frozen = incomingStatus.frozen - 1;
     if (nextStatus.wet === incomingStatus.wet && incomingStatus.wet > 0) nextStatus.wet = incomingStatus.wet - 1;
     if (incomingStatus.vulnerable > 0) nextStatus.vulnerable = incomingStatus.vulnerable - 1;
 
-    // (d) Novos status aplicados POR ESTE golpe (entram em vigor no próximo turno)
     if (!isNonDamageSkill || isDebuffSkill) {
       if (playerElement === 'agua') { nextStatus.wet = Math.max(nextStatus.wet, 2); comboLog.push('apply:wet'); }
       if (playerElement === 'gelo') {
         nextStatus.frozen = Math.max(nextStatus.frozen, (incomingStatus.wet > 0 ? 2 : 1) + (treeMods.statusDur.frozen || 0));
-        nextStatus.burning = 0; // gelo apaga queimadura
+        nextStatus.burning = 0;
         comboLog.push('apply:frozen');
       }
       if (playerElement === 'fogo') {
-        if (incomingStatus.wet > 0 || nextStatus.wet > 0) { nextStatus.wet = 0; comboLog.push('steam'); } // evapora
+        if (incomingStatus.wet > 0 || nextStatus.wet > 0) { nextStatus.wet = 0; comboLog.push('steam'); }
         nextStatus.burning = Math.max(nextStatus.burning, 3 + (treeMods.statusDur.burning || 0));
         comboLog.push('apply:burning');
       }
@@ -914,34 +826,27 @@ Deno.serve(async (req) => {
         nextStatus.poison = Math.max(nextStatus.poison, 3 + (treeMods.statusDur.poison || 0));
         comboLog.push('apply:poison');
       }
-      // Sangramento: golpe físico cortante empilha (DoT crescente)
       if (isPhysicalSkill && /corte|l[âa]mina|garra|retalh|lacer|sangr|talho|navalha|estocada|fenda/.test(skillText)) {
         nextStatus.bleeding = Math.min(5, nextStatus.bleeding + 1);
         comboLog.push('apply:bleeding');
       }
     }
-    // Debuff aplica Vulnerável (além do shred de defesa já existente)
     if (isDebuffSkill) { nextStatus.vulnerable = Math.max(nextStatus.vulnerable, 2); comboLog.push('apply:vulnerable'); }
 
-    // ── Efeito de CURA: habilidades heal restauram HP do jogador em vez de danificar o boss ──
     let playerHealAmount = 0;
     if (isHealSkill) {
-      playerHealAmount = Math.max(0, requestedSkillPower); // power = valor fixo de cura
-      danoPlayer = 0; // heal não causa dano
+      playerHealAmount = Math.max(0, requestedSkillPower);
+      danoPlayer = 0;
     }
 
-    // ── Utility: efeito misto — dano normal + mini restauração de HP (12% do power) ──────────
     if (isUtilitySkill && requestedSkillPower > 0) {
       playerHealAmount += Math.max(1, Math.floor(requestedSkillPower * 0.12));
     }
 
-    // ── CC: stun boss — o boss não ataca este turno ──
-    // (frozen pré-existente e o combo Choque também fazem o boss perder o turno)
     const bossStunned = isCcSkill || comboStun || incomingStatus.frozen > 0;
 
     let hpBossRestante = Math.max(combat.hp_atual_boss - danoPlayer - dotDamage, 0);
 
-    // 4) Boss Regen: cura uma fração do HP máximo
     if (bossSkill.selfHealPct > 0 && hpBossRestante > 0) {
       const maxBossHpLocal = toNumber(combat.bosses?.hp, hpBossRestante);
       const healAmount = Math.max(1, Math.floor(maxBossHpLocal * bossSkill.selfHealPct));
@@ -960,7 +865,6 @@ Deno.serve(async (req) => {
     let status: 'em_andamento' | 'vitoria' | 'derrota' = 'em_andamento';
     let turnoAtual: 'player' | 'boss' = 'boss';
     let lootDrop: any = null;
-    /** Dano absorvido pelo buff shield — iniciado aqui para ficar no escopo externo */
     let buffShieldAmount = 0;
 
     if (hpBossRestante <= 0) {
@@ -971,13 +875,11 @@ Deno.serve(async (req) => {
       const bossAttackBase =
         combat.bosses.ataque_base +
         (bossItemEnabled ? toNumber(bossItem?.atk_bonus, 0) + Math.floor(toNumber(bossItem?.matk_bonus, 0) * 0.5) : 0);
-      // Skill defensiva/regen reduz o ataque do boss neste turno
       let bossMultiplier = Math.max(0.4, 1.5 * bossSkill.damageMultiplier * (1 - playerSkill.slowBossPct));
       if (bossSkill.bossDamageSelfPenaltyPct > 0) {
         bossMultiplier = bossMultiplier * (1 - bossSkill.bossDamageSelfPenaltyPct);
       }
 
-      // CC: boss atordoado não ataca
       if (bossStunned) {
         danoBoss = 0;
         bossEffectLog.push('stunned_by_player_cc');
@@ -989,14 +891,12 @@ Deno.serve(async (req) => {
           bossMultiplier,
         );
       }
-      // 5) Maldição da Escuridão: reduz o dano final do jogador no PRÓXIMO ataque (aplicado já neste turno via debuff de eficácia geral) — porém, como turn é atômico, aplicamos a redução AO DANO FINAL do boss para representar a aura debilitante? Não: a maldição reduz o dano que O JOGADOR causou neste turno. Aplicamos retroativamente.
       if (bossSkill.playerDamageDebuffPct > 0) {
         const before = danoPlayer;
         const newDano = Math.max(0, Math.floor(danoPlayer * (1 - bossSkill.playerDamageDebuffPct)));
         const blocked = before - newDano;
         if (blocked > 0) {
           bossEffectLog.push(`curse_debuff:${blocked}`);
-          // re-ajusta hp do boss já calculado
           hpBossRestante = Math.min(toNumber(combat.bosses?.hp, hpBossRestante), hpBossRestante + blocked);
           danoPlayer = newDano;
         }
@@ -1005,15 +905,12 @@ Deno.serve(async (req) => {
         danoBoss = Math.max(1, Math.floor(danoBoss * (1 - playerSkill.reduceIncomingPct)));
       }
 
-      // ── Buff: escudo do jogador absorve parte do dano recebido ───────────────────────────────
       if (isBuffSkill && requestedSkillPower > 0 && danoBoss > 0) {
         buffShieldAmount = Math.min(danoBoss - 1, requestedSkillPower);
         danoBoss = Math.max(1, danoBoss - buffShieldAmount);
         if (buffShieldAmount > 0) bossEffectLog.push(`buff_shield:${buffShieldAmount}`);
       }
 
-      // Cap anti-spike (1.0): nenhum golpe do boss remove mais que 35% do HP máximo do jogador.
-      // Rede contra burst (d20 alto + skill forte) agora que o HP vem de atributo. Raramente atua.
       const playerMaxHpForCap = toNumber(combat.personagens?.hp_max, combat.hp_atual_personagem);
       if (playerMaxHpForCap > 0 && danoBoss > 0) {
         const hitCap = Math.ceil(playerMaxHpForCap * 0.35);
@@ -1101,7 +998,6 @@ Deno.serve(async (req) => {
       xp_gained: 0,
     });
 
-    // Update health stats
     const { data: currentHealth } = await supabase
       .from('user_health_stats')
       .select('id, max_hp, fatigue')
@@ -1110,7 +1006,6 @@ Deno.serve(async (req) => {
 
     if (currentHealth) {
       const maxHp = Number(currentHealth.max_hp ?? hpPlayerRestante);
-      // Aplica cura de habilidade heal ao HP final do jogador
       const hpAfterHeal = playerHealAmount > 0
         ? Math.min(maxHp, hpPlayerRestante + playerHealAmount)
         : hpPlayerRestante;
@@ -1120,40 +1015,28 @@ Deno.serve(async (req) => {
         current_mp: finalPlayerMp,
       };
 
-      // Apply fatigue only when combat ends (vitoria or derrota)
       if (status === 'vitoria' || status === 'derrota') {
         const bossLevel = toNumber(combat.bosses?.level, 1);
         const heroLevel = toNumber(combat.personagens?.nivel, 1);
         const levelDiff = bossLevel - heroLevel;
 
-        // 1. Base by level difference — always guarantees some fatigue
-        //    Boss harder than hero = more exhaustion; even an easy boss tires you
         const baseFatigue =
           levelDiff >= 4 ? 25 :
           levelDiff >= 2 ? 20 :
           levelDiff >= 1 ? 15 :
           levelDiff === 0 ? 12 :
           levelDiff === -1 ? 10 :
-          8; // weaker boss still costs at least 8
+          8;
 
-        // 2. HP lost factor — how battered you are (0% to 18%)
         const hpLostFraction = maxHp > 0 ? Math.max(0, 1 - hpPlayerRestante / maxHp) : 1;
         const damageFatigue = Math.round(hpLostFraction * 18);
-
-        // 3. Turn factor — every 2 turns beyond the first add +1 fatigue (cap +10)
-        //    rodada already holds the current turn count (1-indexed)
         const turnFatigue = Math.min(10, Math.floor(Math.max(0, rodada - 1) / 2));
-
-        // 4. Defeat penalty — being knocked out is especially exhausting
         const defeatPenalty = status === 'derrota' ? 12 : 0;
-
         const fatigueGain = baseFatigue + damageFatigue + turnFatigue + defeatPenalty;
-        // Hard cap per fight: 50, so a single brutal fight can't max out fatigue alone
         const cappedGain = Math.min(50, fatigueGain);
         const currentFatigue = toNumber(currentHealth.fatigue, 0);
         updatePayload.fatigue = Math.min(100, currentFatigue + cappedGain);
       } else {
-        // Mid-combat: accumulate small fatigue each turn (1 per turn, cap at current+5)
         const currentFatigue = toNumber(currentHealth.fatigue, 0);
         const midCombatGain = 1;
         updatePayload.fatigue = Math.min(100, currentFatigue + midCombatGain);
@@ -1172,127 +1055,6 @@ Deno.serve(async (req) => {
           current_hp: Math.max(0, hpPlayerRestante),
           fatigue: 0,
         });
-    }
-
-    // On victory: register boss battle, grant rewards and loot
-    // ⚠️ Guerreiro Imortal: when HP hits 0 he REBIRTHS — client handles the rebirth overlay.
-    //    Do NOT register boss_battles or grant rewards here; the client does it only after
-    //    the player uses the "Cabeça de Basilisco" to truly defeat him.
-    const isImmortalBoss = /guerreiro\s+imortal/i.test(String(combat.bosses?.name || ''));
-
-    if (status === 'vitoria' && combat.bosses && !isImmortalBoss) {
-      const bossLevel = combat.bosses.level || 1;
-
-      // Register victory in boss_battles (for "isDefeated" tracking on BossPage)
-      const alreadyRegistered = await supabase
-        .from('boss_battles')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('boss_id', combat.bosses.id)
-        .eq('won', true)
-        .limit(1)
-        .maybeSingle();
-
-      if (!alreadyRegistered.data) {
-        await supabase.from('boss_battles').insert({
-          user_id: user.id,
-          boss_id: combat.bosses.id,
-          damage_dealt: danoPlayer,
-          won: true,
-        });
-
-        // Torneira única (§9.2): derrotar boss NÃO concede XP nem ouro. O XP é
-        // rotina cristalizada — só complete_mission escreve nele. O combate é
-        // ralo: dá troféu, item e história, e a vitória acima (boss_battles) é
-        // justamente esse registro.
-        //
-        // Este bloco creditava XP (bossLevel * 30) e ouro (bossLevel * 5), sobra
-        // da era anterior ao feat/torneira-unica-xp. Pior: calculava o nível com
-        // a curva linear antiga (XP/200), que já havia sido substituída pela
-        // quadrática get_level_from_xp_v2 — o mesmo defeito corrigido em
-        // claim_achievement. Removido em vez de consertado: a fórmula certa aqui
-        // seria consertar a torneira paralela em vez de fechá-la.
-        await supabase.from('activity_log').insert({
-          user_id: user.id,
-          action: 'boss_defeated',
-          description: `Boss derrotado! O espólio vem em itens — o poder vem da rotina.`,
-          xp_gained: 0,
-        });
-      }
-
-      const weekStart = getWeekStart(new Date());
-
-      const { data: weeklyClaim } = await supabase
-        .from('boss_weekly_loot_claims')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('boss_level', bossLevel)
-        .eq('week_start', weekStart)
-        .maybeSingle();
-
-      if (weeklyClaim) {
-        // Torneira única (§9.2): repetir boss na semana rende MATERIAL, não ouro.
-        // Item é espólio legítimo de masmorra; ouro é recompensa de rotina e só
-        // sai de complete_mission. Antes daqui saíam 5 de ouro por repetição.
-        const materialGain = 3;
-
-        const { data: mats } = await supabase
-          .from('user_crafting_materials')
-          .select('quantity')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (mats) {
-          await supabase
-            .from('user_crafting_materials')
-            .update({ quantity: Number((mats as any).quantity || 0) + materialGain, updated_at: new Date().toISOString() })
-            .eq('user_id', user.id);
-        } else {
-          await supabase
-            .from('user_crafting_materials')
-            .insert({ user_id: user.id, quantity: materialGain });
-        }
-
-        await supabase.from('activity_log').insert({
-          user_id: user.id,
-          action: 'boss_repeat_reward',
-          description: `Boss repetido na semana (Lv ${bossLevel}): +${materialGain} Materiais`,
-          xp_gained: 0,
-        });
-      } else {
-        await supabase
-          .from('boss_weekly_loot_claims')
-          .insert({ user_id: user.id, boss_level: bossLevel, week_start: weekStart });
-
-        // Find drop item for this boss level
-        const { data: dropItem } = await supabase
-          .from('game_items')
-          .select('id, name, icon, rarity')
-          .eq('boss_drop_level', bossLevel)
-          .order('atk_bonus', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (dropItem) {
-          // Check if player already has it
-          const { data: existing } = await supabase
-            .from('user_inventory')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('item_id', dropItem.id)
-            .maybeSingle();
-
-          if (!existing) {
-            await supabase.from('user_inventory').insert({
-              user_id: user.id,
-              item_id: dropItem.id,
-              quantity: 1,
-              equipped: false,
-            });
-            lootDrop = dropItem;
-          }
-        }
-      }
     }
 
     return new Response(
@@ -1325,20 +1087,12 @@ Deno.serve(async (req) => {
       },
     );
   } catch (error) {
-    if (error instanceof Error && (error as Error & { code?: string }).code === 'PAYWALL_LOCKED') {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 402,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     console.error('processar_turno error:', error);
     const errMsg = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({
         error: 'Erro ao processar turno',
         message: errMsg,
-        // contexto útil para o cliente diagnosticar; não vaza nada sensível.
         hint: 'Tente novamente. Se persistir, recarregue a arena.',
       }),
       {

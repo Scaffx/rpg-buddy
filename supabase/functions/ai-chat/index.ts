@@ -10,7 +10,6 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GOOGLE_AI_KEY = Deno.env.get("GOOGLE_AI_KEY");
-const SUBSCRIPTION_ENV = Deno.env.get("PADDLE_ENVIRONMENT") === "sandbox" ? "sandbox" : "live";
 
 // ───────────── Tools (function calling) ─────────────
 const tools = [
@@ -409,23 +408,6 @@ ESTILO GERAL:
 - Seja o personagem — não quebre a 4ª parede.
 `;
 
-async function ensureActiveSubscriptionOrThrow(supa: any, userId: string) {
-  const { data, error } = await supa.rpc("has_active_subscription", {
-    user_uuid: userId,
-    check_env: SUBSCRIPTION_ENV,
-  });
-
-  if (error) {
-    throw new Error(`Falha ao validar assinatura: ${error.message}`);
-  }
-
-  if (!data) {
-    const err = new Error("Assinatura inativa. Assine para continuar.");
-    (err as Error & { code?: string }).code = "PAYWALL_LOCKED";
-    throw err;
-  }
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -457,8 +439,6 @@ serve(async (req) => {
       });
     }
 
-    await ensureActiveSubscriptionOrThrow(supa, userId);
-
     // Injeta persona de NPC quando fornecida
     // Quando npcPersona está presente, o NPC substitui completamente a identidade do Mestre RPG
     const isNpcMode = typeof npcPersona === "string" && npcPersona.trim();
@@ -487,8 +467,9 @@ serve(async (req) => {
           });
         }
         if (aiResp.status === 402) {
-          return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), {
-            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          console.error("AI provider credit error:", aiResp.status);
+          return new Response(JSON.stringify({ error: "Serviço de IA temporariamente indisponível." }), {
+            status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         const t = await aiResp.text();
@@ -533,12 +514,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    if (e instanceof Error && (e as Error & { code?: string }).code === "PAYWALL_LOCKED") {
-      return new Response(JSON.stringify({ error: e.message }), {
-        status: 402,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
     console.error("ai-chat error:", e);
     return new Response(JSON.stringify({ error: "Erro interno" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

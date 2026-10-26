@@ -12,7 +12,7 @@ import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { APP_VERSION, APP_VERSION_LABEL, IS_BETA } from "@/lib/version";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
-import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { ProjectSupport } from "@/components/ProjectSupport";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Link } from "react-router-dom";
 import { Settings } from "lucide-react";
@@ -134,8 +134,7 @@ export default function MobilePage() {
           </Alert>
         )}
 
-        {/* Subscription Paywall */}
-        <SubscriptionPaywall />
+        <ProjectSupport />
 
         {/* Benefits */}
         <section data-tour="mobile-benefits">

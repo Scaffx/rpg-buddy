@@ -1,6 +1,6 @@
 # Pets no combate automático — integração
 
-Estado: implementação e revisão local concluídas; QA autenticado e publicação pendentes.
+Registro da preparação anterior ao QA autenticado. O estado operacional mais recente, incluindo a mudança para acesso gratuito, está em `20261026-pets-gratuito-qa.md`; os parágrafos abaixo preservam o handoff original.
 
 ## Comportamento
 

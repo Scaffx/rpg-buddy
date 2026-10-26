@@ -2,7 +2,7 @@ import { LegalLayout } from "@/components/LegalLayout";
 
 export default function TermsPage() {
   return (
-    <LegalLayout title="Terms & Conditions / Termos e Condições" lastUpdated="2026-04-27">
+    <LegalLayout title="Terms & Conditions / Termos e Condições" lastUpdated="2026-10-26">
       <p>
         These Terms & Conditions ("Terms") govern your access to and use of the LifeOnRPG service,
         a web and mobile application that gamifies personal habits ("Service"). By creating an
@@ -35,7 +35,8 @@ export default function TermsPage() {
       <p>
         LifeOnRPG provides a habit-tracking experience styled as a role-playing game, including
         attributes, classes, missions, bosses, virtual rewards, ranking, and progress analytics.
-        The Service is offered on a subscription basis with an introductory free trial.
+        Access to the Service is currently free with an account. Contributions to the project are
+        optional and do not change access, features, or game rewards.
       </p>
 
       <h2>4. Acceptable Use / Uso Aceitável</h2>
@@ -48,7 +49,6 @@ export default function TermsPage() {
           Interfere with the Service's security, including by introducing malware, probing,
           scanning, scraping, or attempting to bypass authentication or rate limits.
         </li>
-        <li>Reverse engineer, decompile, resell, sublicense, or redistribute the Service.</li>
       </ul>
 
       <h2>5. Account & Credentials / Conta e Credenciais</h2>
@@ -60,10 +60,12 @@ export default function TermsPage() {
 
       <h2>6. Intellectual Property / Propriedade Intelectual</h2>
       <p>
-        The Service, including all software, content, branding, trademarks, and documentation,
-        remains the exclusive property of the Seller. You receive a limited, non-exclusive,
-        non-transferable, revocable license to access and use the Service solely for your personal,
-        non-commercial use within the plan you have subscribed to.
+        The hosted Service, its content, branding, and trademarks remain under their respective
+        owners' rights. The project's source code is open source under the MIT license shown at{" "}
+        <a href="https://github.com/Scaffx/rpg-buddy" target="_blank" rel="noopener noreferrer">
+          github.com/Scaffx/rpg-buddy
+        </a>. The repository license governs reuse of the code; these Terms govern use of the
+        hosted Service.
       </p>
       <p>
         Content you create within the Service (e.g. mission text, notes) remains yours. You grant
@@ -71,27 +73,18 @@ export default function TermsPage() {
         the Service to you.
       </p>
 
-      <h2>7. Subscriptions, Payments & Billing / Assinaturas, Pagamentos e Cobrança</h2>
+      <h2>7. Free Access, Contributions & Previous Charges / Acesso Gratuito, Apoio e Cobranças Anteriores</h2>
       <p>
-        The Service is offered on a recurring monthly subscription. The current price is displayed
-        on our pricing section before checkout. New users may be eligible for a free trial period
-        as advertised on the site.
+        No subscription is required for current access. Any contribution is voluntary and gives
+        no additional access, bonus, or advantage in the Service.
       </p>
       <p>
-        <strong>
-          Our order process is conducted by our online reseller Paddle.com. Paddle.com is the
-          Merchant of Record for all our orders. Paddle provides all customer service inquiries
-          and handles returns.
-        </strong>
-      </p>
-      <p>
-        Payment, billing, taxes, invoicing, cancellations, and refund mechanics are handled by
-        Paddle and are subject to{" "}
-        <a href="https://www.paddle.com/legal/checkout-buyer-terms" target="_blank" rel="noreferrer">
-          Paddle's Buyer Terms
-        </a>{" "}
-        and our <a href="/refund">Refund Policy</a>. Subscriptions automatically renew at the end
-        of each billing period unless cancelled before renewal.
+        Previous subscription purchases and charges remain subject to the terms presented when
+        they were made, applicable law, and the relevant payment provider's records. The change
+        to free access does not automatically cancel an existing external subscription or issue a
+        refund. For questions about an earlier charge, contact{" "}
+        <a href="mailto:support@lifeonrpg.app">support@lifeonrpg.app</a> or consult the payment
+        provider shown on your receipt. See our <a href="/refund">billing help page</a>.
       </p>
 
       <h2>8. Service Availability / Disponibilidade</h2>
@@ -106,14 +99,14 @@ export default function TermsPage() {
       <p>We may suspend or terminate your access to the Service if:</p>
       <ul>
         <li>You materially breach these Terms.</li>
-        <li>Your subscription payment fails or is reversed.</li>
         <li>We detect a security or fraud risk linked to your account.</li>
         <li>You repeatedly or seriously violate the acceptable use rules above.</li>
       </ul>
       <p>
-        You may cancel your subscription at any time through your account or via Paddle. After
-        termination, you may lose access to your account data; we recommend exporting any
-        important data beforehand.
+        You may stop using the Service or delete your account. If you have a previous subscription,
+        review its status with the provider shown on your receipt. Account deletion does not itself
+        resolve a previous billing arrangement. After account termination, you may lose access to
+        your account data; we recommend exporting important data beforehand.
       </p>
 
       <h2>10. Disclaimer of Warranties / Isenção de Garantias</h2>
@@ -127,8 +120,7 @@ export default function TermsPage() {
       <h2>11. Limitation of Liability / Limitação de Responsabilidade</h2>
       <p>
         To the maximum extent permitted by law, the Seller's aggregate liability arising out of or
-        relating to the Service shall not exceed the total fees you paid for the Service during
-        the twelve (12) months preceding the event giving rise to the claim. We are not liable for
+        relating to the Service is limited as permitted by applicable law. We are not liable for
         indirect, incidental, special, consequential, or punitive damages, including loss of
         profits, data, goodwill, or other intangible losses. Nothing in these Terms limits liability
         that cannot be excluded by law (e.g. fraud, death, or personal injury caused by negligence).

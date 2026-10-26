@@ -10,10 +10,9 @@ import { LifeonRPGEmblem } from '@/components/branding/LifeonRPGLogo';
 import {
   Crown, LayoutGrid, Calendar, Target, Store, Users,
   ListOrdered, TrendingUp, Circle, LogOut, Swords, Skull, Coins, User, Heart,
-  Sparkles, HelpCircle, Clock, Trophy, PawPrint, UsersRound, Zap, Network,
+  Sparkles, HelpCircle, Trophy, PawPrint, UsersRound, Zap, Network,
 } from 'lucide-react';
 import { useGoldBalance } from '@/hooks/useGold';
-import { useSubscription } from '@/hooks/useSubscription';
 import { getLevelProgress } from '@/lib/progression';
 import {
   Sidebar,
@@ -86,7 +85,6 @@ export function AppSidebar() {
   const { data: profile } = useProfile();
   const { data: classes } = useClasses();
   const { data: goldBalance } = useGoldBalance();
-  const { isTrial, daysUntilBlock } = useSubscription();
   const { t } = useTranslation();
   const currentGold = goldBalance?.gold ?? 100;
   const [showHelp, setShowHelp] = useState(false);
@@ -161,18 +159,6 @@ export function AppSidebar() {
 
             {/* Talentos ativos */}
             <ActiveTalentsBadge compact />
-
-            {/* Trial badge */}
-            {isTrial && daysUntilBlock !== null && (
-              <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5">
-                <Clock className="w-3 h-3 text-amber-400 shrink-0" />
-                <span className="text-[10px] text-amber-300 leading-tight">
-                  {daysUntilBlock === 0
-                    ? 'Trial expira hoje!'
-                    : `${daysUntilBlock} dia${daysUntilBlock !== 1 ? 's' : ''} restante${daysUntilBlock !== 1 ? 's' : ''}`}
-                </span>
-              </div>
-            )}
           </div>
         ) : (
           /* Collapsed: apenas emblema LifeonRPG centralizado */

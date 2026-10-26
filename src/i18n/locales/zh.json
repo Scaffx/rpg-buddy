@@ -5,14 +5,14 @@
     "language": "语言"
   },
   "hero": {
-    "badge": "你的人生变成了RPG · Beta通道开放",
+    "badge": "免费使用",
     "title_part1": "把每个习惯变成",
     "title_highlight": "真实经验值",
     "subtitle_main": "喝水、训练、学习、早睡,看着你的角色升级、爆装备、挑战首领。",
     "subtitle_strong": "自律就是冒险。",
     "cta_signup": "立即开始",
     "cta_login": "我已有账号",
-    "perk_trial": "7天免费",
+    "perk_trial": "免费使用",
     "perk_apk": "已上架 Play Store",
     "perk_bosses": "60个首领"
   },
@@ -37,26 +37,13 @@
   },
   "diff": {
     "eyebrow": "为什么我们与众不同",
-    "title": "按适合你的方式获得应用访问权限。",
-    "subtitle": "R$ 4.90/月是用于访问 LifeOnRPG 应用。你可以按月支付，也可以直接购买年费方案。",
+    "title": "围绕日常习惯展开的冒险。",
+    "subtitle": "现实生活中的任务推动成长；按自己的节奏探索游戏。",
+    "rows": {
       "punish_title": "追溯性惩罚",
-    "access_plan_title": "LifeOnRPG 访问方案",
-    "access_plan_subtitle": "这是用于完整使用应用的订阅，而不是额外的高级功能包。",
-    "access_active": "访问方案已激活",
-    "access_active_desc": "你的应用访问权限已开启，旅程可以正常继续。",
-    "region_note": "支持 USD、EUR、GBP 等地区等值价格，会按你的地区适配。",
-    "monthly": {
-      "name": "月度方案",
-      "badge": "月度访问",
-      "price_amount": "4.90",
-      "price_period": "/月",
-      "desc": "按月支付，并保持对应用的完整访问权限。",
-      "cta": "订阅月度方案"
-    },
-    "annual": {
-      "name": "年度方案",
-      "badge": "最佳选择",
-      "price_amount": "58.80",
+      "punish_text": "过去的失误不会抹去已获得的进度。",
+      "gold_title": "坚持获得金币",
+      "gold_text": "通过完成日常任务获得游戏内金币。",
       "attrs_title": "真正重要的属性",
       "attrs_text": "每个任务都会关联 1 个主属性和最多 2 个副属性。你要么均衡成长，要么会看清自己忽略了哪里。",
       "talk_title": "英雄会对你说话",
@@ -103,10 +90,10 @@
     "title": "本版本带来了什么。",
     "subtitle": "升级已自动应用到您的账号。",
     "items": {
-      "premium_title": "Premium 正式上线",
-      "premium_text": "可直接在应用内订阅。按月或按年计划，通过 Paddle 安全支付。",
-      "gift_title": "礼品密鑅",
-      "gift_text": "年度订阅者将获得2个月的礼品密鑅小类。",
+      "premium_title": "公开代码",
+      "premium_text": "在 GitHub 查看项目公开代码，并可自愿贡献。",
+      "gift_title": "免费使用",
+      "gift_text": "注册账号即可使用，无需订阅或试用期。",
       "battle_title": "战斗历史",
       "battle_text": "查看地下城战斗中的回合、骰子投掷和伤害。",
       "store_title": "Play Store 即将上线",
@@ -274,7 +261,7 @@
       "iphone_step_2": "点击分享按钮",
       "iphone_step_3": "选择“添加到主屏幕”",
       "developer_title": "开发者版本",
-      "developer_desc": "项目使用 Capacitor。本地编译方式：导出到 GitHub，运行",
+      "developer_desc": "项目代码在 GitHub 公开。要在本地构建，请运行",
       "developer_and": "以及",
       "faq_title": "常见问题",
       "footer_note": "Android 版本 • 自动检查更新",
@@ -355,41 +342,17 @@
     "legal_privacy": "隐私",
     "legal_refund": "退款"
   },
-  "pricing": {
-    "eyebrow": "简单定价",
-    "title": "按适合你的方式获得应用访问权限。",
-    "subtitle": "R$ 4.90/月是用于访问 LifeOnRPG 应用。你可以按月支付，也可以直接购买年费方案。",
-    "price_currency": "R$",
-    "access_plan_title": "LifeOnRPG 访问方案",
-    "access_plan_subtitle": "这是用于完整使用应用的订阅，而不是额外的高级功能包。",
-    "access_active": "访问方案已激活",
-    "access_active_desc": "你的应用访问权限已开启，旅程可以正常继续。",
-    "region_note": "支持 USD、EUR、GBP 等地区等值价格，会按你的地区适配。",
-    "monthly": {
-      "name": "月度方案",
-      "badge": "月度访问",
-      "price_amount": "4.90",
-      "price_period": "/月",
-      "desc": "按月支付，并保持对应用的完整访问权限。",
-      "cta": "订阅月度方案"
-    },
-    "annual": {
-      "name": "年度方案",
-      "badge": "最佳选择",
-      "price_amount": "58.80",
-      "price_period": "/年",
-      "desc": "同样按每月 R$ 4.90 计算，但按年一次性付款。",
-      "bonus": "年度奖励：赠送 1 把可为另一位用户解锁 2 个月免费访问的钥匙。",
-      "cta": "订阅年度方案"
-    },
-    "features": {
-      "f1": "全部 11 项属性和 55 个职业",
-      "f2": "完整的每日任务系统",
-      "f3": "60 个主题 Boss 和全球排名",
-      "f4": "时间商店、成就与分析",
-      "f5": "带同步功能的 Android 应用 (APK)",
-      "f6": "1 把可赠送给其他用户的 2 个月奖励钥匙"
-    },
-    "mor_note": "支付由 Paddle.com（Merchant of Record）处理。"
+  "project_support": {
+    "title": "免费使用与自愿支持",
+    "description": "注册账号即可免费使用 LifeOnRPG。项目采用 MIT 开源许可证，你可以通过 GitHub 参与贡献。",
+    "code_cta": "查看源代码（MIT）",
+    "donate_cta": "自愿捐赠",
+    "donations_preparing": "捐赠方式正在准备中。你可以通过贡献代码支持项目。",
+    "no_perks": "捐赠完全自愿，不提供额外功能、奖励或游戏优势。",
+    "pix_label": "自愿通过 Pix 捐赠（随机密钥）",
+    "pix_copy": "复制 Pix 密钥",
+    "pix_copy_success": "Pix 密钥已复制。转账前请在银行应用中确认收款人。",
+    "pix_copy_error": "无法复制 Pix 密钥。请手动选择并复制上方密钥。"
   }
+
 }

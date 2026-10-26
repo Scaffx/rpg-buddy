@@ -1,0 +1,1131 @@
+// @ts-nocheck
+// deno-lint-ignore-file
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+const SUBSCRIPTION_ENV = Deno.env.get('PADDLE_ENVIRONMENT') === 'sandbox' ? 'sandbox' : 'live';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+type ProcessarTurnoBody = {
+  combate_id?: string;
+  acao_escolhida?: 'atacar' | string;
+  skill_id?: string;
+  skill_name?: string;
+  skill_power?: number;
+  current_mp?: number;
+  /** Custo fixo de MP enviado pelo cliente (T3+). Se presente, substitui getSkillMpCost(power). */
+  skill_mp_cost?: number;
+  /** Tipo de efeito da habilidade (T3+). 'dano' usa fluxo normal; outros têm efeitos especiais. */
+  skill_effect_type?: 'dano' | 'heal' | 'buff' | 'debuff' | 'cc' | 'utility';
+  /** Elemento explícito da skill (vindo da árvore). Se ausente, é inferido pelo nome. */
+  skill_element?: string;
+  /** Pets Fase 2: companion_type do pet ATIVO. A edge VERIFICA posse antes de aplicar. */
+  active_pet_type?: string;
+};
+
+// Custo de MP de uma habilidade do jogador, derivado do "power".
+// Mantido em sincronia com src/components/CombatArena.tsx -> getSkillMpCost.
+// Cada ~15 de poder custa 1 MP (mín. 2, máx. 16) — gestão de mana relevante.
+const getSkillMpCost = (power: number): number => {
+  if (!power || power <= 0) return 0;
+  return Math.max(2, Math.min(16, Math.ceil(power / 15)));
+};
+
+// ── Pets Fase 2: sustain por turno ────────────────────────────────────────────
+// Espelho FIEL de src/lib/pets.ts (PET_SUSTAIN + applyMpCostReduction + applyRegen).
+// Mantidos idênticos: os testes vitest cobrem a versão de src; a edge usa esta cópia.
+type SustainEffect =
+  | { kind: 'regen_hp'; pct: number }
+  | { kind: 'regen_mp'; pct: number }
+  | { kind: 'mp_cost';  pct: number };
+
+const PET_SUSTAIN: Record<string, SustainEffect> = {
+  mini_kraken:     { kind: 'regen_hp', pct: 0.05 },
+  mini_necromante: { kind: 'regen_mp', pct: 0.08 },
+  mini_leviata:    { kind: 'mp_cost',  pct: 0.20 },
+};
+
+const applyMpCostReduction = (cost: number, eff: SustainEffect | null): number =>
+  (!eff || eff.kind !== 'mp_cost') ? Math.max(0, Math.round(cost)) : Math.max(0, Math.round(cost * (1 - eff.pct)));
+
+const applyRegen = (current: number, max: number, eff: SustainEffect | null, kind: 'regen_hp' | 'regen_mp'): number =>
+  (!eff || eff.kind !== kind) ? current : Math.min(max, current + Math.round(max * eff.pct));
+
+/** Resolve o efeito de sustain do pet ativo — SÓ se o usuário realmente possui aquele pet. */
+async function resolveActivePetSustain(
+  supabase: SupabaseClient,
+  userId: string,
+  petType: string | undefined,
+): Promise<SustainEffect | null> {
+  if (!petType) return null;
+  const eff = PET_SUSTAIN[petType];
+  if (!eff) return null;
+  const { data } = await supabase
+    .from('companions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('companion_type', petType)
+    .limit(1)
+    .maybeSingle();
+  return data ? eff : null;
+}
+
+type CombatRow = {
+  id: string;
+  personagem_id: string;
+  hp_atual_boss: number;
+  hp_atual_personagem: number;
+  turno_atual: 'player' | 'boss';
+  status: 'em_andamento' | 'vitoria' | 'derrota';
+  boss_status?: unknown;
+  personagens: {
+    id: string;
+    ataque_base: number;
+    defesa_base: number;
+    nivel: number;
+    hp_max: number;
+  } | null;
+  bosses: {
+    id: string;
+    name: string;
+    ataque_base: number;
+    defesa_base: number;
+    level: number;
+    hp: number;
+    element?: string | null;
+    skills?: any;
+    signature_item_name?: string | null;
+  } | null;
+};
+
+type SkillResolution = {
+  name: string;
+  damageMultiplier: number;
+  reduceIncomingPct: number;
+  slowBossPct: number;
+  effects: string[];
+  element: SkillElement;
+  isMagical: boolean;
+};
+
+type BossSkillKind =
+  | 'attack'
+  | 'stone_skin'
+  | 'damage_reduction'
+  | 'regen'
+  | 'dark_curse'
+  | 'slow'
+  | 'fire_aura';
+
+type BossSkillResolution = {
+  name: string;
+  damageMultiplier: number;
+  effects: string[];
+  kind: BossSkillKind;
+  physicalResistPct: number;
+  damageReductionPct: number;
+  selfHealPct: number;
+  bossDamageSelfPenaltyPct: number;
+  playerDamageDebuffPct: number;
+};
+
+type SkillElement = 'fogo' | 'gelo' | 'sagrado' | 'trevas' | 'natureza' | 'agua' | 'raio' | 'arcano' | 'neutro';
+
+type CombatStatus = {
+  burning: number;
+  bleeding: number;
+  poison: number;
+  wet: number;
+  frozen: number;
+  vulnerable: number;
+};
+
+const parseCombatStatus = (raw: unknown): CombatStatus => {
+  const obj = (raw && typeof raw === 'object') ? raw as Record<string, unknown> : {};
+  const n = (v: unknown) => Math.max(0, Math.floor(toNumber(v, 0)));
+  return {
+    burning: n(obj.burning),
+    bleeding: Math.min(5, n(obj.bleeding)),
+    poison: n(obj.poison),
+    wet: n(obj.wet),
+    frozen: n(obj.frozen),
+    vulnerable: n(obj.vulnerable),
+  };
+};
+
+type BossItem = {
+  id: string;
+  name: string;
+  atk_bonus?: number;
+  matk_bonus?: number;
+  def_bonus?: number;
+  required_attribute?: string | null;
+  required_attribute_level?: number | null;
+};
+
+const rollD20 = () => Math.floor(Math.random() * 20) + 1;
+
+const getWeekStart = (date: Date): string => {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day; // monday start
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().split('T')[0];
+};
+
+const calculateDamage = (baseAttack: number, d20: number, defenderDefense: number, multiplier: number) => {
+  const raw = baseAttack + Math.floor(d20 * multiplier) - Math.floor(defenderDefense * 0.5);
+  return Math.max(1, raw);
+};
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const toNumber = (value: unknown, fallback = 0): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+const ensureActiveSubscriptionOrThrow = async (supabase: ReturnType<typeof createClient>, userId: string) => {
+  const { data, error } = await supabase.rpc('has_active_subscription', {
+    user_uuid: userId,
+    check_env: SUBSCRIPTION_ENV,
+  });
+
+  if (error) {
+    throw new Error(`Falha ao validar assinatura: ${error.message}`);
+  }
+
+  if (!data) {
+    const err = new Error('Assinatura inativa. Assine para continuar.');
+    (err as Error & { code?: string }).code = 'PAYWALL_LOCKED';
+    throw err;
+  }
+};
+
+const detectSkillElement = (text: string): SkillElement => {
+  const t = text.toLowerCase();
+  if (/fogo|chama|igni|brasa|inferno|piro|flamej|incendi/.test(t)) return 'fogo';
+  if (/gelo|frio|neve|cristal|congel|crio|glaci/.test(t)) return 'gelo';
+  if (/sagrad|santo|luz|raio sereno|divino|holy|cleric/.test(t)) return 'sagrado';
+  if (/rel[âa]mpago|trov[aã]o|eletr|choque|descarga|volt|fulmin|tesla/.test(t)) return 'raio';
+  if (/trevas|sombra|escurid|abismo|necro|amaldi/.test(t)) return 'trevas';
+  if (/natur|raiz|seiva|verde|floresta|veneno|toxic|peçonh/.test(t)) return 'natureza';
+  if (/agua|onda|mare|tsun|aqu/.test(t)) return 'agua';
+  if (/arcan|lucid|vetor|runa|magic|mistic/.test(t)) return 'arcano';
+  return 'neutro';
+};
+
+const buildPlayerSkillResolution = (body: ProcessarTurnoBody): SkillResolution => {
+  const idAndName = `${String(body.skill_id || '')} ${String(body.skill_name || '')}`.toLowerCase();
+  const skillPower = Math.max(0, toNumber(body.skill_power, 0));
+  const powerBonus = clamp(skillPower / 240, 0, 0.55);
+  const isDefensive = /escudo|guarda|postura|oracao|amparo|voto/.test(idAndName);
+  const isSlow = /lateral|passo|fantasma|vetor|cortina|selo|ritmo|finta/.test(idAndName);
+  const isMagical = /lanca|raio|magia|arcan|igni|piro|crio|necro|trevas|sombra|sagrad|luz|runa|encant|magic|lucid|vetor|rel[âa]mpago|trov[aã]o|eletr|choque/.test(idAndName);
+  const explicitEl = String(body.skill_element || '').toLowerCase();
+  const validEls = ['fogo','gelo','sagrado','trevas','natureza','agua','raio','arcano','neutro'];
+  const element: SkillElement = (validEls.includes(explicitEl) ? explicitEl : detectSkillElement(idAndName)) as SkillElement;
+
+  const effects: string[] = [];
+  if (isDefensive) effects.push('damage_reduction');
+  if (isSlow) effects.push('slow');
+  if (element !== 'neutro') effects.push(`element:${element}`);
+
+  return {
+    name: String(body.skill_name || 'Ataque Basico'),
+    damageMultiplier: 1 + powerBonus,
+    reduceIncomingPct: isDefensive ? 0.18 : 0,
+    slowBossPct: isSlow ? 0.15 : 0,
+    effects,
+    element,
+    isMagical,
+  };
+};
+
+const resolveBossSkillKind = (name: string, explicitEffects: string[]): BossSkillKind => {
+  if (explicitEffects.includes('stone_skin') || explicitEffects.includes('pele_de_pedra')) return 'stone_skin';
+  if (explicitEffects.includes('regen') || explicitEffects.includes('heal') || explicitEffects.includes('cura')) return 'regen';
+  if (explicitEffects.includes('dark_curse') || explicitEffects.includes('curse')) return 'dark_curse';
+  if (explicitEffects.includes('fire_aura') || explicitEffects.includes('fire_immune') || explicitEffects.includes('imunidade_fogo')) return 'fire_aura';
+  if (explicitEffects.includes('slow')) return 'slow';
+  if (explicitEffects.includes('damage_reduction')) return 'damage_reduction';
+  const t = name.toLowerCase();
+  if (/pele de pedra|pele.{0,3}pedra|granito|petrif|rocha viva/.test(t)) return 'stone_skin';
+  if (/regener|cura|cicatriz|sangue vivo|drenar|absor.{0,4}vital|recuper/.test(t)) return 'regen';
+  if (/maldi|curse|trevas|sombra|escurid|cegueira|cega|amaldi/.test(t)) return 'dark_curse';
+  if (/imunidade.{0,8}fogo|aura.{0,6}flama|chama.{0,6}interna|inferno|cor.{0,3}o de fogo/.test(t)) return 'fire_aura';
+  if (/lento|teia|gelo|torpor|congel|crio|paralis/.test(t)) return 'slow';
+  if (/postura|barreira|escudo|guarda|defesa|reflex|muralha/.test(t)) return 'damage_reduction';
+  return 'attack';
+};
+
+const parseBossSkills = (raw: unknown): BossSkillResolution[] => {
+  const fallback: BossSkillResolution[] = [
+    makeBossSkill('Golpe Selvagem',  1.10, [], 'attack'),
+    makeBossSkill('Acoite Pesado',   1.20, [], 'attack'),
+    makeBossSkill('Pressao Brutal',  0.90, ['damage_reduction'], 'damage_reduction'),
+  ];
+
+  if (!Array.isArray(raw) || raw.length === 0) return fallback;
+
+  return raw.map((entry: any) => {
+    const name = String(entry?.name || 'Golpe Selvagem');
+    const multiplier = clamp(toNumber(entry?.damage_multiplier, 1.05), 0.6, 2.5);
+    const explicitEffects = Array.isArray(entry?.effects)
+      ? entry.effects.map((e: unknown) => String(e).toLowerCase())
+      : [];
+    const kind = resolveBossSkillKind(name, explicitEffects);
+    return makeBossSkill(name, multiplier, explicitEffects, kind);
+  });
+};
+
+const makeBossSkill = (
+  name: string,
+  damageMultiplier: number,
+  explicitEffects: string[],
+  kind: BossSkillKind,
+): BossSkillResolution => {
+  const effects = [...explicitEffects];
+  let physicalResistPct      = 0;
+  let damageReductionPct     = 0;
+  let selfHealPct            = 0;
+  let bossDamageSelfPenaltyPct = 0;
+  let playerDamageDebuffPct  = 0;
+  let mult = damageMultiplier;
+
+  switch (kind) {
+    case 'stone_skin':
+      physicalResistPct = 0.6;
+      damageReductionPct = 0.15;
+      bossDamageSelfPenaltyPct = 0.35;
+      mult = Math.min(mult, 0.85);
+      if (!effects.includes('stone_skin')) effects.push('stone_skin');
+      break;
+    case 'damage_reduction':
+      damageReductionPct = 0.4;
+      bossDamageSelfPenaltyPct = 0.25;
+      mult = Math.min(mult, 0.9);
+      if (!effects.includes('damage_reduction')) effects.push('damage_reduction');
+      break;
+    case 'regen':
+      selfHealPct = 0.08;
+      bossDamageSelfPenaltyPct = 0.4;
+      mult = Math.min(mult, 0.8);
+      if (!effects.includes('regen')) effects.push('regen');
+      break;
+    case 'dark_curse':
+      playerDamageDebuffPct = 0.35;
+      bossDamageSelfPenaltyPct = 0.2;
+      if (!effects.includes('dark_curse')) effects.push('dark_curse');
+      break;
+    case 'fire_aura':
+      mult = Math.max(mult, 1.1);
+      if (!effects.includes('fire_aura')) effects.push('fire_aura');
+      break;
+    case 'slow':
+      bossDamageSelfPenaltyPct = 0.1;
+      if (!effects.includes('slow')) effects.push('slow');
+      break;
+    case 'attack':
+    default:
+      break;
+  }
+
+  return {
+    name,
+    damageMultiplier: mult,
+    effects,
+    kind,
+    physicalResistPct,
+    damageReductionPct,
+    selfHealPct,
+    bossDamageSelfPenaltyPct,
+    playerDamageDebuffPct,
+  };
+};
+
+const canBossUseItem = (boss: CombatRow['bosses'], item: BossItem | null): boolean => {
+  if (!boss || !item) return false;
+
+  const requiredAttr = String(item.required_attribute || '').toLowerCase().trim();
+  const requiredLevel = Math.max(1, toNumber(item.required_attribute_level, 1));
+
+  if (!requiredAttr) {
+    return boss.level >= requiredLevel;
+  }
+
+  if (requiredAttr === 'forca') {
+    return toNumber(boss.ataque_base, 0) >= requiredLevel * 2;
+  }
+  if (requiredAttr === 'resiliencia') {
+    return toNumber(boss.defesa_base, 0) >= requiredLevel * 2;
+  }
+  if (requiredAttr === 'agilidade') {
+    return toNumber(boss.level, 1) + Math.floor(toNumber(boss.ataque_base, 0) / 12) >= requiredLevel;
+  }
+  if (requiredAttr === 'inteligencia') {
+    const elementBonus = String(boss.element || '').toLowerCase().includes('arc') ? 3 : 0;
+    return toNumber(boss.level, 1) + elementBonus >= requiredLevel;
+  }
+
+  return toNumber(boss.level, 1) >= requiredLevel;
+};
+
+// ── Resolução server-authoritative da skill (Bloco 3 — Cinzas/Pergaminhos) ───────
+const resolvePlayerSkill = async (
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  body: ProcessarTurnoBody,
+): Promise<{ power: number; mpCost: number; element: string; effectType: string; name: string }> => {
+  const skillId = String(body.skill_id || '');
+  const power0 = Math.max(0, toNumber(body.skill_power, 0));
+
+  const { data: invRows } = await supabase
+    .from('user_inventory')
+    .select('item_id, equipped, game_items(name, category, weapon_type, weapon_element, weapon_skill)')
+    .eq('user_id', userId)
+    .eq('equipped', true);
+  const weapon = (invRows || [])
+    .map((r: any) => r.game_items)
+    .find((g: any) => g && g.category === 'weapon') || null;
+  const weaponElement = String(weapon?.weapon_element || 'neutro');
+
+  if (!skillId || power0 <= 0) {
+    return { power: 0, mpCost: 0, element: weaponElement, effectType: 'dano', name: 'Ataque Basico' };
+  }
+
+  const { data: node } = await supabase
+    .from('skill_tree_nodes')
+    .select('effect, requires_weapon_element, requires_weapon_type')
+    .eq('id', skillId)
+    .maybeSingle();
+  if (node) {
+    const { data: owned } = await supabase
+      .from('player_skill_nodes')
+      .select('rank')
+      .eq('user_id', userId)
+      .eq('node_id', skillId)
+      .maybeSingle();
+    if (!owned) throw new Error('SKILL_NOT_OWNED');
+    if ((node as any).requires_weapon_type && (!weapon || weapon.weapon_type !== (node as any).requires_weapon_type))
+      throw new Error('WEAPON_TYPE_REQUIRED');
+    if ((node as any).requires_weapon_element && (!weapon || weapon.weapon_element !== (node as any).requires_weapon_element))
+      throw new Error('WEAPON_ELEMENT_REQUIRED');
+    const e: any = (node as any).effect || {};
+    const rank = Math.max(1, toNumber((owned as any).rank, 1));
+    const pct = toNumber(e.pct_per_rank, 10);
+    const basePower = Math.max(0, toNumber(e.power, 0));
+    const power = Math.round(basePower * (1 + (rank - 1) * pct / 100));
+    return {
+      power,
+      mpCost: Math.max(0, toNumber(e.mpCost, getSkillMpCost(power))),
+      element: String(e.element || 'neutro'),
+      effectType: String(e.effectType || 'dano'),
+      name: String(body.skill_name || 'Habilidade'),
+    };
+  }
+
+  const ws: any = weapon?.weapon_skill || null;
+  if (ws && String(ws.name || '') === String(body.skill_name || '')) {
+    const power = Math.max(0, toNumber(ws.power, 0));
+    return {
+      power,
+      mpCost: Math.max(0, toNumber(ws.mpCost, getSkillMpCost(power))),
+      element: String(ws.element || weaponElement),
+      effectType: String(ws.effectType || 'dano'),
+      name: String(ws.name),
+    };
+  }
+
+  throw new Error('SKILL_NOT_AUTHORIZED');
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured');
+    }
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    await ensureActiveSubscriptionOrThrow(supabase, user.id);
+
+    const body = (await req.json()) as ProcessarTurnoBody;
+    const combateId = body.combate_id;
+    const acaoEscolhida = body.acao_escolhida;
+
+    if (!combateId || acaoEscolhida !== 'atacar') {
+      return new Response(JSON.stringify({ error: 'Invalid payload: combate_id and acao_escolhida="atacar" are required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Pet Fase 2: efeito de sustain do pet ATIVO (verifica posse). null se nenhum.
+    const petSustain = await resolveActivePetSustain(supabase, user.id, body.active_pet_type);
+
+    // ── Bloco 3: resolução server-authoritative da skill ──────────────────────────
+    let resolvedSkill;
+    try {
+      resolvedSkill = await resolvePlayerSkill(supabase, user.id, body);
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'skill_not_authorized', message: (e as Error).message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    body.skill_power = resolvedSkill.power;
+    body.skill_mp_cost = resolvedSkill.mpCost;
+    body.skill_element = resolvedSkill.element;
+    body.skill_effect_type = resolvedSkill.effectType as ProcessarTurnoBody['skill_effect_type'];
+    body.skill_name = resolvedSkill.name;
+
+    const requestedSkillPower = Math.max(0, toNumber(body.skill_power, 0));
+    const requestedSkillCost = body.skill_mp_cost !== undefined
+      ? Math.max(0, toNumber(body.skill_mp_cost, 0))
+      : getSkillMpCost(requestedSkillPower);
+    // MP server-authoritative (1.0): saldo REAL do banco, não do body. Mana é recurso POR COMBATE
+    // (reabastecida ao máximo no início da luta pelo cliente), então o gate aqui é confiável.
+    const { data: mpRow } = await supabase
+      .from('user_health_stats').select('current_mp, max_mp').eq('user_id', user.id).maybeSingle();
+    const currentMp = Math.max(0, toNumber(mpRow?.current_mp, 0));
+    const maxMp = Math.max(1, toNumber(mpRow?.max_mp, currentMp));
+    // Pet Leviatã (-custo de MP): reduz o custo real ANTES do gate e da dedução.
+    const effectiveSkillCost = applyMpCostReduction(requestedSkillCost, petSustain);
+    // MP final do turno = saldo após o custo + regen do pet (Necromante). Capado no máx.
+    const finalPlayerMp = applyRegen(Math.max(0, currentMp - effectiveSkillCost), maxMp, petSustain, 'regen_mp');
+
+    if (effectiveSkillCost > 0 && effectiveSkillCost > currentMp) {
+      return new Response(
+        JSON.stringify({
+          error: 'insufficient_mp',
+          message: `MP insuficiente para "${body.skill_name || 'habilidade'}": custa ${effectiveSkillCost} MP, jogador tem ${currentMp}.`,
+          required_mp: effectiveSkillCost,
+          current_mp: currentMp,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
+    const { data: combat, error: combatError } = await supabase
+      .from('combates_ativos')
+      .select(
+        `
+          id,
+          personagem_id,
+          hp_atual_boss,
+          hp_atual_personagem,
+          turno_atual,
+          status,
+          boss_id,
+          boss_status,
+          personagens!combates_ativos_personagem_id_fkey(id, ataque_base, defesa_base, nivel, hp_max),
+          bosses!combates_ativos_boss_id_fkey(id, name, ataque_base, defesa_base, level, hp, element, skills, signature_item_name)
+        `,
+      )
+      .eq('id', combateId)
+      .single();
+
+    if (combatError || !combat) {
+      return new Response(JSON.stringify({ error: 'Combat not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (combat.personagem_id !== user.id) {
+      return new Response(JSON.stringify({ error: 'Forbidden: combat does not belong to authenticated user' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (combat.status !== 'em_andamento' || combat.turno_atual !== 'player') {
+      return new Response(JSON.stringify({ error: 'Combat is not ready for player action' }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!combat.personagens || !combat.bosses) {
+      return new Response(JSON.stringify({ error: 'Combat relationships are invalid' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('inspired_available')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const treeMods = {
+      elementDmg: {} as Record<string, number>,
+      schoolDmg: {} as Record<string, number>,
+      comboDmg: {} as Record<string, number>,
+      vsStatusDmg: {} as Record<string, number>,
+      statusDur: {} as Record<string, number>,
+    };
+    {
+      const { data: allocRows } = await supabase
+        .from('player_skill_nodes')
+        .select('rank, skill_tree_nodes(effect)')
+        .eq('user_id', user.id);
+      for (const row of allocRows || []) {
+        const rank = Math.max(0, toNumber((row as any).rank, 0));
+        const eff = (row as any).skill_tree_nodes?.effect;
+        if (!eff || rank <= 0 || eff.kind !== 'mod') continue;
+        const per = toNumber(eff.pct_per_rank, 0) * rank;
+        const turns = toNumber(eff.turns_per_rank, 0) * rank;
+        switch (eff.mod) {
+          case 'element_dmg':  if (eff.element) treeMods.elementDmg[eff.element]   = (treeMods.elementDmg[eff.element]   || 0) + per; break;
+          case 'school_dmg':   if (eff.school)  treeMods.schoolDmg[eff.school]     = (treeMods.schoolDmg[eff.school]     || 0) + per; break;
+          case 'combo_dmg':    if (eff.combo)   treeMods.comboDmg[eff.combo]       = (treeMods.comboDmg[eff.combo]       || 0) + per; break;
+          case 'vs_status_dmg':if (eff.status)  treeMods.vsStatusDmg[eff.status]   = (treeMods.vsStatusDmg[eff.status]   || 0) + per; break;
+          case 'status_dur':   if (eff.status)  treeMods.statusDur[eff.status]     = (treeMods.statusDur[eff.status]     || 0) + turns; break;
+        }
+      }
+    }
+
+    let bossItem: BossItem | null = null;
+    if (combat.bosses) {
+      const signatureItemName = String(combat.bosses.signature_item_name || '').trim();
+      if (signatureItemName) {
+        const { data: signatureItem } = await supabase
+          .from('game_items')
+          .select('id, name, atk_bonus, matk_bonus, def_bonus, required_attribute, required_attribute_level')
+          .eq('name', signatureItemName)
+          .limit(1)
+          .maybeSingle();
+        if (signatureItem) {
+          bossItem = signatureItem as BossItem;
+        }
+      }
+
+      if (!bossItem) {
+        const { data: fallbackDropItem } = await supabase
+          .from('game_items')
+          .select('id, name, atk_bonus, matk_bonus, def_bonus, required_attribute, required_attribute_level')
+          .eq('boss_drop_level', combat.bosses.level || 1)
+          .eq('category', 'weapon')
+          .order('atk_bonus', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (fallbackDropItem) {
+          bossItem = fallbackDropItem as BossItem;
+        }
+      }
+    }
+
+    const skillEffectType = String(body.skill_effect_type || 'dano');
+    const isHealSkill    = skillEffectType === 'heal';
+    const isCcSkill      = skillEffectType === 'cc';
+    const isBuffSkill    = skillEffectType === 'buff';
+    const isDebuffSkill  = skillEffectType === 'debuff';
+    const isUtilitySkill = skillEffectType === 'utility';
+    const isNonDamageSkill = isHealSkill || isCcSkill || isBuffSkill || isDebuffSkill || isUtilitySkill;
+
+    const playerSkill = buildPlayerSkillResolution(body);
+    const bossSkillPool = parseBossSkills(combat.bosses?.skills);
+    const bossSkill = bossSkillPool[Math.floor(Math.random() * bossSkillPool.length)];
+    const bossItemEnabled = canBossUseItem(combat.bosses, bossItem);
+
+    const isFirstPlayerAttack = Number(combat.hp_atual_boss) >= Number(combat.bosses.hp || combat.hp_atual_boss);
+    const hasInspiration = Boolean((profile as any)?.inspired_available) && isFirstPlayerAttack;
+    const dadoPlayer = hasInspiration ? Math.max(rollD20(), rollD20()) : rollD20();
+
+    if (hasInspiration) {
+      await supabase
+        .from('profiles')
+        .update({ inspired_available: false, inspired_earned_at: null })
+        .eq('user_id', user.id);
+    }
+    const playerAttackBase =
+      combat.personagens.ataque_base + Math.floor(Math.max(0, toNumber(body.skill_power, 0)) * 0.22);
+    const effectiveBossDefense =
+      combat.bosses.defesa_base + (bossItemEnabled ? Math.floor(toNumber(bossItem?.def_bonus, 0) * 0.5) : 0);
+
+    let debuffDefenseShred = 0;
+    let actualBossDefense = effectiveBossDefense;
+    if (isDebuffSkill && requestedSkillPower > 0) {
+      const shredRate = clamp(requestedSkillPower / 300, 0.12, 0.38);
+      debuffDefenseShred = Math.floor(actualBossDefense * shredRate);
+      actualBossDefense = Math.max(0, actualBossDefense - debuffDefenseShred);
+    }
+
+    let danoPlayer = calculateDamage(
+      playerAttackBase,
+      dadoPlayer,
+      actualBossDefense,
+      2 * playerSkill.damageMultiplier,
+    );
+    const danoBase = danoPlayer;
+
+    const bossEffectLog: string[] = [...bossSkill.effects];
+    let bossSelfHeal = 0;
+    let elementalReaction: 'immune' | 'absorb' | 'weak' | null = null;
+
+    if (bossSkill.physicalResistPct > 0 && !playerSkill.isMagical) {
+      const before = danoPlayer;
+      danoPlayer = Math.max(1, Math.floor(danoPlayer * (1 - bossSkill.physicalResistPct)));
+      bossEffectLog.push(`stone_skin_blocked:${before - danoPlayer}`);
+    }
+
+    if (bossSkill.damageReductionPct > 0) {
+      const before = danoPlayer;
+      danoPlayer = Math.max(1, Math.floor(danoPlayer * (1 - bossSkill.damageReductionPct)));
+      bossEffectLog.push(`reduced:${before - danoPlayer}`);
+    }
+
+    const _normEl = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const _bossElRaw = _normEl(String(combat.bosses?.element || ''));
+    const bossElement = ({ escuridao: 'trevas', 'morto-vivo': 'morto', mortovivo: 'morto' } as Record<string, string>)[_bossElRaw] || _bossElRaw;
+    const playerElement = playerSkill.element;
+
+    if (bossSkill.kind === 'fire_aura' && playerElement === 'fogo') {
+      bossSelfHeal += Math.floor(danoPlayer * 0.5);
+      danoPlayer = 0;
+      elementalReaction = 'absorb';
+      bossEffectLog.push('fire_immune_absorbed');
+    }
+    else if (bossElement && playerElement !== 'neutro' && bossElement.includes(playerElement)) {
+      const before = danoPlayer;
+      danoPlayer = Math.max(0, Math.floor(danoPlayer * 0.5));
+      elementalReaction = 'immune';
+      bossEffectLog.push(`element_resist:${playerElement}:${before - danoPlayer}`);
+    }
+    else if (
+      (bossElement.includes('terra')  && playerElement === 'raio') ||
+      (bossElement.includes('veneno') && playerElement === 'natureza')
+    ) {
+      const before = danoPlayer;
+      danoPlayer = Math.max(0, Math.floor(danoPlayer * 0.5));
+      elementalReaction = 'immune';
+      bossEffectLog.push(`element_resist:${playerElement}:${before - danoPlayer}`);
+    }
+    else if (
+      (bossElement.includes('trevas') || bossElement.includes('morto') || bossElement.includes('demonio')) && playerElement === 'sagrado' ||
+      bossElement.includes('fogo')  && playerElement === 'gelo' ||
+      bossElement.includes('gelo')  && playerElement === 'fogo' ||
+      bossElement.includes('natur') && playerElement === 'fogo' ||
+      bossElement.includes('agua')  && playerElement === 'natureza' ||
+      bossElement.includes('agua')  && playerElement === 'raio' ||
+      bossElement.includes('terra')  && (playerElement === 'natureza' || playerElement === 'agua') ||
+      bossElement.includes('veneno') && (playerElement === 'fogo' || playerElement === 'sagrado')
+    ) {
+      const before = danoPlayer;
+      danoPlayer = Math.floor(danoPlayer * 1.5);
+      elementalReaction = 'weak';
+      bossEffectLog.push(`element_weak:${playerElement}:+${danoPlayer - before}`);
+    }
+
+    if (danoPlayer > 0) {
+      const elPct = treeMods.elementDmg[playerElement] || 0;
+      const schPct = treeMods.schoolDmg[playerSkill.isMagical ? 'magico' : 'fisico'] || 0;
+      if (elPct > 0)  { danoPlayer = Math.floor(danoPlayer * (1 + elPct / 100));  bossEffectLog.push(`tree_element:${playerElement}:${elPct}`); }
+      if (schPct > 0) { danoPlayer = Math.floor(danoPlayer * (1 + schPct / 100)); }
+    }
+
+    const incomingStatus = parseCombatStatus(combat.boss_status);
+    const nextStatus: CombatStatus = { ...incomingStatus };
+    const maxBossHp = Math.max(1, toNumber(combat.bosses?.hp, combat.hp_atual_boss));
+    const comboLog: string[] = [];
+    const isPhysicalSkill = !playerSkill.isMagical;
+    const skillText = `${String(body.skill_id || '')} ${String(body.skill_name || '')}`.toLowerCase();
+
+    let dotDamage = 0;
+    if (incomingStatus.burning > 0) {
+      const d = Math.max(1, Math.ceil(maxBossHp * 0.025));
+      dotDamage += d;
+      comboLog.push(`burning:${d}`);
+      nextStatus.burning = incomingStatus.burning - 1;
+    }
+    if (incomingStatus.bleeding > 0) {
+      const d = Math.max(1, Math.ceil(maxBossHp * 0.015)) * incomingStatus.bleeding;
+      dotDamage += d;
+      comboLog.push(`bleeding:${d}`);
+      nextStatus.bleeding = incomingStatus.bleeding - 1;
+    }
+    if (incomingStatus.poison > 0) {
+      const d = Math.max(1, Math.ceil(maxBossHp * 0.02));
+      dotDamage += d;
+      comboLog.push(`poison:${d}`);
+      nextStatus.poison = incomingStatus.poison - 1;
+    }
+
+    let comboStun = false;
+    if (danoPlayer > 0 && !isNonDamageSkill) {
+      if (incomingStatus.frozen > 0 && isPhysicalSkill) {
+        const before = danoPlayer;
+        danoPlayer = Math.floor(danoPlayer * (1.6 + (treeMods.comboDmg.shatter || 0) / 100));
+        comboLog.push(`shatter:+${danoPlayer - before}`);
+        nextStatus.frozen = 0;
+      }
+      if (incomingStatus.wet > 0 && playerElement === 'raio') {
+        const before = danoPlayer;
+        danoPlayer = Math.floor(danoPlayer * (1.5 + (treeMods.comboDmg.shock || 0) / 100));
+        comboStun = true;
+        comboLog.push(`shock:+${danoPlayer - before}`);
+        nextStatus.wet = 0;
+      }
+    }
+    if (incomingStatus.vulnerable > 0 && danoPlayer > 0) {
+      const before = danoPlayer;
+      danoPlayer = Math.floor(danoPlayer * 1.2);
+      comboLog.push(`vulnerable:+${danoPlayer - before}`);
+    }
+
+    if (danoPlayer > 0) {
+      for (const st of ['bleeding', 'burning', 'poison', 'wet', 'frozen', 'vulnerable'] as const) {
+        const p = treeMods.vsStatusDmg[st] || 0;
+        if (p > 0 && (incomingStatus as any)[st] > 0) danoPlayer = Math.floor(danoPlayer * (1 + p / 100));
+      }
+    }
+
+    if (danoPlayer > 0 && danoBase > 0) {
+      const DMG_STACK_CAP = 2.8;
+      const teto = Math.ceil(danoBase * DMG_STACK_CAP);
+      if (danoPlayer > teto) { danoPlayer = teto; bossEffectLog.push(`dmg_cap:${DMG_STACK_CAP}x`); }
+    }
+
+    if (nextStatus.frozen === incomingStatus.frozen && incomingStatus.frozen > 0) nextStatus.frozen = incomingStatus.frozen - 1;
+    if (nextStatus.wet === incomingStatus.wet && incomingStatus.wet > 0) nextStatus.wet = incomingStatus.wet - 1;
+    if (incomingStatus.vulnerable > 0) nextStatus.vulnerable = incomingStatus.vulnerable - 1;
+
+    if (!isNonDamageSkill || isDebuffSkill) {
+      if (playerElement === 'agua') { nextStatus.wet = Math.max(nextStatus.wet, 2); comboLog.push('apply:wet'); }
+      if (playerElement === 'gelo') {
+        nextStatus.frozen = Math.max(nextStatus.frozen, (incomingStatus.wet > 0 ? 2 : 1) + (treeMods.statusDur.frozen || 0));
+        nextStatus.burning = 0;
+        comboLog.push('apply:frozen');
+      }
+      if (playerElement === 'fogo') {
+        if (incomingStatus.wet > 0 || nextStatus.wet > 0) { nextStatus.wet = 0; comboLog.push('steam'); }
+        nextStatus.burning = Math.max(nextStatus.burning, 3 + (treeMods.statusDur.burning || 0));
+        comboLog.push('apply:burning');
+      }
+      if (playerElement === 'natureza') {
+        nextStatus.poison = Math.max(nextStatus.poison, 3 + (treeMods.statusDur.poison || 0));
+        comboLog.push('apply:poison');
+      }
+      if (isPhysicalSkill && /corte|l[âa]mina|garra|retalh|lacer|sangr|talho|navalha|estocada|fenda/.test(skillText)) {
+        nextStatus.bleeding = Math.min(5, nextStatus.bleeding + 1);
+        comboLog.push('apply:bleeding');
+      }
+    }
+    if (isDebuffSkill) { nextStatus.vulnerable = Math.max(nextStatus.vulnerable, 2); comboLog.push('apply:vulnerable'); }
+
+    let playerHealAmount = 0;
+    if (isHealSkill) {
+      playerHealAmount = Math.max(0, requestedSkillPower);
+      danoPlayer = 0;
+    }
+
+    if (isUtilitySkill && requestedSkillPower > 0) {
+      playerHealAmount += Math.max(1, Math.floor(requestedSkillPower * 0.12));
+    }
+
+    const bossStunned = isCcSkill || comboStun || incomingStatus.frozen > 0;
+
+    let hpBossRestante = Math.max(combat.hp_atual_boss - danoPlayer - dotDamage, 0);
+
+    if (bossSkill.selfHealPct > 0 && hpBossRestante > 0) {
+      const maxBossHpLocal = toNumber(combat.bosses?.hp, hpBossRestante);
+      const healAmount = Math.max(1, Math.floor(maxBossHpLocal * bossSkill.selfHealPct));
+      bossSelfHeal += healAmount;
+    }
+    if (bossSelfHeal > 0 && hpBossRestante > 0) {
+      const maxBossHpLocal = toNumber(combat.bosses?.hp, hpBossRestante);
+      const healed = Math.min(bossSelfHeal, Math.max(0, maxBossHpLocal - hpBossRestante));
+      hpBossRestante = Math.min(maxBossHpLocal, hpBossRestante + bossSelfHeal);
+      if (healed > 0) bossEffectLog.push(`heal:+${healed}`);
+    }
+
+    let dadoBoss = 0;
+    let danoBoss = 0;
+    let hpPlayerRestante = combat.hp_atual_personagem;
+    let status: 'em_andamento' | 'vitoria' | 'derrota' = 'em_andamento';
+    let turnoAtual: 'player' | 'boss' = 'boss';
+    let lootDrop: any = null;
+    let buffShieldAmount = 0;
+
+    if (hpBossRestante <= 0) {
+      status = 'vitoria';
+      turnoAtual = 'player';
+    } else {
+      dadoBoss = rollD20();
+      const bossAttackBase =
+        combat.bosses.ataque_base +
+        (bossItemEnabled ? toNumber(bossItem?.atk_bonus, 0) + Math.floor(toNumber(bossItem?.matk_bonus, 0) * 0.5) : 0);
+      let bossMultiplier = Math.max(0.4, 1.5 * bossSkill.damageMultiplier * (1 - playerSkill.slowBossPct));
+      if (bossSkill.bossDamageSelfPenaltyPct > 0) {
+        bossMultiplier = bossMultiplier * (1 - bossSkill.bossDamageSelfPenaltyPct);
+      }
+
+      if (bossStunned) {
+        danoBoss = 0;
+        bossEffectLog.push('stunned_by_player_cc');
+      } else {
+        danoBoss = calculateDamage(
+          bossAttackBase,
+          dadoBoss,
+          combat.personagens.defesa_base,
+          bossMultiplier,
+        );
+      }
+      if (bossSkill.playerDamageDebuffPct > 0) {
+        const before = danoPlayer;
+        const newDano = Math.max(0, Math.floor(danoPlayer * (1 - bossSkill.playerDamageDebuffPct)));
+        const blocked = before - newDano;
+        if (blocked > 0) {
+          bossEffectLog.push(`curse_debuff:${blocked}`);
+          hpBossRestante = Math.min(toNumber(combat.bosses?.hp, hpBossRestante), hpBossRestante + blocked);
+          danoPlayer = newDano;
+        }
+      }
+      if (playerSkill.reduceIncomingPct > 0) {
+        danoBoss = Math.max(1, Math.floor(danoBoss * (1 - playerSkill.reduceIncomingPct)));
+      }
+
+      if (isBuffSkill && requestedSkillPower > 0 && danoBoss > 0) {
+        buffShieldAmount = Math.min(danoBoss - 1, requestedSkillPower);
+        danoBoss = Math.max(1, danoBoss - buffShieldAmount);
+        if (buffShieldAmount > 0) bossEffectLog.push(`buff_shield:${buffShieldAmount}`);
+      }
+
+      const playerMaxHpForCap = toNumber(combat.personagens?.hp_max, combat.hp_atual_personagem);
+      if (playerMaxHpForCap > 0 && danoBoss > 0) {
+        const hitCap = Math.ceil(playerMaxHpForCap * 0.35);
+        if (danoBoss > hitCap) { bossEffectLog.push(`hit_cap:${danoBoss - hitCap}`); danoBoss = hitCap; }
+      }
+
+      hpPlayerRestante = Math.max(combat.hp_atual_personagem - danoBoss, 0);
+
+      if (hpPlayerRestante <= 0) {
+        status = 'derrota';
+      } else {
+        status = 'em_andamento';
+      }
+
+      turnoAtual = 'player';
+    }
+
+    // Pet Kraken (regen de HP): cura no fim de cada turno SOBREVIVIDO (não revive).
+    // Aplica em hpPlayerRestante antes de persistir → consistente em todo o downstream.
+    if (status === 'em_andamento' && petSustain && petSustain.kind === 'regen_hp') {
+      const pmax = toNumber(combat.personagens?.hp_max, hpPlayerRestante);
+      hpPlayerRestante = Math.min(pmax, hpPlayerRestante + Math.round(pmax * petSustain.pct));
+    }
+
+    const playerEffects = [...playerSkill.effects, ...comboLog];
+    const bossEffects = bossEffectLog;
+    if (elementalReaction) bossEffects.push(`reaction:${elementalReaction}`);
+    if (bossItemEnabled && bossItem?.name) {
+      bossEffects.push(`item:${bossItem.name}`);
+    }
+
+    const { error: updateError } = await supabase
+      .from('combates_ativos')
+      .update({
+        hp_atual_boss: hpBossRestante,
+        hp_atual_personagem: hpPlayerRestante,
+        turno_atual: turnoAtual,
+        status,
+        boss_status: nextStatus,
+      })
+      .eq('id', combat.id)
+      .eq('personagem_id', user.id);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    let turnLogId: string | null = null;
+    const { data: latestRound } = await supabase
+      .from('combat_turn_logs')
+      .select('rodada')
+      .eq('combate_id', combat.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const rodada = Math.max(1, Number((latestRound as any)?.rodada || 0) + 1);
+
+    const { data: insertedLog } = await supabase
+      .from('combat_turn_logs')
+      .insert({
+        combate_id: combat.id,
+        user_id: user.id,
+        rodada,
+        habilidade_player: playerSkill.name,
+        habilidade_boss: bossSkill.name,
+        dado_player: dadoPlayer,
+        dado_boss: dadoBoss,
+        dano_player: danoPlayer + dotDamage,
+        dano_boss: danoBoss,
+        efeitos_player: playerEffects,
+        efeitos_boss: bossEffects,
+        hp_boss_apos: hpBossRestante,
+        hp_player_apos: hpPlayerRestante,
+        status,
+      })
+      .select('id')
+      .maybeSingle();
+
+    turnLogId = (insertedLog as any)?.id || null;
+
+    await supabase.from('activity_log').insert({
+      user_id: user.id,
+      action: 'combat_turn',
+      description: `[Rodada ${rodada}] Player ${playerSkill.name} (${danoPlayer}) vs Boss ${bossSkill.name} (${danoBoss})`,
+      xp_gained: 0,
+    });
+
+    const { data: currentHealth } = await supabase
+      .from('user_health_stats')
+      .select('id, max_hp, fatigue')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (currentHealth) {
+      const maxHp = Number(currentHealth.max_hp ?? hpPlayerRestante);
+      const hpAfterHeal = playerHealAmount > 0
+        ? Math.min(maxHp, hpPlayerRestante + playerHealAmount)
+        : hpPlayerRestante;
+      const updatePayload: Record<string, unknown> = {
+        current_hp: Math.max(0, Math.min(maxHp, hpAfterHeal)),
+        // MP server-authoritative: custo (com -custo do Leviatã) + regen do Necromante.
+        current_mp: finalPlayerMp,
+      };
+
+      if (status === 'vitoria' || status === 'derrota') {
+        const bossLevel = toNumber(combat.bosses?.level, 1);
+        const heroLevel = toNumber(combat.personagens?.nivel, 1);
+        const levelDiff = bossLevel - heroLevel;
+
+        const baseFatigue =
+          levelDiff >= 4 ? 25 :
+          levelDiff >= 2 ? 20 :
+          levelDiff >= 1 ? 15 :
+          levelDiff === 0 ? 12 :
+          levelDiff === -1 ? 10 :
+          8;
+
+        const hpLostFraction = maxHp > 0 ? Math.max(0, 1 - hpPlayerRestante / maxHp) : 1;
+        const damageFatigue = Math.round(hpLostFraction * 18);
+        const turnFatigue = Math.min(10, Math.floor(Math.max(0, rodada - 1) / 2));
+        const defeatPenalty = status === 'derrota' ? 12 : 0;
+        const fatigueGain = baseFatigue + damageFatigue + turnFatigue + defeatPenalty;
+        const cappedGain = Math.min(50, fatigueGain);
+        const currentFatigue = toNumber(currentHealth.fatigue, 0);
+        updatePayload.fatigue = Math.min(100, currentFatigue + cappedGain);
+      } else {
+        const currentFatigue = toNumber(currentHealth.fatigue, 0);
+        const midCombatGain = 1;
+        updatePayload.fatigue = Math.min(100, currentFatigue + midCombatGain);
+      }
+
+      await supabase
+        .from('user_health_stats')
+        .update(updatePayload)
+        .eq('user_id', user.id);
+    } else {
+      await supabase
+        .from('user_health_stats')
+        .insert({
+          user_id: user.id,
+          max_hp: Math.max(1, hpPlayerRestante),
+          current_hp: Math.max(0, hpPlayerRestante),
+          fatigue: 0,
+        });
+    }
+
+    return new Response(
+      JSON.stringify({
+        dado_player: dadoPlayer,
+        dano_player: danoPlayer,
+        dot_damage: dotDamage,
+        heal_amount: playerHealAmount,
+        dado_boss: dadoBoss,
+        dano_boss: danoBoss,
+        current_mp_restante: finalPlayerMp,
+        boss_stunned: bossStunned,
+        buff_shield_amount: buffShieldAmount,
+        debuff_defense_shred: debuffDefenseShred,
+        skill_effect_applied: skillEffectType,
+        boss_status: nextStatus,
+        combo_log: comboLog,
+        hp_boss_restante: hpBossRestante,
+        hp_player_restante: hpPlayerRestante,
+        status,
+        loot_drop: lootDrop,
+        habilidade_player: playerSkill.name,
+        habilidade_boss: bossSkill.name,
+        efeitos_player: playerEffects,
+        efeitos_boss: bossEffects,
+        log_id: turnLogId,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
+  } catch (error) {
+    if (error instanceof Error && (error as Error & { code?: string }).code === 'PAYWALL_LOCKED') {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 402,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.error('processar_turno error:', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return new Response(
+      JSON.stringify({
+        error: 'Erro ao processar turno',
+        message: errMsg,
+        hint: 'Tente novamente. Se persistir, recarregue a arena.',
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
+  }
+});
