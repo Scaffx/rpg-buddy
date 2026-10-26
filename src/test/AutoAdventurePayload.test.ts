@@ -112,6 +112,22 @@ describe('auto adventure RPC contract', () => {
     expect(parsed.catchup.defeated).toBe(false);
   });
 
+  it('keeps legacy pet absent/null and validates the protected pet snapshot', () => {
+    const base = (snapshot as Record<string, Json>).battle as Record<string, Json>;
+    expect(parseAdventureSnapshot(snapshot).battle?.pet).toBeUndefined();
+    expect(parseAdventureSnapshot({ ...snapshot, battle: { ...base, pet: null } }).battle?.pet).toBeNull();
+    const pet = {
+      companion_id: '22222222-2222-2222-2222-222222222222', companion_type: 'mini_kraken', name: 'Krakenzinho',
+      bonus: { stat: 'hp', pct: 0.1 }, sustain: { kind: 'regen_hp', pct: 0.05 },
+      base_stats: { atk: 20, def: 10, hp: 100, mp: 30 },
+      effective_stats: { atk: 20, def: 10, hp: 110, mp: 30 },
+    };
+    const parsed = parseAdventureSnapshot({ ...snapshot, battle: { ...base, pet } });
+    expect(parsed.battle?.pet).toEqual(pet);
+    expect(() => parseAdventureSnapshot({ ...snapshot, battle: { ...base, pet: { ...pet, bonus: { stat: 'gold', pct: 0.1 } } } })).toThrow('AUTO_ADVENTURE_INVALID_RESPONSE');
+    expect(() => parseAdventureSnapshot({ ...snapshot, battle: { ...base, pet: { ...pet, effective_stats: { hp: '110' } } } })).toThrow('AUTO_ADVENTURE_INVALID_RESPONSE');
+  });
+
   it('schedules from server time, including time elapsed while the panel stays open', () => {
     const parsed = parseAdventureSnapshot(snapshot);
     const updatedAt = Date.parse('2026-10-19T18:30:05Z');

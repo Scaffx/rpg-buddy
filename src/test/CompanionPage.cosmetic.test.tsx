@@ -18,6 +18,7 @@ const COMPANIONS: CompanionRow[] = [
 
 vi.mock('@/components/AppLayout', () => ({ default: ({ children }: any) => <>{children}</> }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
+vi.mock('@/hooks/useActivePet', () => ({ useActivePet: () => ({ state: { enabled: false, active_companion_id: null, pets: [] }, activeId: null, isSetting: false, isLoading: false, error: null, setError: null, setActive: vi.fn(), resetSetError: vi.fn(), refetch: vi.fn() }) }));
 vi.mock('@/hooks/useProfile', () => ({ useProfile: () => ({ data: { level: 5 }, isLoading: false }) }));
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: { from: () => ({ update: () => ({ eq: () => Promise.resolve({ error: null }) }) }) },

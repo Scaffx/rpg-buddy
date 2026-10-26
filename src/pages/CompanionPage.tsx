@@ -25,13 +25,12 @@ import {
   xpForNextLevel,
   type CompanionRow,
 } from '@/hooks/useCompanion';
-import { useActivePet } from '@/hooks/useActivePet';
-import { getPetBonus, petBonusLabel, getSustainEffect, sustainLabel, isForagePet, forageRarityCap, hasForagedToday } from '@/lib/pets';
+import { useActivePet, petErrorMessage, type AdventurePet } from '@/hooks/useActivePet';
+import { adventurePetBonusLabel, sustainLabel, isForagePet, forageRarityCap, hasForagedToday } from '@/lib/pets';
 import { getLocalDateString } from '@/lib/streakUtils';
 
-// Companheiros são puramente COSMÉTICOS / de companhia (spec "Rotina é a
-// Torneira" §4): não têm stats de combate, não equipam itens e não lutam.
-// A página deixa o herói nomear, alimentar e brincar (humor + nível).
+// As barras de humor/nível pertencem à companhia. O bônus da aventura vem
+// exclusivamente do catálogo confirmado pelo RPC, sem usar stats editáveis do pet.
 
 const FEED_COOLDOWN_MIN = 180;
 const PLAY_COOLDOWN_MIN = 60;
@@ -163,21 +162,27 @@ function SelectionScreen() {
 
 function CompanionCard({
   companion,
-  activeType,
+  pet,
+  activeId,
+  selectionEnabled,
+  isSetting,
   onToggleActive,
 }: {
   companion: CompanionRow;
-  activeType: string | null;
-  onToggleActive: (companionType: string) => void;
+  pet: AdventurePet | null;
+  activeId: string | null;
+  selectionEnabled: boolean;
+  isSetting: boolean;
+  onToggleActive: (companionId: string | null) => void;
 }) {
   const { t }     = useTranslation();
   const { user }  = useAuth();
   const qc        = useQueryClient();
   const interact  = useInteractCompanion();
 
-  const bonus       = getPetBonus(companion.companion_type);
-  const isActive    = activeType === companion.companion_type;
-  const sustain     = getSustainEffect(companion.companion_type);
+  const bonus       = selectionEnabled ? pet?.bonus ?? null : null;
+  const isActive    = selectionEnabled && activeId === companion.id;
+  const sustain     = selectionEnabled ? pet?.sustain ?? null : null;
   const forages     = isForagePet(companion.companion_type);
   const affinity    = Number(companion.affinity ?? 0);
   const foragedToday = hasForagedToday(companion.last_forage_at, getLocalDateString());
@@ -211,6 +216,7 @@ function CompanionCard({
       .eq('id', companion.id);
     if (error) { toast.error(t('app.companion.toast_name_error')); return; }
     qc.invalidateQueries({ queryKey: ['companions_all', user.id] });
+    qc.invalidateQueries({ queryKey: ['adventure-pet-state', user.id] });
     setEditingName(false);
     toast.success(t('app.companion.toast_name_updated'));
   }
@@ -272,26 +278,30 @@ function CompanionCard({
         <Badge variant="outline" className="text-xs">{label}</Badge>
       </div>
 
-      {/* Bônus passivo + ativar (Fase 1: 1 pet ativo por vez) */}
+      {/* Seleção confirmada pelo servidor; só vale em lutas iniciadas depois. */}
       {bonus && (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+        <div className="space-y-1 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+          <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Sparkles className="w-3.5 h-3.5" /> {petBonusLabel(bonus)}
+            <Sparkles className="w-3.5 h-3.5" /> {adventurePetBonusLabel(bonus)}
           </span>
           <Button
             size="sm"
             variant={isActive ? 'default' : 'outline'}
             className="h-7 text-xs"
-            onClick={() => onToggleActive(companion.companion_type)}
+            disabled={isSetting}
+            onClick={() => onToggleActive(isActive ? null : companion.id)}
           >
             {isActive
-              ? t('app.companion.bonus_active', { defaultValue: 'Ativo' })
-              : t('app.companion.bonus_activate', { defaultValue: 'Ativar' })}
+              ? 'Selecionado · desativar'
+              : 'Selecionar'}
           </Button>
+          </div>
+          {isActive && <p className="text-[11px] text-muted-foreground">Selecionado para a próxima luta. A luta em andamento mantém o pet com que começou.</p>}
         </div>
       )}
 
-      {/* Sustain em combate (Fase 2): efeito por turno quando este pet está ativo */}
+      {/* Efeito confirmado pelo catálogo remoto; não implica skill ou ataque próprio. */}
       {sustain && (
         <div className="flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-3 py-1.5 text-xs font-medium text-cyan-300">
           ⚔️ {t('app.companion.sustain_prefix', { defaultValue: 'Em combate' })}: {sustainLabel(sustain)}
@@ -310,7 +320,7 @@ function CompanionCard({
                 ? t('app.companion.forage_done', { defaultValue: '✓ hoje' })
                 : isActive
                   ? t('app.companion.forage_ready', { defaultValue: 'pronto hoje' })
-                  : t('app.companion.forage_inactive', { defaultValue: 'ative p/ caçar' })}
+                  : t('app.companion.forage_inactive', { defaultValue: 'selecione p/ caçar' })}
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -384,7 +394,8 @@ export default function CompanionPage() {
   const { t } = useTranslation();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { isLoading: loadingCompanions, data: allCompanions } = useAllCompanions();
-  const { activeType, setActive } = useActivePet();
+  const petSelection = useActivePet();
+  const { state: petState, activeId, setActive, isSetting } = petSelection;
 
   const companions = (allCompanions ?? []) as CompanionRow[];
   // Animal de nível 3 (escolha única) — controla a tela de seleção.
@@ -393,6 +404,10 @@ export default function CompanionPage() {
   const isLoading = (profileLoading && profile === undefined)
     || (loadingCompanions && allCompanions === undefined);
   const level = profile?.level ?? 0;
+  const selectPet = (companionId: string | null) => {
+    petSelection.resetSetError();
+    void setActive(companionId).catch(() => { /* erro persistente exibido abaixo */ });
+  };
 
   if (isLoading) {
     return (
@@ -421,17 +436,24 @@ export default function CompanionPage() {
           </div>
         </div>
 
+        {petSelection.isLoading && <p role="status" className="text-sm text-muted-foreground">Consultando os pets disponíveis para combate...</p>}
+        {petSelection.error && <div role="alert" className="rounded-lg border border-amber-500/40 p-3 text-sm">Não foi possível consultar a seleção de pets: {petErrorMessage(petSelection.error)} <Button variant="outline" size="sm" onClick={() => void petSelection.refetch()}>Tentar novamente</Button></div>}
+        {petSelection.setError && <p role="alert" className="rounded-lg border border-red-500/40 p-3 text-sm">Seleção não aplicada: {petErrorMessage(petSelection.setError)}</p>}
+        {petState && !petState.enabled && <p role="status" className="rounded-lg border border-amber-500/40 p-3 text-sm">O combate com pets aguarda liberação para esta conta. Seus companheiros continuam disponíveis aqui.</p>}
+        {petState?.enabled && petState.pets.length === 0 && <p role="status" className="rounded-lg border border-border p-3 text-sm">Nenhum pet elegível para a aventura automática foi confirmado nesta conta.</p>}
+        {petState?.enabled && petState.pets.length > 0 && !activeId && <p className="text-sm text-muted-foreground">Nenhum pet selecionado para as próximas lutas.</p>}
+
         {/* Selection if lv3+ but no animal companion yet */}
         <div data-tour="companion-roster">
           {!animalCompanion && level >= 3 && (
             <SelectionScreen />
           )}
 
-          {/* Companions grid (animal + pets) — todos cosméticos */}
+          {/* Companions grid (animal + pets); elegibilidade de combate vem do RPC. */}
           {companions.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {companions.map((c) => (
-                <CompanionCard key={c.id} companion={c} activeType={activeType} onToggleActive={setActive} />
+                <CompanionCard key={c.id} companion={c} pet={petState?.pets.find(pet => pet.id === c.id) ?? null} activeId={activeId} selectionEnabled={Boolean(petState?.enabled && !petSelection.error)} isSetting={isSetting} onToggleActive={selectPet} />
               ))}
             </div>
           )}

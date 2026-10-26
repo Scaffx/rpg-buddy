@@ -7,8 +7,9 @@ import { useProfile } from '@/hooks/useProfile';
 import { useShopItems, useBuyEquipment, useInventory, type GameItem, type InventoryItem } from '@/hooks/useInventory';
 import { useShopPets, useBuyPet, useAllCompanions } from '@/hooks/useCompanion';
 import { useAuth } from '@/hooks/useAuth';
+import { useActivePet } from '@/hooks/useActivePet';
 import { usePurchaseHistory } from '@/hooks/usePurchaseHistory';
-import { isForagePet } from '@/lib/pets';
+import { isForagePet, adventurePetBonusLabel, sustainLabel } from '@/lib/pets';
 import AppLayout from '@/components/AppLayout';
 import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -147,21 +148,20 @@ export default function ShopPage() {
   const estimatedNetDailyGold = Math.max(0, (adventureIncome?.dailyGold ?? 0) - 2500);
 
   const { data: shopPets = [], error: petError, isLoading: isPetLoading } = useShopPets();
+  const adventurePets = useActivePet();
+  const petCombatEnabled = Boolean(adventurePets.state?.enabled && !adventurePets.error);
   const buyPet = useBuyPet();
   const { data: allCompanions = [] } = useAllCompanions();
   const ownedPetTypes = useMemo(
     () => new Set((allCompanions as any[]).map((c) => c.companion_type)),
     [allCompanions],
   );
-  const roleLabel = (role: string) =>
-    role === 'magic' ? t('app.shop.pet_role_magic')
-    : role === 'support' ? t('app.shop.pet_role_support')
-    : t('app.shop.pet_role_physical');
   const handleBuyPet = (pet: any) => {
     setPurchaseError(null);
     buyPet.mutate(pet.pet_type, {
       onSuccess: () => {
         refreshPurchaseHistory();
+        void queryClient.invalidateQueries({ queryKey: ['adventure-pet-state', user?.id] });
         toast.success(t('app.shop.toast_pet_bought', { name: pet.name }));
       },
       onError: (err: unknown) => {
@@ -688,8 +688,9 @@ export default function ShopPage() {
           <TabsContent value="pets" className="space-y-4 mt-6">
             <div className="space-y-1">
               <h2 className="text-lg font-display font-bold text-fuchsia-400">{t('app.shop.section_pets_title')}</h2>
-              <p className="text-sm text-muted-foreground italic">{t('app.shop.section_pets_desc')}</p>
-              <p className="text-xs text-muted-foreground">Companheiros de coleção: na aventura automática, eles não alteram atributos nem rendimentos.</p>
+              <p className="text-sm text-muted-foreground italic">Miniaturas de chefes para acompanhar seu herói. O combate automático usa bônus passivos confirmados pelo servidor.</p>
+              <p className="text-xs text-muted-foreground">{petCombatEnabled ? 'Selecione um pet próprio em Companheiros para receber seu bônus na próxima luta iniciada. Pets não aumentam ouro nem XP.' : 'O combate com pets aguarda liberação para esta conta; a compra não ativa bônus de combate agora.'}</p>
+              {adventurePets.error && <p role="alert" className="text-xs text-amber-300">Não foi possível confirmar a disponibilidade do combate com pets. Tente atualizar.</p>}
               <p className="text-xs text-muted-foreground">Tempo estimado com sua média de ouro da aventura nos últimos 7 dias, reservando 2.500 ouro por dia para uma melhoria útil. Derrotas, baús e novas compras mudam essa conta; o chefe exigido continua obrigatório.</p>
             </div>
             {isPetLoading ? <p className="text-sm text-muted-foreground">Carregando companheiros...</p>
@@ -697,6 +698,7 @@ export default function ShopPage() {
             : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(shopPets as any[]).map((pet) => {
                 const owned = ownedPetTypes.has(pet.pet_type) || pet.owned;
+                const battlePet = petCombatEnabled ? adventurePets.state?.pets.find(item => item.companion_type === pet.pet_type) : null;
                 const canAfford = currentGold >= pet.price;
                 const estimatedDays = estimatedNetDailyGold > 0
                   ? Math.ceil(Math.max(0, Number(pet.price) - currentGold) / estimatedNetDailyGold)
@@ -719,7 +721,7 @@ export default function ShopPage() {
                           {locked ? '???' : pet.name}
                         </p>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                          {locked ? t('app.shop.pet_locked_tag') : roleLabel(pet.role)}
+                          {locked ? t('app.shop.pet_locked_tag') : 'Companheiro'}
                         </span>
                       </div>
                     </div>
@@ -732,8 +734,9 @@ export default function ShopPage() {
                     {!locked && (
                       <div className="flex flex-wrap gap-1.5 text-[10px]">
                         <span className="bg-emerald-950/40 border border-emerald-500/30 rounded px-1.5 py-0.5 text-emerald-300">
-                          🐾 Companheiro de coleção
+                          🐾 {petCombatEnabled ? 'Pet selecionável para combate' : 'Combate aguardando liberação'}
                         </span>
+                        {battlePet && <span className="bg-fuchsia-950/40 border border-fuchsia-500/30 rounded px-1.5 py-0.5 text-fuchsia-200">{adventurePetBonusLabel(battlePet.bonus)}{battlePet.sustain ? ` · ${sustainLabel(battlePet.sustain)}` : ''}</span>}
                         {isForagePet(pet.pet_type) && (
                           <span className="bg-amber-950/40 border border-amber-500/30 rounded px-1.5 py-0.5 text-amber-300">
                             🎒 {t('app.shop.pet_forage')}

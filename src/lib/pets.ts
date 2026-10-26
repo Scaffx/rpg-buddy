@@ -1,9 +1,11 @@
-// Pets — bônus passivos (Fase 1, client-only).
+// Catálogo legado de bônus de pet. A aventura automática obtém seleção,
+// percentuais e snapshot de combate dos RPCs; estas constantes continuam para
+// os fluxos antigos de boss e para rótulos. Não as use como prova de posse.
 //
 // Regras invioláveis (spec "Rotina é a Torneira"): pet NUNCA dá XP, ouro nem
 // multiplicador deles. Aqui o pet ativo só ajusta os STATS INICIAIS do combate
-// solo (atk/def/hp/mp), que são computados no cliente (computeSoloCombatStats /
-// useBossCombat). NÃO toca na edge (processar_turno). 1 pet ativo por vez.
+// solo antigo (atk/def/hp/mp) em useBossCombat. A aventura automática usa o
+// snapshot protegido do servidor. 1 pet ativo por vez.
 //
 // Números (10%) são chute inicial — Murillo calibra na revisão.
 
@@ -11,9 +13,8 @@ export type PetStat = 'mp' | 'hp' | 'atk' | 'def';
 export type PetBonus = { stat: PetStat; pct: number };
 
 /**
- * Catálogo Fase 1: cada `companion_type` → UM bônus passivo de stat.
- * Comentário "Fase 2" = pet que ganha um efeito de assinatura na edge depois
- * (regen/cooldown/custo-MP/flask); por ora carrega um bônus de stat equivalente.
+ * Catálogo legado: cada `companion_type` → UM bônus passivo de stat.
+ * Somente Kraken, Necromante e Leviatã têm sustain de aventura confirmado.
  */
 export const PET_BONUS: Record<string, PetBonus> = {
   // ── Mágicos / mana ──
@@ -70,9 +71,15 @@ export function petBonusLabel(bonus: PetBonus | null): string | null {
   return `+${Math.round(bonus.pct * 100)}% ${STAT_LABEL[bonus.stat]}`;
 }
 
-// ── Pet ativo (Fase 1: localStorage por usuário) ──────────────────────────────
-// Produtização: promover para profiles.active_companion_id (cross-device) quando
-// o feel estiver validado. Aqui fica client-only pra não mexer no schema em prod.
+/** Na aventura automática, ATK do catálogo aumenta a ofensa real da classe. */
+export function adventurePetBonusLabel(bonus: PetBonus | null): string | null {
+  if (bonus?.stat === 'atk') return `+${Math.round(bonus.pct * 100)}% ofensa (ATK/MATK)`;
+  return petBonusLabel(bonus);
+}
+
+// ── Preferência legada para boss/forrageio ────────────────────────────────────
+// A seleção da aventura automática é remota via useActivePet. Esta chave só é
+// atualizada após o RPC confirmar a nova seleção; não prova bônus ou posse.
 
 const activeKey = (userId: string) => `active_pet:${userId}`;
 
@@ -88,11 +95,9 @@ export function setActivePetType(userId: string, companionType: string | null): 
   } catch { /* localStorage indisponível — pet ativo apenas na sessão */ }
 }
 
-// ── Sustain em combate (Fase 2) ───────────────────────────────────────────────
-// Efeitos POR TURNO aplicados na EDGE processar_turno (regen/-custo de MP). O
-// cliente manda o companion_type ativo no corpo; a edge VERIFICA posse e aplica.
-// A edge inline os MESMOS valores (Deno não importa este módulo) — estas funções
-// puras existem pra teste e pra rotular a UI. Números = chute (Murillo calibra).
+// ── Sustain do catálogo legado ────────────────────────────────────────────────
+// A aventura usa os valores retornados pelo servidor. Funções puras abaixo
+// permanecem para o combate legado e seus testes.
 
 export type SustainEffect =
   | { kind: 'regen_hp'; pct: number } // % do HP máx curado ao fim de cada turno sobrevivido
