@@ -113,6 +113,7 @@
     "footnote": "Funciona em qualquer navegador moderno · iOS via Safari (Adicionar à tela de início)"
   },
   "app": {
+    "confirming_session": "Confirmando sua sessão…",
     "helpTutorial": {
       "introTitle": "Bem-vindo ao Life on RPG! 🎮",
       "introDescription": "Suas rotinas reais fazem o herói evoluir. A aventura automática rende ouro e itens, sem XP.",

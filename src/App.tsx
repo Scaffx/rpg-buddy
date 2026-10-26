@@ -15,6 +15,7 @@ import { hasCompletedOnboarding } from "@/lib/onboarding";
 import LifeonRPGSplash from "@/components/branding/LifeonRPGSplash";
 import EntrySplashGate from "@/components/branding/EntrySplashGate";
 import BedtimeGate from "@/components/BedtimeGate";
+import { AuthContinuityBoundary } from "@/components/auth/AuthContinuityBoundary";
 
 // Páginas carregadas sob demanda (code-split por rota) — reduz drasticamente o
 // bundle inicial: cada página vira um chunk separado, baixado só quando acessada.
@@ -142,6 +143,7 @@ function AppRoutes() {
   useClickSound();
 
   return (
+    <AuthContinuityBoundary>
     <Suspense fallback={<LifeonRPGSplash fullscreen label="abrindo o portal" />}>
       <Routes>
         <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
@@ -189,6 +191,7 @@ function AppRoutes() {
       </Routes>
       <BedtimeGate />
     </Suspense>
+    </AuthContinuityBoundary>
   );
 }
 

@@ -113,6 +113,7 @@
     "footnote": "支持所有现代浏览器"
   },
   "app": {
+    "confirming_session": "正在确认您的会话…",
     "helpTutorial": {
       "introTitle": "欢迎来到 Life on RPG！🎮",
       "introDescription": "现实中的日常任务让英雄成长。自动冒险可获得金币和物品，但不提供经验值。",

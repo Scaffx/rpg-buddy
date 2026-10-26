@@ -4,6 +4,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { AuthContinuityBoundary } from '@/components/auth/AuthContinuityBoundary';
 
 const auth = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -336,18 +337,61 @@ describe('independent Auth refresh contract', () => {
     expect(draft()).not.toBeNull();
   });
 
-  it('blocks at confirmed-token expiry while a refresh is pending and ignores its late answer', async () => {
+  it('quarantines at confirmed-token expiry, accepts an in-window answer, and ignores one after timeout', async () => {
     const first = token('hero', seconds + 2);
     const next = token('hero', seconds + 3600);
     const confirmation = deferred<ReturnType<typeof verified>>();
-    await mount(session('hero', first));
+    function Probe() {
+      const { user, session: activeSession, loading, authError } = useAuth();
+      const { isAdmin } = useIsAdmin();
+      snapshot = { user, session: activeSession, loading, authError, isAdmin };
+      return null;
+    }
+    function Scene() {
+      const { user, loading, authError } = useAuth();
+      return loading || authError || !user ? null : <Draft />;
+    }
+    auth.getSession.mockResolvedValue({ data: { session: session('hero', first) }, error: null });
+    auth.getUser.mockResolvedValueOnce(verified('hero'));
+    host = document.createElement('div');
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => {
+      root!.render(<AuthProvider><Probe /><AuthContinuityBoundary><Scene /></AuthContinuityBoundary></AuthProvider>);
+    });
+    await flush();
+    expect(snapshot.user?.id).toBe('hero');
+    const scene = draft()!;
+    const input = scene.querySelector('input')!;
+    input.value = 'rascunho preservado';
     auth.getUser.mockReturnValueOnce(confirmation.promise);
     await event('TOKEN_REFRESHED', session('hero', next));
     await advance(2_000);
-    expect(snapshot).toMatchObject({ user: null, session: null, loading: false, authError: true });
+    expect(snapshot).toMatchObject({ user: null, session: null, loading: true, authError: false, isAdmin: false });
+    expect(host.querySelector('[role="status"]')).not.toBeNull();
+    expect(host.querySelector('[data-auth-retained]')?.hasAttribute('inert')).toBe(true);
+    expect(draft()).toBe(scene);
+    await advance(5_000);
+    expect(snapshot).toMatchObject({ user: null, session: null, loading: true, authError: false });
     confirmation.resolve(verified('hero'));
     await flush();
-    expect(snapshot.user).toBeNull();
+    expect(snapshot).toMatchObject({ loading: false, authError: false, isAdmin: false });
+    expect(snapshot.user?.id).toBe('hero');
+    expect(snapshot.session?.access_token).toBe(next);
+    expect(draft()).toBe(scene);
+    expect(input.value).toBe('rascunho preservado');
+    expect([mounts, unmounts]).toEqual([1, 0]);
+
+    const later = token('hero', seconds + 7200);
+    const tooLate = deferred<ReturnType<typeof verified>>();
+    auth.getUser.mockReturnValueOnce(tooLate.promise);
+    await event('TOKEN_REFRESHED', session('hero', later));
+    await advance(15_000);
+    expect(snapshot).toMatchObject({ user: null, session: null, loading: false, authError: true });
+    expect(draft()).toBeNull();
+    tooLate.resolve(verified('hero'));
+    await flush();
+    expect(snapshot).toMatchObject({ user: null, session: null, loading: false, authError: true });
     expect(draft()).toBeNull();
   });
 });

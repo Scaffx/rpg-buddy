@@ -28,4 +28,4 @@ O DOM oculto e o estado em memória ainda contêm dados antigos; Suspense não s
 
 ## Reprodução e limite de prova
 
-`src/test/authRefreshExpiredBoundary.test.tsx` usa React/React DOM 18.3.1 e um guard estrutural pequeno: alternar o filho montado por splash zera o rascunho; suspender sob fronteira estável o conserva. `npx --no-install vitest run src/test/authRefreshExpiredBoundary.test.tsx`: **2/2 passaram**. O teste não usa o AuthProvider real, rede, Realtime ou navegador e não comprova a integração da proposta.
+A reprodução estrutural temporária usou React/React DOM 18.3.1: alternar o filho montado por splash zerou o rascunho; suspender sob fronteira estável o conservou (**2/2 passaram**). Ela foi arquivada nos artefatos locais da frente como `react-suspense-demonstration.test.tsx` e não integra a suíte de produto. A validação integrada deve usar `authRefreshRetention.test.tsx`, o AuthProvider real e a fronteira implementada, além da QA de navegador. A demonstração estrutural sozinha não comprova rede, Realtime ou integração.

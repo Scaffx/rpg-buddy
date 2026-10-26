@@ -181,10 +181,12 @@ describe('TOKEN_REFRESHED sem reset da rota', () => {
     expect(read('state')).toBe('hero');
     expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
     await advance(5_000);
+    expect(read('state')).toBe('loading');
+    await advance(15_000);
     expect(read('state')).toBe('retry');
   });
 
-  it('corta a continuidade quando o token antigo vence antes da resposta remota', async () => {
+  it('bloqueia acesso no exp antigo e aceita a confirmação tardia dentro do prazo', async () => {
     const oldToken = tokenFor('hero', 2);
     const newToken = tokenFor('hero', 90);
     const refresh = deferred<ReturnType<typeof verified>>();
@@ -192,11 +194,11 @@ describe('TOKEN_REFRESHED sem reset da rota', () => {
     await mount(session(member('hero'), oldToken));
     await event('TOKEN_REFRESHED', session(member('hero'), newToken));
     await advance(2_000);
-    expect(read('state')).toBe('retry');
+    expect(read('state')).toBe('loading');
     expect(read('token')).toBe('none');
     refresh.resolve(verified(member('hero')));
     await flush();
-    expect(read('state')).toBe('retry');
+    expect(read('state')).toBe('hero');
   });
 
   it('recusa UID diferente mesmo que Auth confirme o UID alegado pelo evento', async () => {
