@@ -1,10 +1,17 @@
 /** Network boundary for the Supabase client's data APIs. Auth itself must stay reachable. */
 export class AuthDataGate {
-  private approved: { token: string; expiresAt: number } | null = null;
+  private approved: { token: string; expiresAt: number; anchor: string } | null = null;
   private candidate: string | null = null;
   private waiters = new Set<() => void>();
+  private authorizationGeneration = 0;
+  private inFlight = new Set<() => void>();
   private realtimeEpoch = 0;
   private realtimePause: Promise<unknown> = Promise.resolve();
+  private retireRealtimeChannels = false;
+  private realtimeReady = false;
+  private realtimeCleanupSafe = true;
+  private realtimePauseComplete = true;
+  private realtimePauseSequence = 0;
 
   constructor(private readonly baseUrl: string, private readonly publicKey: string) {}
 
@@ -18,31 +25,61 @@ export class AuthDataGate {
   }
 
   expire() {
+    this.realtimeEpoch++;
+    this.realtimeReady = false;
     this.approved = null;
     this.wake();
   }
 
-  approve(token: string, expiresAt: number) {
-    this.approved = { token, expiresAt };
+  approve(token: string, expiresAt: number, verifiedAnchor = token) {
+    if (this.approved && this.approved.anchor !== verifiedAnchor) this.invalidate();
+    this.approved = { token, expiresAt, anchor: verifiedAnchor };
     this.candidate = null;
     this.wake();
   }
 
   clear() {
+    this.invalidate();
+    this.realtimeEpoch++;
+    this.realtimeReady = false;
+    this.realtimePauseComplete = false;
     this.approved = null;
     this.candidate = null;
+    this.retireRealtimeChannels = true;
     this.wake();
   }
 
-  pauseRealtime(client: { disconnect: () => Promise<unknown> }) {
+  private invalidate() {
+    this.authorizationGeneration++;
+    for (const cancel of this.inFlight) cancel();
+  }
+
+  pauseRealtime(client: { disconnect: () => Promise<unknown>; removeAllChannels?: () => Promise<unknown> }) {
     this.realtimeEpoch++;
+    const pauseSequence = ++this.realtimePauseSequence;
+    this.realtimeReady = false;
+    this.realtimePauseComplete = false;
     let disconnect: Promise<unknown>;
     try {
       disconnect = Promise.resolve(client.disconnect());
-    } catch {
-      disconnect = Promise.resolve();
+    } catch (error) {
+      disconnect = Promise.reject(error);
     }
-    this.realtimePause = Promise.allSettled([this.realtimePause, disconnect]).then(() => undefined);
+    const retire = this.retireRealtimeChannels;
+    this.retireRealtimeChannels = false;
+    let removal: Promise<unknown> = Promise.resolve();
+    if (retire && client.removeAllChannels) {
+      try { removal = Promise.resolve(client.removeAllChannels()); }
+      catch (error) { removal = Promise.reject(error); }
+    }
+    this.realtimePause = Promise.allSettled([this.realtimePause, disconnect, removal]).then(results => {
+      if (results[1].status === 'rejected' || (retire && results[2].status === 'rejected')) {
+        this.realtimeCleanupSafe = false;
+      } else if (retire) {
+        this.realtimeCleanupSafe = true;
+      }
+      if (pauseSequence === this.realtimePauseSequence) this.realtimePauseComplete = true;
+    });
   }
 
   resumeRealtime(
@@ -52,10 +89,22 @@ export class AuthDataGate {
   ) {
     const epoch = ++this.realtimeEpoch;
     void this.realtimePause.then(async () => {
-      if (epoch !== this.realtimeEpoch || this.approvedToken() !== token) return;
+      if (epoch !== this.realtimeEpoch || !this.realtimeCleanupSafe || this.approvedToken() !== token) return;
       await client.setAuth(token);
-      if (epoch === this.realtimeEpoch && this.approvedToken() === token && hasChannels()) client.connect();
+      if (epoch !== this.realtimeEpoch || !this.realtimeCleanupSafe || this.approvedToken() !== token) return;
+      this.realtimeReady = true;
+      if (hasChannels()) client.connect();
     }).catch(() => undefined);
+  }
+
+  canConnectRealtime() {
+    return this.realtimeReady && this.realtimePauseComplete && this.realtimeCleanupSafe && !!this.approvedToken();
+  }
+
+  canSetRealtimeAuth(token?: string | null) {
+    const approved = this.approvedToken();
+    return !this.retireRealtimeChannels && this.realtimePauseComplete && this.realtimeCleanupSafe &&
+      !!approved && (!token || token === approved);
   }
 
   private wake() {
@@ -87,6 +136,7 @@ export class AuthDataGate {
     if (!token) throw new Error('Data request has no approved authorization');
 
     const permitted = () => this.approvedToken() === token;
+    let startGeneration = this.authorizationGeneration;
     if (!permitted()) {
       if (this.candidate !== token) throw new Error('Data request token was not approved');
       await new Promise<void>((resolve, reject) => {
@@ -102,8 +152,11 @@ export class AuthDataGate {
         const abort = () => finish(new DOMException('Request aborted', 'AbortError'));
         const check = () => {
           if (signal?.aborted) abort();
-          else if (permitted()) finish();
-          else if (this.candidate !== token) finish(new Error('Data request token was not approved'));
+          else if (permitted()) {
+            startGeneration = this.authorizationGeneration;
+            finish();
+          } else if (this.candidate !== token) finish(new Error('Data request token was not approved'));
+          else if (startGeneration !== this.authorizationGeneration) finish(new Error('Data request authorization changed'));
         };
         const timer = setTimeout(() => finish(new Error('Data request confirmation timed out')), 15_000);
         this.waiters.add(check);
@@ -112,8 +165,31 @@ export class AuthDataGate {
       });
     }
     if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
-    if (!permitted()) throw new Error('Data request token expired or changed');
-    return fetch(input, init);
+    if (startGeneration !== this.authorizationGeneration || !permitted()) throw new Error('Data request token expired or changed');
+    const anchor = this.approved!.anchor;
+    const generation = this.authorizationGeneration;
+    const controller = new AbortController();
+    let cancel!: (error?: Error) => void;
+    const invalidated = new Promise<never>((_resolve, reject) => {
+      cancel = (error = new Error('Data request authorization changed')) => {
+        controller.abort();
+        reject(error);
+      };
+    });
+    const abort = () => cancel(new DOMException('Request aborted', 'AbortError'));
+    signal?.addEventListener('abort', abort, { once: true });
+    this.inFlight.add(cancel);
+    try {
+      const response = await Promise.race([fetch(input, { ...init, signal: controller.signal }), invalidated]);
+      if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
+      if (generation !== this.authorizationGeneration || this.approved?.anchor !== anchor || !this.approvedToken()) {
+        throw new Error('Data response authorization changed');
+      }
+      return response;
+    } finally {
+      this.inFlight.delete(cancel);
+      signal?.removeEventListener('abort', abort);
+    }
   }
 }
 

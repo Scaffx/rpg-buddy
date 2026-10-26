@@ -19,7 +19,7 @@
 - [Certo] `npx --no-install vitest run src/test/authRefreshIndependent.test.tsx src/test/authDataGate.test.ts src/test/authRefreshRetention.test.tsx src/test/authRefreshExpiredBoundary.test.tsx src/test/authRefreshContinuity.test.tsx src/test/authClientQuarantineReview.test.ts --reporter=dot`: 52/52 testes, 5 arquivos encontrados pelo Vitest, exit 0, sem rejection não tratada. O arquivo `authRefreshExpiredBoundary.test.tsx` já não existia quando a suíte final rodou; sua ausência não é contada como prova.
 - [Certo] `npx --no-install eslint src/lib/authDataGate.ts src/components/auth/AuthContinuityBoundary.tsx src/integrations/supabase/client.ts src/test/authRefreshIndependent.test.tsx src/test/authRefreshRetention.test.tsx`: exit 0.
 - [Certo] JSON dos cinco idiomas carregou e retornou a nova chave; `npx --no-install vite build`: exit 0, 4006 módulos transformados.
-- [Certo] `npx --no-install tsc --noEmit -p tsconfig.app.json`: exit 2, 67 diagnósticos em outros arquivos, zero nos cinco arquivos TypeScript/TSX tocados nesta entrega. O typecheck global não está verde.
+- [Certo] `npx --no-install tsc --noEmit -p tsconfig.app.json`: exit 2. A checagem do coordenador confirmou 44 diagnósticos em 67 linhas de saída, idênticos à base (delta exato 0), sem erros nos arquivos desta entrega. O typecheck global não está verde.
 
 ## Limite
 

@@ -65,7 +65,7 @@ describe('revisão final independente da renovação', () => {
     expect(document.activeElement).toBe(later);
   });
 
-  it('confirma que disconnect do SDK preserva canal antigo para o próximo connect', async () => {
+  it('retira canal antigo antes de conectar um canal da nova identidade', async () => {
     const gate = new AuthDataGate('https://project.example.test', 'public-key');
     const realtime = new RealtimeClient('wss://project.example.test/realtime/v1', {
       params: { apikey: 'public-key' },
@@ -78,9 +78,11 @@ describe('revisão final independente da renovação', () => {
     gate.clear();
     gate.pauseRealtime(realtime);
     gate.approve('token-b', Date.now() + 60_000);
+    const newChannel = realtime.channel('dm-account-b');
     gate.resumeRealtime(realtime, 'token-b', () => realtime.getChannels().length > 0);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(realtime.getChannels()).toContain(oldChannel);
+    expect(realtime.getChannels()).not.toContain(oldChannel);
+    expect(realtime.getChannels()).toContain(newChannel);
     expect(realtime.accessTokenValue).toBe('token-b');
     expect(connect).toHaveBeenCalledTimes(1);
   });

@@ -27,13 +27,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // any channel can emit or receive under an unconfirmed token.
 const setRealtimeAuth = supabase.realtime.setAuth.bind(supabase.realtime);
 supabase.realtime.setAuth = async (token) => {
-  if (token && authDataGate.approvedToken() !== token) {
-    authDataGate.pauseRealtime(supabase.realtime);
+  if (!authDataGate.canSetRealtimeAuth(token)) {
+    if (token && authDataGate.approvedToken() !== token) authDataGate.pauseRealtime(supabase.realtime);
     return;
   }
   return setRealtimeAuth(token);
 };
 const connectRealtime = supabase.realtime.connect.bind(supabase.realtime);
 supabase.realtime.connect = () => {
-  if (authDataGate.approvedToken()) connectRealtime();
+  if (authDataGate.canConnectRealtime()) connectRealtime();
 };

@@ -57,6 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [continuity, setContinuity] = useState<Continuity>({ promise: null, resumed: false, sequence: 0, epoch: 0 });
   const [retryCount, setRetryCount] = useState(0);
   const retryAuth = useCallback(() => {
+    authDataGate.clear();
+    if (supabase.realtime) authDataGate.pauseRealtime(supabase.realtime);
     setSession(null);
     setUser(null);
     setLoading(true);
@@ -156,7 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       confirmedExpiry = next ? tokenExpiry(next.access_token) : null;
       watchExpiry();
       if (next && confirmedExpiry !== null) {
-        authDataGate?.approve(next.access_token, confirmedExpiry);
+        const anchor = confirmedBinding
+          ? JSON.stringify([confirmedBinding.userId, confirmedBinding.issuer, confirmedBinding.sessionId])
+          : next.access_token;
+        authDataGate.approve(next.access_token, confirmedExpiry, anchor);
         resumeRealtime(next.access_token);
       } else {
         authDataGate?.clear();
@@ -172,11 +177,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!current(requestVersion)) return;
       const token = candidate.access_token;
       const claimedUserId = candidate.user?.id;
-      if (token) authDataGate?.consider(token);
-      pauseRealtime();
       if (!keepVisible) {
         if (retain && !hold) hideExpired();
         if (!retain) {
+          authDataGate.clear();
           if (confirmedSession && !hold) setContinuity(state => ({ ...state, resumed: false, epoch: state.epoch + 1 }));
           settleHold(false);
           confirmedSession = null;
@@ -185,12 +189,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           confirmedExpiry = null;
         }
         clearTimeout(expiryTimer);
-        authDataGate?.expire();
+        if (retain) authDataGate.expire();
         setSession(null);
         setUser(null);
         setAuthError(false);
         setLoading(true);
       }
+      if (token) authDataGate.consider(token);
+      pauseRealtime();
       pending = token && claimedUserId ? { token, userId: claimedUserId, version: requestVersion } : null;
       armWatchdog(requestVersion, keepDeadline);
       // GoTrue holds its auth lock while notifying subscribers.
@@ -298,6 +304,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
   const signOut = async () => {
+    authDataGate.clear();
+    if (supabase.realtime) authDataGate.pauseRealtime(supabase.realtime);
+    setSession(null);
+    setUser(null);
+    setContinuity(state => ({ ...state, resumed: false, epoch: state.epoch + 1 }));
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };
