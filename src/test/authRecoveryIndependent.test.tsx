@@ -4,6 +4,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { authJwt } from '@/test/authSessionFixtures';
 
 const auth = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -32,7 +33,7 @@ const member = (id: string, role = 'user') => ({
   app_metadata: { role },
   user_metadata: {},
 }) as unknown as User;
-const stored = (user: User) => ({ user, access_token: 'local-test-token' }) as Session;
+const stored = (user: User) => ({ user, access_token: authJwt(user.id) }) as Session;
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
@@ -80,7 +81,7 @@ describe('independent auth recovery review', () => {
     await mount();
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
     expect(state()).toBe('retry:denied');
-    expect(auth.getUser).toHaveBeenCalledWith('local-test-token');
+    expect(auth.getUser).toHaveBeenCalledWith(authJwt('cached'));
   });
 
   it('waits for Auth and replaces cached admin metadata with the confirmed user', async () => {
@@ -98,7 +99,7 @@ describe('independent auth recovery review', () => {
       expect(auth.getUser).not.toHaveBeenCalled(); // listener itself stays synchronous
     });
     expect(state()).toBe('loading:denied');
-    expect(auth.getUser).toHaveBeenCalledWith('local-test-token');
+    expect(auth.getUser).toHaveBeenCalledWith(authJwt('cached'));
     confirm({ data: { user: member('cached', 'user') }, error: null });
     await act(async () => { await pendingConfirmation; });
     expect(state()).toBe('cached:denied');
