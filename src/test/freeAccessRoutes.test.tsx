@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import type { Session, User } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '@/App';
+import { authJwt } from '@/test/authSessionFixtures';
 
 const fixture = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -49,14 +50,14 @@ const member = (id: string, role = 'user') => ({
   user_metadata: {},
 }) as unknown as User;
 
-const session = (user: User) => ({ user, access_token: 'confirmed-token' }) as Session;
+const session = (user: User, token = authJwt(user.id)) => ({ user, access_token: token }) as Session;
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
-async function mount(path: string, storedUser: User | null, confirmedUser = storedUser) {
+async function mount(path: string, storedUser: User | null, confirmedUser = storedUser, token?: string) {
   window.history.replaceState({}, '', path);
-  fixture.getSession.mockResolvedValue({ data: { session: storedUser ? session(storedUser) : null }, error: null });
+  fixture.getSession.mockResolvedValue({ data: { session: storedUser ? session(storedUser, token) : null }, error: null });
   fixture.getUser.mockResolvedValue({ data: { user: confirmedUser }, error: null });
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -88,9 +89,10 @@ describe('acesso gratuito com identidade confirmada', () => {
     ['/boss', 'Boss liberado'],
     ['/landing', 'Dashboard liberado'],
   ])('permite conta sem assinatura em %s', async (path, expected) => {
-    await mount(path, member('expired'));
+    const token = authJwt('expired');
+    await mount(path, member('expired'), undefined, token);
     expect(container?.textContent).toContain(expected);
-    expect(fixture.getUser).toHaveBeenCalledWith('confirmed-token');
+    expect(fixture.getUser).toHaveBeenCalledWith(token);
     expect(fixture.subscription).not.toHaveBeenCalled();
   });
 

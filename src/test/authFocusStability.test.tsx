@@ -4,6 +4,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { authJwt } from '@/test/authSessionFixtures';
 
 const auth = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -31,7 +32,7 @@ vi.mock('@/lib/nativeAuth', () => ({ initDeepLinkAuth: vi.fn() }));
 
 const member = (id: string, role = 'user') => ({ id, app_metadata: { role } }) as unknown as User;
 const tokenFor = (id: string, exp = Math.floor(Date.now() / 1000) + 3600) =>
-  `header.${btoa(JSON.stringify({ sub: id, exp })).replace(/=/g, '')}.signature`;
+  authJwt(id, { exp });
 const session = (user: User, token = 'same-token', expiresAt = Math.floor(Date.now() / 1000) + 3600) => ({
   user,
   access_token: token,
@@ -213,45 +214,53 @@ describe('auth focus stability', () => {
     await event('SIGNED_IN', session(current, token, Math.floor(Date.now() / 1000) + 3600));
     expect(read('auth')).toBe('hero');
     await act(async () => vi.advanceTimersByTime(2_000));
+    expect(read('auth')).toBe('loading');
+    expect(read('expiry')).toBe('none');
+    expect(read('admin')).toBe('denied');
+    expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
+    await act(async () => vi.advanceTimersByTime(12_999));
+    expect(read('auth')).toBe('loading');
+    await act(async () => vi.advanceTimersByTime(1));
     expect(read('auth')).toBe('retry');
     expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
   });
 
   it('uses expiry in the confirmed token and blocks an expired token despite event metadata', async () => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-26T18:00:00.000Z'));
     const current = member('hero');
     const token = tokenFor('hero', Math.floor(Date.now() / 1000) + 2);
-    const focus = deferred<ReturnType<typeof verified>>();
     auth.getSession.mockResolvedValue({ data: { session: session(current, token) }, error: null });
-    auth.getUser.mockResolvedValueOnce(verified(current)).mockReturnValueOnce(focus.promise);
+    auth.getUser.mockResolvedValueOnce(verified(current));
     await mount();
     expect(read('auth')).toBe('hero');
     await act(async () => vi.advanceTimersByTime(3_000));
     await event('SIGNED_IN', session(current, token, Math.floor(Date.now() / 1000) + 3600));
     expect(read('auth')).toBe('loading');
+    expect(read('expiry')).toBe('none');
     expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
-    focus.resolve(verified(current));
-    await act(async () => { await Promise.resolve(); });
+    expect(auth.getUser).toHaveBeenCalledTimes(1);
+    await act(async () => vi.advanceTimersByTime(13_999));
+    expect(read('auth')).toBe('loading');
+    await act(async () => vi.advanceTimersByTime(1));
     expect(read('auth')).toBe('retry');
   });
 
-  it('blocks continuity when the confirmed token has no readable expiry', async () => {
+  it('denies bootstrap when a remotely confirmed JWT has no readable expiry', async () => {
     const current = member('hero');
-    const focus = deferred<ReturnType<typeof verified>>();
-    auth.getSession.mockResolvedValue({ data: { session: session(current, 'opaque-token') }, error: null });
-    auth.getUser.mockResolvedValueOnce(verified(current)).mockReturnValueOnce(focus.promise);
+    const token = authJwt('hero', { exp: null });
+    auth.getSession.mockResolvedValue({ data: { session: session(current, token) }, error: null });
+    auth.getUser.mockResolvedValueOnce(verified(current));
     await mount();
     await settle();
-    expect(read('auth')).toBe('hero');
-    await event('SIGNED_IN', session(current, 'opaque-token'));
-    expect(read('auth')).toBe('loading');
+    expect(auth.getUser).toHaveBeenCalledWith(token);
+    expect(read('auth')).toBe('retry');
+    expect(read('admin')).toBe('denied');
+    expect(read('expiry')).toBe('none');
     expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
-    focus.resolve(verified(current));
-    await settle();
-    expect(read('auth')).toBe('hero');
   });
 
-  it('blocks a changed refresh token and replaces forged admin metadata after confirmation', async () => {
+  it('keeps a confirmed scene during refresh and replaces forged admin metadata after confirmation', async () => {
     const current = member('hero');
     const firstToken = tokenFor('hero');
     const nextToken = tokenFor('hero', Math.floor(Date.now() / 1000) + 7200);
@@ -260,15 +269,17 @@ describe('auth focus stability', () => {
     auth.getUser.mockResolvedValueOnce(verified(current)).mockReturnValueOnce(refresh.promise);
     await mount();
     await settle();
+    const scene = host!.querySelector('[data-testid="scene"]');
     await event('TOKEN_REFRESHED', session(member('hero', 'admin'), nextToken));
-    expect(read('auth')).toBe('loading');
+    expect(read('auth')).toBe('hero');
     expect(read('admin')).toBe('denied');
-    expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
+    expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
     expect(auth.getUser).toHaveBeenLastCalledWith(nextToken);
     refresh.resolve(verified(current));
     await settle();
     expect(read('auth')).toBe('hero');
     expect(read('admin')).toBe('denied');
+    expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
   });
 
   it('does not let an old focus response replace a newer token', async () => {
@@ -283,9 +294,11 @@ describe('auth focus stability', () => {
     await settle();
     await event('SIGNED_IN', session(current, firstToken));
     await event('TOKEN_REFRESHED', session(current, nextToken));
+    const scene = host!.querySelector('[data-testid="scene"]');
     focus.resolve(verified(current));
     await settle();
-    expect(read('auth')).toBe('loading');
+    expect(read('auth')).toBe('hero');
+    expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
     refresh.resolve(verified(current));
     await settle();
     expect(read('auth')).toBe('hero');

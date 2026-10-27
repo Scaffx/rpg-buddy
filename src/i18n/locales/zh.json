@@ -113,6 +113,7 @@
     "footnote": "支持所有现代浏览器"
   },
   "app": {
+    "confirming_session": "正在确认您的会话…",
     "helpTutorial": {
       "introTitle": "欢迎来到 Life on RPG！🎮",
       "introDescription": "现实中的日常任务让英雄成长。自动冒险可获得金币和物品，但不提供经验值。",
@@ -334,6 +335,16 @@
     "not_found": {
       "title": "哎呀！页面未找到",
       "back_home": "返回首页"
+    },
+    "auth": {
+      "discord_waiting": "正在打开 Discord。如果页面没有跳转，等待将在 15 秒后结束。",
+      "discord_timeout": "此页面在 15 秒内未完成打开 Discord。请重试。",
+      "discord_failed": "目前无法开始 Discord 登录。请重试。",
+      "discord_cancelled": "已停止在此页面等待。如果 Discord 仍然打开，你可以在那里完成登录或重试。",
+      "discord_returned": "你返回了此页面，但尚未完成登录。请查看另一个标签页或重试。",
+      "discord_opened": "Discord 已在应用外打开。如果返回时尚未完成登录，请重试。",
+      "discord_stop_waiting": "停止等待",
+      "discord_retry": "重试 Discord 登录"
     }
   },
   "footer": {

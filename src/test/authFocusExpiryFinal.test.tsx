@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import type { Session, User } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { authJwt } from '@/test/authSessionFixtures';
 
 const auth = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -28,8 +29,7 @@ vi.mock('@/lib/nativeAuth', () => ({ initDeepLinkAuth: vi.fn() }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const person = (id: string, role = 'user') => ({ id, app_metadata: { role } }) as unknown as User;
-const jwt = (id: string, seconds: number) =>
-  `header.${btoa(JSON.stringify({ sub: id, exp: Math.floor(Date.now() / 1000) + seconds })).replace(/=/g, '')}.sig`;
+const jwt = (id: string, seconds: number) => authJwt(id, { exp: Math.floor(Date.now() / 1000) + seconds });
 const candidate = (token: string, id: string, role = 'user', claimedExpiry?: number) => ({
   access_token: token,
   user: person(id, role),
@@ -127,6 +127,12 @@ describe('final auth focus expiry review', () => {
     await advance(2_999);
     expect(state()).toBe('hero');
     await advance(1);
+    expect(state()).toBe('loading');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe('none');
+    expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
+    await advance(14_999);
+    expect(state()).toBe('loading');
+    await advance(1);
     expect(state()).toBe('retry');
     expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
   });
@@ -140,12 +146,16 @@ describe('final auth focus expiry review', () => {
       .mockReturnValueOnce(oldFocus.promise)
       .mockReturnValueOnce(newVerification.promise);
     await mount(candidate(oldToken, 'hero'));
+    const scene = host!.querySelector('[data-testid="scene"]');
     await event('SIGNED_IN', candidate(oldToken, 'hero'));
     await event('TOKEN_REFRESHED', candidate(newToken, 'hero', 'admin'));
-    expect(state()).toBe('loading');
+    expect(state()).toBe('hero');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe(oldToken);
+    expect(host!.querySelector('[data-testid="scene"]')).toBe(scene);
     oldFocus.resolve(verified('hero'));
     await act(async () => { await Promise.resolve(); });
-    expect(state()).toBe('loading');
+    expect(state()).toBe('hero');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe(oldToken);
     newVerification.resolve(verified('hero'));
     await act(async () => { await Promise.resolve(); });
     expect(state()).toBe('hero');
@@ -156,7 +166,36 @@ describe('final auth focus expiry review', () => {
     await advance(3_999);
     expect(state()).toBe('hero');
     await advance(1);
+    expect(state()).toBe('loading');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe('none');
+    await advance(15_000);
     expect(state()).toBe('retry');
+  });
+
+  it('accepts a fresh same-session token after the old token expires during focus verification', async () => {
+    const oldToken = jwt('hero', 2);
+    const nextToken = jwt('hero', 30);
+    const oldFocus = deferred<ReturnType<typeof verified>>();
+    const renewal = deferred<ReturnType<typeof verified>>();
+    auth.getUser.mockResolvedValueOnce(verified('hero'))
+      .mockReturnValueOnce(oldFocus.promise)
+      .mockReturnValueOnce(renewal.promise);
+    await mount(candidate(oldToken, 'hero'));
+    await event('SIGNED_IN', candidate(oldToken, 'hero'));
+    await advance(2_000);
+    expect(state()).toBe('loading');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe('none');
+    expect(host!.querySelector('[data-testid="scene"]')).toBeNull();
+
+    await event('TOKEN_REFRESHED', candidate(nextToken, 'hero', 'admin'));
+    oldFocus.resolve(verified('hero'));
+    await act(async () => { await Promise.resolve(); });
+    expect(state()).toBe('loading');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe('none');
+    renewal.resolve(verified('hero'));
+    await act(async () => { await Promise.resolve(); });
+    expect(state()).toBe('hero');
+    expect(host!.querySelector('[data-testid="token"]')!.textContent).toBe(nextToken);
   });
 
   it('lets logout and retry revoke access and cancels the old expiry timer on unmount', async () => {

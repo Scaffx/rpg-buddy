@@ -113,6 +113,7 @@
     "footnote": "Works in any modern browser · iOS via Safari (Add to Home Screen)"
   },
   "app": {
+    "confirming_session": "Confirming your session…",
     "helpTutorial": {
       "introTitle": "Welcome to Life on RPG! 🎮",
       "introDescription": "Your real-life routines help your hero grow. Automatic adventure earns gold and items, with no XP.",
@@ -385,6 +386,14 @@
       "toast_discord_error": "Error signing in with Discord",
       "divider_or": "or",
       "button_discord": "Sign in with Discord",
+      "discord_waiting": "Opening Discord. If this page stays here, the wait ends in 15 seconds.",
+      "discord_timeout": "This page did not finish opening Discord within 15 seconds. Try again.",
+      "discord_failed": "Could not start Discord sign-in right now. Try again.",
+      "discord_cancelled": "Stopped waiting on this page. If Discord is still open, you can finish there or try again.",
+      "discord_returned": "You returned without finishing sign-in on this page. Check the other tab or try again.",
+      "discord_opened": "Discord opened outside the app. If you return without finishing, try again.",
+      "discord_stop_waiting": "Stop waiting",
+      "discord_retry": "Try Discord again",
       "toast_invalid_credentials_title": "Incorrect credentials",
       "toast_invalid_credentials_desc": "Wrong email or password. Check and try again."
     },

@@ -5,6 +5,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { authJwt } from '@/test/authSessionFixtures';
 
 const auth = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -36,7 +37,7 @@ const user = (id: string, appRole = 'user', metadataRole?: string) => ({
   app_metadata: { role: appRole },
   user_metadata: metadataRole ? { role: metadataRole } : {},
 }) as unknown as User;
-const session = (member: User, token = 'test-token') => ({ user: member, access_token: token }) as Session;
+const session = (member: User, token = authJwt(member.id)) => ({ user: member, access_token: token }) as Session;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -110,7 +111,7 @@ describe('auth loading recovery', () => {
     expect(read('auth')).toBe('confirmed');
     expect(read('admin')).toBe('admin');
     expect(auth.getUser).toHaveBeenCalledOnce();
-    expect(auth.getUser).toHaveBeenCalledWith('test-token');
+    expect(auth.getUser).toHaveBeenCalledWith(authJwt('confirmed'));
   });
 
   it('fails closed when getUser rejects, then confirms the stored session on retry', async () => {
@@ -136,7 +137,8 @@ describe('auth loading recovery', () => {
     auth.getSession.mockReturnValue(initial.promise);
     auth.getUser.mockReturnValue(verification.promise);
     const oldSession = session(user('old', 'admin'));
-    const newSession = session(user('new', 'admin'), 'new-token');
+    const newToken = authJwt('new');
+    const newSession = session(user('new', 'admin'), newToken);
     await mount();
     await act(async () => {
       auth.listeners[0]('SIGNED_IN', newSession);
@@ -144,7 +146,7 @@ describe('auth loading recovery', () => {
     });
     expect(read('auth')).toBe('loading');
     expect(read('admin')).toBe('denied');
-    expect(auth.getUser).toHaveBeenCalledWith('new-token');
+    expect(auth.getUser).toHaveBeenCalledWith(newToken);
     initial.resolve({ data: { session: oldSession }, error: null });
     verification.resolve({ data: { user: user('new') }, error: null });
     await settle();
@@ -157,11 +159,12 @@ describe('auth loading recovery', () => {
     auth.getSession.mockReturnValue(new Promise(() => {}));
     auth.getUser.mockResolvedValue({ data: { user: user('logged-in', 'admin') }, error: null });
     await mount();
-    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('logged-in', 'admin'), 'login-token')));
+    const loginToken = authJwt('logged-in');
+    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('logged-in', 'admin'), loginToken)));
     await settle();
     expect(read('auth')).toBe('logged-in');
     expect(read('admin')).toBe('admin');
-    expect(auth.getUser).toHaveBeenCalledWith('login-token');
+    expect(auth.getUser).toHaveBeenCalledWith(loginToken);
   });
 
   it('also verifies a non-null INITIAL_SESSION instead of trusting storage metadata', async () => {
@@ -186,10 +189,11 @@ describe('auth loading recovery', () => {
     await settle();
     expect(read('auth')).toBe('guest');
 
-    await act(async () => auth.listeners[0]('TOKEN_REFRESHED', session(user('member', 'admin'), 'refreshed')));
+    const refreshedToken = authJwt('member');
+    await act(async () => auth.listeners[0]('TOKEN_REFRESHED', session(user('member', 'admin'), refreshedToken)));
     expect(read('auth')).toBe('loading');
     expect(read('admin')).toBe('denied');
-    expect(auth.getUser).toHaveBeenCalledWith('refreshed');
+    expect(auth.getUser).toHaveBeenCalledWith(refreshedToken);
     verification.resolve({ data: { user: user('member') }, error: null });
     await settle();
     expect(read('auth')).toBe('member');
@@ -200,11 +204,13 @@ describe('auth loading recovery', () => {
     const first = deferred<{ data: { user: User }; error: null }>();
     const second = deferred<{ data: { user: User }; error: null }>();
     auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
-    auth.getUser.mockImplementation((token: string) => token === 'first' ? first.promise : second.promise);
+    const firstToken = authJwt('one');
+    const secondToken = authJwt('two');
+    auth.getUser.mockImplementation((token: string) => token === firstToken ? first.promise : second.promise);
     await mount();
     await settle();
-    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('one', 'admin'), 'first')));
-    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('two', 'admin'), 'second')));
+    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('one', 'admin'), firstToken)));
+    await act(async () => auth.listeners[0]('SIGNED_IN', session(user('two', 'admin'), secondToken)));
     first.resolve({ data: { user: user('one', 'admin') }, error: null });
     await settle();
     expect(read('auth')).toBe('loading');
