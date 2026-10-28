@@ -99,3 +99,89 @@
 .adventure-still *, .adventure-still *::before, .adventure-still *::after { animation:none !important; transition:none !important; }
 @media (prefers-reduced-motion:reduce) { .adventure-scene *, .adventure-scene *::before, .adventure-scene *::after { animation:none !important; transition:none !important; } .adventure-resource-track > div { transition:none !important; } }
 @media (max-width:360px) { .adventure-scene { height:300px; } .adventure-combat-hud { left:7px; right:7px; gap:8px; top:40px; } .adventure-resource { padding:4px 5px; column-gap:4px; font-size:9px; } .adventure-sprite-track { width:82%; height:78%; } .adventure-scene-fighters { inset:35% 2% 8%; } .adventure-stage-badge,.adventure-boss-badge { font-size:9px; } .adventure-impact { width:30px; height:30px; } }
+
+/* All actors occupy one ground plane; event coordinates follow the confirmed slots. */
+.adventure-horde-event-layer { --horde-source-x:13%; --horde-target-x:13%; --horde-target-y:67%; position:absolute; inset:0; z-index:3; pointer-events:none; }
+.adventure-horde-event-layer[data-actor-slot="0"] { --horde-source-x:38%; }
+.adventure-horde-event-layer[data-actor-slot="1"] { --horde-source-x:63%; }
+.adventure-horde-event-layer[data-actor-slot="2"] { --horde-source-x:87%; }
+.adventure-horde-event-layer[data-target-slot="0"] { --horde-target-x:38%; }
+.adventure-horde-event-layer[data-target-slot="1"] { --horde-target-x:63%; }
+.adventure-horde-event-layer[data-target-slot="2"] { --horde-target-x:87%; }
+.adventure-horde-fighters { position:absolute; inset:27% 1.5% 5%; z-index:2; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:clamp(4px,1vw,14px); align-items:end; }
+.adventure-horde-actor { min-width:0; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; transform:translateY(calc(-1 * var(--horde-rise, 0px))); }
+.adventure-horde-enemy[data-enemy-slot="0"] { --horde-rise:7px; }
+.adventure-horde-enemy[data-enemy-slot="1"] { --horde-rise:2px; }
+.adventure-horde-enemy[data-enemy-slot="2"] { --horde-rise:11px; }
+.adventure-horde-dead .adventure-sprite-track { filter:grayscale(.85) opacity(.48); }
+.adventure-horde-resources { width:100%; display:grid; gap:3px; min-width:0; z-index:2; margin-bottom:7px; }
+.adventure-horde-resources .adventure-resource { padding:3px 5px; font-size:clamp(9px,1vw,11px); }
+.adventure-horde-resources .adventure-resource-track { height:5px; }
+.adventure-horde .adventure-sprite-track { position:relative; width:min(92%,150px); height:clamp(90px,46%,196px); flex:none; align-self:center; animation:adventure-horde-idle 2.6s ease-in-out infinite alternate; }
+.adventure-horde .adventure-horde-hero .adventure-sprite-track { animation-duration:2.4s; }
+.adventure-horde .adventure-horde-enemy[data-enemy-slot="0"] .adventure-sprite-track { animation-duration:2.1s; }
+.adventure-horde .adventure-horde-enemy[data-enemy-slot="1"] .adventure-sprite-track { animation-duration:2.7s; }
+.adventure-horde .adventure-horde-enemy[data-enemy-slot="2"] .adventure-sprite-track { animation-duration:3.1s; }
+.adventure-horde .adventure-horde-hit-overlay { position:absolute; inset:0; z-index:2; pointer-events:none; }
+.adventure-horde .adventure-hero-svg,.adventure-horde .adventure-enemy-svg { max-height:none; }
+.adventure-horde .adventure-horde-action { animation:adventure-horde-strike 1.2s ease-in-out both; }
+.adventure-horde .adventure-horde-actor .adventure-sprite-track.adventure-horde-action { animation-duration:1.2s; }
+.adventure-horde .adventure-horde-action > .adventure-damage-shell :is(*, *::before, *::after) { animation-delay:var(--horde-action-elapsed) !important; }
+.adventure-horde .adventure-horde-hero .adventure-horde-action.adventure-cast,
+.adventure-horde .adventure-horde-hero .adventure-horde-action.adventure-support,
+.adventure-horde .adventure-horde-enemy .adventure-horde-action.adventure-enemy-cast { animation-name:adventure-horde-cast; }
+.adventure-horde .adventure-horde-enemy .adventure-horde-action { animation-name:adventure-horde-enemy-strike; }
+@keyframes adventure-horde-strike { 0%,100% { transform:translateX(0); } 50% { transform:translateX(22%); } }
+@keyframes adventure-horde-idle { from { transform:translateY(0); } to { transform:translateY(-5px); } }
+@keyframes adventure-horde-enemy-strike { 0%,100% { transform:translateX(0); } 50% { transform:translateX(-16%); } }
+@keyframes adventure-horde-cast { 0%,100% { transform:translateY(0); } 48% { transform:translateY(-9px); } }
+.adventure-horde .adventure-cast-orb,.adventure-horde .adventure-cast-particles { left:var(--horde-source-x); top:61%; }
+.adventure-horde .adventure-projectile { left:var(--horde-source-x); top:64%; animation-name:adventure-horde-launch; }
+@keyframes adventure-horde-launch { 0%,47% { opacity:0; left:var(--horde-source-x); scale:.4; } 55% { opacity:1; } 79% { opacity:1; left:var(--horde-target-x); scale:1; } 80%,100% { opacity:0; left:var(--horde-target-x); scale:.2; } }
+.adventure-horde .adventure-effect-sequence .adventure-impact { left:var(--horde-target-x); top:var(--horde-target-y); }
+.adventure-horde .adventure-skill-layer { --skill-source-x:13%; --skill-target-x:var(--horde-target-x); }
+.adventure-horde .adventure-skill-layer[data-animation-target="self"] { --skill-target-x:var(--skill-source-x); }
+.adventure-horde-event-layer .vfx-clerico { --skill-source-x:var(--horde-source-x); --skill-target-x:var(--horde-target-x); }
+.adventure-horde-event-layer .vfx-clerico[data-target="self"] { --skill-target-x:var(--skill-source-x); }
+.adventure-horde .adventure-enemy-skill-layer { --enemy-source-x:var(--horde-source-x); --enemy-target-x:13%; }
+.adventure-horde .adventure-enemy-skill-layer[data-enemy-target="self"] { --enemy-target-x:var(--enemy-source-x); }
+
+/* A delay on the event layer is not inherited by animated children. Keep each particle's own offset. */
+.adventure-horde-event-layer :is(*, *::before, *::after) { animation-delay:calc(var(--horde-elapsed) + var(--horde-phase, 0ms)) !important; }
+.adventure-horde-event-layer .vfx-aprendiz__ember--two,
+.adventure-horde-event-layer .vfx-aprendiz__arcane-dot--two { --horde-phase:55ms; }
+.adventure-horde-event-layer .vfx-aprendiz__ember--three,
+.adventure-horde-event-layer .vfx-aprendiz__arcane-dot--three { --horde-phase:100ms; }
+.adventure-horde-event-layer .vfx-aprendiz__swift--two { --horde-phase:90ms; }
+.adventure-horde-event-layer .vfx-aprendiz__chip--two,
+.adventure-horde-event-layer .vfx-aprendiz__dust--two { --horde-phase:40ms; }
+.adventure-horde-event-layer .vfx-arqueiro__rain > span:nth-child(1) { --horde-phase:0ms; }
+.adventure-horde-event-layer .vfx-arqueiro__rain > span:nth-child(2) { --horde-phase:35ms; }
+.adventure-horde-event-layer .vfx-arqueiro__rain > span:nth-child(3) { --horde-phase:70ms; }
+.adventure-horde-event-layer .vfx-arqueiro__rain > span:nth-child(4) { --horde-phase:105ms; }
+.adventure-horde-event-layer .vfx-arqueiro__rain > span:nth-child(5) { --horde-phase:140ms; }
+.adventure-horde-event-layer .vfx-gatuno .vfx-gatuno__retalhar-cuts span:nth-child(2) { --horde-phase:40ms; }
+.adventure-horde-event-layer .vfx-gatuno .vfx-gatuno__retalhar-cuts span:nth-child(3) { --horde-phase:80ms; }
+
+.adventure-horde[data-enemy-count="1"] .adventure-horde-fighters { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8%; }
+.adventure-horde[data-enemy-count="1"] .adventure-horde-event-layer { --horde-source-x:25%; --horde-target-x:25%; }
+.adventure-horde[data-enemy-count="1"] .adventure-horde-event-layer[data-actor-slot="0"] { --horde-source-x:75%; }
+.adventure-horde[data-enemy-count="1"] .adventure-horde-event-layer[data-target-slot="0"] { --horde-target-x:75%; }
+.adventure-horde[data-enemy-count="1"] .adventure-skill-layer { --skill-source-x:25%; }
+.adventure-horde[data-enemy-count="1"] .adventure-enemy-skill-layer { --enemy-target-x:25%; }
+
+@media (max-width:600px) {
+  .adventure-scene.adventure-horde { height:clamp(360px,100vw,420px); }
+  .adventure-horde-fighters { inset:28% 1% 7%; gap:3px; }
+  .adventure-horde-resources { gap:2px; margin-bottom:4px; }
+  .adventure-horde-resources .adventure-resource { grid-template-columns:minmax(0,1fr); gap:1px; padding:3px 4px; font-size:10px; line-height:1.1; }
+  .adventure-horde-resources .adventure-resource-name { white-space:normal; overflow:visible; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
+  .adventure-horde-resources .adventure-resource-track { grid-column:1; height:4px; }
+  .adventure-horde .adventure-sprite-track { width:min(100%,95px); height:clamp(86px,38%,142px); }
+  .adventure-horde[data-enemy-count="1"] .adventure-horde-fighters { inset-inline:7%; }
+  .adventure-horde[data-enemy-count="1"] .adventure-sprite-track { width:min(80%,150px); height:clamp(130px,50%,190px); }
+}
+
+.adventure-horde.adventure-still .adventure-horde-action,
+.adventure-horde.adventure-still .adventure-sprite-track { animation:none !important; }
+@media (prefers-reduced-motion:reduce) { .adventure-horde .adventure-horde-action { animation:none !important; } }

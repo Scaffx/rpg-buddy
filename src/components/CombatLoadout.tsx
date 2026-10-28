@@ -33,7 +33,7 @@ function buildTreeSkills(nodes: any[], ranks: Record<string, number>, archetype 
 
 /** Editor de loadout de combate — fonte única usada no hub de Habilidades. */
 export default function CombatLoadout() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
@@ -46,6 +46,12 @@ export default function CombatLoadout() {
   const { data: aprendizNodes = [] } = useSkillTreeNodes('aprendiz');
   const { data: treeRanks = {} } = usePlayerSkillNodes();
   const { data: inventory = [] } = useInventory();
+  const secondsFormatter = useMemo(() => new Intl.NumberFormat(i18n?.resolvedLanguage || i18n?.language || 'pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }), [i18n?.resolvedLanguage, i18n?.language]);
+  // O motor da aventura automática agenda o próximo uso após (cooldown + 1) ações de 2,8 s.
+  const cooldownSeconds = (cooldown: unknown) => secondsFormatter.format((Number(cooldown ?? 0) + 1) * 2.8);
 
   // Cinzas de Guerra: a skill da ARMA equipada vira disponível no loadout (Fase B).
   const weaponSkills = useMemo(() => {
@@ -174,7 +180,7 @@ export default function CombatLoadout() {
             {selected.map((s, index) => (
               <div key={s.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-200">
                 <span className="font-semibold">{index + 1}. {EFFECT_ICON[s.effectType] || '⚔️'} {s.name}</span>
-                <span className="text-muted-foreground">{t('app.habhub.skill_cost_cooldown', { mp: s.mpCost ?? 0, turns: s.cooldown ?? 0 })}</span>
+                <span className="text-muted-foreground">{t('app.habhub.skill_cost_cooldown', { mp: s.mpCost ?? 0, seconds: cooldownSeconds(s.cooldown) })}</span>
                 {directDamageOnly(s.effectType) && <span className="text-muted-foreground">{t('app.habhub.direct_damage_only')}</span>}
                 {!adventureExecutable(s.effectType) && <span className="text-amber-300">{t('app.habhub.not_in_auto_adventure')}</span>}
                 <div className="ml-auto flex items-center gap-1">
@@ -209,8 +215,7 @@ export default function CombatLoadout() {
               <p className="text-xs text-muted-foreground leading-snug line-clamp-2">{s.description || s.effectLabel}</p>
               <div className="flex flex-wrap gap-1.5 text-[10px]">
                 <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-300">⚔️ {s.power}</span>
-                {typeof s.mpCost === 'number' && s.mpCost > 0 && <span className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300">💧 {s.mpCost}</span>}
-                <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-300">⏱ {s.cooldown}t</span>
+                <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-300">⏱ {t('app.habhub.skill_cost_cooldown', { mp: s.mpCost ?? 0, seconds: cooldownSeconds(s.cooldown) })}</span>
               </div>
               {!adventureExecutable(s.effectType) && <p className="text-xs text-amber-300">{t('app.habhub.not_in_auto_adventure')}</p>}
               {directDamageOnly(s.effectType) && <p className="text-xs text-muted-foreground">{t('app.habhub.direct_damage_only')}</p>}

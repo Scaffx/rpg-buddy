@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import AutoAdventure from '@/components/AutoAdventure';
+import { anchorAdventureClock } from '@/lib/adventureClock';
+import type { AdventureSnapshot } from '@/lib/autoAdventurePayload';
 
 const mocked = vi.hoisted(() => ({ value: null as unknown }));
 const mutation = vi.hoisted(() => ({ mutateAsync: vi.fn(), isPending: false, isError: false }));
@@ -200,6 +202,7 @@ describe('AutoAdventure', () => {
       },
       dataUpdatedAt: now, isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
     };
+    anchorAdventureClock((mocked.value as { data: unknown }).data as AdventureSnapshot);
     const page = renderAdventure();
     const shell = page.querySelector('.adventure-fighter-enemy [data-hit-id]') as HTMLElement;
     expect(shell?.style.animationDelay).toBe('-800ms');
@@ -209,7 +212,7 @@ describe('AutoAdventure', () => {
     act(() => vi.advanceTimersByTime(70));
     expect(page.querySelector('[data-hit-id]')).toBeNull();
     const prior = mocked.value as { data: { battle: { events: Array<{ at: string }>; id: string } } };
-    mocked.value = { ...prior, data: { ...prior.data, battle: { ...prior.data.battle,
+    mocked.value = { ...prior, data: { ...prior.data, server_now: new Date(now + 320).toISOString(), battle: { ...prior.data.battle,
       id: 'late-battle-2', events: [{ ...prior.data.battle.events[0], at: new Date(now - 980).toISOString() }],
     } } };
     renderAdventure();

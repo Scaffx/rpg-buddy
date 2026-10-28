@@ -65,7 +65,7 @@ vi.mock('react-i18next', async (importOriginal) => ({
   ...await importOriginal<typeof import('react-i18next')>(),
   useTranslation: () => ({ t: (key: string, vars?: Record<string, unknown>) =>
     vars?.name ? `${key}:${vars.name}` : key === 'app.habhub.skill_cost_cooldown'
-      ? `${vars?.mp} MP · ${vars?.turns} turns` : key,
+      ? `${vars?.mp} MP · ${vars?.seconds} s` : key,
   }),
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));

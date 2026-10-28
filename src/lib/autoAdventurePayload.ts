@@ -1,5 +1,7 @@
 import type { Json } from '@/integrations/supabase/types';
 import type { PetBonus, SustainEffect } from '@/lib/pets';
+import type { HordeEnemy } from '@/lib/adventureHordeContract';
+import { adventureServerTime } from '@/lib/adventureClock';
 
 export type AdventurePetStats = { atk: number; def: number; hp: number; mp: number };
 export type AdventurePetSnapshot = {
@@ -26,7 +28,7 @@ export type AdventureEncounter = {
   boss_name: string | null;
   boss_icon: string | null;
   status?: 'won' | 'defeated' | 'draw';
-  end_reason?: 'turn_limit' | null;
+  end_reason?: 'turn_limit' | 'event_limit' | null;
 };
 
 export type AdventureAttack = {
@@ -47,6 +49,10 @@ export type AdventureAttack = {
   raw_damage?: number;
   damage_multiplier?: number;
   effect_note?: string | null;
+  actor_slot?: number | null;
+  target_slot?: number | null;
+  enemies_hp?: number[];
+  enemies_mp?: number[];
 };
 
 export type AdventureBattle = {
@@ -78,8 +84,9 @@ export type AdventureBattle = {
   hero_defense?: number;
   engine_version?: string;
   enemy_resistances?: Record<string, number>;
-  end_reason?: 'turn_limit' | null;
+  end_reason?: 'turn_limit' | 'event_limit' | null;
   pet?: AdventurePetSnapshot | null;
+  enemies?: HordeEnemy[];
 };
 
 export type AdventureSnapshot = {
@@ -104,11 +111,10 @@ export type AdventureSnapshot = {
 export function nextAdventureRefetchDelay(
   snapshot: AdventureSnapshot | undefined,
   dataUpdatedAt: number,
-  now = Date.now(),
 ): number | false {
   if (!snapshot || !dataUpdatedAt) return false;
   if (snapshot.catchup.pending) return 250;
-  const serverNow = Date.parse(snapshot.server_now) + Math.max(0, now - dataUpdatedAt);
+  const serverNow = adventureServerTime(snapshot);
   return Math.max(1_000, Math.min(2_147_483_647, Date.parse(snapshot.next_at) - serverNow + 1_000));
 }
 
@@ -134,9 +140,32 @@ function nullableString(value: Json | undefined): string | null {
   return string(value);
 }
 
+function validCivilDate(year: number, month: number, day: number): boolean {
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= days[month - 1];
+}
+
 function date(value: Json | undefined): string {
   const parsed = string(value);
-  if (!Number.isFinite(Date.parse(parsed))) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/.exec(parsed);
+  if (!match) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  const [, year, month, day, hour, minute, second, offset] = match;
+  const offsetDigits = offset === 'Z' ? null : offset.slice(1).replace(':', '');
+  const offsetHour = offsetDigits ? Number(offsetDigits.slice(0, 2)) : 0;
+  const offsetMinute = offsetDigits ? Number(offsetDigits.slice(2)) : 0;
+  if (!validCivilDate(Number(year), Number(month), Number(day)) || Number(hour) > 23 ||
+      Number(minute) > 59 || Number(second) > 59 || offsetHour > 23 || offsetMinute > 59 ||
+      !Number.isFinite(Date.parse(parsed))) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  return parsed;
+}
+
+function civilDate(value: Json | undefined): string {
+  const parsed = string(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(parsed);
+  if (!match || !validCivilDate(Number(match[1]), Number(match[2]), Number(match[3])))
+    throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   return parsed;
 }
 
@@ -168,7 +197,7 @@ function optionalNullableString(value: Json | undefined): string | null | undefi
 function optionalEndReason(value: Json | undefined): AdventureBattle['end_reason'] {
   if (value === undefined) return undefined;
   if (value === null) return null;
-  if (value === 'turn_limit') return 'turn_limit';
+  if (value === 'turn_limit' || value === 'event_limit') return value;
   throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
 }
 
@@ -183,6 +212,29 @@ function optionalResistances(value: Json | undefined): Record<string, number> | 
   if (value === undefined) return undefined;
   const row = object(value);
   return Object.fromEntries(Object.entries(row).map(([key, multiplier]) => [key, number(multiplier)]));
+}
+
+function slot(value: Json | undefined): number | null {
+  if (value === null) return null;
+  const parsed = number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  return parsed;
+}
+
+function hordeEnemy(value: Json): HordeEnemy {
+  const row = object(value);
+  const enemySlot = slot(row.slot);
+  if (enemySlot === null) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  const parsed: HordeEnemy = {
+    slot: enemySlot, id: string(row.id), name: string(row.name),
+    icon: nullableString(row.icon), boss_id: nullableString(row.boss_id),
+    max_hp: number(row.max_hp), hp: number(row.hp),
+    max_mp: number(row.max_mp), mp: number(row.mp),
+    resistances: optionalResistances(row.resistances) ?? (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })(),
+  };
+  if (!parsed.id || !parsed.name || parsed.max_hp <= 0 || parsed.hp < 0 || parsed.hp > parsed.max_hp ||
+      parsed.max_mp < 0 || parsed.mp < 0 || parsed.mp > parsed.max_mp) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  return parsed;
 }
 
 function petStats(value: Json | undefined): AdventurePetStats {
@@ -232,6 +284,10 @@ function attack(value: Json): AdventureAttack {
     healing: optionalNumber(row.healing), raw_damage: optionalNumber(row.raw_damage),
     damage_multiplier: optionalNumber(row.damage_multiplier),
     effect_note: optionalNullableString(row.effect_note),
+    actor_slot: row.actor_slot === undefined ? undefined : slot(row.actor_slot),
+    target_slot: row.target_slot === undefined ? undefined : slot(row.target_slot),
+    enemies_hp: row.enemies_hp === undefined ? undefined : Array.isArray(row.enemies_hp) ? row.enemies_hp.map(number) : (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })(),
+    enemies_mp: row.enemies_mp === undefined ? undefined : Array.isArray(row.enemies_mp) ? row.enemies_mp.map(number) : (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })(),
   };
 }
 
@@ -241,6 +297,24 @@ function battle(value: Json): AdventureBattle {
   if (row.status !== 'fighting' && row.status !== 'won' && row.status !== 'defeated' && row.status !== 'draw') throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   if (!['forest', 'aquatic', 'ruins', 'volcanic', 'desert', 'ice'].includes(String(row.biome))) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   if (!Array.isArray(row.events)) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  const enemies = row.engine_version === 'v4_horde'
+    ? Array.isArray(row.enemies) ? row.enemies.map(hordeEnemy) : (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })()
+    : undefined;
+  if (enemies && (enemies.length !== (row.kind === 'boss' ? 1 : 3) ||
+    enemies.some((enemy, index) => enemy.slot !== index) ||
+    new Set(enemies.map(enemy => enemy.id)).size !== enemies.length)) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  if (enemies && (row.kind === 'boss'
+    ? row.boss_id === null || enemies[0].boss_id !== row.boss_id
+    : row.boss_id !== null || enemies.some(enemy => enemy.boss_id !== null)))
+    throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  const events = row.events.map(attack);
+  if (enemies && events.some(event => event.actor_slot === undefined || event.target_slot === undefined ||
+    event.enemies_hp?.length !== enemies.length || event.enemies_hp.some((hp, index) => hp < 0 || hp > enemies[index].max_hp) ||
+    event.enemies_mp?.length !== enemies.length || event.enemies_mp.some((mp, index) => mp < 0 || mp > enemies[index].max_mp) ||
+    (event.actor === 'hero' && event.actor_slot !== null) ||
+    (event.actor === 'enemy' && (event.actor_slot === null || event.target_slot !== null)) ||
+    (event.actor_slot !== null && event.actor_slot >= enemies.length) ||
+    (event.target_slot !== null && event.target_slot >= enemies.length))) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   return {
     id: string(row.id), stage: number(row.stage), attempt: number(row.attempt),
     kind: row.kind, status: row.status, replay: boolean(row.replay),
@@ -250,7 +324,7 @@ function battle(value: Json): AdventureBattle {
     hero_max_hp: number(row.hero_max_hp), enemy_max_hp: number(row.enemy_max_hp),
     hero_hp: number(row.hero_hp), enemy_hp: number(row.enemy_hp),
     enemy_name: string(row.enemy_name), enemy_icon: nullableString(row.enemy_icon),
-    boss_id: nullableString(row.boss_id), events: row.events.map(attack),
+    boss_id: nullableString(row.boss_id), events, enemies,
     hero_max_mp: optionalNumber(row.hero_max_mp), hero_mp: optionalNumber(row.hero_mp),
     enemy_max_mp: optionalMana(row.enemy_max_mp), enemy_mp: optionalMana(row.enemy_mp),
     hero_attack: optionalNumber(row.hero_attack), hero_defense: optionalNumber(row.hero_defense),
@@ -295,7 +369,7 @@ export function parseAdventureSnapshot(payload: Json): AdventureSnapshot {
     boss: { stage: number(boss.stage), id: string(boss.id), name: string(boss.name), icon: nullableString(boss.icon) },
     boss_wins_credited: number(row.boss_wins_credited),
     gold_today: number(row.gold_today), loot_today: number(row.loot_today),
-    reward_day: date(row.reward_day),
+    reward_day: civilDate(row.reward_day),
     battle: row.battle === null ? null : battle(row.battle),
     last_battle: row.last_battle === null ? null : battle(row.last_battle),
     catchup: {

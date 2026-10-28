@@ -872,7 +872,7 @@
       "move_up": "Mover {{name}} para cima",
       "move_down": "Mover {{name}} para baixo",
       "remove_named": "Remover {{name}}",
-      "skill_cost_cooldown": "{{mp}} MP · recarga {{turns}} turnos",
+      "skill_cost_cooldown": "{{mp}} MP · recarga na aventura automática: {{seconds}} s",
       "not_in_auto_adventure": "Este efeito não é executado na aventura automática.",
       "direct_damage_only": "Na aventura, esta habilidade causa apenas dano direto; queimadura, congelamento, dano contínuo e área descritos não são aplicados.",
       "class_choice_required": "A habilidade está alocada, mas precisa da escolha real de classe para funcionar na aventura.",

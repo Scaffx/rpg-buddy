@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAdvanceAutoAdventure, useAutoAdventure } from '@/hooks/useAutoAdventure';
+import { hasAdventureClockAnchor } from '@/lib/adventureClock';
+import type { AdventureSnapshot } from '@/lib/autoAdventurePayload';
 
 const state = vi.hoisted(() => ({ user: { id: '22222222-2222-2222-2222-222222222222' }, rpc: vi.fn() }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: state.user }) }));
@@ -68,6 +70,7 @@ describe('avanço e resumo no cache da aventura', () => {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
     expect(state.rpc).toHaveBeenCalledWith('advance_auto_adventure', { p_battle_id: battleId });
     expect(queryClient.getQueryData(['auto-adventure', state.user.id])).toMatchObject({ gold_today: 4, catchup: { wins: 1, gold: 4 } });
+    expect(hasAdventureClockAnchor(queryClient.getQueryData<AdventureSnapshot>(['auto-adventure', state.user.id]))).toBe(true);
     expect(queryClient.getQueryData(['auto-adventure-summary', state.user.id])).toBeNull();
     expect(container.textContent).toBe('9:0:0');
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['gold-balance', state.user.id] });

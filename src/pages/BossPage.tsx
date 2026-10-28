@@ -421,9 +421,6 @@ export default function BossPage() {
           </h1>
         </div>
 
-        {/* Eventos mundiais (teaser — em breve / anunciado) */}
-        <WorldEventsTeaser />
-
         {/* Abas */}
         <div data-tour="boss-tabs" className="flex gap-2 flex-wrap">
           <button
@@ -462,6 +459,7 @@ export default function BossPage() {
         {activeTab === "aventura" && (
           <div className="space-y-6">
             <AutoAdventure />
+            <WorldEventsTeaser />
             <AdventureRewards />
           </div>
         )}

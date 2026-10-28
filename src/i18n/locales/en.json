@@ -872,7 +872,7 @@
       "move_up": "Move {{name}} up",
       "move_down": "Move {{name}} down",
       "remove_named": "Remove {{name}}",
-      "skill_cost_cooldown": "{{mp}} MP · {{turns}} turn cooldown",
+      "skill_cost_cooldown": "{{mp}} MP · automatic adventure cooldown: {{seconds}} s",
       "not_in_auto_adventure": "This effect is not executed in automatic adventure.",
       "direct_damage_only": "In adventure, this skill deals direct damage only; described burn, freeze, damage over time and area effects are not applied.",
       "class_choice_required": "This skill is allocated, but a real class choice is required before it works in adventure.",
