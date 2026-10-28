@@ -21,7 +21,6 @@ import { useMidnightReset } from '@/hooks/useMidnightReset';
 import { useForrageio } from '@/hooks/useForrageio';
 import { useSleepWakeAlerts } from '@/hooks/useSleepWakeAlerts';
 import { useAutoCheckAchievements } from '@/hooks/useAchievements';
-import { usePresenceHeartbeat } from '@/hooks/usePresence';
 import { useReminderNotifications } from '@/hooks/useReminders';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,7 +56,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useForrageio();
   useSleepWakeAlerts();
   useAutoCheckAchievements();
-  usePresenceHeartbeat();
   useNotificationScheduler();
   useReminderNotifications();
   const [showRestTimer, setShowRestTimer] = useState(false);
