@@ -201,8 +201,9 @@ por `(1/2,9+1/3,4+1/3,8)`. Para chefe, não há divisão por três e seu relógi
 Poder inimigo normal `min(380,20+floor(1.5*etapa))`; chefe
 `min(400,30+floor(1.5*etapa))`. Estes são tetos da calibração inicial local.
 
-Vitória paga até 4 ouro normal ou 12 ouro de chefe, sujeita ao teto de 120 ouro e
-2 itens por dia em São Paulo. Derrota não retira XP/atributos. Combate jamais paga XP,
+Cada vitória completa na aventura paga de 1 a 48 ouro, conforme etapa, duração e
+nível do herói, sem teto diário de ouro. Itens diretos têm limite de 2 por dia
+em São Paulo. Derrota não retira XP/atributos. Combate jamais paga XP,
 nível ou atributos permanentes. Ouro de missões continua.
 
 A aventura considera o tempo fora do aplicativo e apresenta um resumo no retorno,
@@ -211,9 +212,10 @@ automático de uma etapa (mínimo 1); o personagem continua enfrentando inimigos
 nessa etapa, sem avançar após vitórias, até o jogador pedir para avançar novamente.
 Essa permanência também vale fora do aplicativo. Ações de avanço validam o estado
 atual e não aceitam uma etapa arbitrária. Batalhas repetidas podem conceder ouro e
-itens dentro da mesma cadência de recompensa e dos limites diários, sem duplicar
+itens conforme o limite diário e a cadência de itens diretos, sem duplicar
 o pagamento de uma batalha ou o desbloqueio de um chefe. Golpes e encontros são
-contínuos; a cadência inicial de novos créditos de recompensa permanece em 30 minutos.
+contínuos; o intervalo de 30 minutos condiciona apenas o drop direto de item,
+não o crédito de ouro por vitória completa.
 Pausar as animações não pausa o personagem nem altera o tempo elegível. Movimento
 reduzido mantém o estado da luta legível sem obrigar o usuário a acompanhar efeitos.
 

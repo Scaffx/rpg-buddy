@@ -286,6 +286,11 @@ BEGIN
       CASE WHEN v_battle.engine_version=''v4_horde'' THEN ''event_limit'' ELSE ''turn_limit'' END
       ELSE NULL END');
   v_source:=pg_temp.horde_replace_once(v_source,
+    'CASE WHEN ab.status=''draw'' THEN ''turn_limit'' ELSE NULL END AS end_reason',
+    'CASE WHEN ab.status=''draw'' THEN
+               CASE WHEN ab.engine_version=''v4_horde'' THEN ''event_limit'' ELSE ''turn_limit'' END
+             ELSE NULL END AS end_reason');
+  v_source:=pg_temp.horde_replace_once(v_source,
     'IF v_prior.id IS NOT NULL AND v_start < v_now-interval ''30 seconds'' THEN',
     'IF v_prior.id IS NOT NULL AND v_prior.hero_attack IS NOT NULL
       AND v_start < v_now-interval ''30 seconds'' THEN');

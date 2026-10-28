@@ -42,7 +42,32 @@ BEGIN
 END $long$;
 SET ROLE authenticated;
 SET request.jwt.claim.sub='a0000000-0000-0000-0000-00000000a481';
-DO $$ BEGIN PERFORM public.sync_auto_adventure(); END $$;
+DO $public$
+DECLARE r jsonb;
+BEGIN
+  r:=public.sync_auto_adventure();
+  IF r->'last_result'->>'end_reason' IS DISTINCT FROM 'event_limit'
+    OR r->'encounters'->0->>'end_reason' IS DISTINCT FROM 'event_limit'
+    OR r->'last_battle'->>'end_reason' IS DISTINCT FROM 'event_limit'
+  THEN RAISE EXCEPTION 'HORDE_PUBLIC_DRAW_FIRST'; END IF;
+  r:=public.sync_auto_adventure();
+  IF r->'encounters'->0->>'end_reason' IS DISTINCT FROM 'event_limit'
+  THEN RAISE EXCEPTION 'HORDE_PUBLIC_DRAW_NEXT'; END IF;
+END $public$;
+RESET ROLE;
+-- The fixture row is synthetic and the transaction rolls back. Reclassifying
+-- only its engine tests the legacy encounter projection through the wrapper.
+UPDATE app_private.adventure_battles SET engine_version='v3'
+  WHERE user_id='a0000000-0000-0000-0000-00000000a481' AND status='draw';
+SET ROLE authenticated;
+SET request.jwt.claim.sub='a0000000-0000-0000-0000-00000000a481';
+DO $legacy$
+DECLARE r jsonb;
+BEGIN
+  r:=public.sync_auto_adventure();
+  IF r->'encounters'->0->>'end_reason' IS DISTINCT FROM 'turn_limit'
+  THEN RAISE EXCEPTION 'LEGACY_PUBLIC_DRAW_REASON'; END IF;
+END $legacy$;
 RESET ROLE;
 DO $assert$
 BEGIN
