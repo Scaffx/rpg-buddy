@@ -1,0 +1,3 @@
+\set ON_ERROR_STOP on
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA app_private
+  GRANT TRUNCATE ON TABLES TO authenticated;

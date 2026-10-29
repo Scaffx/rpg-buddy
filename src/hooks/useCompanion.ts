@@ -241,7 +241,11 @@ export function useCreateCompanion() {
       }
       return result as unknown as CompanionRow;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['companions_all', user?.id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['companions_all', user?.id] });
+      qc.invalidateQueries({ queryKey: ['pet-food-catalog', user?.id] });
+      qc.invalidateQueries({ queryKey: ['pet-care-state', user?.id] });
+    },
   });
 }
 
@@ -290,54 +294,8 @@ export function useBuyPet() {
       qc.invalidateQueries({ queryKey: ['companions_all', user?.id] });
       qc.invalidateQueries({ queryKey: ['gold-balance'] });
       qc.invalidateQueries({ queryKey: ['pet_catalog', user?.id] });
-    },
-  });
-}
-
-export function useInteractCompanion() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      companionId,
-      action,
-      currentCompanion,
-    }: {
-      companionId: string;
-      action: 'feed' | 'play';
-      currentCompanion: CompanionRow;
-    }) => {
-      if (!user) throw new Error('Não autenticado');
-
-      const moodGain  = action === 'play' ? 20 : 12;
-      const xpGain    = action === 'play' ? 20 : 10;
-      const liveMood  = computeLiveMood(currentCompanion);
-      const newMood   = Math.min(100, liveMood + moodGain);
-      const newXp     = Number(currentCompanion.xp ?? 0) + xpGain;
-      const xpNeeded  = xpForNextLevel(Number(currentCompanion.level ?? 1));
-      const didLevel  = newXp >= xpNeeded;
-      const newLevel  = didLevel ? Number(currentCompanion.level ?? 1) + 1 : Number(currentCompanion.level ?? 1);
-      const finalXp   = didLevel ? newXp - xpNeeded : newXp;
-
-      const updates: Record<string, unknown> = {
-        mood:       newMood,
-        xp:         finalXp,
-        level:      newLevel,
-        updated_at: new Date().toISOString(),
-      };
-      if (action === 'feed') updates.last_fed_at   = new Date().toISOString();
-      if (action === 'play') updates.last_played_at = new Date().toISOString();
-
-      const { error } = await supabase
-        .from('companions')
-        .update(updates)
-        .eq('id', companionId);
-
-      if (error) throw error;
-      return { didLevel, newLevel };
-    },
-    onSuccess: (_res, vars) => {
-      qc.invalidateQueries({ queryKey: ['companions_all', user?.id] });
+      qc.invalidateQueries({ queryKey: ['pet-food-catalog', user?.id] });
+      qc.invalidateQueries({ queryKey: ['pet-care-state', user?.id] });
     },
   });
 }

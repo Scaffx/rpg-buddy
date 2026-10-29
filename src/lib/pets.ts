@@ -12,6 +12,13 @@
 export type PetStat = 'mp' | 'hp' | 'atk' | 'def';
 export type PetBonus = { stat: PetStat; pct: number };
 
+/** IDs reservados pelo catálogo SQL de alimento (SKUs 1–13, migração 20261029120000). */
+export function isReservedPetFoodItemId(itemId: string | null | undefined): boolean {
+  if (!itemId) return false;
+  const match = /^b45e1000-0000-4000-8000-(\d{12})$/i.exec(itemId);
+  return match !== null && Number(match[1]) >= 1 && Number(match[1]) <= 13;
+}
+
 /**
  * Catálogo legado: cada `companion_type` → UM bônus passivo de stat.
  * Somente Kraken, Necromante e Leviatã têm sustain de aventura confirmado.

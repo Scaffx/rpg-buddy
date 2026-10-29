@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PawPrint, Sparkles, Heart, Clock, Loader2, Edit2, Check, X, Lock } from 'lucide-react';
+import { PawPrint, Sparkles, Loader2, Edit2, Check, X, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,24 +16,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   useAllCompanions,
   useCreateCompanion,
-  useInteractCompanion,
   COMPANION_TYPES,
   COMBAT_COMPANION_META,
-  getMoodTier,
-  computeLiveMood,
-  isCooldownDone,
   xpForNextLevel,
   type CompanionRow,
 } from '@/hooks/useCompanion';
+import { usePetCareInteraction, usePetCareState, type PetCarePet } from '@/hooks/usePetCare';
 import { useActivePet, petErrorMessage, type AdventurePet } from '@/hooks/useActivePet';
 import { adventurePetBonusLabel, sustainLabel, isForagePet, forageRarityCap, hasForagedToday } from '@/lib/pets';
 import { getLocalDateString } from '@/lib/streakUtils';
 
-// As barras de humor/nível pertencem à companhia. O bônus da aventura vem
-// exclusivamente do catálogo confirmado pelo RPC, sem usar stats editáveis do pet.
-
-const FEED_COOLDOWN_MIN = 180;
-const PLAY_COOLDOWN_MIN = 60;
+// O estado de cuidado e a participação vêm apenas dos RPCs de cuidado.
 
 /** Resolve emoji/nome de exibição de qualquer companheiro (animal de nível 3 ou pet de loja). */
 function companionDisplay(companion: CompanionRow): { emoji: string; label: string } {
@@ -167,6 +160,8 @@ function CompanionCard({
   selectionEnabled,
   isSetting,
   onToggleActive,
+  care,
+  careUnavailable,
 }: {
   companion: CompanionRow;
   pet: AdventurePet | null;
@@ -174,11 +169,13 @@ function CompanionCard({
   selectionEnabled: boolean;
   isSetting: boolean;
   onToggleActive: (companionId: string | null) => void;
+  care: PetCarePet | null;
+  careUnavailable: boolean;
 }) {
   const { t }     = useTranslation();
   const { user }  = useAuth();
   const qc        = useQueryClient();
-  const interact  = useInteractCompanion();
+  const interact  = usePetCareInteraction();
 
   const bonus       = selectionEnabled ? pet?.bonus ?? null : null;
   const isActive    = selectionEnabled && activeId === companion.id;
@@ -191,22 +188,10 @@ function CompanionCard({
   const [nameInput,   setNameInput]   = useState(companion.name);
 
   const { emoji, label } = companionDisplay(companion);
-  const liveMood = useMemo(() => computeLiveMood(companion), [companion]);
-  const moodTier = getMoodTier(liveMood);
-  const moodKey  = liveMood < 20 ? 'deprimido' : liveMood < 40 ? 'triste' : liveMood < 70 ? 'neutro' : liveMood < 90 ? 'feliz' : 'euforico';
-  const moodLabel = t(`app.companion.mood_${moodKey}`, { defaultValue: moodTier.label });
   const xpNeeded = xpForNextLevel(companion.level);
   const xpPct    = Math.min(100, Math.round((companion.xp / xpNeeded) * 100));
-  const canFeed  = isCooldownDone(companion.last_fed_at,    FEED_COOLDOWN_MIN);
-  const canPlay  = isCooldownDone(companion.last_played_at, PLAY_COOLDOWN_MIN);
-
-  function cooldownLabel(timestamp: string | null, cooldownMin: number) {
-    if (!timestamp) return '';
-    const minsLeft = Math.ceil(cooldownMin - (Date.now() - new Date(timestamp).getTime()) / 60000);
-    if (minsLeft <= 0) return '';
-    const h = Math.floor(minsLeft / 60), m = minsLeft % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }
+  const careReady = Boolean(care && new Date(care.next_care_at).getTime() <= Date.now());
+  const formatDate = (value: string | null) => value ? new Date(value).toLocaleString() : t('app.companion.care_none', { defaultValue: 'Ainda não houve' });
 
   async function saveName() {
     if (!nameInput.trim() || !user) return;
@@ -221,16 +206,18 @@ function CompanionCard({
     toast.success(t('app.companion.toast_name_updated'));
   }
 
-  function handleInteract(action: 'feed' | 'play') {
+  function handleInteract(action: 'care' | 'play') {
     interact.mutate(
-      { companionId: companion.id, action, currentCompanion: companion },
+      { companionId: companion.id, action },
       {
-        onSuccess: ({ didLevel, newLevel }) => {
-          if (action === 'feed') toast.success(t('app.companion.toast_fed', { name: companion.name }));
-          else toast.success(t('app.companion.toast_played', { name: companion.name }));
-          if (didLevel) toast(t('app.companion.toast_levelup', { name: companion.name, level: newLevel }), { duration: 4000 });
+        onSuccess: (result) => {
+          if (result.effective) toast.success(t('app.companion.care_confirmed', { defaultValue: 'Cuidado registrado pelo servidor.' }));
+          else toast(t('app.companion.care_cooldown', { defaultValue: 'Cuidado em espera. Consulte o próximo horário.' }));
         },
-        onError: () => toast.error(t('app.companion.toast_interact_error')),
+        onError: (error) => {
+          if (error instanceof Error && error.message.startsWith('Conta alterada')) return;
+          toast.error(t('app.companion.care_unavailable', { defaultValue: 'Cuidado indisponível. Tente novamente mais tarde.' }));
+        },
       },
     );
   }
@@ -330,21 +317,14 @@ function CompanionCard({
         </div>
       )}
 
-      {/* Mood bar */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs font-medium">
-          <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> {t('app.companion.mood')}</span>
-          <span className={moodTier.color}>{moodLabel} · {liveMood}%</span>
-        </div>
-        <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${liveMood}%` }}
-            transition={{ duration: 0.7 }}
-            className={`h-full rounded-full ${moodTier.bg}`}
-          />
-        </div>
-      </div>
+      {/* Apenas o último estado confirmado, sem projetar participação no navegador. */}
+      {care ? <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-1 text-xs" data-testid={`pet-care-${companion.id}`}>
+        <p>{t('app.companion.food_stock', { defaultValue: 'Ração em estoque' })}: <strong>{care.stock}</strong></p>
+        <p>{t('app.companion.next_meal', { defaultValue: 'Próxima refeição automática' })}: <time dateTime={care.next_feed_at}>{formatDate(care.next_feed_at)}</time></p>
+        <p>{t('app.companion.last_meal', { defaultValue: 'Última refeição' })}: {formatDate(care.last_feed_at)}</p>
+        <p>{t('app.companion.participation', { defaultValue: 'Participação confirmada agora' })}: <strong>{Math.round(care.participation * 100)}%</strong></p>
+        <p>{t('app.companion.next_care', { defaultValue: 'Próximo carinho ou brincadeira' })}: <time dateTime={care.next_care_at}>{formatDate(care.next_care_at)}</time></p>
+      </div> : <p role="status" className="text-xs text-muted-foreground">{careUnavailable ? t('app.companion.care_unavailable', { defaultValue: 'Cuidado indisponível. Tente novamente mais tarde.' }) : t('app.companion.care_loading', { defaultValue: 'Consultando cuidado...' })}</p>}
 
       {/* Level / XP bar */}
       <div className="space-y-1.5">
@@ -359,29 +339,21 @@ function CompanionCard({
       <div className="grid grid-cols-2 gap-2">
         <Button
           size="sm"
-          disabled={!canFeed || interact.isPending}
-          onClick={() => handleInteract('feed')}
-          variant={canFeed ? 'default' : 'outline'}
+          disabled={!careReady || interact.isPending}
+          onClick={() => handleInteract('care')}
+          variant={careReady ? 'default' : 'outline'}
           className="text-xs"
         >
-          {canFeed ? t('app.companion.feed') : (
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {cooldownLabel(companion.last_fed_at, FEED_COOLDOWN_MIN)}
-            </span>
-          )}
+          {t('app.companion.care', { defaultValue: 'Fazer carinho' })}
         </Button>
         <Button
           size="sm"
-          disabled={!canPlay || interact.isPending}
+          disabled={!careReady || interact.isPending}
           onClick={() => handleInteract('play')}
-          variant={canPlay ? 'default' : 'outline'}
+          variant={careReady ? 'default' : 'outline'}
           className="text-xs"
         >
-          {canPlay ? t('app.companion.play') : (
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {cooldownLabel(companion.last_played_at, PLAY_COOLDOWN_MIN)}
-            </span>
-          )}
+          {t('app.companion.play')}
         </Button>
       </div>
     </motion.div>
@@ -395,6 +367,7 @@ export default function CompanionPage() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { isLoading: loadingCompanions, data: allCompanions } = useAllCompanions();
   const petSelection = useActivePet();
+  const careState = usePetCareState();
   const { state: petState, activeId, setActive, isSetting } = petSelection;
 
   const companions = (allCompanions ?? []) as CompanionRow[];
@@ -437,6 +410,7 @@ export default function CompanionPage() {
         </div>
 
         {petSelection.isLoading && <p role="status" className="text-sm text-muted-foreground">Consultando os pets disponíveis para combate...</p>}
+        {careState.error && <div role="alert" className="rounded-lg border border-amber-500/40 p-3 text-sm">{t('app.companion.care_unavailable', { defaultValue: 'Cuidado indisponível. Tente novamente mais tarde.' })} <Button variant="outline" size="sm" onClick={() => void careState.refetch()}>{t('app.companion.care_retry', { defaultValue: 'Tentar novamente' })}</Button></div>}
         {petSelection.error && <div role="alert" className="rounded-lg border border-amber-500/40 p-3 text-sm">Não foi possível consultar a seleção de pets: {petErrorMessage(petSelection.error)} <Button variant="outline" size="sm" onClick={() => void petSelection.refetch()}>Tentar novamente</Button></div>}
         {petSelection.setError && <p role="alert" className="rounded-lg border border-red-500/40 p-3 text-sm">Seleção não aplicada: {petErrorMessage(petSelection.setError)}</p>}
         {petState && !petState.enabled && <p role="status" className="rounded-lg border border-amber-500/40 p-3 text-sm">O combate com pets aguarda liberação para esta conta. Seus companheiros continuam disponíveis aqui.</p>}
@@ -453,7 +427,7 @@ export default function CompanionPage() {
           {companions.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {companions.map((c) => (
-                <CompanionCard key={c.id} companion={c} pet={petState?.pets.find(pet => pet.id === c.id) ?? null} activeId={activeId} selectionEnabled={Boolean(petState?.enabled && !petSelection.error)} isSetting={isSetting} onToggleActive={selectPet} />
+                <CompanionCard key={c.id} companion={c} pet={petState?.pets.find(pet => pet.id === c.id) ?? null} activeId={activeId} selectionEnabled={Boolean(petState?.enabled && !petSelection.error)} isSetting={isSetting} onToggleActive={selectPet} care={careState.data?.pets.find(pet => pet.companion_id === c.id) ?? null} careUnavailable={Boolean(careState.error)} />
               ))}
             </div>
           )}

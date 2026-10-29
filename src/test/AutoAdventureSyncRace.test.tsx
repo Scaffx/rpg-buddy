@@ -10,6 +10,9 @@ const state = vi.hoisted(() => ({
   token: 'confirmed-1',
   rpc: vi.fn(),
 }));
+const boundToken = (sessionId: string, suffix: string) =>
+  `header.${btoa(JSON.stringify({ sub: 'account-a', iss: 'https://auth.example.test/auth/v1',
+    session_id: sessionId, suffix })).replace(/=/g, '')}.signature`;
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({
   user: state.user, session: { access_token: state.token }, continuity: { epoch: state.epoch },
 }) }));
@@ -113,6 +116,7 @@ it('QueryObserver preserves newer A and B when an old A sync resolves after A→
 
 it('a remounted hook under a synthetic new generation refetches without a visible cancellation error; refresh keeps the screen', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  state.token = boundToken('session-one', 'initial');
   const old = deferred();
   const fresh = deferred();
   state.rpc.mockResolvedValueOnce({ data: snap(8, 8), error: null })
@@ -129,7 +133,7 @@ it('a remounted hook under a synthetic new generation refetches without a visibl
 
   // The keyed probe models the remount; the integrated test covers the real Auth boundary.
   state.epoch = 1;
-  state.token = 'confirmed-2';
+  state.token = boundToken('session-two', 'login');
   await act(async () => root!.render(<QueryClientProvider client={client}><Probe key={state.epoch} /></QueryClientProvider>));
   expect(container.textContent).toBe('8:ok');
   expect(client.getQueryData(['auto-adventure', 'account-a'])).toBe(initial);
@@ -142,7 +146,7 @@ it('a remounted hook under a synthetic new generation refetches without a visibl
   expect(container.textContent).toBe('9:ok');
 
   // A confirmed token refresh of the same auth session leaves epoch unchanged.
-  state.token = 'refreshed-2';
+  state.token = boundToken('session-two', 'refresh');
   await act(async () => root!.render(<QueryClientProvider client={client}><Probe key={state.epoch} /></QueryClientProvider>));
   expect(container.textContent).toBe('9:ok');
   expect(state.rpc).toHaveBeenCalledTimes(3);

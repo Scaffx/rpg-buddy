@@ -142,7 +142,12 @@ describe('auto adventure RPC contract', () => {
       clock.mockReturnValue(100 + 31 * 60_000);
       expect(nextAdventureRefetchDelay(parsed, updatedAt)).toBe(1_000);
       expect(nextAdventureRefetchDelay(undefined, 0)).toBe(false);
-      expect(nextAdventureRefetchDelay({ ...parsed, catchup: { ...parsed.catchup, pending: true } }, updatedAt)).toBe(250);
+      const pending = { ...parsed, catchup: { ...parsed.catchup, pending: true } };
+      expect(nextAdventureRefetchDelay(pending, updatedAt)).toBe(1_000);
+      vi.spyOn(Date, 'now').mockReturnValue(updatedAt);
+      expect(nextAdventureRefetchDelay(pending, updatedAt)).toBe(2_000);
+      vi.spyOn(Date, 'now').mockReturnValue(updatedAt + 1_500);
+      expect(nextAdventureRefetchDelay(pending, updatedAt)).toBe(500);
     } finally {
       vi.restoreAllMocks();
     }

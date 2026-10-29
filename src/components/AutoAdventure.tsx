@@ -47,7 +47,8 @@ function useServerClock(snapshot?: AdventureSnapshot, active = false) {
 }
 
 export default function AutoAdventure() {
-  const adventureQuery = useAutoAdventure({ background: true });
+  // AppLayout owns automatic sync; the arena observes the same query and keeps manual refresh.
+  const adventureQuery = useAutoAdventure();
   const adventurePet = useActivePet();
   const autoPotions = useAdventureAutoPotions();
   const advanceMutation = useAdvanceAutoAdventure();

@@ -10,6 +10,10 @@ export type AdventurePetSnapshot = {
   name: string;
   bonus: PetBonus;
   sustain: SustainEffect | null;
+  participation?: number;
+  care_as_of?: string;
+  effective_bonus?: PetBonus;
+  effective_sustain?: SustainEffect | null;
   base_stats: AdventurePetStats;
   effective_stats: AdventurePetStats;
 };
@@ -116,7 +120,10 @@ export function nextAdventureRefetchDelay(
   dataUpdatedAt: number,
 ): number | false {
   if (!snapshot || !dataUpdatedAt) return false;
-  if (snapshot.catchup.pending) return 250;
+  if (snapshot.catchup.pending) {
+    const remaining = 2_000 - Math.max(0, Date.now() - dataUpdatedAt);
+    return remaining > 0 ? remaining : 1_000;
+  }
   const serverNow = adventureServerTime(snapshot);
   return Math.max(1_000, Math.min(2_147_483_647, Date.parse(snapshot.next_at) - serverNow + 1_000));
 }
@@ -279,9 +286,35 @@ function optionalPet(value: Json | undefined): AdventurePetSnapshot | null | und
     if (sustainPct < 0 || sustainPct > 1) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
     sustain = { kind: effect.kind as SustainEffect['kind'], pct: sustainPct };
   }
+  const careKeys = ['participation', 'care_as_of', 'effective_bonus', 'effective_sustain'] as const;
+  const careFields = careKeys.filter((key) => row[key] !== undefined);
+  if (careFields.length !== 0 && careFields.length !== careKeys.length)
+    throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  let care: Pick<AdventurePetSnapshot, 'participation' | 'care_as_of' | 'effective_bonus' | 'effective_sustain'> = {};
+  if (careFields.length) {
+    const participation = number(row.participation);
+    if (participation < 0 || participation > 1) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+    const effectiveBonus = object(row.effective_bonus);
+    const effectiveBonusPct = number(effectiveBonus.pct);
+    if (effectiveBonus.stat !== bonus.stat || effectiveBonusPct < 0 || effectiveBonusPct > pct)
+      throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+    let effectiveSustain: SustainEffect | null = null;
+    if (sustain === null) {
+      if (row.effective_sustain !== null) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+    } else {
+      const effect = object(row.effective_sustain);
+      const effectPct = number(effect.pct);
+      if (effect.kind !== sustain.kind || effectPct < 0 || effectPct > sustain.pct)
+        throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+      effectiveSustain = { kind: sustain.kind, pct: effectPct } as SustainEffect;
+    }
+    care = { participation, care_as_of: date(row.care_as_of),
+      effective_bonus: { stat: bonus.stat as PetBonus['stat'], pct: effectiveBonusPct },
+      effective_sustain: effectiveSustain };
+  }
   return {
     companion_id: string(row.companion_id), companion_type: string(row.companion_type),
-    name: string(row.name), bonus: { stat: bonus.stat as PetBonus['stat'], pct }, sustain,
+    name: string(row.name), bonus: { stat: bonus.stat as PetBonus['stat'], pct }, sustain, ...care,
     base_stats: petStats(row.base_stats), effective_stats: petStats(row.effective_stats),
   };
 }

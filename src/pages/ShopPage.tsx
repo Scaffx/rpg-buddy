@@ -9,6 +9,7 @@ import { useShopPets, useBuyPet, useAllCompanions } from '@/hooks/useCompanion';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivePet } from '@/hooks/useActivePet';
 import { usePurchaseHistory } from '@/hooks/usePurchaseHistory';
+import { usePetFoodCatalog, usePetFoodPurchase, type PetFood } from '@/hooks/usePetCare';
 import { isForagePet, adventurePetBonusLabel, sustainLabel } from '@/lib/pets';
 import AppLayout from '@/components/AppLayout';
 import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
@@ -75,6 +76,69 @@ function normalizeCategory(rawCategory: string | null | undefined): 'consumable'
   };
 
   return aliases[normalized] || null;
+}
+
+export function PetFoodSection({ gold }: { gold: number | null }) {
+  const { t } = useTranslation();
+  const catalog = usePetFoodCatalog();
+  const purchase = usePetFoodPurchase();
+  const submitting = useRef(false);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [message, setMessage] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<string | null>(null);
+  const foods = catalog.data ?? [];
+  async function buy(food: PetFood) {
+    if (submitting.current) return;
+    submitting.current = true;
+    setMessage(null);
+    setReceipt(null);
+    try {
+      const result = await purchase.buy(food.pet_type, quantities[food.pet_type] ?? 1);
+      setReceipt(t('app.shop.food_confirmed', { defaultValue: 'Compra confirmada: {{quantity}} unidades por {{total}} ouro. Estoque atual: {{stock}}.', quantity: result.quantity, total: result.total, stock: result.stock }));
+    } catch (error) { setMessage(shopErrorMessage(error)); }
+    finally { submitting.current = false; }
+  }
+  async function retry() {
+    if (submitting.current) return;
+    submitting.current = true;
+    setMessage(null);
+    try {
+      const result = await purchase.retryPending();
+      setReceipt(t('app.shop.food_confirmed', { defaultValue: 'Compra confirmada: {{quantity}} unidades por {{total}} ouro. Estoque atual: {{stock}}.', quantity: result.quantity, total: result.total, stock: result.stock }));
+    } catch (error) { setMessage(shopErrorMessage(error)); }
+    finally { submitting.current = false; }
+  }
+  return <section className="space-y-3" aria-label={t('app.shop.food_title', { defaultValue: 'Alimento para pets' })}>
+    <h3 className="text-lg font-bold text-fuchsia-300">{t('app.shop.food_title', { defaultValue: 'Alimento para pets' })}</h3>
+    <p className="text-xs text-muted-foreground">{t('app.shop.food_desc', { defaultValue: 'A ração é específica para cada espécie própria. O servidor alimenta seus pets automaticamente a cada 24 horas enquanto houver estoque, inclusive quando você estiver fora.' })}</p>
+    {catalog.isLoading && <p role="status">{t('app.shop.food_loading', { defaultValue: 'Consultando alimentos...' })}</p>}
+    {catalog.error && <div role="alert" className="text-sm text-amber-300">{t('app.shop.food_unavailable', { defaultValue: 'Alimentos indisponíveis. Os demais setores da loja continuam disponíveis.' })} <button type="button" className="underline" onClick={() => void catalog.refetch()}>{t('app.shop.food_retry', { defaultValue: 'Tentar novamente' })}</button></div>}
+    {!catalog.isLoading && !catalog.error && foods.length === 0 && <p className="text-sm text-muted-foreground">{t('app.shop.food_empty', { defaultValue: 'Adquira um pet para liberar a ração da espécie dele.' })}</p>}
+    {purchase.pending && <div role="alert" className="rounded-lg border border-amber-500/40 p-3 text-sm space-y-2">
+      <p>{t('app.shop.food_pending', { defaultValue: 'Uma compra ainda não foi confirmada. Consulte o mesmo pedido antes de iniciar outra compra.' })}</p>
+      <p className="font-mono text-xs break-all">{purchase.pending.request_id}</p>
+      <button type="button" className="rounded bg-amber-500/20 px-3 py-1" disabled={purchase.isPending} onClick={() => void retry()}>{t('app.shop.food_resolve', { defaultValue: 'Consultar recibo e retomar pedido' })}</button>
+    </div>}
+    {message && <p role="alert" className="text-sm text-amber-300">{message}</p>}
+    {receipt && <p role="status" className="text-sm text-emerald-300">{receipt}</p>}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {foods.map(food => {
+        const quantity = quantities[food.pet_type] ?? 1;
+        const total = quantity * food.unit_price;
+        return <div key={food.pet_type} className="rounded-xl border border-fuchsia-500/25 bg-card p-4 space-y-2">
+          <h4 className="font-semibold">{food.name}</h4>
+          <p className="text-xs text-muted-foreground">{t('app.shop.food_stock', { defaultValue: 'Estoque confirmado' })}: {food.quantity}</p>
+          <label className="flex items-center gap-2 text-sm">{t('app.shop.food_quantity', { defaultValue: 'Unidades' })}
+            <select aria-label={`${food.name}: ${t('app.shop.food_quantity', { defaultValue: 'Unidades' })}`} className="rounded bg-background border border-border px-2 py-1" value={quantity} disabled={Boolean(purchase.pending) || purchase.isPending} onChange={e => setQuantities(current => ({ ...current, [food.pet_type]: Number(e.target.value) }))}>
+              {Array.from({ length: 30 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+            </select>
+          </label>
+          <p className="text-sm text-yellow-400">{food.unit_price} 🪙 / {t('app.shop.food_unit', { defaultValue: 'unidade' })} · {t('app.shop.food_total', { defaultValue: 'Total' })}: {total} 🪙</p>
+          <button type="button" className="rounded-lg bg-fuchsia-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40" disabled={Boolean(purchase.pending) || purchase.isPending || gold === null || total > gold} onClick={() => void buy(food)}>{t('app.shop.food_buy', { defaultValue: 'Comprar ração' })}</button>
+        </div>;
+      })}
+    </div>
+  </section>;
 }
 
 export default function ShopPage() {
@@ -773,6 +837,7 @@ export default function ShopPage() {
                 );
               })}
             </div>}
+            <PetFoodSection key={user?.id ?? 'anonymous'} gold={typeof balance?.gold === 'number' ? balance.gold : null} />
           </TabsContent>
         </Tabs>
       </div>
