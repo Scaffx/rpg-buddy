@@ -18,6 +18,11 @@ const adventureExecutable = (effectType: string) =>
   ['dano', 'damage', 'heal', 'buff', 'debuff', 'cc'].includes(effectType);
 const directDamageOnly = (effectType: string) => effectType === 'dano' || effectType === 'damage';
 const SOURCE_LABEL: Record<string, string> = { novice: 'Noviço', class: 'Classe', tree: 'Árvore', weapon: 'Arma', cinza: 'Cinza' };
+const MAGE_AREA_VARIANTS: Record<string, { id: string; name: string }> = {
+  m_bola_fogo: { id: 'm_fogo_var', name: 'Meteoro' },
+  m_lanca_gelo: { id: 'm_gelo_var', name: 'Nova Gélida' },
+  m_corrente_raio: { id: 'm_raio_var', name: 'Tornado' },
+};
 
 /** Mapeia nós-skill alocados (rank>=1) de uma árvore para entradas de loadout. */
 function buildTreeSkills(nodes: any[], ranks: Record<string, number>, archetype = 'Árvore'): any[] {
@@ -45,6 +50,10 @@ export default function CombatLoadout() {
   // classe), o Golpe Improvisado já alocado continua disponível no loadout LIVRE.
   const { data: aprendizNodes = [] } = useSkillTreeNodes('aprendiz');
   const { data: treeRanks = {} } = usePlayerSkillNodes();
+  const areaVariantName = (baseId: string): string | null => {
+    const variant = MAGE_AREA_VARIANTS[baseId];
+    return treeKey === 'mago' && variant && (treeRanks[variant.id] || 0) >= 1 ? variant.name : null;
+  };
   const { data: inventory = [] } = useInventory();
   const secondsFormatter = useMemo(() => new Intl.NumberFormat(i18n?.resolvedLanguage || i18n?.language || 'pt-BR', {
     minimumFractionDigits: 1,
@@ -180,6 +189,7 @@ export default function CombatLoadout() {
             {selected.map((s, index) => (
               <div key={s.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-200">
                 <span className="font-semibold">{index + 1}. {EFFECT_ICON[s.effectType] || '⚔️'} {s.name}</span>
+                {areaVariantName(s.id) && <span className="text-sky-200">Após salvar, na próxima luta: {areaVariantName(s.id)} atinge o grupo</span>}
                 <span className="text-muted-foreground">{t('app.habhub.skill_cost_cooldown', { mp: s.mpCost ?? 0, seconds: cooldownSeconds(s.cooldown) })}</span>
                 {directDamageOnly(s.effectType) && <span className="text-muted-foreground">{t('app.habhub.direct_damage_only')}</span>}
                 {!adventureExecutable(s.effectType) && <span className="text-amber-300">{t('app.habhub.not_in_auto_adventure')}</span>}
@@ -213,6 +223,7 @@ export default function CombatLoadout() {
                 {!s.unlocked && <span className="shrink-0 inline-flex items-center gap-1 text-[10px] text-muted-foreground"><Lock className="w-2.5 h-2.5" /> Nv.{s.unlockLevel}</span>}
               </div>
               <p className="text-xs text-muted-foreground leading-snug line-clamp-2">{s.description || s.effectLabel}</p>
+              {areaVariantName(s.id) && <p className="text-xs text-sky-200">Variante aprendida: {areaVariantName(s.id)} atinge o grupo na próxima luta quando esta base estiver equipada.</p>}
               <div className="flex flex-wrap gap-1.5 text-[10px]">
                 <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-300">⚔️ {s.power}</span>
                 <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-300">⏱ {t('app.habhub.skill_cost_cooldown', { mp: s.mpCost ?? 0, seconds: cooldownSeconds(s.cooldown) })}</span>

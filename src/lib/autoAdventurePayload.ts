@@ -1,6 +1,6 @@
 import type { Json } from '@/integrations/supabase/types';
 import type { PetBonus, SustainEffect } from '@/lib/pets';
-import type { HordeEnemy } from '@/lib/adventureHordeContract';
+import type { HordeEnemy, HordeHit } from '@/lib/adventureHordeContract';
 import { adventureServerTime } from '@/lib/adventureClock';
 
 export type AdventurePetStats = { atk: number; def: number; hp: number; mp: number };
@@ -46,11 +46,14 @@ export type AdventureAttack = {
   mp_cost?: number;
   skill_type?: 'dano' | 'heal' | 'buff' | 'debuff' | 'cc' | null;
   healing?: number;
+  mp_restored?: number;
   raw_damage?: number;
   damage_multiplier?: number;
   effect_note?: string | null;
   actor_slot?: number | null;
   target_slot?: number | null;
+  target_slots?: number[];
+  hits?: HordeHit[];
   enemies_hp?: number[];
   enemies_mp?: number[];
 };
@@ -183,6 +186,13 @@ function optionalNumber(value: Json | undefined): number | undefined {
   return value === undefined ? undefined : number(value);
 }
 
+function optionalPositiveInteger(value: Json | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  return parsed;
+}
+
 function optionalMana(value: Json | undefined): number | undefined {
   if (value == null) return undefined;
   const parsed = number(value);
@@ -237,6 +247,17 @@ function hordeEnemy(value: Json): HordeEnemy {
   return parsed;
 }
 
+function hordeHit(value: Json): HordeHit {
+  const row = object(value);
+  const targetSlot = slot(row.target_slot);
+  if (targetSlot === null) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  const hit = { target_slot: targetSlot, damage: number(row.damage),
+    raw_damage: number(row.raw_damage), damage_multiplier: number(row.damage_multiplier) };
+  if (hit.damage < 0 || hit.raw_damage < 0 || hit.damage_multiplier < 0)
+    throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  return hit;
+}
+
 function petStats(value: Json | undefined): AdventurePetStats {
   const row = object(value);
   return { atk: number(row.atk), def: number(row.def), hp: number(row.hp), mp: number(row.mp) };
@@ -281,11 +302,17 @@ function attack(value: Json): AdventureAttack {
       : row.skill_type === null || ['dano', 'heal', 'buff', 'debuff', 'cc'].includes(String(row.skill_type))
         ? row.skill_type as AdventureAttack['skill_type']
         : (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })(),
-    healing: optionalNumber(row.healing), raw_damage: optionalNumber(row.raw_damage),
+    healing: optionalNumber(row.healing), mp_restored: optionalPositiveInteger(row.mp_restored),
+    raw_damage: optionalNumber(row.raw_damage),
     damage_multiplier: optionalNumber(row.damage_multiplier),
     effect_note: optionalNullableString(row.effect_note),
     actor_slot: row.actor_slot === undefined ? undefined : slot(row.actor_slot),
     target_slot: row.target_slot === undefined ? undefined : slot(row.target_slot),
+    target_slots: row.target_slots === undefined ? undefined : Array.isArray(row.target_slots)
+      ? row.target_slots.map(value => { const parsed = slot(value); if (parsed === null) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); return parsed; })
+      : (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })(),
+    hits: row.hits === undefined ? undefined : Array.isArray(row.hits)
+      ? row.hits.map(hordeHit) : (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })(),
     enemies_hp: row.enemies_hp === undefined ? undefined : Array.isArray(row.enemies_hp) ? row.enemies_hp.map(number) : (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })(),
     enemies_mp: row.enemies_mp === undefined ? undefined : Array.isArray(row.enemies_mp) ? row.enemies_mp.map(number) : (() => { throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE'); })(),
   };
@@ -308,6 +335,28 @@ function battle(value: Json): AdventureBattle {
     : row.boss_id !== null || enemies.some(enemy => enemy.boss_id !== null)))
     throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   const events = row.events.map(attack);
+  if (enemies && events.some(event => {
+    const slots = event.target_slots;
+    const hits = event.hits;
+    if (slots === undefined && hits === undefined) return false; // Older v4 snapshots remain valid.
+    if (!slots || !hits || slots.length !== hits.length ||
+        slots.length > enemies.length ||
+        new Set(slots).size !== slots.length || slots.some((target, index) =>
+          target >= enemies.length || hits[index].target_slot !== target || hits[index].damage > enemies[target].max_hp) ||
+        event.actor !== 'hero' ||
+        (slots.length > 0 && event.target_slot !== slots[0]) ||
+        (slots.length === 0 && (event.damage !== 0 || event.target_slot !== null)) ||
+        Math.abs(hits.reduce((sum, hit) => sum + hit.damage, 0) - event.damage) > 1e-6) return true;
+    return false;
+  })) throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
+  if (enemies && events.some(event => event.damage < 0 || event.hero_hp < 0 || event.hero_hp > number(row.hero_max_hp) ||
+    (event.hero_mp !== undefined && (event.hero_mp < 0 ||
+      (row.hero_max_mp !== undefined && event.hero_mp > number(row.hero_max_mp)))) ||
+    (event.mp_restored !== undefined && ((row.hero_max_mp !== undefined && event.mp_restored > number(row.hero_max_mp)) ||
+      (event.hero_mp !== undefined && event.mp_restored > event.hero_mp))) ||
+    event.enemy_hp < 0 || event.enemy_hp > enemies.reduce((sum, enemy) => sum + enemy.max_hp, 0) ||
+    Date.parse(event.at) < Date.parse(date(row.started_at)) || Date.parse(event.at) > Date.parse(date(row.ends_at))))
+    throw new Error('AUTO_ADVENTURE_INVALID_RESPONSE');
   if (enemies && events.some(event => event.actor_slot === undefined || event.target_slot === undefined ||
     event.enemies_hp?.length !== enemies.length || event.enemies_hp.some((hp, index) => hp < 0 || hp > enemies[index].max_hp) ||
     event.enemies_mp?.length !== enemies.length || event.enemies_mp.some((mp, index) => mp < 0 || mp > enemies[index].max_mp) ||

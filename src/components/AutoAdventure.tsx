@@ -10,6 +10,8 @@ import { AdventureHoldNotice } from './adventure/AdventureHoldNotice';
 import { adventureBiome, adventureHeroClass } from '@/lib/adventureVisuals';
 import { useActivePet } from '@/hooks/useActivePet';
 import { AdventurePetPanel } from './AdventurePetPanel';
+import { AdventureAutoPotionsPanel } from './adventure/AdventureAutoPotionsPanel';
+import { autoPotionsErrorMessage, autoPotionsUnavailable, useAdventureAutoPotions } from '@/hooks/useAdventureAutoPotions';
 import { projectAdventureSceneFrame } from '@/lib/adventureSceneProjector';
 import { adventureServerTime } from '@/lib/adventureClock';
 import type { AdventureSnapshot } from '@/lib/autoAdventurePayload';
@@ -47,6 +49,7 @@ function useServerClock(snapshot?: AdventureSnapshot, active = false) {
 export default function AutoAdventure() {
   const adventureQuery = useAutoAdventure({ background: true });
   const adventurePet = useActivePet();
+  const autoPotions = useAdventureAutoPotions();
   const advanceMutation = useAdvanceAutoAdventure();
   const { data, dataUpdatedAt, isLoading, isFetching, error, refetch } = adventureQuery;
   const accountId = adventureQuery.accountId;
@@ -207,6 +210,11 @@ export default function AutoAdventure() {
         {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
       </div>}
       {!recovering && <AdventurePetPanel battlePet={battle?.pet} selection={adventurePet.state} selectionLoading={adventurePet.isLoading} selectionError={Boolean(adventurePet.error)} />}
+      <AdventureAutoPotionsPanel state={autoPotions.state} battleId={battle?.id} loading={autoPotions.isLoading}
+        unavailable={autoPotionsUnavailable(autoPotions.error)}
+        error={autoPotions.setError ? autoPotionsErrorMessage(autoPotions.setError) : autoPotions.error && !autoPotionsUnavailable(autoPotions.error) ? autoPotionsErrorMessage(autoPotions.error) : null}
+        setting={autoPotions.isSetting} onToggle={enabled => { void autoPotions.setEnabled(enabled).catch(() => {}); }}
+        onRetry={() => { void autoPotions.refetch(); }} />
       {mode === 'holding' && <AdventureHoldNotice stage={holdingStage} advanceToStage={holdingStage + 1} retreatedFromStage={data.encounters.find(encounter => !encounter.won && !isDraw(encounter) && encounter.stage === holdingStage + 1)?.stage} pending={advanceMutation.isPending} accepted={Boolean(advanceRequested || (currentBattle && acceptedBattleId === currentBattle.id))} canAdvance={canRequestAdvance} error={advanceMutation.isError && attemptedBattleId.current === currentBattle?.id} onAdvance={() => void advance()} />}
       <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Alterações em equipamentos e habilidades passam a valer na próxima luta iniciada. Cada vitória dá ouro; itens diretos seguem um intervalo e limite diário. Rotinas concluídas dão XP e atributos.</p>
     </div>

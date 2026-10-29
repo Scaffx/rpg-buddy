@@ -24,10 +24,11 @@ function toAction(battleId: string, { event, index, time }: TimedEvent, serverTi
   return {
     id: `${battleId}-${index}`, actor: event.actor, kind: event.kind,
     actorSlot: event.actor_slot, targetSlot: event.target_slot,
+    targetSlots: event.target_slots, hits: event.hits,
     skillName: event.kind === 'skill' ? event.skill_name : null,
     skillId: event.kind === 'skill' ? event.skill_id : null,
     damage: event.damage, effect: visualEffect(event.effect),
-    mpCost: event.mp_cost, healing: event.healing,
+    mpCost: event.mp_cost, healing: event.healing, mpRestored: event.mp_restored,
     rawDamage: event.raw_damage, damageMultiplier: event.damage_multiplier,
     effectNote: event.effect_note, skillType: event.skill_type,
     elapsedMs: serverTime - time,
@@ -64,7 +65,7 @@ export function projectAdventureSceneFrame(
     enemyHp: enemies ? enemies[0].hp : lastEvent?.enemy_hp ?? battle.enemy_max_hp,
     enemyMaxHp: enemies ? enemies[0].max_hp : battle.enemy_max_hp,
     enemyMp, enemyMaxMp: enemies ? enemies[0].max_mp : battle.enemy_max_mp,
-    enemies, action, animateAction: Boolean(action && action.elapsedMs < 1350),
+    enemies, pet: battle.pet, action, animateAction: Boolean(action && action.elapsedMs < 1350),
     actionElapsedMs: action?.elapsedMs,
     actions: enemies ? active.map(item => toAction(battle.id, item, serverTime)) : undefined,
   };

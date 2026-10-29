@@ -11,6 +11,11 @@ vi.mock('@/hooks/useAutoAdventure', () => ({
   useAdvanceAutoAdventure: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false }),
 }));
 vi.mock('@/hooks/useActivePet', () => ({ useActivePet: () => ({ state: undefined, isLoading: false, error: null }) }));
+vi.mock('@/hooks/useAdventureAutoPotions', () => ({
+  useAdventureAutoPotions: () => ({ state: undefined, isLoading: false, error: null, setError: null,
+    isSetting: false, setEnabled: vi.fn(), refetch: vi.fn() }),
+  autoPotionsErrorMessage: () => '', autoPotionsUnavailable: () => false,
+}));
 vi.mock('@/hooks/useProfile', () => ({ useProfile: () => ({ data: { display_name: 'Heroína' } }) }));
 vi.mock('@/hooks/useHeroClass', () => ({
   useHeroClass: () => ({ currentClassName: 'Mago', starterClass: 'mago' }),

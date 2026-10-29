@@ -14,11 +14,20 @@ export type HordeEnemy = {
   resistances: Record<string, number>;
 };
 
+export type HordeHit = {
+  target_slot: number;
+  damage: number;
+  raw_damage: number;
+  damage_multiplier: number;
+};
+
 export type HordeEvent = {
   at: string;
   actor: HordeActor;
   actor_slot: number | null;
   target_slot: number | null;
+  target_slots?: number[];
+  hits?: HordeHit[];
   kind: 'attack' | 'skill';
   damage: number;
   hero_hp: number;

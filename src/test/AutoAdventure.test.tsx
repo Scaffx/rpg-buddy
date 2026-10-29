@@ -9,6 +9,11 @@ const mocked = vi.hoisted(() => ({ value: null as unknown }));
 const mutation = vi.hoisted(() => ({ mutateAsync: vi.fn(), isPending: false, isError: false }));
 vi.mock('@/hooks/useAutoAdventure', () => ({ useAutoAdventure: () => mocked.value, useAdvanceAutoAdventure: () => mutation }));
 vi.mock('@/hooks/useActivePet', () => ({ useActivePet: () => ({ state: undefined, isLoading: false, error: null }) }));
+vi.mock('@/hooks/useAdventureAutoPotions', () => ({
+  useAdventureAutoPotions: () => ({ state: undefined, isLoading: false, error: null, setError: null,
+    isSetting: false, setEnabled: vi.fn(), refetch: vi.fn() }),
+  autoPotionsErrorMessage: () => '', autoPotionsUnavailable: () => false,
+}));
 vi.mock('@/hooks/useProfile', () => ({ useProfile: () => ({ data: { display_name: 'Murillo', avatar_url: null } }) }));
 vi.mock('@/hooks/useHeroClass', () => ({
   useHeroClass: () => ({ currentClassName: 'Cavaleiro', starterClass: 'guerreiro' }),

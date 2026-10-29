@@ -1,0 +1,173 @@
+/* The scene supplies a stable, positioned hero anchor outside action-keyed tracks. */
+
+.adventure-pet-companion {
+  --pet-orbit-x: clamp(36px, 8vw, 100px);
+  --pet-orbit-y: clamp(30px, 6vw, 75px);
+  position: absolute;
+  left: calc(100% - 22px);
+  bottom: -4px;
+  width: clamp(36px, 7vw, 48px);
+  aspect-ratio: 1;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+  filter: drop-shadow(0 3px 2px rgb(21 35 49 / 35%));
+}
+
+/* The horde pet follows the stable sprite box, not the actor's grid column. */
+.adventure-horde-hero-visual {
+  --pet-foot-x: clamp(0px, 2vw, 22px);
+}
+
+.adventure-horde-hero-visual > .adventure-pet-companion {
+  left: calc(50% + var(--pet-foot-x));
+  bottom: -3px;
+}
+
+.adventure-pet-companion__motion,
+.adventure-pet-companion__art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 80%;
+}
+
+.adventure-pet-companion__motion {
+  animation: adventure-pet-breathe 3.8s ease-in-out infinite;
+}
+
+.adventure-pet-companion[data-pet-type="calopsita"] .adventure-pet-companion__motion {
+  animation-name: adventure-pet-bird-idle;
+}
+
+.adventure-pet-companion[data-pet-type="mini_kraken"] .adventure-pet-companion__motion,
+.adventure-pet-companion[data-pet-type="mini_leviata"] .adventure-pet-companion__motion {
+  animation-name: adventure-pet-water-idle;
+}
+
+.adventure-pet-companion[data-pet-type="golem_guardian"] .adventure-pet-companion__motion {
+  animation-duration: 5.8s;
+}
+
+.adventure-pet-companion[data-pet-type="mini_relampago"] .adventure-pet-companion__motion {
+  animation-name: adventure-pet-spark-idle;
+}
+
+.adventure-pet-companion[data-pet-type="mini_dragao_sombrio"],
+.adventure-pet-companion[data-pet-type="mini_wyrm_gelo"] {
+  animation: adventure-pet-dragon-orbit 15s ease-in-out infinite;
+}
+
+.adventure-pet-companion[data-pet-type="dog"] .adventure-pet-companion__motion {
+  animation: adventure-pet-dog-gesture 15s ease-in-out infinite;
+}
+
+.adventure-pet-companion[data-pet-type="dog"] .adventure-pet-tail {
+  transform-origin: 45px 41px;
+  animation: adventure-pet-dog-tail 15s ease-in-out infinite;
+}
+
+.adventure-pet-companion[data-pet-type="dog"] .adventure-pet-dog-mouth {
+  opacity: 0;
+  animation: adventure-pet-dog-bark 15s steps(1, end) infinite;
+}
+
+.adventure-pet-companion__bonus {
+  position: absolute;
+  top: -2px;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #f5e5a5;
+  border-radius: 50%;
+  background: #354b64;
+  color: #fff0a8;
+  font-size: 10px;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%);
+}
+
+@keyframes adventure-pet-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.02); }
+}
+
+@keyframes adventure-pet-bird-idle {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  48% { transform: translateY(-2px) rotate(3deg); }
+  58% { transform: translateY(-1px) rotate(-2deg); }
+}
+
+@keyframes adventure-pet-water-idle {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-3px) rotate(2deg); }
+}
+
+@keyframes adventure-pet-spark-idle {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  48% { transform: translateY(-2px) rotate(-2deg); }
+  52% { transform: translateY(-2px) rotate(2deg); }
+}
+
+/* A brief circuit around the hero silhouette, returning to the same foot. */
+@keyframes adventure-pet-dragon-orbit {
+  0%, 89%, 100% { transform: translate(0, 0) rotate(0); }
+  92% { transform: translate(0, calc(-.6 * var(--pet-orbit-y))) rotate(-8deg); }
+  95% { transform: translate(calc(-.55 * var(--pet-orbit-x)), calc(-1 * var(--pet-orbit-y))) rotate(-4deg); }
+  97% { transform: translate(calc(-1 * var(--pet-orbit-x)), calc(-.5 * var(--pet-orbit-y))) rotate(7deg); }
+  99% { transform: translate(calc(-.35 * var(--pet-orbit-x)), calc(-.12 * var(--pet-orbit-y))) rotate(3deg); }
+}
+
+/* A silent visual bark, followed by tail wagging near the end of each cycle. */
+@keyframes adventure-pet-dog-gesture {
+  0%, 89%, 100% { transform: translateY(0) scale(1); }
+  92%, 94% { transform: translateY(-2px) scale(1.04); }
+  93%, 95% { transform: translateY(0) scale(1); }
+}
+
+@keyframes adventure-pet-dog-bark {
+  0%, 90%, 96%, 100% { opacity: 0; }
+  91%, 95% { opacity: 1; }
+}
+
+@keyframes adventure-pet-dog-tail {
+  0%, 95%, 100% { transform: rotate(0); }
+  96%, 98% { transform: rotate(-16deg); }
+  97%, 99% { transform: rotate(12deg); }
+}
+
+.adventure-pet-companion--still .adventure-pet-companion__motion,
+.adventure-pet-companion--still,
+.adventure-pet-companion--still .adventure-pet-tail,
+.adventure-pet-companion--still .adventure-pet-dog-mouth,
+.adventure-still .adventure-pet-companion,
+.adventure-still .adventure-pet-companion__motion,
+.adventure-still .adventure-pet-tail,
+.adventure-still .adventure-pet-dog-mouth {
+  animation: none !important;
+}
+
+.adventure-pet-companion--still .adventure-pet-dog-mouth,
+.adventure-still .adventure-pet-dog-mouth {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adventure-pet-companion,
+  .adventure-pet-companion__motion,
+  .adventure-pet-tail,
+  .adventure-pet-dog-mouth {
+    animation: none !important;
+  }
+
+  .adventure-pet-dog-mouth { opacity: 0; }
+}
+
+@media (max-width: 480px) {
+  .adventure-horde-hero-visual > .adventure-pet-companion {
+    bottom: -2px;
+    width: 36px;
+  }
+}
