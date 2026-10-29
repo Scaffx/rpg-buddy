@@ -224,4 +224,13 @@ describe('weekly missions', () => {
       /hoje ou ontem/i,
     );
   });
+
+  it('explains a mission created or converted after the chosen day', () => {
+    expect(getWeeklyMissionErrorCode({ message: 'MISSION_BEFORE_START' })).toBe(
+      'MISSION_BEFORE_START',
+    );
+    expect(getWeeklyMissionErrorMessage('MISSION_BEFORE_START')).toMatch(
+      /não estava disponível no dia escolhido.*Hoje/i,
+    );
+  });
 });
