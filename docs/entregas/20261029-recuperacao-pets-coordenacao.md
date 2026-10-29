@@ -86,3 +86,11 @@
 [Certo] A frente de pets trabalha apenas no ambiente local. O contrato propõe comida por espécie, estoque com compra idempotente, alimentação automática sem compra automática e cuidado leve, sem XP de combate. O snapshot de cada luta deve preservar o bônus confirmado no seu horário de início. A carga adicional precisa ser limitada antes de qualquer rollout, diante do incidente de recursos.
 
 [Certo] Acesso recuperado e testado; port mínimo revisado, testado, publicado e conferido na conta de teste. A alimentação permanece local e no PR em rascunho, pendente de resolução do cap, cadeia PG17 completa, custo bounded e teste autenticado do novo backend com pet. Não tratar relatório de design, fixture local ou reinício como publicação de correção definitiva do incidente de recursos.
+
+## Salvamento e continuidade
+
+[Certo] A reforma foi salva localmente no commit `1689377` com as frentes revisadas de alimentação/cuidado, bônus efetivo e cadência integrada. Antes do commit, a coordenação removeu somente linhas vazias extras no fim de seis fixtures SQL para o diff staged passar; a migration congelada, funções e lógica das provas ficaram intactas. `work/` de evidência local não foi incluído no commit.
+
+[Certo] Em seguida foi integrado o main congelado `8955e80a3e5f358b4ae2360d4e67eb39518e3a39` ao rascunho. Houve cinco conflitos nas implementações mínimas versus as já portadas na reforma: componente, hook, helper e dois testes. A resolução preservou as versões da reforma já testadas em 676 casos, que incorporam a cadência/reentrada do PR78 e mantêm relógio monotônico, guarda de snapshots e poções/pets. `git diff --cached 1689377 --name-only -- src supabase` ficou vazio: a integração do main não mudou nenhum byte de fonte/teste/SQL frente ao candidato testado. Somente os relatórios do hotfix foram acrescentados. Não há conflito aberto; o PR77 continua DRAFT.
+
+[Certo] Os 18 workers deste run terminaram e tiveram seus terminais liberados. O [P2 de 4097 refeições](https://app.notion.com/p/408812ac94d881e8aa13f92ca61d4bcb) ficou em card próprio, separado das permissões já corrigidas; o [P2 de prazo na navegação](https://app.notion.com/p/408812ac94d881fda382e7358871e35c) foi encerrado com PR78 publicado. BUG-44 permanece em progresso porque a mitigação de frequência não encerra a causa de recursos. Não houve upgrade ou custo contratado.
