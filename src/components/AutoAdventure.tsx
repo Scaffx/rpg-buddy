@@ -62,7 +62,7 @@ function useServerClock(serverNow?: string, dataUpdatedAt?: number, active = fal
 }
 
 export default function AutoAdventure() {
-  const adventureQuery = useAutoAdventure({ background: true });
+  const adventureQuery = useAutoAdventure();
   const adventurePet = useActivePet();
   const advanceMutation = useAdvanceAutoAdventure();
   const { data, dataUpdatedAt, isLoading, isFetching, error, refetch } = adventureQuery;

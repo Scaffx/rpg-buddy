@@ -107,7 +107,10 @@ export function nextAdventureRefetchDelay(
   now = Date.now(),
 ): number | false {
   if (!snapshot || !dataUpdatedAt) return false;
-  if (snapshot.catchup.pending) return 250;
+  if (snapshot.catchup.pending) {
+    const remaining = 2_000 - Math.max(0, now - dataUpdatedAt);
+    return remaining > 0 ? remaining : 1_000;
+  }
   const serverNow = Date.parse(snapshot.server_now) + Math.max(0, now - dataUpdatedAt);
   return Math.max(1_000, Math.min(2_147_483_647, Date.parse(snapshot.next_at) - serverNow + 1_000));
 }

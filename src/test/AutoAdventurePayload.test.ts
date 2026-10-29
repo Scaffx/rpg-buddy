@@ -135,6 +135,9 @@ describe('auto adventure RPC contract', () => {
     expect(nextAdventureRefetchDelay(parsed, updatedAt, updatedAt + 15 * 60_000)).toBe(901_000);
     expect(nextAdventureRefetchDelay(parsed, updatedAt, updatedAt + 31 * 60_000)).toBe(1_000);
     expect(nextAdventureRefetchDelay(undefined, 0, updatedAt)).toBe(false);
-    expect(nextAdventureRefetchDelay({ ...parsed, catchup: { ...parsed.catchup, pending: true } }, updatedAt, updatedAt)).toBe(250);
+    const pending = { ...parsed, catchup: { ...parsed.catchup, pending: true } };
+    expect(nextAdventureRefetchDelay(pending, updatedAt, updatedAt)).toBe(2_000);
+    expect(nextAdventureRefetchDelay(pending, updatedAt, updatedAt + 1_500)).toBe(500);
+    expect(nextAdventureRefetchDelay(pending, updatedAt, updatedAt + 3_000)).toBe(1_000);
   });
 });
