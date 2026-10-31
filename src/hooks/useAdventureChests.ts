@@ -11,6 +11,15 @@ const chestMinimum = z.object({
   essence: z.number().int().nonnegative(),
   potions: z.number().int().nonnegative(),
 });
+const nonnegativeInteger = z.number().int().nonnegative();
+const basisPoints = z.number().int().min(0).max(10000);
+const lootRules = z.object({
+  gold_min: nonnegativeInteger, gold_max: nonnegativeInteger,
+  potions_min: nonnegativeInteger, potions_max: nonnegativeInteger,
+  equipment_chance_bps: basisPoints,
+  equipment_rarity_bps: z.object({ incomum: basisPoints, raro: basisPoints, epico: basisPoints, lendario: basisPoints }),
+}).refine(value => value.gold_max >= value.gold_min && value.potions_max >= value.potions_min &&
+  Object.values(value.equipment_rarity_bps).reduce((sum, chance) => sum + chance, 0) === 10000);
 const chest = z.object({
   id: z.string().uuid(),
   rarity: z.enum(['comum', 'raro', 'epico', 'lendario']),
@@ -20,6 +29,8 @@ const chest = z.object({
   ready_at: serverDate.nullable(),
   open_hours: z.number().int().positive(),
   minimum: chestMinimum,
+  loot_version: z.union([z.literal(1), z.literal(2)]).optional(),
+  loot_rules: lootRules.nullable().optional(),
 });
 const receipt = z.object({
   chest_id: z.string().uuid(),
@@ -40,10 +51,14 @@ const receipt = z.object({
   }).nullable(),
   xp: z.literal(0),
 });
-const state = z.object({
+export const adventureChestsStateSchema = z.object({
   server_now: serverDate,
   slots_total: z.literal(4),
   occupied: z.number().int().min(0).max(4),
+  openings_cap: z.number().int().min(1).max(4).optional(),
+  openings_active: z.number().int().min(0).max(4).optional(),
+  unlocks: z.object({ second: z.boolean(), third: z.boolean(), fourth: z.boolean() }).optional(),
+  prices_gold: z.object({ second: z.number().int().positive(), third: z.number().int().positive() }).optional(),
   next_eligible_at: serverDate.nullable(),
   chests: z.array(chest).max(4),
   overflow: z.object({
@@ -63,11 +78,14 @@ const state = z.object({
 
 export type AdventureChest = z.infer<typeof chest>;
 export type AdventureChestReceipt = z.infer<typeof receipt>;
-export type AdventureChestsState = z.infer<typeof state>;
+export type AdventureChestsState = z.infer<typeof adventureChestsStateSchema>;
 
 const errorLabels: Record<string, string> = {
   CHEST_NOT_FOUND: 'Este baú não pertence a você ou não está mais disponível.',
   CHEST_OPENING_ACTIVE: 'Há um baú em abertura. Resgate-o antes de iniciar outro.',
+  CHEST_OPENING_LIMIT: 'Todas as aberturas liberadas estão ocupadas. Resgate um baú ou libere outra abertura na loja.',
+  CHEST_OPENINGS_FULL: 'Todas as aberturas liberadas estão ocupadas. Resgate um baú ou libere outra abertura na loja.',
+  CHEST_OPENING_CAP: 'Todas as aberturas liberadas estão ocupadas. Resgate um baú ou libere outra abertura na loja.',
   CHEST_NOT_READY: 'O baú ainda não está pronto no relógio do servidor.',
   CHEST_NOT_OPENING: 'Inicie a abertura deste baú antes de resgatar.',
   CHEST_ALREADY_CLAIMED: 'Este baú já foi resgatado.',
@@ -100,7 +118,7 @@ export function useAdventureChests() {
   const query = useQuery({
     queryKey: key,
     enabled: !!user,
-    queryFn: async () => state.parse(await callChestRpc('get_adventure_chests')),
+    queryFn: async () => adventureChestsStateSchema.parse(await callChestRpc('get_adventure_chests')),
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
     staleTime: 10_000,

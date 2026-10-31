@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import LifeonRPGSplash from '@/components/branding/LifeonRPGSplash';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Zap, ChevronRight, Trophy, Skull, LogOut, Users, Package, FlaskConical, Bot, ShieldCheck, Swords, Copy, Link2 } from 'lucide-react';
@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRecordPartnership, useDungeonPartnerships, getBondTier, BOND_TIERS, runsToNextTier } from '@/hooks/useDungeonPartnerships';
+import { requireRpcObject } from '@/lib/rpcPayload';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type RoomType = 'combat' | 'rescue' | 'treasure' | 'trap' | 'rest' | 'boss';
@@ -637,6 +638,7 @@ export default function DungeonArena({
   const [rescued, setRescued]         = useState(0);
   const [autoPotion, setAutoPotion]   = useState(true);
   const [potions, setPotions]         = useState<PotionItem[]>(initialPotions);
+  const [potionPending, setPotionPending] = useState(false);
   const [isGranting, setIsGranting]   = useState(false);
   const grantedRef                    = useRef(false);
   const [xpEarned, setXpEarned]       = useState(0);
@@ -671,6 +673,23 @@ export default function DungeonArena({
   const logRef = useRef<HTMLDivElement>(null);
   const potionsRef = useRef<PotionItem[]>(initialPotions);
   useEffect(() => { potionsRef.current = potions; }, [potions]);
+  const potionPendingRef = useRef(false);
+  const potionControllerRef = useRef<AbortController | null>(null);
+  const potionRoomVersionRef = useRef(0);
+  const potionMountedRef = useRef(true);
+  const potionRefreshTargetRef = useRef<{ potion: PotionItem; userId: string; roomVersion: number } | null>(null);
+  const [potionNeedsRefresh, setPotionNeedsRefresh] = useState(false);
+  const potionContextRef = useRef({ userId: user?.id, dungeonId, sessionId, roomIdx, phase, hp: playerHp });
+  potionContextRef.current = { userId: user?.id, dungeonId, sessionId, roomIdx, phase, hp: playerHp };
+  useLayoutEffect(() => {
+    potionRoomVersionRef.current += 1;
+    potionRefreshTargetRef.current = null;
+    setPotionNeedsRefresh(false);
+  }, [user?.id, dungeonId, sessionId, roomIdx]);
+  useEffect(() => {
+    potionMountedRef.current = true;
+    return () => { potionMountedRef.current = false; potionControllerRef.current?.abort(); };
+  }, []);
   const autoPotionRef = useRef(true);
   useEffect(() => { autoPotionRef.current = autoPotion; }, [autoPotion]);
 
@@ -698,6 +717,7 @@ export default function DungeonArena({
       })
       .on('broadcast', { event: 'room_change' }, ({ payload }: any) => {
         if (isHost) return;
+        potionRoomVersionRef.current += 1;
         setRoomIdx(payload.roomIdx);
         setRoomOutcome(null);
         setLog([`📍 ${payload.roomName}`, `   ${payload.roomDesc}`]);
@@ -726,42 +746,161 @@ export default function DungeonArena({
   }, [addLog]);
 
   // ── Potion use ─────────────────────────────────────────────────────────
-  const usePotion = useCallback((type: 'hp' | 'mp', auto = false): boolean => {
+  const refreshPotionStock = useCallback(async (potion: PotionItem, userId: string, roomVersion: number): Promise<boolean> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const { data, error } = await supabase.from('user_inventory').select('quantity')
+        .eq('id', potion.invId).eq('user_id', userId).abortSignal(controller.signal).maybeSingle();
+      if (error || controller.signal.aborted || !potionMountedRef.current ||
+          potionContextRef.current.userId !== userId || potionRoomVersionRef.current !== roomVersion) return false;
+      const quantity = data?.quantity ?? 0;
+      if (!Number.isInteger(quantity) || quantity < 0) return false;
+      const fresh = potionsRef.current.map(p => p.invId === potion.invId ? { ...p, qty: quantity } : p).filter(p => p.qty > 0);
+      potionsRef.current = fresh;
+      setPotions(fresh);
+      potionRefreshTargetRef.current = null;
+      setPotionNeedsRefresh(false);
+      void queryClient.invalidateQueries({ queryKey: ['inventory', userId] });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }, [queryClient]);
+
+  const consumePotion = useCallback(async (type: 'hp' | 'mp', auto = false): Promise<'used' | 'unavailable' | 'busy' | 'inactive' | 'failed'> => {
+    const context = potionContextRef.current;
+    if (!context.userId || context.phase !== 'exploring' || context.hp <= 0 || !potionMountedRef.current) return 'inactive';
+    if (potionRefreshTargetRef.current) return 'inactive';
+    if (potionPendingRef.current) return 'busy';
     const current = potionsRef.current;
     const potion = type === 'hp'
       ? current.find(p => p.effect.startsWith('heal_') || p.effect.includes('full_rest'))
       : current.find(p => p.effect.startsWith('mana_') || p.effect.includes('full_rest'));
 
-    if (!potion || potion.qty <= 0) return false;
+    if (!potion || potion.qty <= 0) return 'unavailable';
 
-    const { hp: healHp, mp: healMp } = getHealFromEffect(potion.effect, initialPlayerMaxHp, initialPlayerMaxMp);
+    const eligibleHeal = getHealFromEffect(potion.effect, initialPlayerMaxHp, initialPlayerMaxMp);
+    if (type === 'hp' && eligibleHeal.hp <= 0) return 'unavailable';
+    if (type === 'mp' && eligibleHeal.mp <= 0) return 'unavailable';
 
-    if (type === 'hp' && healHp <= 0) return false;
-    if (type === 'mp' && healMp <= 0) return false;
+    const roomVersion = potionRoomVersionRef.current;
+    const stillCurrent = () => {
+      const now = potionContextRef.current;
+      return potionMountedRef.current && now.userId === context.userId &&
+        now.dungeonId === context.dungeonId && now.sessionId === context.sessionId &&
+        now.roomIdx === context.roomIdx && now.phase === 'exploring' && now.hp > 0 &&
+        potionRoomVersionRef.current === roomVersion;
+    };
+    potionPendingRef.current = true;
+    setPotionPending(true);
+    const controller = new AbortController();
+    potionControllerRef.current = controller;
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    let rpcStarted = false;
+    let rpcRejected = false;
+    try {
+      // The input only carries the inventory row ID; read its item ID to bind the receipt to that row.
+      const { data: inventoryRow, error: inventoryError } = await supabase.from('user_inventory')
+        .select('item_id').eq('id', potion.invId).eq('user_id', context.userId).abortSignal(controller.signal).maybeSingle();
+      if (inventoryError) throw inventoryError;
+      if (controller.signal.aborted) throw new Error('Tempo de espera excedido.');
+      if (!inventoryRow || typeof inventoryRow.item_id !== 'string') throw new Error('Poção indisponível no inventário.');
+      if (!stillCurrent()) return 'inactive';
+      // The row lock and quantity check belong to the RPC. Nothing local is applied before its receipt.
+      rpcStarted = true;
+      const { data, error, status } = await supabase.rpc('consume_inventory_item', { p_inventory_id: potion.invId }).abortSignal(controller.signal);
+      if (error) {
+        // This RPC's guard exceptions use P0001; a fetch/gateway error cannot confirm a rejected debit.
+        rpcRejected = status === 400 && error.code === 'P0001';
+        throw error;
+      }
+      if (controller.signal.aborted) throw new Error('Tempo de espera excedido.');
+      const consumed = requireRpcObject(data, 'consume_inventory_item');
+      if (consumed.ok !== true || typeof consumed.preserved !== 'boolean' ||
+          consumed.item_id !== inventoryRow.item_id || typeof consumed.effect !== 'string' ||
+          consumed.effect !== potion.effect) {
+        throw new Error('Consumo não confirmado pelo servidor.');
+      }
+      void queryClient.invalidateQueries({ queryKey: ['inventory', context.userId] });
+      if (!stillCurrent()) return 'inactive';
 
-    if (healHp > 0) setPlayerHp(h => Math.min(h + healHp, initialPlayerMaxHp));
-    if (healMp > 0) setPlayerMp(m => Math.min(m + healMp, initialPlayerMaxMp));
-
-    const newPotions = current
-      .map(p => p.invId === potion.invId ? { ...p, qty: p.qty - 1 } : p)
-      .filter(p => p.qty > 0);
-    potionsRef.current = newPotions;
-    setPotions(newPotions);
-
-    addLog(`${auto ? '🤖 [Auto]' : '🧪 [Manual]'} ${potion.name} usada! ${healHp > 0 ? `+${healHp} HP` : ''}${healMp > 0 ? ` +${healMp} MP` : ''}`);
-
-    // DB: server validates and decrements the owned charge.
-    if (user) {
-      void supabase.rpc('consume_inventory_item', { p_inventory_id: potion.invId })
-        .then(({ error }) => {
-          if (error) toast({ title: 'Poção não consumida', description: error.message, variant: 'destructive' });
-        });
+      const { hp: healHp, mp: healMp } = getHealFromEffect(consumed.effect, initialPlayerMaxHp, initialPlayerMaxMp);
+      if (healHp > 0) setPlayerHp(h => h > 0 ? Math.min(h + healHp, initialPlayerMaxHp) : h);
+      if (healMp > 0) setPlayerMp(m => Math.min(m + healMp, initialPlayerMaxMp));
+      if (!consumed.preserved) {
+        const newPotions = potionsRef.current
+          .map(p => p.invId === potion.invId ? { ...p, qty: p.qty - 1 } : p)
+          .filter(p => p.qty > 0);
+        potionsRef.current = newPotions;
+        setPotions(newPotions);
+      }
+      addLog(`${auto ? '🤖 [Auto]' : '🧪 [Manual]'} ${potion.name} usada! ${healHp > 0 ? `+${healHp} HP` : ''}${healMp > 0 ? ` +${healMp} MP` : ''}`);
+      return 'used';
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: ['inventory', context.userId] });
+      const timedOut = controller.signal.aborted;
+      const uncertain = rpcStarted && (timedOut || !rpcRejected);
+      if (uncertain && potionMountedRef.current && potionContextRef.current.userId === context.userId) {
+        autoPotionRef.current = false;
+        setAutoPotion(false);
+      }
+      if (stillCurrent()) {
+        const description = timedOut
+          ? 'Tempo de espera excedido; o débito pode ter sido concluído. Confira o inventário antes de tentar novamente.'
+          : uncertain ? 'Não foi possível confirmar o débito. Confira o inventário antes de tentar novamente.'
+          : error instanceof Error ? error.message : 'Falha ao confirmar o consumo.';
+        if (uncertain) {
+          potionRefreshTargetRef.current = { potion, userId: context.userId, roomVersion };
+          setPotionNeedsRefresh(true);
+          await refreshPotionStock(potion, context.userId, roomVersion);
+        }
+        if (stillCurrent()) {
+          toast({ title: uncertain ? 'Consumo não confirmado' : 'Poção não consumida', description, variant: 'destructive' });
+          addLog(`⚠️ ${uncertain ? 'Consumo não confirmado' : 'Poção não consumida'}: ${description}`);
+        }
+      }
+      return 'failed';
+    } finally {
+      clearTimeout(timer);
+      if (potionControllerRef.current === controller) potionControllerRef.current = null;
+      potionPendingRef.current = false;
+      if (potionMountedRef.current) setPotionPending(false);
     }
-    return true;
-  }, [user, initialPlayerMaxHp, initialPlayerMaxMp, addLog, toast]);
+  }, [initialPlayerMaxHp, initialPlayerMaxMp, addLog, toast, queryClient, refreshPotionStock]);
+
+  const retryPotionStockRefresh = useCallback(() => {
+    const target = potionRefreshTargetRef.current;
+    if (!target || potionPendingRef.current) return;
+    potionPendingRef.current = true;
+    setPotionPending(true);
+    void refreshPotionStock(target.potion, target.userId, target.roomVersion).then(refreshed => {
+      if (!refreshed && potionMountedRef.current && potionRefreshTargetRef.current === target) {
+        toast({ title: 'Inventário indisponível', description: 'Não foi possível atualizar o estoque. Tente novamente.', variant: 'destructive' });
+      }
+    }).finally(() => {
+      potionPendingRef.current = false;
+      if (potionMountedRef.current) setPotionPending(false);
+    });
+  }, [refreshPotionStock, toast]);
+
+  const scheduleAutoPotion = useCallback((unavailableMessage: string) => {
+    const roomVersion = potionRoomVersionRef.current;
+    setTimeout(() => {
+      if (!potionMountedRef.current || !autoPotionRef.current || potionRoomVersionRef.current !== roomVersion) return;
+      void consumePotion('hp', true).then(result => {
+        if (result === 'unavailable' && potionMountedRef.current && potionRoomVersionRef.current === roomVersion) {
+          addLog(unavailableMessage);
+        }
+      });
+    }, 100);
+  }, [consumePotion, addLog]);
 
   // ── Enter a room ───────────────────────────────────────────────────────
   const enterRoom = useCallback((idx: number) => {
+    potionRoomVersionRef.current += 1;
     const room = allRooms[idx];
     const mod  = roomModifiers[idx];
     setRoomIdx(idx);
@@ -895,11 +1034,13 @@ export default function DungeonArena({
               const newHp = Math.max(0, ph - rawEDmg);
               newLog.push(`   ❤️ Seu HP: ${newHp}/${initialPlayerMaxHp}`);
               if (newHp <= 0) {
+                potionContextRef.current.hp = 0;
+                potionRoomVersionRef.current += 1;
                 newLog.push(`💀 Você foi derrotado por ${scaledSecondary.name}...`);
                 setRoomOutcome('failure');
                 setTimeout(() => setPhase('defeat'), 800);
               } else if (autoPotionRef.current && newHp <= initialPlayerMaxHp * 0.25) {
-                setTimeout(() => { const h = usePotion('hp', true); if (!h) addLog('⚠️ Sem poções de HP!'); }, 100);
+                scheduleAutoPotion('⚠️ Sem poções de HP!');
               }
               return newHp;
             });
@@ -985,11 +1126,13 @@ export default function DungeonArena({
           const newHp = Math.max(0, ph - eDmg);
           newLogLines.push(`   ❤️ Seu HP: ${newHp}/${initialPlayerMaxHp}`);
           if (newHp <= 0) {
+            potionContextRef.current.hp = 0;
+            potionRoomVersionRef.current += 1;
             newLogLines.push(`💀 Você foi derrotado por ${room.enemy?.name}...`);
             setRoomOutcome('failure');
             setTimeout(() => setPhase('defeat'), 800);
           } else if (autoPotionRef.current && newHp <= initialPlayerMaxHp * 0.25) {
-            setTimeout(() => { const h = usePotion('hp', true); if (!h) addLog('⚠️ Sem poções de HP! Situação crítica!'); }, 100);
+            scheduleAutoPotion('⚠️ Sem poções de HP! Situação crítica!');
           }
           return newHp;
         });
@@ -1064,7 +1207,7 @@ export default function DungeonArena({
           const newHp = Math.max(1, ph - dmg);
           addLog(`   ❤️ Seu HP: ${newHp}/${initialPlayerMaxHp}`);
           if (autoPotionRef.current && newHp <= initialPlayerMaxHp * 0.25) {
-            setTimeout(() => { const h = usePotion('hp', true); if (!h) addLog('⚠️ Sem poções de HP!'); }, 100);
+            scheduleAutoPotion('⚠️ Sem poções de HP!');
           }
           return newHp;
         });
@@ -1085,7 +1228,7 @@ export default function DungeonArena({
       loot.forEach(l => addLog(`   📦 +${l.qty}x ${l.icon} ${l.name}`));
       setRoomOutcome('success');
     }
-  }, [allRooms, roomIdx, roomModifiers, effectivePlayerAtk, effectivePlayerDef, effectiveDungeonLevel, partyMinLevel, SIDEKICK_BUFFER, friendCount, sessionPlayers, boss2Hp, bossEnraged, scaledPrimary, scaledSecondary, bossFight, initialPlayerMaxHp, initialPlayerMaxMp, addLog, usePotion, broadcastAction, enemyHp, roomOutcome, isHost]);
+  }, [allRooms, roomIdx, roomModifiers, effectivePlayerAtk, effectivePlayerDef, effectiveDungeonLevel, partyMinLevel, SIDEKICK_BUFFER, friendCount, sessionPlayers, boss2Hp, bossEnraged, scaledPrimary, scaledSecondary, bossFight, initialPlayerMaxHp, initialPlayerMaxMp, addLog, scheduleAutoPotion, broadcastAction, enemyHp, roomOutcome, isHost]);
 
   // ── Continue to next room ──────────────────────────────────────────────
   const handleContinue = useCallback(() => {
@@ -1204,7 +1347,7 @@ export default function DungeonArena({
           </div>
           {phase !== 'victory' && phase !== 'defeat' && (
             <button
-              onClick={onFlee}
+              onClick={() => { potionRoomVersionRef.current += 1; onFlee(); }}
               className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary px-3 py-1.5 text-xs text-muted-foreground hover:text-red-400 hover:border-red-400/40 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" /> Fugir
@@ -1535,20 +1678,28 @@ export default function DungeonArena({
             <div className="flex flex-wrap gap-2 items-center">
               {hpPotions.length > 0 && (
                 <button
-                  onClick={() => usePotion('hp', false)}
-                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition-colors"
+                  onClick={() => { void consumePotion('hp', false); }}
+                  disabled={potionPending || potionNeedsRefresh || !user || playerHp <= 0}
+                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition-colors disabled:opacity-50"
                 >
                   <Heart className="w-3 h-3" />
-                  HP Poção ×{hpPotions.reduce((s, p) => s + p.qty, 0)}
+                  {potionPending ? 'Aguardando consumo...' : `HP Poção ×${hpPotions.reduce((s, p) => s + p.qty, 0)}`}
                 </button>
               )}
               {mpPotions.length > 0 && (
                 <button
-                  onClick={() => usePotion('mp', false)}
-                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30 transition-colors"
+                  onClick={() => { void consumePotion('mp', false); }}
+                  disabled={potionPending || potionNeedsRefresh || !user || playerHp <= 0}
+                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30 transition-colors disabled:opacity-50"
                 >
                   <Zap className="w-3 h-3" />
-                  MP Poção ×{mpPotions.reduce((s, p) => s + p.qty, 0)}
+                  {potionPending ? 'Aguardando consumo...' : `MP Poção ×${mpPotions.reduce((s, p) => s + p.qty, 0)}`}
+                </button>
+              )}
+              {potionNeedsRefresh && (
+                <button onClick={retryPotionStockRefresh} disabled={potionPending}
+                  className="text-xs px-2.5 py-1.5 rounded-lg border border-yellow-500/40 text-yellow-300 disabled:opacity-50">
+                  {potionPending ? 'Aguardando inventário...' : 'Atualizar inventário'}
                 </button>
               )}
               <button
@@ -1929,7 +2080,7 @@ export default function DungeonArena({
 
             <div className="flex gap-3">
               <button
-                onClick={onFlee}
+                onClick={() => { potionRoomVersionRef.current += 1; onFlee(); }}
                 className="flex-1 py-3 rounded-xl border border-border bg-secondary hover:bg-muted text-foreground font-semibold transition-colors"
               >
                 Sair
@@ -1937,6 +2088,7 @@ export default function DungeonArena({
               <button
                 onClick={() => {
                   setPhase('prep');
+                  potionRoomVersionRef.current += 1;
                   setRoomIdx(0);
                   setPlayerHp(initialPlayerHp);
                   setPlayerMp(initialPlayerMp);

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
-const PURCHASE_TYPES = ['compra_loja', 'compra_equipamento', 'compra_pet'];
+const PURCHASE_TYPES = ['compra_loja', 'compra_equipamento', 'compra_pet', 'compra_bau_abertura'];
 
 export function usePurchaseHistory(open: boolean) {
   const { user } = useAuth();

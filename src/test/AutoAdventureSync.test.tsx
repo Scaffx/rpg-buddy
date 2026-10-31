@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAdvanceAutoAdventure, useAutoAdventure } from '@/hooks/useAutoAdventure';
+import { hasAdventureClockAnchor } from '@/lib/adventureClock';
+import type { AdventureSnapshot } from '@/lib/autoAdventurePayload';
 
 const state = vi.hoisted(() => ({ user: null as { id: string } | null, rpc: vi.fn() }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: state.user }) }));
@@ -49,6 +51,23 @@ function AdvanceButton({ onAdvance }: { onAdvance: (completion: Promise<unknown>
 }
 
 describe('authenticated shell adventure synchronization', () => {
+  it('revalida cache sem âncora uma vez e reaproveita a âncora após remontagem', async () => {
+    state.user = { id: 'clock-account' };
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(['auto-adventure', state.user.id], snapshot);
+    state.rpc.mockResolvedValue({ data: { ...snapshot, server_now: '2026-10-19T18:30:01Z' }, error: null });
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => root!.render(<QueryClientProvider client={queryClient}><ShellSync /></QueryClientProvider>));
+    expect(state.rpc).toHaveBeenCalledTimes(1);
+    expect(hasAdventureClockAnchor(queryClient.getQueryData<AdventureSnapshot>(['auto-adventure', state.user.id]))).toBe(true);
+    act(() => root!.unmount());
+    root = createRoot(container);
+    await act(async () => root!.render(<QueryClientProvider client={queryClient}><ShellSync /></QueryClientProvider>));
+    expect(state.rpc).toHaveBeenCalledTimes(1);
+  });
+
   it('syncs from the panel without Arena and shares one query when Arena opens', async () => {
     state.rpc.mockResolvedValue({ data: snapshot, error: null });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

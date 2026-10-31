@@ -149,6 +149,7 @@ export type WeeklyMissionErrorCode =
   | 'WEEKLY_CAP_REACHED'
   | 'INVALID_WEEKLY_CONFIGURATION'
   | 'DATE_OUT_OF_WINDOW'
+  | 'MISSION_BEFORE_START'
   | null;
 
 export function getWeeklyMissionErrorCode(error: unknown): WeeklyMissionErrorCode {
@@ -166,6 +167,7 @@ export function getWeeklyMissionErrorCode(error: unknown): WeeklyMissionErrorCod
     return 'INVALID_WEEKLY_CONFIGURATION';
   }
   if (text.includes('DATE_OUT_OF_WINDOW')) return 'DATE_OUT_OF_WINDOW';
+  if (text.includes('MISSION_BEFORE_START')) return 'MISSION_BEFORE_START';
   return null;
 }
 
@@ -181,6 +183,9 @@ export function getWeeklyMissionErrorMessage(code: WeeklyMissionErrorCode): stri
   }
   if (code === 'DATE_OUT_OF_WINDOW') {
     return 'Só dá para registrar hoje ou ontem. Se o dia já passou disso, ele fica como estava.';
+  }
+  if (code === 'MISSION_BEFORE_START') {
+    return 'Esta missão ainda não estava disponível no dia escolhido. Confira a missão em Hoje.';
   }
   return null;
 }

@@ -1,0 +1,21 @@
+{
+  "captured_at_utc": "2026-10-28",
+  "project_ref": "jfnospjxdkelxlhcwuia",
+  "capture": "Supabase MCP execute_sql, somente SELECT pg_get_functiondef/pg_proc/pg_constraint; fontes normalizadas CRLF para LF; sem dados de usuários",
+  "functions": [
+    {"file":"sync.sql","signature":"app_private.sync_auto_adventure()","md5_lf":"1641aa39afd52bcddae1998819c4b330","owner":"postgres","acl":"{postgres=X/postgres,authenticated=X/postgres}","security_definer":true,"volatility":"v"},
+    {"file":"advance.sql","signature":"app_private.advance_auto_adventure(uuid)","md5_lf":"09c5c400405def35917f1c63e4f58ac8","owner":"postgres","acl":"{postgres=X/postgres,authenticated=X/postgres}","security_definer":true,"volatility":"v"},
+    {"file":"simulate_v3.sql","signature":"app_private.adventure_simulate_v3(timestamptz,integer,integer,integer,integer,integer,integer,jsonb,jsonb,text,integer,jsonb)","md5_lf":"0e3665739747473c4c8b96cf4a985425","owner":"postgres","acl":"{postgres=X/postgres}","security_definer":false,"volatility":"s"},
+    {"file":"simulate_v3_legacy.sql","signature":"app_private.adventure_simulate_v3(timestamptz,integer,integer,integer,integer,integer,integer,jsonb,jsonb,text,integer)","md5_lf":"0f5ed37992ae1f5d91c181ca2b93e2f7","owner":"postgres","acl":"{postgres=X/postgres}","security_definer":false,"volatility":"s"},
+    {"file":"payload.sql","signature":"app_private.adventure_battle_payload(app_private.adventure_battles,timestamptz)","md5_lf":"19652de586465e476978672744f83fd5","owner":"postgres","acl":"{postgres=X/postgres}","security_definer":true,"volatility":"s"},
+    {"file":"public_sync.sql","signature":"public.sync_auto_adventure()","md5_lf":"1879a24abc08fec402ea5d96f4a199c6","owner":"postgres","acl":"{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}","security_definer":false,"volatility":"v"},
+    {"file":"public_advance.sql","signature":"public.advance_auto_adventure(uuid)","md5_lf":"f71174f3366e61e0756fd00674c429ae","owner":"postgres","acl":"{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}","security_definer":false,"volatility":"v"}
+  ],
+  "battle_table": {
+    "owner": "postgres",
+    "acl": "{postgres=arwdDxtm/postgres}",
+    "rls_enabled": true,
+    "rls_forced": false,
+    "engine_version_check": "CHECK ((engine_version = 'v3'::text))"
+  }
+}

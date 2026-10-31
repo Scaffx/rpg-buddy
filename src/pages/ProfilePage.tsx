@@ -17,6 +17,7 @@ import { useSkillTreeNodes, usePlayerSkillNodes } from "@/hooks/useSkillTree";
 import { starterClassDisplayName } from "@/hooks/useHeroClass";
 import { supabase } from "@/integrations/supabase/client";
 import { setVolume } from "@/lib/sfx";
+import { isReservedPetFoodItemId } from "@/lib/pets";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
@@ -2472,6 +2473,7 @@ export default function ProfilePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {consumables.map((inv) => {
                             const item = inv.game_items;
+                            const petFood = isReservedPetFoodItemId(inv.item_id);
                             return (
                               <div key={inv.id} className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
                                 <div className="flex items-center justify-between">
@@ -2484,12 +2486,12 @@ export default function ProfilePage() {
                                   </div>
                                   <span className="text-lg font-bold text-primary">x{inv.quantity}</span>
                                 </div>
-                                <button
+                                {petFood ? <p className="text-xs text-muted-foreground">Estoque de alimentação automática do pet</p> : <button
                                   onClick={() => consumeItem.mutate({ inventoryId: inv.id, quantity: inv.quantity })}
                                   className="w-full px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded hover:bg-emerald-500/30 transition-colors font-medium"
                                 >
                                   {t('app.profile.useItemButton')}
-                                </button>
+                                </button>}
                               </div>
                             );
                           })}

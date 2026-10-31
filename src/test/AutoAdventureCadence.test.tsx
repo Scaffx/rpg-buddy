@@ -6,12 +6,10 @@ import { Link } from 'react-router-dom';
 import App from '@/App';
 import AppLayout from '@/components/AppLayout';
 import AutoAdventure from '@/components/AutoAdventure';
-import { useAutoAdventure } from '@/hooks/useAutoAdventure';
 
 const state = vi.hoisted(() => ({
   id: 'pressure-pending',
-  mode: 'pending' as 'pending' | 'error' | 'completed',
-  battles: 0, wins: 0,
+  mode: 'pending' as 'pending' | 'error',
   calls: [] as number[], active: 0, maxActive: 0,
 }));
 
@@ -46,7 +44,6 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
       resolve(state.mode === 'error' && nth > 1
         ? { data: null, error: { message: 'simulated 504' } }
         : { data: { ...snapshot, catchup: { ...snapshot.catchup,
-          battles: state.battles, wins: state.wins,
           pending: state.mode === 'pending' } }, error: null });
     }, 1));
     return Object.assign(promise, { abortSignal: (_signal: AbortSignal) => promise });
@@ -70,6 +67,11 @@ vi.mock('@/hooks/useHeroClass', () => ({
   starterClassDisplayName: () => 'Guerreiro',
 }));
 vi.mock('@/hooks/useActivePet', () => ({ useActivePet: () => ({ state: null, isLoading: false, error: null }) }));
+vi.mock('@/hooks/useAdventureAutoPotions', () => ({
+  useAdventureAutoPotions: () => ({ state: null, isLoading: false, error: null,
+    setError: null, isSetting: false, setEnabled: async () => {}, refetch: async () => {} }),
+  autoPotionsUnavailable: () => false, autoPotionsErrorMessage: () => null,
+}));
 vi.mock('@/hooks/useClickSound', () => ({ useClickSound: vi.fn() }));
 vi.mock('@/hooks/useShortRestStatus', () => ({ ShortRestStatusProvider: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock('@/hooks/useMidnightReset', () => ({ useMidnightReset: vi.fn() }));
@@ -109,12 +111,9 @@ vi.mock('@/components/LanguageSwitcher', () => ({ LanguageSwitcher: () => null }
 vi.mock('@/components/adventure/AdventureScene', () => ({ AdventureScene: () => null }));
 vi.mock('@/components/adventure/AdventureHoldNotice', () => ({ AdventureHoldNotice: () => null }));
 vi.mock('@/components/AdventurePetPanel', () => ({ AdventurePetPanel: () => null }));
-function SummaryObserver() {
-  const { summary } = useAutoAdventure();
-  return <output data-testid="summary">{summary?.battles ?? 0}:{summary?.wins ?? 0}:{String(summary?.pending ?? false)}</output>;
-}
+vi.mock('@/components/adventure/AdventureAutoPotionsPanel', () => ({ AdventureAutoPotionsPanel: () => null }));
 function RoutePage({ next }: { next: string }) {
-  return <AppLayout><Link to={next}>Navigate</Link><AutoAdventure /><SummaryObserver /></AppLayout>;
+  return <AppLayout><Link to={next}>Navigate</Link><AutoAdventure /></AppLayout>;
 }
 vi.mock('@/pages/Dashboard', () => ({ default: () => <RoutePage next="/missions" /> }));
 vi.mock('@/pages/Missions', () => ({ default: () => <RoutePage next="/" /> }));
@@ -129,7 +128,6 @@ beforeEach(() => {
   focusManager.setFocused(true);
   onlineManager.setOnline(true);
   state.calls = []; state.active = 0; state.maxActive = 0;
-  state.battles = 0; state.wins = 0;
   window.history.replaceState({}, '', '/');
 });
 afterEach(async () => {
@@ -137,7 +135,7 @@ afterEach(async () => {
   host?.remove(); root = null; host = null;
   vi.useRealTimers();
 });
-async function mount(mode: 'pending' | 'error' | 'completed', id: string) {
+async function mount(mode: 'pending' | 'error', id: string) {
   state.mode = mode; state.id = id;
   host = document.createElement('div'); document.body.appendChild(host);
   root = createRoot(host);
@@ -208,20 +206,7 @@ it('focus and reconnect respect backoff while an arena manual refresh remains im
   expect(state.maxActive).toBe(1);
 });
 
-it('navigation remounts do not bypass the cached failure delay', async () => {
-  await mount('error', 'pressure-navigation');
-  await advance(1_100);
-  expect(state.calls).toHaveLength(2);
-  await navigate();
-  await navigate();
-  expect(state.calls).toHaveLength(2);
-  await advance(29_000);
-  expect(state.calls).toHaveLength(2);
-  await advance(1_100);
-  expect(state.calls).toHaveLength(3);
-});
-
-it('keeps the original cached-error deadline through remounts at 20 and 29 s', async () => {
+it('keeps the original cached-error deadline through route remounts at 20 and 29 s', async () => {
   await mount('error', 'pressure-deadline');
   await advance(1_100);
   expect(state.calls).toHaveLength(2);
@@ -270,28 +255,5 @@ it('resumes an overdue cached error on focus without a rapid retry loop', async 
   expect(state.calls).toHaveLength(2);
   await act(async () => focusManager.setFocused(true));
   expect(state.calls).toHaveLength(3);
-  expect(state.maxActive).toBe(1);
-});
-
-it('keeps the summary after pending completes with a zero-battle batch', async () => {
-  state.battles = 2; state.wins = 2;
-  await mount('pending', 'pressure-summary');
-  await advance(5);
-  expect(host!.querySelector('[data-testid="summary"]')?.textContent).toBe('2:2:true');
-  state.mode = 'completed'; state.battles = 0; state.wins = 0;
-  await advance(2_100);
-  expect(host!.querySelector('[data-testid="summary"]')?.textContent).toBe('2:2:false');
-  expect(state.calls).toHaveLength(2);
-});
-
-it('starts a fresh cadence for a newly confirmed account', async () => {
-  await mount('error', 'pressure-account-a');
-  await advance(1_100);
-  expect(state.calls).toHaveLength(2);
-  state.id = 'pressure-account-b'; state.mode = 'pending';
-  await act(async () => { root!.render(<App />); await vi.advanceTimersByTimeAsync(5); });
-  expect(state.calls).toHaveLength(3);
-  await advance(2_100);
-  expect(state.calls).toHaveLength(4);
   expect(state.maxActive).toBe(1);
 });

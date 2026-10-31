@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { nextAdventureRefetchDelay, parseAdventureSnapshot } from '@/lib/autoAdventurePayload';
+import { anchorAdventureClock } from '@/lib/adventureClock';
 import type { Json } from '@/integrations/supabase/types';
 
 const encounter = {
@@ -128,16 +129,27 @@ describe('auto adventure RPC contract', () => {
     expect(() => parseAdventureSnapshot({ ...snapshot, battle: { ...base, pet: { ...pet, effective_stats: { hp: '110' } } } })).toThrow('AUTO_ADVENTURE_INVALID_RESPONSE');
   });
 
-  it('schedules from server time, including time elapsed while the panel stays open', () => {
-    const parsed = parseAdventureSnapshot(snapshot);
+  it('schedules from confirmed server time and monotonic elapsed time, ignoring wall-clock jumps', () => {
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(100);
+    const parsed = anchorAdventureClock(parseAdventureSnapshot(snapshot));
     const updatedAt = Date.parse('2026-10-19T18:30:05Z');
-    expect(nextAdventureRefetchDelay(parsed, updatedAt, updatedAt)).toBe(1_801_000);
-    expect(nextAdventureRefetchDelay(parsed, updatedAt, updatedAt + 15 * 60_000)).toBe(901_000);
-    expect(nextAdventureRefetchDelay(parsed, updatedAt, updatedAt + 31 * 60_000)).toBe(1_000);
-    expect(nextAdventureRefetchDelay(undefined, 0, updatedAt)).toBe(false);
-    const pending = { ...parsed, catchup: { ...parsed.catchup, pending: true } };
-    expect(nextAdventureRefetchDelay(pending, updatedAt, updatedAt)).toBe(2_000);
-    expect(nextAdventureRefetchDelay(pending, updatedAt, updatedAt + 1_500)).toBe(500);
-    expect(nextAdventureRefetchDelay(pending, updatedAt, updatedAt + 3_000)).toBe(1_000);
+    try {
+      expect(nextAdventureRefetchDelay(parsed, updatedAt)).toBe(1_801_000);
+      vi.spyOn(Date, 'now').mockReturnValue(updatedAt + 31 * 60_000);
+      expect(nextAdventureRefetchDelay(parsed, updatedAt)).toBe(1_801_000);
+      clock.mockReturnValue(100 + 15 * 60_000);
+      expect(nextAdventureRefetchDelay(parsed, updatedAt)).toBe(901_000);
+      clock.mockReturnValue(100 + 31 * 60_000);
+      expect(nextAdventureRefetchDelay(parsed, updatedAt)).toBe(1_000);
+      expect(nextAdventureRefetchDelay(undefined, 0)).toBe(false);
+      const pending = { ...parsed, catchup: { ...parsed.catchup, pending: true } };
+      expect(nextAdventureRefetchDelay(pending, updatedAt)).toBe(1_000);
+      vi.spyOn(Date, 'now').mockReturnValue(updatedAt);
+      expect(nextAdventureRefetchDelay(pending, updatedAt)).toBe(2_000);
+      vi.spyOn(Date, 'now').mockReturnValue(updatedAt + 1_500);
+      expect(nextAdventureRefetchDelay(pending, updatedAt)).toBe(500);
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });

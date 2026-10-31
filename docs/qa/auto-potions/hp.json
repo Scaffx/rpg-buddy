@@ -1,0 +1,1114 @@
+{
+    "boss": {
+        "id": "00000000-0000-0000-0000-000000000002",
+        "icon": "⚔️",
+        "name": "Boss 2",
+        "stage": 20
+    },
+    "mode": "progressing",
+    "stage": 15,
+    "battle": {
+        "id": "b8cf207e-7983-4368-9b75-e37c58cb6d45",
+        "pet": null,
+        "kind": "normal",
+        "biome": "desert",
+        "stage": 15,
+        "events": [
+            {
+                "at": "2026-10-29T01:56:06.098833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 122,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 102,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 0,
+                "enemies_hp": [
+                    34,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:06.498833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 114,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 102,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 1,
+                "enemies_hp": [
+                    34,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:06.798833-03:00",
+                "hits": [
+                    {
+                        "damage": 4,
+                        "raw_damage": 4,
+                        "target_slot": 0,
+                        "damage_multiplier": 1
+                    }
+                ],
+                "kind": "attack",
+                "actor": "hero",
+                "damage": 4,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 114,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 98,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": null,
+                "enemies_hp": [
+                    30,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 4,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": 0,
+                "target_slots": [
+                    0
+                ],
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:06.998833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 106,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 98,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 2,
+                "enemies_hp": [
+                    30,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:08.998833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 98,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 98,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 0,
+                "enemies_hp": [
+                    30,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:09.598833-03:00",
+                "hits": [
+                    {
+                        "damage": 4,
+                        "raw_damage": 4,
+                        "target_slot": 0,
+                        "damage_multiplier": 1
+                    }
+                ],
+                "kind": "attack",
+                "actor": "hero",
+                "damage": 4,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 98,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 94,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": null,
+                "enemies_hp": [
+                    26,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 4,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": 0,
+                "target_slots": [
+                    0
+                ],
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:09.898833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 90,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 94,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 1,
+                "enemies_hp": [
+                    26,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:10.798833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 82,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 94,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 2,
+                "enemies_hp": [
+                    26,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:11.898833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 74,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 94,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 0,
+                "enemies_hp": [
+                    26,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:12.398833-03:00",
+                "hits": [
+                    {
+                        "damage": 4,
+                        "raw_damage": 4,
+                        "target_slot": 0,
+                        "damage_multiplier": 1
+                    }
+                ],
+                "kind": "attack",
+                "actor": "hero",
+                "damage": 4,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 74,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 90,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": null,
+                "enemies_hp": [
+                    22,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 4,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": 0,
+                "target_slots": [
+                    0
+                ],
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:13.298833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 66,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 90,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 1,
+                "enemies_hp": [
+                    22,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:14.598833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 58,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 90,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 2,
+                "enemies_hp": [
+                    22,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:14.798833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 50,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 90,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 0,
+                "enemies_hp": [
+                    22,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:15.198833-03:00",
+                "hits": [
+                    {
+                        "damage": 4,
+                        "raw_damage": 4,
+                        "target_slot": 0,
+                        "damage_multiplier": 1
+                    }
+                ],
+                "kind": "attack",
+                "actor": "hero",
+                "damage": 4,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 50,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 86,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": null,
+                "enemies_hp": [
+                    18,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 4,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": 0,
+                "target_slots": [
+                    0
+                ],
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:16.698833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 42,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 86,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 1,
+                "enemies_hp": [
+                    18,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:17.698833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 34,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 86,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 0,
+                "enemies_hp": [
+                    18,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:17.998833-03:00",
+                "hits": [
+                    {
+                        "damage": 4,
+                        "raw_damage": 4,
+                        "target_slot": 0,
+                        "damage_multiplier": 1
+                    }
+                ],
+                "kind": "attack",
+                "actor": "hero",
+                "damage": 4,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 34,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 82,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": null,
+                "enemies_hp": [
+                    14,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 4,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": 0,
+                "target_slots": [
+                    0
+                ],
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:18.398833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 26,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 82,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 2,
+                "enemies_hp": [
+                    14,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:18.398833-03:00",
+                "hits": [
+                ],
+                "kind": "skill",
+                "actor": "hero",
+                "damage": 0,
+                "effect": "light",
+                "healing": 30,
+                "hero_hp": 56,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 82,
+                "enemy_mp": 0,
+                "skill_id": "consumable.hp",
+                "actor_slot": null,
+                "enemies_hp": [
+                    14,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 0,
+                "skill_name": "Poção de HP Menor",
+                "skill_type": "heal",
+                "target_slot": null,
+                "target_slots": [
+                ],
+                "consumable_type": "hp",
+                "consumable_amount": 30,
+                "damage_multiplier": 1,
+                "consumable_item_id": "36aa16a5-153d-4c08-941e-ae3ee51d54d4"
+            },
+            {
+                "at": "2026-10-29T01:56:20.098833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 48,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 82,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 1,
+                "enemies_hp": [
+                    14,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:20.598833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 40,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 82,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 0,
+                "enemies_hp": [
+                    14,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:20.798833-03:00",
+                "hits": [
+                    {
+                        "damage": 4,
+                        "raw_damage": 4,
+                        "target_slot": 0,
+                        "damage_multiplier": 1
+                    }
+                ],
+                "kind": "attack",
+                "actor": "hero",
+                "damage": 4,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 40,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 78,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": null,
+                "enemies_hp": [
+                    10,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 4,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": 0,
+                "target_slots": [
+                    0
+                ],
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:22.198833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 32,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 78,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 2,
+                "enemies_hp": [
+                    10,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:23.498833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 24,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 78,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 0,
+                "enemies_hp": [
+                    10,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:23.498833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 16,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 78,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 1,
+                "enemies_hp": [
+                    10,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:23.598833-03:00",
+                "hits": [
+                    {
+                        "damage": 4,
+                        "raw_damage": 4,
+                        "target_slot": 0,
+                        "damage_multiplier": 1
+                    }
+                ],
+                "kind": "attack",
+                "actor": "hero",
+                "damage": 4,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 16,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 74,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": null,
+                "enemies_hp": [
+                    6,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 4,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": 0,
+                "target_slots": [
+                    0
+                ],
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:25.998833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 8,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 74,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 2,
+                "enemies_hp": [
+                    6,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:26.398833-03:00",
+                "hits": [
+                    {
+                        "damage": 4,
+                        "raw_damage": 4,
+                        "target_slot": 0,
+                        "damage_multiplier": 1
+                    }
+                ],
+                "kind": "attack",
+                "actor": "hero",
+                "damage": 4,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 8,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 70,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": null,
+                "enemies_hp": [
+                    2,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 4,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": 0,
+                "target_slots": [
+                    0
+                ],
+                "damage_multiplier": 1
+            },
+            {
+                "at": "2026-10-29T01:56:26.398833-03:00",
+                "kind": "attack",
+                "actor": "enemy",
+                "damage": 8,
+                "effect": "physical",
+                "healing": 0,
+                "hero_hp": 0,
+                "hero_mp": 64,
+                "mp_cost": 0,
+                "enemy_hp": 70,
+                "enemy_mp": 0,
+                "skill_id": null,
+                "actor_slot": 0,
+                "enemies_hp": [
+                    2,
+                    34,
+                    34
+                ],
+                "enemies_mp": [
+                    0,
+                    0,
+                    0
+                ],
+                "raw_damage": 8,
+                "skill_name": null,
+                "skill_type": null,
+                "effect_note": null,
+                "target_slot": null,
+                "damage_multiplier": 1
+            }
+        ],
+        "replay": false,
+        "status": "fighting",
+        "attempt": 0,
+        "boss_id": null,
+        "ends_at": "2026-10-29T01:56:26.398833-03:00",
+        "enemies": [
+            {
+                "hp": 34,
+                "id": "15-0",
+                "mp": 0,
+                "icon": "🪲",
+                "name": "Besouro do deserto",
+                "slot": 0,
+                "power": 42,
+                "skill": null,
+                "max_hp": 34,
+                "max_mp": 0,
+                "boss_id": null,
+                "resistances": {
+                }
+            },
+            {
+                "hp": 34,
+                "id": "15-1",
+                "mp": 0,
+                "icon": "🦂",
+                "name": "Escorpião das dunas",
+                "slot": 1,
+                "power": 42,
+                "skill": null,
+                "max_hp": 34,
+                "max_mp": 0,
+                "boss_id": null,
+                "resistances": {
+                }
+            },
+            {
+                "hp": 34,
+                "id": "15-2",
+                "mp": 0,
+                "icon": "🐍",
+                "name": "Cobra da areia",
+                "slot": 2,
+                "power": 42,
+                "skill": null,
+                "max_hp": 34,
+                "max_mp": 0,
+                "boss_id": null,
+                "resistances": {
+                }
+            }
+        ],
+        "hero_hp": 130,
+        "hero_mp": 64,
+        "enemy_hp": 102,
+        "end_reason": null,
+        "enemy_icon": "🪲",
+        "enemy_name": "Besouro do deserto",
+        "hero_class": "novato",
+        "hero_power": 38,
+        "started_at": "2026-10-29T01:56:05.298833-03:00",
+        "enemy_power": 42,
+        "hero_attack": 19,
+        "hero_max_hp": 130,
+        "hero_max_mp": 64,
+        "enemy_max_hp": 102,
+        "hero_defense": 12,
+        "engine_version": "v4_horde",
+        "enemy_resistances": {
+        }
+    },
+    "limits": {
+        "gold_per_day": 0,
+        "items_per_day": 2,
+        "offline_hours": 24,
+        "interval_minutes": 0.3517,
+        "reward_interval_minutes": 30
+    },
+    "catchup": {
+        "gold": 0,
+        "wins": 0,
+        "draws": 0,
+        "items": [
+        ],
+        "battles": 0,
+        "defeats": 0,
+        "pending": false,
+        "defeated": false,
+        "retreats": 0,
+        "to_stage": null,
+        "from_stage": null
+    },
+    "next_at": "2026-10-29T01:56:26.398833-03:00",
+    "encounters": [
+    ],
+    "gold_today": 0,
+    "loot_today": 0,
+    "reward_day": "2026-10-29",
+    "server_now": "2026-10-29T01:56:05.337307-03:00",
+    "last_battle": null,
+    "last_result": null,
+    "advance_pending": false,
+    "boss_wins_credited": 0
+}

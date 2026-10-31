@@ -3087,6 +3087,8 @@ export type Database = {
       advance_auto_adventure: { Args: { p_battle_id: string }; Returns: Json }
       get_adventure_pet_state: { Args: never; Returns: Json }
       set_active_adventure_pet: { Args: { p_companion_id: string | null }; Returns: Json }
+      get_adventure_auto_potions_state: { Args: never; Returns: Json }
+      set_adventure_auto_potions_enabled: { Args: { p_enabled: boolean }; Returns: Json }
       complete_portal_run:
         | {
             Args: {

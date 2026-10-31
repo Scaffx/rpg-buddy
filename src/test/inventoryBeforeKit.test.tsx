@@ -163,6 +163,30 @@ function findButton(container: HTMLElement, label: string) {
 }
 
 describe('Profile inventory before starter kit', () => {
+  it('shows reserved food stock without Usar while ordinary consumables keep the action', async () => {
+    const food: InventoryItem = { ...boughtStaff, id: 'inventory-food',
+      item_id: 'b45e1000-0000-4000-8000-000000000008', quantity: 4,
+      game_items: { ...boughtStaff.game_items, id: 'b45e1000-0000-4000-8000-000000000008',
+        name: 'Snack localizado', category: 'consumable', is_consumable: true } };
+    const potion: InventoryItem = { ...boughtStaff, id: 'inventory-potion', item_id: 'potion-1',
+      quantity: 2, game_items: { ...boughtStaff.game_items, id: 'potion-1',
+        name: 'Poção de cura', category: 'consumable', is_consumable: true } };
+    fixture.inventory = [food, potion, boughtStaff];
+    const page = await openInventory();
+    const foodCard = [...page.querySelectorAll('div')].find((element) =>
+      element.classList.contains('space-y-2') && element.textContent?.includes('Snack localizado'));
+    expect(foodCard?.textContent).toContain('x4');
+    expect(foodCard?.textContent).toContain('Estoque de alimentação automática do pet');
+    expect(foodCard?.querySelector('button')).toBeNull();
+    const potionCard = [...page.querySelectorAll('div')].find((element) =>
+      element.classList.contains('space-y-2') && element.textContent?.includes('Poção de cura'));
+    const useButton = potionCard?.querySelector('button');
+    expect(useButton?.textContent).toContain('Usar');
+    await act(async () => useButton?.click());
+    expect(fixture.consume).toHaveBeenCalledWith({ inventoryId: 'inventory-potion', quantity: 2 });
+    expect(page.textContent).toContain('Cajado do Andarilho');
+  });
+
   it('shows a purchased item and Equipar while the welcome-kit notice remains available', async () => {
     fixture.inventory = [boughtStaff];
     const page = await openInventory();

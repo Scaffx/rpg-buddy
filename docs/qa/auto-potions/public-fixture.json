@@ -1,0 +1,113 @@
+{
+    "hp_event": {
+        "at": "2026-10-29T01:54:09.011217-03:00",
+        "hits": [
+        ],
+        "kind": "skill",
+        "actor": "hero",
+        "damage": 0,
+        "effect": "light",
+        "healing": 30,
+        "hero_hp": 56,
+        "hero_mp": 64,
+        "mp_cost": 0,
+        "enemy_hp": 82,
+        "enemy_mp": 0,
+        "skill_id": "consumable.hp",
+        "actor_slot": null,
+        "enemies_hp": [
+            14,
+            34,
+            34
+        ],
+        "enemies_mp": [
+            0,
+            0,
+            0
+        ],
+        "raw_damage": 0,
+        "skill_name": "Poção de HP Menor",
+        "skill_type": "heal",
+        "target_slot": null,
+        "target_slots": [
+        ],
+        "consumable_type": "hp",
+        "consumable_amount": 30,
+        "damage_multiplier": 1,
+        "consumable_item_id": "36aa16a5-153d-4c08-941e-ae3ee51d54d4"
+    },
+    "mp_event": {
+        "at": "2026-10-29T01:53:46.08737-03:00",
+        "hits": [
+        ],
+        "kind": "skill",
+        "actor": "hero",
+        "damage": 0,
+        "effect": "arcane",
+        "healing": 0,
+        "hero_hp": 114,
+        "hero_mp": 24,
+        "mp_cost": 0,
+        "enemy_hp": 102,
+        "enemy_mp": 0,
+        "skill_id": "consumable.mp",
+        "actor_slot": null,
+        "enemies_hp": [
+            34,
+            34,
+            34
+        ],
+        "enemies_mp": [
+            0,
+            0,
+            0
+        ],
+        "raw_damage": 0,
+        "skill_name": "Poção de MP Menor",
+        "skill_type": "heal",
+        "mp_restored": 20,
+        "target_slot": null,
+        "target_slots": [
+        ],
+        "consumable_type": "mp",
+        "consumable_amount": 20,
+        "damage_multiplier": 1,
+        "consumable_item_id": "ea63052e-8530-4c4e-98ed-9d62a9cbf781"
+    },
+    "state_used": {
+        "stock": [
+        ],
+        "enabled": true,
+        "battle_id": "e08faf57-664e-471a-aa5f-223dffea6035",
+        "server_now": "2026-10-29T01:54:09.217402-03:00",
+        "reservations": [
+            {
+                "at": "2026-10-29T01:54:09.011217-03:00",
+                "name": "Poção de HP Menor",
+                "type": "hp",
+                "amount": 30,
+                "status": "used",
+                "item_id": "36aa16a5-153d-4c08-941e-ae3ee51d54d4",
+                "recovered": 30
+            }
+        ]
+    },
+    "state_reserved": {
+        "stock": [
+        ],
+        "enabled": true,
+        "battle_id": "e08faf57-664e-471a-aa5f-223dffea6035",
+        "server_now": "2026-10-29T01:53:55.946444-03:00",
+        "reservations": [
+            {
+                "at": "2026-10-29T01:54:09.011217-03:00",
+                "name": "Poção de HP Menor",
+                "type": "hp",
+                "amount": 30,
+                "status": "reserved",
+                "item_id": "36aa16a5-153d-4c08-941e-ae3ee51d54d4",
+                "recovered": 30
+            }
+        ]
+    }
+}

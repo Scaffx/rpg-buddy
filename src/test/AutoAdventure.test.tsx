@@ -2,11 +2,21 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import AutoAdventure from '@/components/AutoAdventure';
+import { anchorAdventureClock } from '@/lib/adventureClock';
+import type { AdventureSnapshot } from '@/lib/autoAdventurePayload';
 
 const mocked = vi.hoisted(() => ({ value: null as unknown }));
 const mutation = vi.hoisted(() => ({ mutateAsync: vi.fn(), isPending: false, isError: false }));
 vi.mock('@/hooks/useAutoAdventure', () => ({ useAutoAdventure: () => mocked.value, useAdvanceAutoAdventure: () => mutation }));
 vi.mock('@/hooks/useActivePet', () => ({ useActivePet: () => ({ state: undefined, isLoading: false, error: null }) }));
+vi.mock('@/hooks/useAdventureAutoPotions', () => ({
+  useAdventureAutoPotions: () => ({ state: undefined, isLoading: false, error: null, setError: null,
+    isSetting: false, setEnabled: vi.fn(), refetch: vi.fn() }),
+  autoPotionsErrorMessage: () => '', autoPotionsUnavailable: () => false,
+}));
+vi.mock('@/components/adventure/AdventureJourneyPanel', () => ({
+  AdventureJourneyPanel: ({ stage }: { stage: number }) => <section aria-label="Jornada dos cinco reinos" data-stage={stage} />,
+}));
 vi.mock('@/hooks/useProfile', () => ({ useProfile: () => ({ data: { display_name: 'Murillo', avatar_url: null } }) }));
 vi.mock('@/hooks/useHeroClass', () => ({
   useHeroClass: () => ({ currentClassName: 'Cavaleiro', starterClass: 'guerreiro' }),
@@ -22,7 +32,7 @@ let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
 function liveBattleTimes() {
-  return { started_at: new Date().toISOString(), ends_at: new Date(Date.now() + 60_000).toISOString() };
+  return { started_at: new Date(Date.now() - 1_000).toISOString(), ends_at: new Date(Date.now() + 60_000).toISOString() };
 }
 
 function renderAdventure() {
@@ -67,7 +77,7 @@ describe('AutoAdventure', () => {
     const page = renderAdventure();
     expect(page.querySelector('[data-status=draw]')).not.toBeNull();
     expect(page.querySelector('[aria-label="Murillo: 266 de 300 HP"]')).not.toBeNull();
-    expect(page.textContent).toContain('Sem vencedor · nova tentativa nesta etapa');
+    expect(page.textContent).toContain('Sem vencedor · nova tentativa');
     expect(page.textContent).not.toContain('Resumo do período ausente');
     expect(page.textContent).not.toContain('Derrota');
     expect(page.textContent).not.toContain('recuou');
@@ -114,11 +124,12 @@ describe('AutoAdventure', () => {
     expect(page.textContent).toContain('Cada vitória dá ouro');
     expect(page.textContent).toContain('Rotinas concluídas dão XP e atributos');
     expect(page.textContent).toContain('Sem teto diário de ouro');
-    expect(page.textContent).toContain('Vitória · +4 ouro');
+    expect(page.textContent).not.toContain('Confrontos recentes');
+    expect(page.textContent).not.toContain('Último resultado');
     expect([...page.querySelectorAll('button')].some(button => /atacar|poção|resgatar/i.test(button.textContent || ''))).toBe(false);
   });
 
-  it('shows six server-named boss encounters with the player identity', () => {
+  it('does not expose the encounter history while retaining the current boss identity', () => {
     const names = ['Goblin Feroz', 'Lobo Cinzento', 'Orc Selvagem', 'Leviatã Primitivo', 'Wyvern Relâmpago', 'Demônio da Fome'];
     mocked.value = {
       data: {
@@ -139,10 +150,11 @@ describe('AutoAdventure', () => {
       isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
     };
     const page = renderAdventure();
-    for (const name of names) expect(page.textContent).toContain(name);
+    for (const name of names.slice(0, -1)) expect(page.textContent).not.toContain(name);
+    expect(page.textContent).toContain(names.at(-1));
     expect(page.textContent).toContain('Murillo');
     expect(page.textContent).toContain('Cavaleiro');
-    expect(page.querySelectorAll('ol li')).toHaveLength(6);
+    expect(page.querySelectorAll('ol li')).toHaveLength(0);
     expect(page.querySelector('.adventure-hero-svg')).not.toBeNull();
   });
 
@@ -200,6 +212,7 @@ describe('AutoAdventure', () => {
       },
       dataUpdatedAt: now, isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
     };
+    anchorAdventureClock((mocked.value as { data: unknown }).data as AdventureSnapshot);
     const page = renderAdventure();
     const shell = page.querySelector('.adventure-fighter-enemy [data-hit-id]') as HTMLElement;
     expect(shell?.style.animationDelay).toBe('-800ms');
@@ -209,7 +222,7 @@ describe('AutoAdventure', () => {
     act(() => vi.advanceTimersByTime(70));
     expect(page.querySelector('[data-hit-id]')).toBeNull();
     const prior = mocked.value as { data: { battle: { events: Array<{ at: string }>; id: string } } };
-    mocked.value = { ...prior, data: { ...prior.data, battle: { ...prior.data.battle,
+    mocked.value = { ...prior, data: { ...prior.data, server_now: new Date(now + 320).toISOString(), battle: { ...prior.data.battle,
       id: 'late-battle-2', events: [{ ...prior.data.battle.events[0], at: new Date(now - 980).toISOString() }],
     } } };
     renderAdventure();
@@ -219,7 +232,8 @@ describe('AutoAdventure', () => {
   it('uses confirmed enemy mana inside the scene without exposing a future event or final snapshot', () => {
     const now = Date.now();
     const future = { at: new Date(now + 5000).toISOString(), actor: 'enemy', kind: 'attack', damage: 1, hero_hp: 98, enemy_hp: 80, enemy_mp: 2 };
-    const battle = { ...liveBattleTimes(), id: 'mana-battle', stage: 2, attempt: 0, kind: 'normal', status: 'fighting',
+    const battle = { started_at: new Date(now - 1_000).toISOString(), ends_at: new Date(now + 60_000).toISOString(),
+      id: 'mana-battle', stage: 2, attempt: 0, kind: 'normal', status: 'fighting',
       enemy_name: 'Javali', hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 98, enemy_hp: 80, enemy_max_mp: 40, enemy_mp: 2,
       events: [{ ...future, at: new Date(now - 500).toISOString(), enemy_mp: 31 }, future] };
     const data = { stage: 2, server_now: new Date(now).toISOString(), next_at: new Date(now + 12_000).toISOString(),
@@ -344,6 +358,74 @@ describe('AutoAdventure', () => {
     expect(page.textContent).toContain('Permanecendo na etapa 9');
     expect(page.textContent).not.toContain('Avançar para etapa 10');
     expect(mutation.mutateAsync).not.toHaveBeenCalled();
+    expect(page.querySelector('.adventure-scene[data-status="exploring"]')).not.toBeNull();
+    expect(page.querySelector('.adventure-scene .adventure-resource-unknown')?.textContent).toContain('HP —');
+    expect(page.querySelector('.adventure-action-strip')).toBeNull();
+    if (pending) {
+      expect(page.textContent).toContain('Recuperando combates');
+      expect(page.textContent).toContain('Aguardando próxima luta confirmada');
+    } else {
+      expect(page.textContent).toContain('Aguardando próxima luta confirmada');
+      expect(page.textContent).not.toContain('Lobo');
+    }
+  });
+
+  it('mantém a cena explorando sem batalha atual durante recuperação e permite pausar a animação', () => {
+    const now = Date.now();
+    mocked.value = {
+      accountId: 'stage-33-no-battle',
+      data: {
+        stage: 33, mode: 'progressing', server_now: new Date(now).toISOString(),
+        next_at: new Date(now + 10_000).toISOString(),
+        boss: { stage: 40, id: 'boss', name: 'Chefe', icon: null }, encounters: [],
+        gold_today: 0, loot_today: 0, limits: { gold_per_day: 120, items_per_day: 2 },
+        catchup: { battles: 42, wins: 42, gold: 120, items: [], pending: true }, battle: null,
+      },
+      isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
+    };
+    const page = renderAdventure();
+    expect(page.querySelector('.adventure-scene[data-status="exploring"]')).not.toBeNull();
+    expect(page.querySelector('.adventure-scene .adventure-resource-unknown')?.textContent).toContain('HP —');
+    expect(page.querySelector('.adventure-action-strip')).toBeNull();
+    expect(page.textContent).toContain('Recuperando combates');
+    expect(page.textContent).toContain('Aguardando próxima luta confirmada');
+    const pause = [...page.querySelectorAll('button')].find(button => button.textContent === 'Pausar animação')!;
+    act(() => pause.click());
+    expect(page.querySelector('.adventure-scene.adventure-still')).not.toBeNull();
+  });
+
+  it('mantém a luta atual confirmada visível durante recuperação sem revelar evento futuro ou histórico', () => {
+    const now = Date.now();
+    mocked.value = {
+      accountId: 'stage-33-account',
+      data: {
+        stage: 33, mode: 'progressing', server_now: new Date(now).toISOString(),
+        next_at: new Date(now + 10_000).toISOString(),
+        boss: { stage: 40, id: 'boss', name: 'Chefe', icon: null },
+        encounters: [{ stage: 32, attempt: 0, kind: 'normal', won: true, gold: 4, item_id: null }],
+        gold_today: 4, loot_today: 0, limits: { gold_per_day: 120, items_per_day: 2 },
+        catchup: { battles: 42, wins: 42, gold: 120, items: [], pending: true },
+        battle: {
+          id: 'live-33', stage: 33, attempt: 0, kind: 'normal', status: 'fighting',
+          started_at: new Date(now - 5_000).toISOString(), ends_at: new Date(now + 10_000).toISOString(),
+          enemy_name: 'Lobo atual', hero_max_hp: 100, enemy_max_hp: 100, hero_hp: 0, enemy_hp: 0,
+          events: [
+            { at: new Date(now - 500).toISOString(), actor: 'enemy', kind: 'attack', damage: 12, hero_hp: 88, enemy_hp: 91 },
+            { at: new Date(now + 2_000).toISOString(), actor: 'enemy', kind: 'attack', damage: 88, hero_hp: 0, enemy_hp: 91 },
+          ],
+        },
+      },
+      isLoading: false, isFetching: false, error: null, refetch: vi.fn(),
+    };
+    const page = renderAdventure();
+    expect(page.querySelector('[data-stage="33"][data-status="fighting"]')).not.toBeNull();
+    expect(page.querySelector('[aria-label="Jornada dos cinco reinos"]')?.getAttribute('data-stage')).toBe('33');
+    expect(page.querySelector('[aria-label="Murillo: 88 de 100 HP"]')).not.toBeNull();
+    expect(page.querySelector('[aria-label="Murillo: 0 de 100 HP"]')).toBeNull();
+    expect(page.textContent).toContain('Lobo atual');
+    expect(page.textContent).not.toContain('Recuperando combates');
+    expect(page.textContent).not.toContain('Confrontos recentes');
+    expect(page.querySelectorAll('ol li')).toHaveLength(0);
   });
 
   it('reconhece avanço pendente confirmado pelo servidor após remontagem', () => {
@@ -387,7 +469,7 @@ describe('AutoAdventure', () => {
     expect(acknowledgeSummary).toHaveBeenCalledOnce();
   });
 
-  it('oculta a batalha histórica durante recuperação e retorna à cena com resumo concluído', () => {
+  it('mostra exploração sem HP histórico durante recuperação e retorna ao combate confirmado', () => {
     const now = Date.now();
     const base = {
       stage: 79, mode: 'holding', server_now: new Date(now).toISOString(), next_at: new Date(now).toISOString(),
@@ -400,15 +482,16 @@ describe('AutoAdventure', () => {
     mocked.value = { data: { ...base, catchup: { battles: 24, wins: 24, gold: 4, items: [], pending: true } },
       isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
     const page = renderAdventure();
-    expect(page.querySelector('.adventure-scene')).toBeNull();
-    expect(page.textContent).toContain('Sincronizando suas lutas anteriores');
+    expect(page.querySelector('.adventure-scene[data-status="exploring"]')).not.toBeNull();
+    expect(page.querySelector('.adventure-scene .adventure-resource-unknown')?.textContent).toContain('HP —');
+    expect(page.textContent).toContain('Recuperando combates');
     expect(page.textContent).toContain('24 combates');
     mocked.value = { ...mocked.value as object, data: { ...base, battle: { ...base.battle,
       id: 'live', ...liveBattleTimes(), hero_hp: 100, enemy_hp: 100 }, catchup: {
       battles: 0, wins: 0, gold: 0, items: [], pending: false } }, dataUpdatedAt: 2 };
     renderAdventure();
     expect(page.querySelector('.adventure-scene')).not.toBeNull();
-    expect(page.textContent).not.toContain('Sincronizando suas lutas anteriores');
+    expect(page.textContent).not.toContain('Recuperando combates');
     expect(page.textContent).toContain('Resumo do período ausente');
   });
 
@@ -422,7 +505,7 @@ describe('AutoAdventure', () => {
     mocked.value = { data: { ...base, catchup: { battles: 2, wins: 2, gold: 4, items: ['item-a'], defeated: false, pending: true, from_stage: 1, to_stage: 2 } }, dataUpdatedAt: 1, isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
     const page = renderAdventure();
     expect(page.textContent).toContain('2 combates · 2 vitórias · +4 ouro · 1 item');
-    expect(page.textContent).toContain('sem ouro nesta luta');
+    expect(page.textContent).not.toContain('Confrontos recentes');
     mocked.value = { ...mocked.value as object, data: { ...base, server_now: '2026-10-20T04:00:11Z', catchup: { battles: 1, wins: 0, gold: 0, items: [], defeated: true, pending: false, from_stage: 3, to_stage: 3 } }, dataUpdatedAt: 2 };
     renderAdventure();
     expect(page.textContent).toContain('3 combates · 2 vitórias · +4 ouro · 1 item');

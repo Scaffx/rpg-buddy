@@ -1,71 +1,53 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCw, Trophy } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAdvanceAutoAdventure, useAutoAdventure, type AdventureEncounter } from '@/hooks/useAutoAdventure';
+import { useAdvanceAutoAdventure, useAutoAdventure, type AdventureBattle } from '@/hooks/useAutoAdventure';
 import { useHeroClass, starterClassDisplayName } from '@/hooks/useHeroClass';
 import { useProfile } from '@/hooks/useProfile';
 import { useTranslation } from 'react-i18next';
-import { AdventureScene, type AdventureSceneAction, type AdventureSceneFrame } from './adventure/AdventureScene';
+import { AdventureScene, type AdventureSceneFrame } from './adventure/AdventureScene';
 import { AdventureHoldNotice } from './adventure/AdventureHoldNotice';
+import { AdventureJourneyPanel } from './adventure/AdventureJourneyPanel';
 import { adventureBiome, adventureHeroClass } from '@/lib/adventureVisuals';
 import { useActivePet } from '@/hooks/useActivePet';
 import { AdventurePetPanel } from './AdventurePetPanel';
-import type { AdventurePetSnapshot } from '@/lib/autoAdventurePayload';
+import { AdventureAutoPotionsPanel } from './adventure/AdventureAutoPotionsPanel';
+import { autoPotionsErrorMessage, autoPotionsUnavailable, useAdventureAutoPotions } from '@/hooks/useAdventureAutoPotions';
+import { projectAdventureSceneFrame } from '@/lib/adventureSceneProjector';
+import { adventureServerTime } from '@/lib/adventureClock';
+import type { AdventureSnapshot } from '@/lib/autoAdventurePayload';
 
-type BattleEvent = {
-  at: string; actor: 'hero' | 'enemy'; kind: 'attack' | 'skill'; damage: number;
-  hero_hp: number; enemy_hp: number; skill_id: string | null; skill_name: string | null;
-  effect?: string | null;
-  hero_mp?: number | null; enemy_mp?: number | null; mp_cost?: number | null; skill_type?: string | null;
-  healing?: number | null; raw_damage?: number | null; damage_multiplier?: number | null;
-  effect_note?: string | null;
-};
-type LiveBattle = {
-  id: string; stage: number; attempt: number; kind: 'normal' | 'boss';
-  status: 'fighting' | 'defeated' | 'won' | 'draw'; end_reason?: string | null; replay?: boolean; started_at: string; ends_at: string;
-  hero_class?: string;
-  hero_hp: number; hero_max_hp: number; enemy_hp: number; enemy_max_hp: number;
-  hero_mp?: number | null; hero_max_mp?: number | null;
-  enemy_mp?: number | null; enemy_max_mp?: number | null;
-  enemy_name: string; enemy_icon: string | null; boss_id: string | null;
-  events: BattleEvent[]; biome?: string | null;
-  pet?: AdventurePetSnapshot | null;
-};
 type Catchup = { battles: number; wins: number; draws?: number; defeats?: number; retreats?: number; gold: number; items: string[]; defeated?: boolean; pending: boolean; from_stage?: number | null; to_stage?: number | null };
 function isDraw(encounter: { status?: string; end_reason?: string | null }) {
-  return encounter.status === 'draw' || encounter.end_reason === 'turn_limit';
+  return encounter.status === 'draw' || encounter.end_reason === 'turn_limit' || encounter.end_reason === 'event_limit';
 }
-function encounterResult(encounter: AdventureEncounter & { status?: string; end_reason?: string | null }) {
-  return isDraw(encounter) ? 'Sem vencedor · nova tentativa nesta etapa' : encounter.won ? 'Vitória' : 'Derrota sem perda';
-}
-function encounterName(encounter: AdventureEncounter) {
-  return encounter.kind === 'boss' ? encounter.boss_name || `Chefe da etapa ${encounter.stage}` : `Inimigo da etapa ${encounter.stage}`;
-}
-
-function visualEffect(raw?: string | null): AdventureSceneAction['effect'] {
-  const effects = ['physical', 'arcane', 'fire', 'ice', 'lightning', 'nature', 'light'] as const;
-  return effects.find(effect => effect === raw) ?? 'physical';
+const seenDefeats = new Map<string, string[]>();
+function claimDefeat(accountId: string | null | undefined, battleId: string): boolean {
+  const key = accountId ?? '';
+  const recent = seenDefeats.get(key) ?? [];
+  if (recent.includes(battleId)) return false;
+  seenDefeats.set(key, [...recent.slice(-31), battleId]);
+  return true;
 }
 
-function useServerClock(serverNow?: string, dataUpdatedAt?: number, active = false) {
+function useServerClock(snapshot?: AdventureSnapshot, active = false) {
   const [, setTick] = useState(0);
-  const anchor = useMemo(() => ({
-    monotonic: performance.now(),
-    server: serverNow ? Date.parse(serverNow) + Math.max(0, Date.now() - (dataUpdatedAt || Date.now())) : 0,
-  }), [serverNow, dataUpdatedAt]);
   useEffect(() => {
-    if (!serverNow || !active) return;
+    if (!snapshot || !active) return;
     const timer = window.setInterval(() => setTick(value => value + 1), 250);
     return () => window.clearInterval(timer);
-  }, [serverNow, active]);
-  return anchor.server + Math.max(0, performance.now() - anchor.monotonic);
+  }, [snapshot, active]);
+  return adventureServerTime(snapshot);
 }
 
 export default function AutoAdventure() {
+  // AppLayout owns automatic sync; the arena observes the same query and keeps manual refresh.
   const adventureQuery = useAutoAdventure();
   const adventurePet = useActivePet();
+  const autoPotions = useAdventureAutoPotions();
   const advanceMutation = useAdvanceAutoAdventure();
-  const { data, dataUpdatedAt, isLoading, isFetching, error, refetch } = adventureQuery;
+  const { data, dataUpdatedAt, isLoading, error, refetch } = adventureQuery;
+  const accountId = adventureQuery.accountId;
   const { data: profile } = useProfile();
   const { currentClassName, starterClass } = useHeroClass();
   const { t } = useTranslation();
@@ -77,19 +59,36 @@ export default function AutoAdventure() {
   const hasCachedSummary = 'summary' in adventureQuery;
   const cachedSummary = (adventureQuery as typeof adventureQuery & { summary?: Catchup | null }).summary;
   const acknowledgeSummary = (adventureQuery as typeof adventureQuery & { acknowledgeSummary?: () => void }).acknowledgeSummary;
-  const shownSummary = hasCachedSummary ? cachedSummary : catchupSummary;
   const processedBatch = useRef<string | null>(null);
   const [stageTransition, setStageTransition] = useState(false);
   const previousStage = useRef<number | null>(null);
-  const currentBattle = (data as (typeof data & { battle?: LiveBattle | null }) | undefined)?.battle;
-  const lastBattle = (data as (typeof data & { last_battle?: LiveBattle | null }) | undefined)?.last_battle;
-  const [displayedDefeat, setDisplayedDefeat] = useState<LiveBattle | null>(null);
+  const currentBattle = data?.battle;
+  const lastBattle = data?.last_battle;
+  const [displayedDefeatState, setDisplayedDefeat] = useState<{ accountId: string | null | undefined; battle: AdventureBattle } | null>(null);
+  const accountScope = useRef(accountId);
+  const accountSwitched = accountScope.current !== accountId;
+  const displayedDefeat = !accountSwitched && displayedDefeatState && displayedDefeatState.accountId === accountId ? displayedDefeatState.battle : null;
+  const shownSummary = hasCachedSummary ? cachedSummary : accountSwitched ? null : catchupSummary;
   const seenDefeatId = useRef<string | null>(null);
   const defeatTimer = useRef<number | null>(null);
   const currentStage = data?.stage;
   const mode = (data as (typeof data & { mode?: 'progressing' | 'holding' }) | undefined)?.mode;
   const advanceRequested = (data as (typeof data & { advance_pending?: boolean }) | undefined)?.advance_pending;
   const catchup = (data as (typeof data & { catchup?: Catchup | null }) | undefined)?.catchup;
+  const serverTime = useServerClock(data, currentBattle?.status === 'fighting');
+  useEffect(() => {
+    if (accountScope.current === accountId) return;
+    accountScope.current = accountId;
+    seenDefeatId.current = null;
+    previousStage.current = null;
+    processedBatch.current = null;
+    attemptedBattleId.current = null;
+    advanceInFlight.current = false;
+    setDisplayedDefeat(null);
+    setCatchupSummary(null);
+    setAcceptedBattleId(null);
+    setStageTransition(false);
+  }, [accountId]);
   useEffect(() => {
     if (!catchup || !data || hasCachedSummary) return;
     const key = `${dataUpdatedAt ?? 0}:${data.server_now}`;
@@ -123,23 +122,28 @@ export default function AutoAdventure() {
     previousStage.current = currentStage;
   }, [currentStage]);
   useEffect(() => {
-    if (!lastBattle || (lastBattle.status !== 'defeated' && lastBattle.status !== 'draw')) {
+    const lastEndedAt = Date.parse(lastBattle?.ends_at ?? '');
+    const observedAt = serverTime;
+    const recentHordeResult = lastBattle?.engine_version !== 'v4_horde' ||
+      (Number.isFinite(lastEndedAt) && Number.isFinite(observedAt) &&
+        observedAt >= lastEndedAt && observedAt - lastEndedAt <= 2_000);
+    if (!lastBattle || (lastBattle.status !== 'defeated' && lastBattle.status !== 'draw') ||
+      (lastBattle.engine_version === 'v4_horde' && (catchup?.pending || !recentHordeResult))) {
       if (defeatTimer.current !== null) window.clearTimeout(defeatTimer.current);
       defeatTimer.current = null;
       setDisplayedDefeat(null);
       return;
     }
-    if (seenDefeatId.current === lastBattle.id) return;
+    if (seenDefeatId.current === lastBattle.id || !claimDefeat(accountId, lastBattle.id)) return;
     seenDefeatId.current = lastBattle.id;
-    setDisplayedDefeat(lastBattle);
+    setDisplayedDefeat({ accountId, battle: lastBattle });
     if (defeatTimer.current !== null) window.clearTimeout(defeatTimer.current);
     defeatTimer.current = window.setTimeout(() => {
-      setDisplayedDefeat(previous => previous?.id === lastBattle.id ? null : previous);
+      setDisplayedDefeat(previous => previous?.battle.id === lastBattle.id && previous.accountId === accountId ? null : previous);
       defeatTimer.current = null;
     }, 1400);
-  }, [lastBattle]);
+  }, [lastBattle, accountId, catchup?.pending, serverTime]);
   useEffect(() => () => { if (defeatTimer.current !== null) window.clearTimeout(defeatTimer.current); }, []);
-  const serverTime = useServerClock(data?.server_now, dataUpdatedAt, !catchup?.pending && currentBattle?.status === 'fighting');
 
   if (isLoading) return <div className="rpg-card" role="status">{t('app.autoAdventure.loading', { defaultValue: 'Preparando sua aventura...' })}</div>;
   if (error || !data) return <div className="rpg-card space-y-3 border-amber-500/40" role="alert">
@@ -148,72 +152,44 @@ export default function AutoAdventure() {
     <Button variant="outline" onClick={() => void refetch()}><RotateCw className="mr-2 h-4 w-4" /> Tentar novamente</Button>
   </div>;
 
-  const recovering = Boolean(catchup?.pending);
-  const battle = recovering ? null : displayedDefeat ?? currentBattle ?? null;
-  const visibleEvents = battle?.events.filter(event => Date.parse(event.at) <= serverTime) ?? [];
-  const lastEvent = visibleEvents.at(-1);
-  const actionElapsedMs = lastEvent ? serverTime - Date.parse(lastEvent.at) : undefined;
-  const activeEvent = lastEvent && actionElapsedMs !== undefined && actionElapsedMs >= 0 && actionElapsedMs < 1350 ? lastEvent : null;
+  const battleStartedAt = Date.parse(currentBattle?.started_at ?? '');
+  const battleEndsAt = Date.parse(currentBattle?.ends_at ?? '');
+  const liveDuringCatchup = Boolean(currentBattle?.status === 'fighting' &&
+    battleStartedAt <= serverTime && battleEndsAt > serverTime);
+  // A fighting row can be a historical snapshot at a batch boundary. It is not a live fight.
+  const currentBattleForScene = currentBattle?.status === 'fighting' &&
+    Number.isFinite(battleStartedAt) && Number.isFinite(battleEndsAt) && !liveDuringCatchup
+    ? null : currentBattle;
+  const recovering = Boolean(catchup?.pending && !liveDuringCatchup);
+  const battle = recovering ? null : catchup?.pending ? currentBattleForScene : displayedDefeat ?? currentBattleForScene ?? null;
   const isBoss = battle ? battle.kind === 'boss' : data.stage % 10 === 0;
   const stage = battle?.stage ?? data.stage;
   const holdingStage = data.stage;
   const canRequestAdvance = mode === 'holding' && !data.catchup?.pending &&
     currentBattle?.status === 'fighting' && currentBattle.stage === holdingStage &&
-    Date.parse(currentBattle.ends_at) > serverTime;
+    Date.parse(currentBattle.started_at) <= serverTime && Date.parse(currentBattle.ends_at) > serverTime;
   const enemyName = battle?.enemy_name || (isBoss ? data.boss?.name || `Chefe da etapa ${stage}` : `Inimigo da etapa ${stage}`);
   const heroName = profile?.display_name || 'Aventureiro';
   const heroClassName = battle?.hero_class ? starterClassDisplayName(battle.hero_class) : currentClassName || starterClassDisplayName(starterClass);
   const biome = adventureBiome(stage, battle?.biome);
   const heroClass = battle?.hero_class ? adventureHeroClass(battle.hero_class) : adventureHeroClass(starterClass, heroClassName);
-  const status: AdventureSceneFrame['status'] = battle?.status === 'draw' ? 'draw' : battle?.status === 'defeated' ? 'defeated' : battle?.status === 'won' ? 'victory' : battle ? 'fighting' : 'exploring';
-  // Future events must never leak damage or HP into the current frame.
-  const frame: AdventureSceneFrame = {
-    status: displayedDefeat ? displayedDefeat.status === 'draw' ? 'draw' : 'defeated' : stageTransition ? 'transition' : status,
-    heroHp: battle ? lastEvent?.hero_hp ?? battle.hero_max_hp : null,
-    heroMaxHp: battle?.hero_max_hp,
-    heroMp: battle?.hero_max_mp == null ? null : [...visibleEvents].reverse().find(event => typeof event.hero_mp === 'number')?.hero_mp ?? battle.hero_max_mp,
-    heroMaxMp: battle?.hero_max_mp,
-    enemyHp: battle ? lastEvent?.enemy_hp ?? battle.enemy_max_hp : null,
-    enemyMaxHp: battle?.enemy_max_hp,
-    // A terminal battle snapshot may contain future mana; prefer confirmed timeline events.
-    enemyMp: [...visibleEvents].reverse().find(event => typeof event.enemy_mp === 'number')?.enemy_mp
-      ?? (battle?.events.length === 0 ? battle.enemy_mp : null),
-    enemyMaxMp: battle?.enemy_max_mp,
-    animateAction: Boolean(activeEvent),
-    actionElapsedMs,
-    action: lastEvent ? {
-      id: `${battle!.id}-${visibleEvents.length - 1}`, actor: lastEvent.actor,
-      kind: lastEvent.kind,
-      skillName: lastEvent.kind === 'skill' ? lastEvent.skill_name : null,
-      skillId: lastEvent.kind === 'skill' ? lastEvent.skill_id : null,
-      damage: lastEvent.damage, effect: visualEffect(lastEvent.effect),
-      mpCost: lastEvent.mp_cost, healing: lastEvent.healing,
-      rawDamage: lastEvent.raw_damage, damageMultiplier: lastEvent.damage_multiplier,
-      effectNote: lastEvent.effect_note, skillType: lastEvent.skill_type,
-    } : null,
-  };
-  const latest = data.encounters[0];
+  const futureResult = battle && battle.status !== 'fighting' && Date.parse(battle.ends_at) > serverTime;
+  const status: AdventureSceneFrame['status'] = futureResult ? 'fighting' : battle?.status === 'draw' ? 'draw' : battle?.status === 'defeated' ? 'defeated' : battle?.status === 'won' ? 'victory' : battle ? 'fighting' : 'exploring';
+  const frame = projectAdventureSceneFrame(battle, serverTime,
+    displayedDefeat && battle === displayedDefeat ? displayedDefeat.status === 'draw' ? 'draw' : 'defeated' : stageTransition ? 'transition' : status);
   const advance = async () => {
     if (!canRequestAdvance || !currentBattle || advanceRequested || acceptedBattleId === currentBattle.id || advanceInFlight.current) return;
+    const requestAccountId = accountId;
     advanceInFlight.current = true;
     attemptedBattleId.current = currentBattle.id;
     try {
       await advanceMutation.mutateAsync({ battleId: currentBattle.id });
-      setAcceptedBattleId(currentBattle.id);
+      if (accountScope.current === requestAccountId) setAcceptedBattleId(currentBattle.id);
     } catch { /* The mutation exposes the error; the stage stays server-owned. */ }
     finally { advanceInFlight.current = false; }
   };
 
   return <section className="min-w-0 space-y-4" aria-label="Aventura automática">
-    {shownSummary && shownSummary.battles > 0 && <div className="rpg-card border-primary/30 text-sm" role="status">
-      <strong>{shownSummary.pending ? 'Recuperando o período em que você esteve fora...' : 'Resumo do período ausente'}</strong>
-      {shownSummary.from_stage != null && shownSummary.to_stage != null && <p>{shownSummary.from_stage === shownSummary.to_stage ? `Etapa ${shownSummary.from_stage}` : shownSummary.to_stage < shownSummary.from_stage ? `Da etapa ${shownSummary.from_stage} para a ${shownSummary.to_stage}` : `Etapas ${shownSummary.from_stage} a ${shownSummary.to_stage}`}</p>}
-      <p>{shownSummary.battles} {shownSummary.battles === 1 ? 'combate' : 'combates'} · {shownSummary.wins} {shownSummary.wins === 1 ? 'vitória' : 'vitórias'} · +{shownSummary.gold} ouro · {shownSummary.items.length} {shownSummary.items.length === 1 ? 'item' : 'itens'}.</p>
-      <p className="text-muted-foreground">Este total reúne lutas recuperadas. Cada linha em confrontos recentes representa uma luta.</p>
-      {shownSummary.defeated && <p>{shownSummary.retreats ? `${shownSummary.retreats} ${shownSummary.retreats === 1 ? 'recuo' : 'recuos'}. Após a derrota, seu herói recuou e continuou explorando.` : 'Após a derrota, seu herói permaneceu na etapa escolhida.'}</p>}
-      {(shownSummary.draws ?? 0) > 0 && <p>{shownSummary.draws} {shownSummary.draws === 1 ? 'luta sem vencedor' : 'lutas sem vencedor'}. O herói tenta novamente na mesma etapa, sem prêmio por essas lutas.</p>}
-      {!shownSummary.pending && acknowledgeSummary && <Button size="sm" variant="ghost" onClick={acknowledgeSummary}>Fechar resumo</Button>}
-    </div>}
     <div className="rpg-card-glow min-w-0 space-y-4 border-primary/30">
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
@@ -222,29 +198,40 @@ export default function AutoAdventure() {
           <p className="text-sm text-muted-foreground">{mode === 'holding' ? 'Permanecendo' : status === 'draw' ? 'Sem vencedor' : status === 'defeated' ? 'Derrotado' : status === 'victory' ? 'Vitória' : status === 'fighting' ? 'Em combate' : 'Explorando'} · {heroClassName}</p>
           {mode !== 'holding' && status === 'victory' && data.stage > stage && <p className="text-xs text-emerald-300">Próxima etapa: {data.stage}</p>}
         </div>
-        <Button size="sm" variant="outline" disabled={recovering} aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Retomar animação' : 'Pausar animação'}</Button>
+        <Button size="sm" variant="outline" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Retomar animação' : 'Pausar animação'}</Button>
       </div>
-      {recovering ? <div className="rounded-xl border border-primary/30 bg-card/50 p-6 text-sm" role="status">
-        <p className="font-semibold">Sincronizando suas lutas anteriores</p>
-        <p className="mt-2 text-muted-foreground">A cena ao vivo retorna quando a recuperação terminar.</p>
+      <AdventureScene stage={stage} biome={biome} heroClass={heroClass} heroName={heroName} enemyName={enemyName} isBoss={isBoss} bossId={battle?.boss_id} frame={frame} paused={paused} />
+      {recovering && <div className="rounded-xl border border-primary/30 bg-card/50 p-4 text-sm" role="status">
+        <p className="font-semibold">Recuperando combates</p>
+        <p className="mt-2 text-muted-foreground">Aguardando próxima luta confirmada.</p>
         <p className="mt-2 text-muted-foreground">{catchup?.battles ?? 0} combates recuperados nesta atualização.</p>
-      </div> : <AdventureScene stage={stage} biome={biome} heroClass={heroClass} heroName={heroName} enemyName={enemyName} isBoss={isBoss} bossId={battle?.boss_id} frame={frame} paused={paused} />}
-      {!recovering && <div className="flex min-w-0 flex-wrap justify-between gap-2 text-sm">
-        <span className="min-w-0 break-words">{heroName} enfrenta {enemyName}</span>
-        {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
       </div>}
+      <div className="flex min-w-0 flex-wrap justify-between gap-2 text-sm">
+        <span className="min-w-0 break-words">{battle ? `${heroName} enfrenta ${frame.enemies?.map(enemy => enemy.name).join(', ') || enemyName}` : 'Aguardando próxima luta confirmada'}</span>
+        {isBoss && <strong className="text-amber-300">Chefe da etapa {stage}</strong>}
+      </div>
       {!recovering && <AdventurePetPanel battlePet={battle?.pet} selection={adventurePet.state} selectionLoading={adventurePet.isLoading} selectionError={Boolean(adventurePet.error)} />}
+      <AdventureAutoPotionsPanel state={autoPotions.state} battleId={battle?.id} loading={autoPotions.isLoading}
+        unavailable={autoPotionsUnavailable(autoPotions.error)}
+        error={autoPotions.setError ? autoPotionsErrorMessage(autoPotions.setError) : autoPotions.error && !autoPotionsUnavailable(autoPotions.error) ? autoPotionsErrorMessage(autoPotions.error) : null}
+        setting={autoPotions.isSetting} onToggle={enabled => { void autoPotions.setEnabled(enabled).catch(() => {}); }}
+        onRetry={() => { void autoPotions.refetch(); }} />
       {mode === 'holding' && <AdventureHoldNotice stage={holdingStage} advanceToStage={holdingStage + 1} retreatedFromStage={data.encounters.find(encounter => !encounter.won && !isDraw(encounter) && encounter.stage === holdingStage + 1)?.stage} pending={advanceMutation.isPending} accepted={Boolean(advanceRequested || (currentBattle && acceptedBattleId === currentBattle.id))} canAdvance={canRequestAdvance} error={advanceMutation.isError && attemptedBattleId.current === currentBattle?.id} onAdvance={() => void advance()} />}
       <p className="text-xs text-muted-foreground">{mode === 'holding' ? 'Seu herói continua explorando esta etapa.' : 'O herói avança sozinho.'} Alterações em equipamentos e habilidades passam a valer na próxima luta iniciada. Cada vitória dá ouro; itens diretos seguem um intervalo e limite diário. Rotinas concluídas dão XP e atributos.</p>
     </div>
-    <div className="grid min-w-0 gap-3 sm:grid-cols-3">
+    <AdventureJourneyPanel stage={data.stage} />
+    {shownSummary && shownSummary.battles > 0 && <div className="rpg-card border-primary/30 text-sm" role="status">
+      <strong>{shownSummary.pending ? 'Recuperando o período em que você esteve fora...' : 'Resumo do período ausente'}</strong>
+      {shownSummary.from_stage != null && shownSummary.to_stage != null && <p>{shownSummary.from_stage === shownSummary.to_stage ? `Etapa ${shownSummary.from_stage}` : shownSummary.to_stage < shownSummary.from_stage ? `Da etapa ${shownSummary.from_stage} para a ${shownSummary.to_stage}` : `Etapas ${shownSummary.from_stage} a ${shownSummary.to_stage}`}</p>}
+      <p>{shownSummary.battles} {shownSummary.battles === 1 ? 'combate' : 'combates'} · {shownSummary.wins} {shownSummary.wins === 1 ? 'vitória' : 'vitórias'} · +{shownSummary.gold} ouro · {shownSummary.items.length} {shownSummary.items.length === 1 ? 'item' : 'itens'}.</p>
+      <p className="text-muted-foreground">Este total reúne lutas recuperadas.</p>
+      {shownSummary.defeated && <p>{shownSummary.retreats ? `${shownSummary.retreats} ${shownSummary.retreats === 1 ? 'recuo' : 'recuos'}. Após a derrota, seu herói recuou e continuou explorando.` : 'Após a derrota, seu herói permaneceu na etapa escolhida.'}</p>}
+      {(shownSummary.draws ?? 0) > 0 && <p>{shownSummary.draws} {shownSummary.draws === 1 ? 'luta sem vencedor' : 'lutas sem vencedor'}. O herói tenta novamente na mesma etapa, sem prêmio por essas lutas.</p>}
+      {!shownSummary.pending && acknowledgeSummary && <Button size="sm" variant="ghost" onClick={acknowledgeSummary}>Fechar resumo</Button>}
+    </div>}
+    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
       <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Ouro da aventura hoje</p><p className="text-xl font-bold text-amber-300">{data.gold_today}</p><p className="text-xs text-muted-foreground">Sem teto diário de ouro</p></div>
       <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Itens da aventura hoje</p><p className="text-xl font-bold">{data.loot_today} / {data.limits.items_per_day}</p></div>
-      <div className="rpg-card min-w-0"><p className="text-xs text-muted-foreground">Último resultado</p><p className="text-sm font-semibold">{latest ? encounterResult(latest) : 'Aguardando'}</p></div>
-    </div>
-    <div className="rpg-card min-w-0 space-y-3">
-      <div className="flex items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-display font-bold"><Trophy className="h-4 w-4" /> Confrontos recentes</h3><Button size="sm" variant="ghost" disabled={isFetching} onClick={() => void refetch()} aria-label="Atualizar aventura"><RotateCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /></Button></div>
-      {data.encounters.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum confronto ainda.</p> : <ol className="space-y-2">{data.encounters.map(encounter => <li key={`${encounter.stage}-${encounter.attempt}`} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/40 px-3 py-2 text-sm"><span className="min-w-0 break-words">{encounterName(encounter)}</span><span className={encounter.won ? 'text-emerald-300' : 'text-amber-300'}>{isDraw(encounter) ? encounterResult(encounter) : encounter.won ? `Vitória · ${encounter.gold > 0 ? `+${encounter.gold} ouro` : 'sem ouro nesta luta'}${encounter.item_id ? ' · item no inventário' : ''}` : 'Derrota · sem perda'}</span></li>)}</ol>}
     </div>
   </section>;
 }
