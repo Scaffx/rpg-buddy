@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Box, Clock3, Coins, Gift, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import {
   adventureChestError,
   useAdventureChests,
@@ -36,6 +37,33 @@ function guaranteed(chest: AdventureChest) {
   return rewards.join(' · ');
 }
 
+const equipmentRarityText = { incomum: 'incomum', raro: 'raro', epico: 'épico', lendario: 'lendário' } as const;
+const percentage = (bps: number) => `${(bps / 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
+
+function ChestLootDetails({ chest }: { chest: AdventureChest }) {
+  const rules = chest.loot_rules;
+  if (!rules) return <>
+    <p className="text-xs text-muted-foreground">Garantido: {guaranteed(chest)}.</p>
+    <p className="text-xs text-muted-foreground">Conteúdo preservado das regras em que este baú foi encontrado.</p>
+  </>;
+  return <div className="space-y-2 text-xs text-muted-foreground">
+    <p>Ouro: {rules.gold_min}–{rules.gold_max} · Poções: {rules.potions_min}–{rules.potions_max}.</p>
+    <p>Sem uma poção elegível para este baú, a quantidade de poções é zero.</p>
+    {(chest.minimum.scrap > 0 || chest.minimum.essence > 0) && <p>Materiais: {chest.minimum.scrap} sucata{chest.minimum.essence > 0 ? ` · ${chest.minimum.essence} essência de ${essenceText[chest.minimum.essence_material]}` : ''}.</p>}
+    <p>Chance de equipamento: até {percentage(rules.equipment_chance_bps)} · 0 ou 1 equipamento.</p>
+    <details>
+      <summary className="cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Chances e conteúdo do baú</summary>
+      <ul className="mt-2 space-y-1 pl-3">
+        {Object.entries(rules.equipment_rarity_bps).filter(([, bps]) => bps > 0).map(([rarity, bps]) => <li key={rarity}>
+          Equipamento {equipmentRarityText[rarity as keyof typeof equipmentRarityText]}: até {percentage(rules.equipment_chance_bps * bps / 10000)} por baú.
+        </li>)}
+      </ul>
+      <p className="mt-2">As chances dependem de haver um item elegível para a classe e o nível registrados ao encontrar o baú. Sem item elegível na raridade sorteada, não vem equipamento. Itens exclusivos de bosses e receitas não entram no sorteio.</p>
+      <p className="mt-1">O conteúdo é sorteado e salvo ao encontrar o baú. Reabrir a página não muda o resultado. Baús não dão XP.</p>
+    </details>
+  </div>;
+}
+
 function recentReward(receipt: AdventureChestReceipt) {
   const parts = [`${receipt.gold} ouro`, `${receipt.scrap} sucata`];
   if (receipt.essence) parts.push(`${receipt.essence} essência de ${essenceText[receipt.essence_material]}`);
@@ -54,6 +82,8 @@ export function AdventureChestsPanel() {
     server: Date.parse(serverTime), monotonic: performance.now(),
   } : null, [serverTime]);
   const opening = data?.chests.some(chest => chest.status === 'opening') ?? false;
+  const activeCount = data?.openings_active ?? data?.chests.filter(chest => chest.status === 'opening').length ?? 0;
+  const openingCap = data?.openings_cap ?? 1;
   useEffect(() => {
     if (!opening) return;
     const timer = window.setInterval(() => setTick(value => value + 1), 1000);
@@ -94,7 +124,7 @@ export function AdventureChestsPanel() {
             <Gift className="h-5 w-5 text-amber-400" aria-hidden="true" /> Baús da aventura
           </h2>
           <p className="text-sm text-muted-foreground">
-            Quatro espaços, uma abertura por vez. O tempo corre mesmo quando você sai. Baús não dão XP.
+            Quatro espaços para guardar baús. O tempo de abertura corre mesmo quando você sai. Baús não dão XP.
           </p>
         </div>
         <Button type="button" variant="ghost" size="icon" aria-label="Atualizar baús"
@@ -118,6 +148,7 @@ export function AdventureChestsPanel() {
         <p className="text-sm text-muted-foreground">
           {data.occupied} de {data.slots_total} espaços ocupados. Vitórias dão no máximo uma oportunidade de baú a cada 30 minutos de combate.
         </p>
+        <p className="text-sm text-muted-foreground">{activeCount} de {openingCap} aberturas simultâneas em uso. <Link className="text-amber-300 underline" to="/shop">Liberar mais aberturas na loja</Link>.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: data.slots_total }, (_, slot) => {
             const chest = data.chests[slot];
@@ -130,9 +161,8 @@ export function AdventureChestsPanel() {
                 <h3 className="font-semibold">Baú {rarityText[chest.rarity]}</h3>
                 <span className="text-xs text-muted-foreground">{chest.open_hours}h para abrir</span>
               </div>
-              <p className="text-xs text-muted-foreground">Garantido: {guaranteed(chest)}.</p>
-              <p className="text-xs text-muted-foreground">Pode conter equipamento adequado à classe e ao nível da vitória.</p>
-              {chest.status === 'queued' ? <Button type="button" size="sm" disabled={busy || opening}
+              <ChestLootDetails chest={chest} />
+              {chest.status === 'queued' ? <Button type="button" size="sm" disabled={busy || activeCount >= openingCap}
                 onClick={() => void handleStart(chest.id)}>Iniciar abertura</Button>
                 : <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-1 text-sm" aria-live="polite">

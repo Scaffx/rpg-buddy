@@ -28,6 +28,7 @@ import CompanionPage from '@/pages/CompanionPage';
 let root: Root;
 let container: HTMLDivElement;
 let client: QueryClient;
+let dateNow: ReturnType<typeof vi.spyOn>;
 async function mount(ui: React.ReactNode) {
   await act(async () => { root.render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>); });
   await settle();
@@ -43,12 +44,13 @@ const catFood = { pet_type: 'cat', item_id: 'food-cat', name: 'Ração de gato',
 const careState = (participation: number, nextCare: string) => ({ server_now: '2026-10-29T12:00:00Z', pets: [{ companion_id: 'pet-1', pet_type: 'dog', name: 'Rex', stock: 2, last_feed_at: '2026-10-29T00:00:00Z', next_feed_at: '2026-10-30T00:00:00Z', last_care_at: '2026-10-28T00:00:00Z', next_care_at: nextCare, participation }] });
 
 beforeEach(() => {
+  dateNow = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-29T12:00:00Z'));
   state.userId = 'account-a'; state.rpc.mockReset(); state.from.mockReset(); sessionStorage.clear();
   container = document.createElement('div'); document.body.append(container);
   root = createRoot(container);
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } } });
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); client.clear(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); client.clear(); dateNow.mockRestore(); });
 
 describe('pet food and care mounted UI', () => {
   it('shows empty food catalog, then only server-owned species after account change', async () => {

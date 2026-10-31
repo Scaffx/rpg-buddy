@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import AdventureChestsPanel from '@/components/adventure/AdventureChestsPanel';
 import { adventureChestError } from '@/hooks/useAdventureChests';
 
@@ -21,7 +22,7 @@ function renderPanel() {
     document.body.appendChild(container);
     root = createRoot(container);
   }
-  act(() => root!.render(<AdventureChestsPanel />));
+  act(() => root!.render(<MemoryRouter><AdventureChestsPanel /></MemoryRouter>));
   return container;
 }
 
@@ -68,5 +69,24 @@ describe('AdventureChestsPanel', () => {
     expect(adventureChestError(new Error('falha'))).toBe('falha');
     expect(adventureChestError('CHEST_NOT_READY')).toContain('relógio do servidor');
     expect(adventureChestError({ message: 'CHEST_NOT_FOUND', code: '22023' })).toContain('não pertence');
+  });
+
+  it('permite iniciar outro baú até o limite de aberturas confirmado pelo servidor', () => {
+    const now = new Date().toISOString();
+    const base = { rarity: 'raro', acquired_at: now, open_hours: 4,
+      minimum: { gold: 120, scrap: 5, essence_material: 'normal', essence: 1, potions: 2 } };
+    const data = { server_now: now, slots_total: 4, occupied: 2, openings_cap: 2, openings_active: 1,
+      chests: [{ ...base, id: '11111111-1111-4111-8111-111111111111', status: 'opening', started_at: now, ready_at: new Date(Date.now() + 3600000).toISOString() },
+        { ...base, id: '22222222-2222-4222-8222-222222222222', status: 'queued', started_at: null, ready_at: null }],
+      overflow: { count: 0 }, recent_claims: [] };
+    mocked.value = { data, isLoading: false, isFetching: false, refetch: vi.fn(),
+      start: { isPending: false }, claim: { isPending: false } };
+    const page = renderPanel();
+    const start = () => [...page.querySelectorAll('button')].find(b => b.textContent === 'Iniciar abertura')!;
+    expect(start().disabled).toBe(false);
+    expect(page.textContent).toContain('1 de 2 aberturas simultâneas em uso');
+    data.openings_active = 2;
+    renderPanel();
+    expect(start().disabled).toBe(true);
   });
 });

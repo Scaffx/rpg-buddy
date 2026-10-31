@@ -16,6 +16,7 @@ vi.mock('@/hooks/useAdventureAutoPotions', () => ({
     isSetting: false, setEnabled: vi.fn(), refetch: vi.fn() }),
   autoPotionsErrorMessage: () => '', autoPotionsUnavailable: () => false,
 }));
+vi.mock('@/components/adventure/AdventureJourneyPanel', () => ({ AdventureJourneyPanel: () => null }));
 vi.mock('@/hooks/useProfile', () => ({ useProfile: () => ({ data: { display_name: 'Heroína' } }) }));
 vi.mock('@/hooks/useHeroClass', () => ({
   useHeroClass: () => ({ currentClassName: 'Mago', starterClass: 'mago' }),
@@ -153,13 +154,14 @@ describe('integração AutoAdventure e cena de horda', () => {
       dataUpdatedAt: Date.now(), isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
     const page = render();
     expect(page.querySelector('.adventure-horde')).not.toBeNull();
-    expect(page.textContent).not.toContain('Sincronizando suas lutas anteriores');
+    expect(page.textContent).not.toContain('Recuperando combates');
 
     state.query = { ...state.query as object, data: { ...data, battle: { ...battle, ends_at: time(-1000) },
       catchup: { battles: 24, wins: 24, gold: 4, items: [], pending: true } } };
     render();
-    expect(page.querySelector('.adventure-scene')).toBeNull();
-    expect(page.textContent).toContain('Sincronizando suas lutas anteriores');
+    expect(page.querySelector('.adventure-scene[data-status="exploring"]')).not.toBeNull();
+    expect(page.querySelector('.adventure-resource-unknown')?.textContent).toContain('HP —');
+    expect(page.textContent).toContain('Recuperando combates');
 
     state.query = { ...state.query as object, data: { ...data, catchup: { battles: 0, wins: 0, gold: 0, items: [], pending: false },
       last_battle: { ...battle, id: 'defeat-a', status: 'defeated', ends_at: time(-100), events: [] } } };

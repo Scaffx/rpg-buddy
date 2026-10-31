@@ -97,6 +97,16 @@ afterEach(async () => {
 });
 
 describe('histórico de compras da loja', () => {
+  it('mostra o débito da liberação permanente de baús', async () => {
+    state.rows = [{ id: 'opening-2', type: 'compra_bau_abertura', amount: -6000,
+      reason: '', created_at: '2026-10-31T12:00:00Z' }];
+    await renderPage();
+    const dialog = await openHistory();
+    expect(dialog.textContent).toContain('Liberação de abertura de baú');
+    expect(dialog.textContent).toContain('-6000');
+    expect(state.calls).toContainEqual(['in', ['type', ['compra_loja', 'compra_equipamento', 'compra_pet', 'compra_bau_abertura']]]);
+  });
+
   it('abre pelo botão e consulta somente 20 compras próprias e tipos reais', async () => {
     state.rows = [{ id: 'purchase-1', type: 'compra_equipamento', amount: -120,
       reason: 'Comprou Poção de HP Menor', created_at: '2026-10-22T12:00:00Z' }];
@@ -108,7 +118,7 @@ describe('histórico de compras da loja', () => {
     expect(state.calls).toEqual([
       ['select', 'id, type, amount, reason, created_at'],
       ['eq', ['user_id', 'user-1']],
-      ['in', ['type', ['compra_loja', 'compra_equipamento', 'compra_pet']]],
+      ['in', ['type', ['compra_loja', 'compra_equipamento', 'compra_pet', 'compra_bau_abertura']]],
       ['lte', ['amount', 0]],
       ['order', ['created_at', { ascending: false }]],
       ['limit', 20],

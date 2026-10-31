@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActivePet } from '@/hooks/useActivePet';
 import { usePurchaseHistory } from '@/hooks/usePurchaseHistory';
 import { usePetFoodCatalog, usePetFoodPurchase, type PetFood } from '@/hooks/usePetCare';
+import { ChestOpeningUpgrades } from '@/components/adventure/ChestOpeningUpgrades';
 import { isForagePet, adventurePetBonusLabel, sustainLabel } from '@/lib/pets';
 import AppLayout from '@/components/AppLayout';
 import TranslatedGuidedTour from '@/components/TranslatedGuidedTour';
@@ -437,6 +438,7 @@ export default function ShopPage() {
                           compra_loja: 'Compra na Loja do Tempo',
                           compra_equipamento: 'Compra de equipamento',
                           compra_pet: 'Compra de pet',
+                          compra_bau_abertura: 'Liberação de abertura de baú',
                         }[purchase.type] || 'Compra na loja')}
                       </p>
                       <time dateTime={purchase.created_at} className="text-xs text-muted-foreground">
@@ -485,6 +487,7 @@ export default function ShopPage() {
 
           {/* Loja do Tempo */}
           <TabsContent value="tempo" className="space-y-4 mt-6">
+            <ChestOpeningUpgrades gold={typeof balance?.gold === 'number' ? balance.gold : null} />
             <div className="space-y-2">
               <h2 className="text-lg font-display font-bold text-cyan-400">{t('app.shop.section_time_shop_title')}</h2>
               <p className="text-sm text-muted-foreground italic">
